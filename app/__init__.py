@@ -50,6 +50,15 @@ def create_app(config_object='config.Config'):
         _migrate_tenant_columns()
         _seed_defaults()
 
+    # ── CLI: flask seed-demo ───────────────────────────────────────────────
+    @app.cli.command('seed-demo')
+    def seed_demo_command():
+        """Carica dati di demo: 3 tenant, 36 clienti, prodotti alimentari."""
+        with app.app_context():
+            from app.demo_seed import seed_demo_data
+            ok, msg = seed_demo_data()
+            print(('[OK]' if ok else '[SKIP]'), msg)
+
     return app
 
 

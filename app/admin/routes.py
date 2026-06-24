@@ -962,6 +962,15 @@ def tenant_delete(tid):
     return redirect(url_for('admin.tenants'))
 
 
+@bp.route('/seed-demo', methods=['POST'])
+@_superadmin_required
+def seed_demo():
+    from app.demo_seed import seed_demo_data
+    ok, msg = seed_demo_data()
+    flash(msg, 'success' if ok else 'warning')
+    return redirect(url_for('admin.tenants'))
+
+
 @bp.route('/tenants/<int:tid>/create-admin', methods=['POST'])
 @_superadmin_required
 def tenant_create_admin(tid):
