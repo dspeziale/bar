@@ -83,9 +83,17 @@ def _migrate_tenant_columns():
         _ensure(t, 'tenant_id', 'INTEGER')
 
     # Colonne aggiuntive su users per OAuth
-    # DEFAULT '' con apici singoli: valido su SQLite e PostgreSQL (i doppi apici sono per gli identificatori in PG)
     _ensure('users', 'google_id', 'VARCHAR(128)')
     _ensure('users', 'avatar_url', "VARCHAR(256) DEFAULT ''")
+
+    # Colonne anagrafica clienti
+    _ensure('users', 'is_client',        "BOOLEAN DEFAULT FALSE")
+    _ensure('users', 'first_name',        "VARCHAR(64) DEFAULT ''")
+    _ensure('users', 'last_name',         "VARCHAR(64) DEFAULT ''")
+    _ensure('users', 'phone',             "VARCHAR(20) DEFAULT ''")
+    _ensure('users', 'birth_date',        "DATE")
+    _ensure('users', 'address',           "TEXT DEFAULT ''")
+    _ensure('users', 'telegram_chat_id',  "VARCHAR(64) DEFAULT ''")
 
 
 def _seed_defaults():
@@ -311,6 +319,7 @@ def _seed_defaults():
         ('manage_settings',    'Configurazioni sistema (Telegram/Email)', 'sistema'),
         ('manage_polls',       'Gestisci sondaggi',                       'comunicazioni'),
         ('send_notifications', 'Invia notifiche Telegram/Email',          'comunicazioni'),
+        ('manage_clients',     'Gestisci clienti (anagrafica)',            'sistema'),
     ]
     for pname, plabel, pcat in extra_perms:
         if not Permission.query.filter_by(name=pname).first():

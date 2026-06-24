@@ -238,8 +238,129 @@ def cucina():
 @require_permission('manage_users')
 def users():
     all_roles = Role.query.order_by(Role.name).all()
-    all_users = User.query.filter_by(is_admin=False).order_by(User.username).all()
+    all_users = User.query.filter_by(is_admin=False, is_client=False).order_by(User.username).all()
     return render_template('admin/users.html', users=all_users, all_roles=all_roles)
+
+
+# ── Clienti ───────────────────────────────────────────────────────────────────
+
+@bp.route('/clients')
+@require_permission('manage_clients')
+def clients():
+    all_clients = User.query.filter_by(is_client=True).order_by(User.last_name, User.first_name).all()
+    return render_template('admin/clients.html', clients=all_clients)
+
+
+@bp.route('/clients/new', methods=['POST'])
+@require_permission('manage_clients')
+def client_new():
+    import re
+    from datetime import datetime as dt
+    email      = request.form.get('email', '').strip().lower()
+    first_name = request.form.get('first_name', '').strip()
+    last_name  = request.form.get('last_name', '').strip()
+    if not email or '@' not in email or not first_name or not last_name:
+        flash('Email, nome e cognome sono obbligatori.', 'danger')
+        return redirect(url_for('admin.clients'))
+    if User.query.filter_by(email=email).first():
+        flash(f'Email "{email}" già registrata.', 'warning')
+        return redirect(url_for('admin.clients'))
+    base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0]).strip('.') or 'cliente'
+    username, n = base[:30], 1
+    while User.query.filter_by(username=username).first():
+        username = f'{base[:28]}{n}'; n += 1
+    birth_raw = request.form.get('birth_date', '').strip()
+    birth_date = None
+    if birth_raw:
+        try:
+            birth_date = dt.strptime(birth_raw, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    u = User(
+        username=username, email=email,
+        is_client=True,
+        first_name=first_name,
+        last_name=last_name,
+        phone=request.form.get('phone', '').strip(),
+        birth_date=birth_date,
+        address=request.form.get('address', '').strip(),
+        telegram_chat_id=request.form.get('telegram_chat_id', '').strip(),
+    )
+    pwd = request.form.get('password', '').strip()
+    if pwd:
+        u.set_password(pwd)
+    db.session.add(u)
+    db.session.commit()
+    flash(f'Cliente "{u.full_name}" creato.', 'success')
+    return redirect(url_for('admin.clients'))
+
+
+@bp.route('/clients/<int:uid>/edit', methods=['POST'])
+@require_permission('manage_clients')
+def client_edit(uid):
+    from datetime import datetime as dt
+    u = db.get_or_404(User, uid)
+    if not u.is_client:
+        abort(404)
+    u.first_name       = request.form.get('first_name', u.first_name).strip()
+    u.last_name        = request.form.get('last_name',  u.last_name).strip()
+    u.phone            = request.form.get('phone',      u.phone or '').strip()
+    u.address          = request.form.get('address',    u.address or '').strip()
+    u.telegram_chat_id = request.form.get('telegram_chat_id', u.telegram_chat_id or '').strip()
+    birth_raw = request.form.get('birth_date', '').strip()
+    if birth_raw:
+        try:
+            u.birth_date = dt.strptime(birth_raw, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    pwd = request.form.get('password', '').strip()
+    if pwd:
+        u.set_password(pwd)
+    db.session.commit()
+    flash(f'Cliente "{u.full_name}" aggiornato.', 'success')
+    return redirect(url_for('admin.clients'))
+
+
+@bp.route('/clients/<int:uid>/toggle', methods=['POST'])
+@require_permission('manage_clients')
+def client_toggle(uid):
+    u = db.get_or_404(User, uid)
+    if not u.is_client:
+        abort(404)
+    u.is_active = not u.is_active
+    db.session.commit()
+    flash(f'Cliente {u.full_name} {"attivato" if u.is_active else "sospeso"}.', 'info')
+    return redirect(url_for('admin.clients'))
+
+
+@bp.route('/clients/<int:uid>/delete', methods=['POST'])
+@require_permission('manage_clients')
+def client_delete(uid):
+    u = db.get_or_404(User, uid)
+    if not u.is_client:
+        abort(404)
+    name = u.full_name
+    db.session.delete(u)
+    db.session.commit()
+    flash(f'Cliente "{name}" eliminato.', 'info')
+    return redirect(url_for('admin.clients'))
+
+
+@bp.route('/clients/<int:uid>/topup', methods=['POST'])
+@require_permission('manage_clients')
+def client_topup(uid):
+    u = db.get_or_404(User, uid)
+    if not u.is_client:
+        abort(404)
+    amount = request.form.get('amount', type=float)
+    note = request.form.get('note', 'Ricarica manuale').strip() or 'Ricarica manuale'
+    if not amount or amount <= 0:
+        flash('Importo non valido.', 'danger')
+        return redirect(url_for('admin.clients'))
+    u.credit_wallet(amount, note)
+    db.session.commit()
+    flash(f'+{amount:.2f}€ aggiunti al wallet di {u.full_name}.', 'success')
+    return redirect(url_for('admin.clients'))
 
 
 @bp.route('/users/new', methods=['POST'])

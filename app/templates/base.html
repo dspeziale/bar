@@ -462,7 +462,7 @@
             {% set in_ordini       = ep in ('admin.orders','admin.cucina') %}
             {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories') %}
             {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots') %}
-            {% set in_utenti       = ep in ('admin.users','admin.roles') %}
+            {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_tenant       = ep in ('admin.tenants',) %}
 
@@ -588,20 +588,29 @@
             </li>
             {% endif %}
 
-            {# ── UTENTI & RUOLI ── #}
-            {% if p('manage_users') or p('manage_roles') %}
+            {# ── UTENTI, CLIENTI & RUOLI ── #}
+            {% if p('manage_users') or p('manage_clients') or p('manage_roles') %}
             <li class="nav-item has-treeview {{ 'menu-open' if in_utenti }}">
               <a href="#" class="nav-link {{ 'active' if in_utenti }}">
                 <i class="nav-icon fas fa-users"></i>
-                <p>Utenti<i class="right fas fa-angle-left"></i></p>
+                <p>Persone<i class="right fas fa-angle-left"></i></p>
               </a>
               <ul class="nav nav-treeview">
                 {% if p('manage_users') %}
                 <li class="nav-item">
                   <a href="{{ url_for('admin.users') }}"
                      class="nav-link {{ 'active' if ep == 'admin.users' }}">
-                    <i class="fas fa-users nav-icon" style="color:#2980b9;"></i>
-                    <p>Utenti</p>
+                    <i class="fas fa-id-badge nav-icon" style="color:#2980b9;"></i>
+                    <p>Personale</p>
+                  </a>
+                </li>
+                {% endif %}
+                {% if p('manage_clients') %}
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.clients') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.clients' }}">
+                    <i class="fas fa-address-book nav-icon" style="color:#27ae60;"></i>
+                    <p>Clienti</p>
                   </a>
                 </li>
                 {% endif %}

@@ -77,15 +77,29 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=True)  # nullable per Google OAuth
+    password_hash = db.Column(db.String(256), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+    is_client = db.Column(db.Boolean, default=False)
     wallet_balance = db.Column(db.Float, default=0.0)
     loyalty_points = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     google_id  = db.Column(db.String(128), nullable=True, unique=True)
     avatar_url = db.Column(db.String(256), default='')
+
+    # ── Anagrafica (clienti) ──────────────────────────────────────────────────
+    first_name       = db.Column(db.String(64),  default='')
+    last_name        = db.Column(db.String(64),  default='')
+    phone            = db.Column(db.String(20),  default='')
+    birth_date       = db.Column(db.Date,        nullable=True)
+    address          = db.Column(db.Text,        default='')
+    telegram_chat_id = db.Column(db.String(64),  default='')
+
+    @property
+    def full_name(self):
+        parts = [self.first_name or '', self.last_name or '']
+        return ' '.join(p for p in parts if p) or self.username
 
     tenant = db.relationship('Tenant', foreign_keys=[tenant_id], overlaps='users')
 
