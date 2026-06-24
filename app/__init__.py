@@ -182,10 +182,11 @@ def _seed_defaults():
         db.session.add_all(roles)
         db.session.flush()
 
-    # ── Admin user ────────────────────────────────────────────────────────
+    # ── Super admin globale (unico, tenant_id=None) ───────────────────────
     if not User.query.filter_by(is_admin=True).first():
         admin = User(username='admin', email='admin@bar.local',
-                     is_admin=True, wallet_balance=0.0, loyalty_points=0)
+                     is_admin=True, tenant_id=None,
+                     wallet_balance=0.0, loyalty_points=0)
         admin.set_password('admin123')
         db.session.add(admin)
 

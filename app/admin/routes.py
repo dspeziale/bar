@@ -14,6 +14,15 @@ from app.notifications import (send_telegram, send_email_to_all_users,
                                 telegram_poll_message, email_poll_html, get_setting)
 
 
+# ── Tenant scope helper ───────────────────────────────────────────────────────
+
+def _tenant_filter():
+    """Per query filter_by: vuoto per il super admin globale, tenant_id per gli altri."""
+    if current_user.is_admin:
+        return {}
+    return {'tenant_id': current_user.tenant_id}
+
+
 # ── Decorators ────────────────────────────────────────────────────────────────
 
 def staff_required(f):
@@ -52,7 +61,7 @@ def dashboard():
     orders_today = Order.query.filter_by(order_date=today)\
         .filter(Order.status != 'cancelled').all()
     revenue_today = sum(o.total_price for o in orders_today)
-    users_count = User.query.filter_by(is_admin=False).count()
+    users_count = User.query.filter_by(is_admin=False, **_tenant_filter()).count()
     products_count = Product.query.filter_by(is_active=True).count()
     res_today = TableReservation.query.filter_by(reservation_date=today)\
         .filter(TableReservation.status != 'cancelled').count()
@@ -238,7 +247,8 @@ def cucina():
 @require_permission('manage_users')
 def users():
     all_roles = Role.query.order_by(Role.name).all()
-    all_users = User.query.filter_by(is_admin=False, is_client=False).order_by(User.username).all()
+    all_users = User.query.filter_by(is_admin=False, is_client=False,
+                                     **_tenant_filter()).order_by(User.username).all()
     return render_template('admin/users.html', users=all_users, all_roles=all_roles)
 
 
@@ -247,7 +257,8 @@ def users():
 @bp.route('/clients')
 @require_permission('manage_clients')
 def clients():
-    all_clients = User.query.filter_by(is_client=True).order_by(User.last_name, User.first_name).all()
+    all_clients = User.query.filter_by(is_client=True,
+                                       **_tenant_filter()).order_by(User.last_name, User.first_name).all()
     return render_template('admin/clients.html', clients=all_clients)
 
 
@@ -889,7 +900,19 @@ def _superadmin_required(f):
 @_superadmin_required
 def tenants():
     all_tenants = Tenant.query.order_by(Tenant.name).all()
-    return render_template('admin/tenants.html', tenants=all_tenants)
+    # Per ogni tenant trova l'admin (is_admin=False, ruolo superadmin)
+    sa_role = Role.query.filter_by(name='superadmin').first()
+    tenant_admins = {}
+    if sa_role:
+        admins = User.query.filter(
+            User.is_admin == False,
+            User.roles.contains(sa_role)
+        ).all()
+        for u in admins:
+            if u.tenant_id and u.tenant_id not in tenant_admins:
+                tenant_admins[u.tenant_id] = u
+    return render_template('admin/tenants.html', tenants=all_tenants,
+                           tenant_admins=tenant_admins)
 
 
 @bp.route('/tenants/new', methods=['POST'])
@@ -936,4 +959,43 @@ def tenant_delete(tid):
     db.session.delete(t)
     db.session.commit()
     flash('Tenant eliminato.', 'success')
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/tenants/<int:tid>/create-admin', methods=['POST'])
+@_superadmin_required
+def tenant_create_admin(tid):
+    import secrets
+    t = db.get_or_404(Tenant, tid)
+
+    # Controlla che non esista già un admin per questo tenant
+    existing = User.query.filter_by(tenant_id=tid, is_admin=False)\
+        .join(User.roles).filter(Role.name == 'superadmin').first()
+    if existing:
+        flash(f'Il tenant "{t.name}" ha già un admin: {existing.email}', 'warning')
+        return redirect(url_for('admin.tenants'))
+
+    email    = f'admin@{t.slug}.local'
+    username = f'admin.{t.slug}'
+
+    # Evita collisioni di username/email su DB condiviso
+    if User.query.filter_by(email=email).first():
+        flash(f'Email {email} già in uso. Rinomina il tenant o crea l\'admin manualmente.', 'danger')
+        return redirect(url_for('admin.tenants'))
+
+    password = secrets.token_urlsafe(12)
+    sa_role  = Role.query.filter_by(name='superadmin').first()
+
+    u = User(username=username, email=email,
+             is_admin=False, tenant_id=tid,
+             wallet_balance=0.0, loyalty_points=0)
+    u.set_password(password)
+    if sa_role:
+        u.roles = [sa_role]
+    db.session.add(u)
+    db.session.commit()
+
+    flash(f'Admin tenant "{t.name}" creato — '
+          f'email: {email} | password: {password} '
+          f'(copiala adesso, non verrà mostrata di nuovo)', 'success')
     return redirect(url_for('admin.tenants'))

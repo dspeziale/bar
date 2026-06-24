@@ -19,6 +19,7 @@
               <tr>
                 <th>Nome / Slug</th>
                 <th>Colore</th>
+                <th>Admin tenant</th>
                 <th>Utenti</th>
                 <th>Stato</th>
                 <th>Link registrazione</th>
@@ -27,6 +28,7 @@
             </thead>
             <tbody>
               {% for t in tenants %}
+              {% set tadmin = tenant_admins.get(t.id) %}
               <tr>
                 <td>
                   <strong>{{ t.name }}</strong><br>
@@ -36,6 +38,24 @@
                   <span style="display:inline-block;width:24px;height:24px;border-radius:4px;
                                background:{{ t.primary_color }};border:1px solid rgba(0,0,0,.15);"
                         title="{{ t.primary_color }}"></span>
+                </td>
+                <td>
+                  {% if tadmin %}
+                    <i class="fas fa-user-shield text-success mr-1"></i>
+                    <small><strong>{{ tadmin.email }}</strong></small><br>
+                    <span class="badge badge-{{ 'success' if tadmin.is_active else 'secondary' }} badge-sm">
+                      {{ 'Attivo' if tadmin.is_active else 'Sospeso' }}
+                    </span>
+                  {% else %}
+                    <form action="{{ url_for('admin.tenant_create_admin', tid=t.id) }}"
+                          method="POST" class="d-inline">
+                      <button type="submit" class="btn btn-xs btn-outline-warning"
+                              title="Crea admin per questo tenant"
+                              onclick="return confirm('Creare l\'admin per {{ t.name }}? La password verrà mostrata una sola volta.')">
+                        <i class="fas fa-user-plus mr-1"></i>Crea admin
+                      </button>
+                    </form>
+                  {% endif %}
                 </td>
                 <td>{{ t.user_count }}</td>
                 <td>
@@ -75,7 +95,7 @@
                 </td>
               </tr>
               {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-4">Nessun tenant ancora.</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Nessun tenant ancora.</td></tr>
               {% endfor %}
             </tbody>
           </table>

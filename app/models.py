@@ -142,12 +142,17 @@ class User(UserMixin, db.Model):
             'view_orders', 'manage_orders', 'manage_products', 'manage_categories',
             'manage_ingredients', 'manage_stock', 'manage_tables_admin',
             'manage_reservations_admin', 'manage_slots', 'manage_users',
-            'manage_roles', 'view_reports',
+            'manage_clients', 'manage_roles', 'view_reports',
         }
         return any(
             any(p.name in BACKOFFICE for p in role.permissions)
             for role in self.roles
         )
+
+    @property
+    def is_superadmin(self):
+        """True solo per il super admin globale (admin@bar.local)."""
+        return self.is_admin
 
     @property
     def all_permission_names(self):
