@@ -373,7 +373,7 @@
       </div>
       {% endif %}
       <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" data-accordion="false" role="menu">
           {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_staff) %}
             {# ── Shorthand permission check ── #}
             {% set p = current_user.has_permission %}
@@ -762,6 +762,16 @@ document.querySelectorAll('.table').forEach(function(t) {
     t.parentNode.insertBefore(w, t);
     w.appendChild(t);
   }
+});
+
+/* Sidebar treeview — handler esplicito, non dipende da AdminLTE init */
+$(function() {
+  var $sidebar = $('[data-widget="treeview"]');
+  // Rimuove eventuali handler di AdminLTE per evitare doppio toggle
+  $sidebar.find('.nav-item.has-treeview > .nav-link').off('click.lte.treeview').on('click', function(e) {
+    e.preventDefault();
+    $(this).closest('.nav-item.has-treeview').toggleClass('menu-open');
+  });
 });
 </script>
 {% block extra_js %}{% endblock %}
