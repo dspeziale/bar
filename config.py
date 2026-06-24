@@ -4,22 +4,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Neon (e Heroku) usano "postgres://" ma SQLAlchemy richiede "postgresql://"
+_BOM = chr(0xfeff)
+
 # POSTGRES_URL e' impostata automaticamente dall'integrazione Neon su Vercel
 _db_url = (
     os.environ.get('DATABASE_URL') or
     os.environ.get('POSTGRES_URL') or
     'sqlite:///bar.db'
 )
-_db_url = _db_url.lstrip('﻿')  # rimuove BOM se presente
+_db_url = _db_url.lstrip(_BOM)
 if _db_url.startswith('postgres://'):
     _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
 
 _is_postgres = _db_url.startswith('postgresql')
 
+_secret_key = os.environ.get('SECRET_KEY', 'cambiamiinproduzione-32caratteri!').lstrip(_BOM)
+
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'cambiamiinproduzione-32caratteri!')
+    SECRET_KEY = _secret_key
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
@@ -48,7 +51,6 @@ class Config:
     ]
 
     # Google OAuth2
-    GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
-    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
-    # In produzione (HTTPS) non impostare questa variabile -> default 0
+    GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '').lstrip(_BOM)
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '').lstrip(_BOM)
     AUTHLIB_INSECURE_TRANSPORT = os.environ.get('AUTHLIB_INSECURE_TRANSPORT', '0')
