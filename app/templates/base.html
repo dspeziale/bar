@@ -62,17 +62,20 @@
       --bsr-badge-light:    #e9ecef;
       --bsr-badge-light-c:  #333333;
 
-      /* sidebar chiaro */
-      --bsr-sidebar-bg:     #1e2a3a;
-      --bsr-sidebar-link:   #aab8cc;
-      --bsr-sidebar-hover:  rgba(255,255,255,.07);
-      --bsr-brand-bg:       rgba(0,0,0,.25);
-      --bsr-user-border:    rgba(255,255,255,.1);
-      --bsr-sub-link:       #8fa3bd;
-      --bsr-sub-hover-bg:   rgba(233,69,96,.12);
+      /* sidebar CHIARO */
+      --bsr-sidebar-bg:      #ffffff;
+      --bsr-sidebar-link:    #3d4a5c;
+      --bsr-sidebar-hover:   rgba(0,0,0,.05);
+      --bsr-brand-bg:        #f1f3f5;
+      --bsr-brand-border:    rgba(0,0,0,.08);
+      --bsr-user-border:     rgba(0,0,0,.08);
+      --bsr-brand-text:      #212529;
+      --bsr-sub-link:        #5a6a7a;
+      --bsr-sub-hover-bg:    rgba(233,69,96,.07);
+      --bsr-sidebar-shadow:  2px 0 8px rgba(0,0,0,.08);
 
       /* navbar */
-      --bsr-nav-link:       #3d4a5c;
+      --bsr-nav-link:        #3d4a5c;
     }
 
     /* ── Tokens SCURO ─────────────────────────────────────────────────── */
@@ -104,16 +107,19 @@
       --bsr-badge-light:    #1a2d50;
       --bsr-badge-light-c:  #b0c4d8;
 
-      /* sidebar scuro: stessa palette, solo più scura */
-      --bsr-sidebar-bg:     #080f1e;
-      --bsr-sidebar-link:   #7e96b0;
-      --bsr-sidebar-hover:  rgba(255,255,255,.05);
-      --bsr-brand-bg:       rgba(0,0,0,.5);
-      --bsr-user-border:    rgba(255,255,255,.07);
-      --bsr-sub-link:       #6a849f;
-      --bsr-sub-hover-bg:   rgba(233,69,96,.15);
+      /* sidebar SCURO */
+      --bsr-sidebar-bg:      #080f1e;
+      --bsr-sidebar-link:    #7e96b0;
+      --bsr-sidebar-hover:   rgba(255,255,255,.05);
+      --bsr-brand-bg:        rgba(0,0,0,.5);
+      --bsr-brand-border:    rgba(255,255,255,.06);
+      --bsr-user-border:     rgba(255,255,255,.07);
+      --bsr-brand-text:      #ffffff;
+      --bsr-sub-link:        #6a849f;
+      --bsr-sub-hover-bg:    rgba(233,69,96,.15);
+      --bsr-sidebar-shadow:  3px 0 16px rgba(0,0,0,.5);
 
-      --bsr-nav-link:       rgba(255,255,255,.8);
+      --bsr-nav-link:        rgba(255,255,255,.8);
     }
 
     /* ── Layout ───────────────────────────────────────────────────────── */
@@ -140,9 +146,9 @@
     /* ── Sidebar shell ────────────────────────────────────────────────── */
     .main-sidebar,
     .main-sidebar .sidebar      { background: var(--bsr-sidebar-bg) !important; }
-    .main-sidebar               { border-right: none !important; box-shadow: 3px 0 16px rgba(0,0,0,.35) !important; }
-    .brand-link                 { background: var(--bsr-brand-bg) !important; border-bottom: 1px solid rgba(255,255,255,.06) !important; }
-    .brand-text                 { color: #ffffff !important; }
+    .main-sidebar               { border-right: 1px solid var(--bsr-brand-border, rgba(0,0,0,.08)) !important; box-shadow: var(--bsr-sidebar-shadow) !important; }
+    .brand-link                 { background: var(--bsr-brand-bg) !important; border-bottom: 1px solid var(--bsr-brand-border) !important; }
+    .brand-text                 { color: var(--bsr-brand-text) !important; }
     .user-panel                 { border-color: var(--bsr-user-border) !important; }
     .user-panel .info span      { color: var(--bsr-sidebar-link) !important; }
 
