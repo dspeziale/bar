@@ -135,9 +135,15 @@
     /* Icona generica: senza !important così inline-style nei sub-menu vincono */
     .nav-icon { color: var(--bsr-sidebar-link); transition: color .15s; }
     .sidebar-dark-primary .nav-sidebar .nav-link .nav-icon { color: var(--bsr-sidebar-link); }
-    /* Sub-item: hover rosso, active bianco */
+    /* Sub-item: testo scuro, hover rosso, active bianco */
+    .nav-treeview .nav-link { color: #1a2530 !important; font-weight: 600; }
+    .nav-treeview .nav-link:hover  { color: #e94560 !important; }
+    .nav-treeview .nav-link.active { color: #fff !important; }
     .nav-treeview .nav-link:hover  .nav-icon { color: #e94560 !important; }
     .nav-treeview .nav-link.active .nav-icon { color: #fff !important; }
+    [data-bsr-theme="dark"] .nav-treeview .nav-link { color: #cbd5e1 !important; }
+    [data-bsr-theme="dark"] .nav-treeview .nav-link:hover  { color: #e94560 !important; }
+    [data-bsr-theme="dark"] .nav-treeview .nav-link.active { color: #fff !important; }
     .user-panel { border-color: var(--bsr-user-border) !important; }
 
     /* ── Cards ─────────────────────────────────────────────────────────── */

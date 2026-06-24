@@ -54,7 +54,7 @@ def create_app(config_object='config.Config'):
 
 
 def _migrate_tenant_columns():
-    """Aggiunge le colonne multi-tenant alle tabelle esistenti (SQLite migration)."""
+    """Aggiunge le colonne multi-tenant alle tabelle esistenti (compatibile SQLite e PostgreSQL)."""
     from sqlalchemy import inspect as sa_inspect, text
 
     insp = sa_inspect(db.engine)
@@ -68,7 +68,8 @@ def _migrate_tenant_columns():
             return
         try:
             with db.engine.connect() as conn:
-                conn.execute(text(f"ALTER TABLE [{table}] ADD COLUMN [{col}] {definition}"))
+                # Niente bracket [] (SQLite-only): sintassi standard per SQLite e PostgreSQL
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {definition}"))
                 conn.commit()
         except Exception as exc:
             print(f'[migration] {table}.{col}: {exc}')
@@ -79,12 +80,12 @@ def _migrate_tenant_columns():
         'tables', 'table_reservations', 'polls', 'app_settings',
     ]
     for t in tables:
-        # Plain INTEGER — SQLite non impone FK di default, il riferimento è gestito dall'ORM
         _ensure(t, 'tenant_id', 'INTEGER')
 
     # Colonne aggiuntive su users per OAuth
+    # DEFAULT '' con apici singoli: valido su SQLite e PostgreSQL (i doppi apici sono per gli identificatori in PG)
     _ensure('users', 'google_id', 'VARCHAR(128)')
-    _ensure('users', 'avatar_url', 'VARCHAR(256) DEFAULT ""')
+    _ensure('users', 'avatar_url', "VARCHAR(256) DEFAULT ''")
 
 
 def _seed_defaults():
