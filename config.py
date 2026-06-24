@@ -5,7 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Neon (e Heroku) usano "postgres://" ma SQLAlchemy richiede "postgresql://"
-_db_url = os.environ.get('DATABASE_URL', 'sqlite:///bar.db')
+# POSTGRES_URL e' impostata automaticamente dall'integrazione Neon su Vercel
+_db_url = (
+    os.environ.get('DATABASE_URL') or
+    os.environ.get('POSTGRES_URL') or
+    'sqlite:///bar.db'
+)
+_db_url = _db_url.lstrip('﻿')  # rimuove BOM se presente
 if _db_url.startswith('postgres://'):
     _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
 
@@ -24,7 +30,7 @@ class Config:
         **({'pool_size': 1, 'max_overflow': 0} if _is_postgres else {}),
     }
 
-    # Fedeltà
+    # Fedelta'
     LOYALTY_POINTS_PER_EURO = 10
     LOYALTY_REWARD_POINTS   = 100
     LOYALTY_REWARD_AMOUNT   = 1.0
@@ -44,5 +50,5 @@ class Config:
     # Google OAuth2
     GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
-    # In produzione (HTTPS) non impostare questa variabile → default 0
+    # In produzione (HTTPS) non impostare questa variabile -> default 0
     AUTHLIB_INSECURE_TRANSPORT = os.environ.get('AUTHLIB_INSECURE_TRANSPORT', '0')
