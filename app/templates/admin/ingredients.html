@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Ingredienti Builder{% endblock %}
+{% block page_title %}Ingredienti Builder{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Ingredienti</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Lista ingredienti per categoria -->
+  <div class="col-lg-8">
+    {% for cat in categories %}
+    <div class="card card-outline mb-3">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas {{ cat.icon }} mr-2" style="color:#e94560;"></i>
+          {{ cat.name }}
+          <span class="badge badge-{{ 'primary' if cat.builder_type=='panino' else ('success' if cat.builder_type=='insalata' else 'info') }} ml-2">
+            {{ cat.builder_type }}
+          </span>
+          {% if cat.is_required %}<span class="badge badge-danger ml-1">Obbligatorio</span>{% endif %}
+          <span class="badge badge-secondary ml-1">max {{ cat.max_choices }}</span>
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr><th>Ingrediente</th><th>Extra €</th><th>Veg</th><th>Allergeni</th><th>Stato</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for ing in cat.ingredients %}
+          <tr class="{{ '' if ing.is_active else 'text-muted' }}">
+            <td><strong>{{ ing.name }}</strong></td>
+            <td>{% if ing.price_extra > 0 %}<span class="badge badge-warning">+{{ '%.2f'|format(ing.price_extra) }}€</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+            <td>{% if ing.is_vegetarian %}<span class="badge badge-success">🌿</span>{% endif %}</td>
+            <td><small class="text-muted">{{ ing.allergens or '–' }}</small></td>
+            <td><span class="badge badge-{{ 'success' if ing.is_active else 'secondary' }}">{{ 'On' if ing.is_active else 'Off' }}</span></td>
+            <td>
+              <button class="btn btn-xs btn-info" data-toggle="modal" data-target="#editIng{{ ing.id }}"><i class="fas fa-pen"></i></button>
+              <form method="POST" action="{{ url_for('admin.ingredient_toggle', iid=ing.id) }}" style="display:inline;">
+                <button class="btn btn-xs btn-{{ 'warning' if ing.is_active else 'success' }}">
+                  <i class="fas fa-{{ 'eye-slash' if ing.is_active else 'eye' }}"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          <!-- Edit modal -->
+          <div class="modal fade" id="editIng{{ ing.id }}" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+              <div class="modal-content">
+                <form method="POST" action="{{ url_for('admin.ingredient_edit', iid=ing.id) }}">
+                  <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Modifica: {{ ing.name }}</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label>Nome</label>
+                      <input type="text" name="name" class="form-control" value="{{ ing.name }}" required>
+                    </div>
+                    <div class="form-group">
+                      <label>Extra (€)</label>
+                      <input type="number" name="price_extra" class="form-control"
+                             value="{{ ing.price_extra }}" step="0.10" min="0">
+                    </div>
+                    <div class="form-group">
+                      <label>Allergeni</label>
+                      <input type="text" name="allergens" class="form-control" value="{{ ing.allergens }}">
+                    </div>
+                    <div class="form-check">
+                      <input type="checkbox" name="is_vegetarian" id="veg{{ ing.id }}" class="form-check-input"
+                             {{ 'checked' if ing.is_vegetarian }}>
+                      <label class="form-check-label" for="veg{{ ing.id }}">Vegetariano</label>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-info btn-sm">Salva</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Aggiungi ingrediente -->
+  <div class="col-lg-4">
+    <div class="card card-outline card-success" style="position:sticky;top:70px;">
+      <div class="card-header bg-gradient-success text-white">
+        <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Nuovo Ingrediente</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.ingredient_new') }}">
+          <div class="form-group">
+            <label>Nome *</label>
+            <input type="text" name="name" class="form-control" placeholder="Es: Avocado" required>
+          </div>
+          <div class="form-group">
+            <label>Categoria *</label>
+            <select name="category_id" class="form-control" required>
+              <option value="">Seleziona...</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }} ({{ cat.builder_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Costo extra (€)</label>
+            <input type="number" name="price_extra" class="form-control" value="0.00" step="0.10" min="0">
+          </div>
+          <div class="form-group">
+            <label>Allergeni</label>
+            <input type="text" name="allergens" class="form-control" placeholder="Es: latte, uova">
+          </div>
+          <div class="form-check mb-3">
+            <input type="checkbox" name="is_vegetarian" id="new-veg" class="form-check-input">
+            <label class="form-check-label" for="new-veg">Vegetariano</label>
+          </div>
+          <button type="submit" class="btn btn-success btn-block">
+            <i class="fas fa-plus mr-1"></i>Aggiungi
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

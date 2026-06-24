@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block page_title %}Buongiorno, {{ current_user.username }}!{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Home</li>{% endblock %}
+
+{% block content %}
+<!-- KPI -->
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-info">
+      <div class="inner"><h3>{{ '%.2f'|format(current_user.wallet_balance) }}€</h3><p>Saldo Wallet</p></div>
+      <div class="icon"><i class="fas fa-wallet"></i></div>
+      <a href="{{ url_for('main.wallet') }}" class="small-box-footer">Dettagli <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-warning">
+      <div class="inner"><h3>{{ current_user.loyalty_points }}</h3><p>Punti Fedeltà</p></div>
+      <div class="icon"><i class="fas fa-star"></i></div>
+      <a href="{{ url_for('main.wallet') }}" class="small-box-footer">Riscatta <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-success">
+      <div class="inner"><h3>{{ today_orders|length }}</h3><p>Ordini Oggi</p></div>
+      <div class="icon"><i class="fas fa-receipt"></i></div>
+      <a href="{{ url_for('main.my_orders') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;">
+      <div class="inner"><h3>{{ today_reservations|length }}</h3><p>Tavoli Prenotati</p></div>
+      <div class="icon"><i class="fas fa-chair"></i></div>
+      <a href="{{ url_for('main.my_reservations') }}" class="small-box-footer" style="background:rgba(0,0,0,.12);">
+        Prenotazioni <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Azioni rapide -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body py-2">
+        <div class="d-flex flex-wrap" style="gap:.5rem;">
+          <a href="{{ url_for('main.menu') }}" class="btn btn-primary">
+            <i class="fas fa-utensils mr-1"></i>Menu
+          </a>
+          <a href="{{ url_for('main.builder', type='panino') }}" class="btn btn-outline-danger">
+            <i class="fas fa-burger mr-1"></i>Componi Panino
+          </a>
+          <a href="{{ url_for('main.builder', type='insalata') }}" class="btn btn-outline-success">
+            <i class="fas fa-leaf mr-1"></i>Componi Insalata
+          </a>
+          <a href="{{ url_for('main.tables') }}" class="btn btn-outline-info">
+            <i class="fas fa-chair mr-1"></i>Prenota Tavolo
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Ordini oggi -->
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-receipt mr-2"></i>I tuoi ordini di oggi</h3>
+      </div>
+      <div class="card-body p-0">
+        {% if today_orders %}
+        <table class="table table-striped tbl-mini mb-0">
+          <thead><tr><th>Codice</th><th>Slot</th><th>Totale</th><th>Stato</th><th></th></tr></thead>
+          <tbody>
+          {% for o in today_orders %}
+          {% set lbl = o.label() %}
+          <tr>
+            <td>
+              <code style="font-size:.75rem;color:#e94560;font-weight:700;">
+                {{ o.order_code or ('#' ~ o.id) }}
+              </code>
+            </td>
+            <td><i class="fas fa-clock mr-1 text-muted"></i>{{ o.slot.time_str }}</td>
+            <td><strong>{{ '%.2f'|format(o.total_price) }}€</strong></td>
+            <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
+            <td>
+              {% if o.status in ('pending','confirmed') %}
+              <form method="POST" action="{{ url_for('main.cancel_order', order_id=o.id) }}"
+                    onsubmit="return confirm('Annullare ordine #{{ o.id }}?')">
+                <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fas fa-utensils fa-2x mb-2"></i><br>Nessun ordine per oggi.
+          <br><a href="{{ url_for('main.menu') }}" class="btn btn-primary btn-sm mt-2">Vai al menu</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Prenotazioni oggi -->
+    {% if today_reservations %}
+    <div class="card card-outline" style="border-top:3px solid #e94560 !important;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-chair mr-2" style="color:#e94560;"></i>Tavoli prenotati oggi</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table tbl-mini mb-0">
+          <tbody>
+          {% for r in today_reservations %}
+          <tr>
+            <td><strong>Tavolo {{ r.table.number }}</strong> ({{ r.table.seats }} posti)</td>
+            <td><span class="badge badge-info">{{ r.slot.time_str }}</span></td>
+            <td><i class="fas fa-users mr-1 text-muted"></i>{{ r.party_size }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('main.cancel_reservation', rid=r.id) }}"
+                    onsubmit="return confirm('Annullare prenotazione tavolo {{ r.table.number }}?')">
+                <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Sidebar: ultime tx + punti fedeltà -->
+  <div class="col-lg-5">
+    <div class="card card-outline card-warning">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-history mr-2"></i>Ultime transazioni</h3>
+        <div class="card-tools"><a href="{{ url_for('main.wallet') }}" class="btn btn-warning btn-sm">Tutte</a></div>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_tx %}
+        <ul class="list-group list-group-flush">
+          {% for t in recent_tx %}
+          {% set info = t.icon_info() %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <div>
+              <i class="fas {{ info[0] }} text-{{ info[1] }} mr-2"></i>
+              <small>{{ t.description[:40] }}</small><br>
+              <small class="text-muted">{{ t.created_at.strftime('%d/%m %H:%M') }}</small>
+            </div>
+            {% if t.amount != 0 %}
+            <span class="badge badge-{{ 'success' if t.amount > 0 else 'danger' }}">
+              {{ '+' if t.amount > 0 }}{{ '%.2f'|format(t.amount) }}€
+            </span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center py-3 text-muted"><small>Nessuna transazione.</small></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Fedeltà -->
+    <div class="card card-outline" style="border-top:3px solid #6f42c1 !important;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-star mr-2" style="color:#6f42c1;"></i>Carta Fedeltà</h3>
+      </div>
+      <div class="card-body">
+        {% set progress = (current_user.loyalty_points % loyalty_threshold) * 100 // loyalty_threshold %}
+        <p class="mb-1"><strong>{{ current_user.loyalty_points }}</strong> punti totali</p>
+        <div class="progress mb-2" style="height:12px;">
+          <div class="progress-bar" style="width:{{ progress }}%;background:linear-gradient(90deg,#6f42c1,#e94560);"></div>
+        </div>
+        <small class="text-muted">
+          {{ current_user.loyalty_points % loyalty_threshold }}/{{ loyalty_threshold }} pt → +{{ '%.2f'|format(reward_amount) }}€
+        </small>
+        {% if current_user.loyalty_points >= loyalty_threshold %}
+        <form method="POST" action="{{ url_for('main.redeem_points') }}" class="mt-2">
+          <button class="btn btn-sm btn-block btn-warning">
+            <i class="fas fa-gift mr-1"></i>Riscatta punti
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

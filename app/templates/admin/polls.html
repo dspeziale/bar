@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Sondaggi{% endblock %}
+{% block page_title %}Sondaggi / Referendum{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Sondaggi</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.choice-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.choice-row .emoji-input { width:56px; text-align:center; font-size:1.2rem; }
+.result-bar { height:20px; border-radius:4px; background:linear-gradient(90deg,#e94560,#0f3460);
+              transition:width .4s; min-width:4px; }
+.poll-card-votes { font-size:1.5rem; font-weight:800; color:#e94560; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  <!-- ── Lista sondaggi ── -->
+  <div class="col-lg-8">
+    {% if polls %}
+    {% for p in polls %}
+    {% set total = p.total_votes() %}
+    <div class="card card-outline {{ 'card-success' if p.is_active else 'card-secondary' }} mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:.4rem;">
+        <div>
+          <span class="badge badge-{{ 'success' if p.is_active else 'secondary' }} mr-2">
+            {{ 'Aperto' if p.is_active else 'Chiuso' }}
+          </span>
+          <strong>{{ p.title }}</strong>
+          <span class="text-muted ml-2" style="font-size:.85rem;">
+            — per il {{ p.poll_date.strftime('%d/%m/%Y') }}
+          </span>
+        </div>
+        <div class="d-flex flex-wrap" style="gap:.3rem;">
+          <!-- Notifica Telegram -->
+          <form method="POST" action="{{ url_for('admin.poll_notify_telegram', pid=p.id) }}">
+            <button class="btn btn-xs" style="background:#229ED9;color:#fff;" title="Invia link su Telegram">
+              <i class="fab fa-telegram mr-1"></i>Telegram
+            </button>
+          </form>
+          <!-- Notifica Email -->
+          <form method="POST" action="{{ url_for('admin.poll_notify_email', pid=p.id) }}"
+                onsubmit="return confirm('Inviare email a tutti gli utenti?')">
+            <button class="btn btn-xs btn-danger" title="Invia link via email">
+              <i class="fas fa-envelope mr-1"></i>Email
+            </button>
+          </form>
+          <!-- Toggle -->
+          <form method="POST" action="{{ url_for('admin.poll_toggle', pid=p.id) }}">
+            <button class="btn btn-xs btn-{{ 'warning' if p.is_active else 'success' }}">
+              <i class="fas fa-{{ 'lock' if p.is_active else 'lock-open' }} mr-1"></i>
+              {{ 'Chiudi' if p.is_active else 'Riapri' }}
+            </button>
+          </form>
+          <!-- Elimina -->
+          <form method="POST" action="{{ url_for('admin.poll_delete', pid=p.id) }}"
+                onsubmit="return confirm('Eliminare il sondaggio e tutti i voti?')">
+            <button class="btn btn-xs btn-outline-danger">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card-body pb-2">
+        <div class="d-flex align-items-center mb-3">
+          <div class="poll-card-votes mr-2">{{ total }}</div>
+          <div class="text-muted" style="font-size:.85rem;">
+            vot{{ 'o' if total == 1 else 'i' }} totali
+          </div>
+          <div class="ml-auto">
+            <a href="{{ url_for('main.poll_view', pid=p.id) }}" target="_blank"
+               class="btn btn-sm btn-outline-primary">
+              <i class="fas fa-external-link-alt mr-1"></i>Vedi pagina voto
+            </a>
+          </div>
+        </div>
+
+        {% for c in p.choices %}
+        {% set pct = ((c.vote_count / total * 100) | round(1)) if total > 0 else 0 %}
+        <div class="mb-2">
+          <div class="d-flex justify-content-between mb-1" style="font-size:.9rem;">
+            <span>{{ c.emoji }} {{ c.text }}</span>
+            <span class="text-muted">{{ c.vote_count }} ({{ pct }}%)</span>
+          </div>
+          <div style="background:#e9ecef;border-radius:4px;height:20px;overflow:hidden;">
+            <div class="result-bar" style="width:{{ pct }}%;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-poll fa-3x mb-3" style="color:#ddd;"></i><br>
+      Nessun sondaggio ancora. Creane uno a destra.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Nuovo sondaggio ── -->
+  <div class="col-lg-4">
+    <div class="card card-outline card-primary" style="position:sticky;top:70px;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>Nuovo Sondaggio</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.poll_new') }}" id="poll-form">
+          <div class="form-group">
+            <label>Titolo del sondaggio</label>
+            <input type="text" name="title" class="form-control" required
+                   placeholder="Cosa vuoi domani?">
+          </div>
+          <div class="form-group">
+            <label>Data del menu</label>
+            <input type="date" name="poll_date" class="form-control" required
+                   value="{{ tomorrow }}">
+          </div>
+
+          <!-- Prodotti dal catalogo -->
+          {% if products %}
+          <div class="form-group">
+            <label>Seleziona prodotti del menu</label>
+            <div style="max-height:180px;overflow-y:auto;border:1px solid #dee2e6;
+                        border-radius:4px;padding:8px;">
+              {% for p in products %}
+              <label class="d-flex align-items-center mb-1" style="cursor:pointer;font-size:.88rem;">
+                <input type="checkbox" name="product_ids" value="{{ p.id }}" class="mr-2">
+                {{ p.name }}
+                <span class="text-muted ml-1">({{ '%.2f'|format(p.price) }}€)</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Scelte personalizzate -->
+          <label>Oppure aggiungi scelte custom</label>
+          <div id="custom-choices">
+            {% for i in range(1, 4) %}
+            <div class="choice-row">
+              <input type="text" name="custom_emoji_{{ i }}" class="form-control emoji-input"
+                     placeholder="🍽️" maxlength="4">
+              <input type="text" name="custom_text_{{ i }}"  class="form-control"
+                     placeholder="Descrizione scelta {{ i }}">
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" id="add-choice-btn"
+                  class="btn btn-sm btn-outline-secondary mt-1 mb-3">
+            <i class="fas fa-plus mr-1"></i>Aggiungi scelta
+          </button>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <i class="fas fa-poll mr-1"></i>Crea Sondaggio
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var choiceCount = 3;
+document.getElementById('add-choice-btn').addEventListener('click', function() {
+  choiceCount++;
+  if (choiceCount > 7) return;
+  var row = document.createElement('div');
+  row.className = 'choice-row';
+  row.innerHTML =
+    '<input type="text" name="custom_emoji_' + choiceCount + '" class="form-control emoji-input" placeholder="🍽️" maxlength="4">' +
+    '<input type="text" name="custom_text_'  + choiceCount + '" class="form-control" placeholder="Descrizione scelta ' + choiceCount + '">';
+  document.getElementById('custom-choices').appendChild(row);
+});
+</script>
+{% endblock %}

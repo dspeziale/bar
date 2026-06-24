@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}Cucina / KDS{% endblock %}
+{% block page_title %}Vista Cucina{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Cucina</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.kds-col-header {
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kds-body {
+  border-radius: 0 0 10px 10px;
+  min-height: 200px;
+  padding: 12px;
+}
+.col-da-fare { background: #fff8e1; }
+.col-in-prep { background: #e3f2fd; }
+.col-pronti  { background: #e8f5e9; }
+[data-bsr-theme="dark"] .col-da-fare { background: #2a1f08; }
+[data-bsr-theme="dark"] .col-in-prep { background: #061420; }
+[data-bsr-theme="dark"] .col-pronti  { background: #081a0e; }
+
+.kds-card {
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.10);
+  overflow: hidden;
+  border: none;
+}
+.kds-code {
+  font-family: 'Courier New', monospace;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #e94560;
+}
+.kds-action-btn {
+  border: none;
+  border-radius: 6px;
+  padding: .55rem 1rem;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: transform .1s, filter .1s;
+  line-height: 1.4;
+}
+.kds-action-btn:hover  { filter: brightness(1.08); }
+.kds-action-btn:active { transform: scale(.97); }
+
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #27ae60;
+  animation: pulseAnim 1.6s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes pulseAnim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.75)} }
+
+.ing-list { font-size: .83rem; padding-left: 14px; margin: 3px 0 0; }
+.ing-list li { list-style: none; padding: 1px 0; }
+.ing-list li::before { content: "•"; color: #999; margin-right: 5px; }
+
+.note-badge {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  font-size: .78rem;
+  padding: 2px 6px;
+  margin-top: 4px;
+}
+[data-bsr-theme="dark"] .note-badge { background: #3d2f00; color: #ffc107; border-color: #7a5800; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:.5rem;">
+  <div class="d-flex align-items-center" style="gap:.75rem;">
+    <span class="text-muted" style="font-size:.9rem;">
+      <i class="fas fa-calendar-day mr-1"></i>
+      {{ today.strftime('%A %d %B %Y') | capitalize }}
+    </span>
+    <span style="display:inline-flex;align-items:center;gap:6px;font-size:.8rem;
+                 background:rgba(0,0,0,.06);border-radius:20px;padding:3px 12px;">
+      <span class="pulse-dot"></span>
+      Aggiornamento in <strong id="kds-countdown">20</strong>s
+    </span>
+  </div>
+  <div class="d-flex" style="gap:.4rem;">
+    <a href="{{ url_for('admin.cucina') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="fas fa-sync-alt mr-1"></i>Aggiorna ora
+    </a>
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-receipt mr-1"></i>Tutti gli ordini
+    </a>
+  </div>
+</div>
+
+<!-- KDS Kanban -->
+<div class="row">
+
+  <!-- ── Col 1: Da preparare ── -->
+  <div class="col-lg-4 mb-4">
+    <div class="kds-col-header" style="background:#e67e22;color:#fff;">
+      <span><i class="fas fa-inbox mr-2"></i>Da preparare</span>
+      <span class="badge" style="background:rgba(255,255,255,.25);color:#fff;font-size:.9rem;">
+        {{ orders_da_fare|length }}
+      </span>
+    </div>
+    <div class="kds-body col-da-fare">
+      {% for o in orders_da_fare %}
+      <div class="kds-card card">
+        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+          <span class="kds-code">{{ o.order_code or ('#' ~ o.id) }}</span>
+          <span class="badge badge-warning" style="font-size:.85rem;">{{ o.slot.time_str }}</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="mb-1">
+            <i class="fas fa-user mr-1 text-muted"></i>
+            <strong>{{ o.user.username }}</strong>
+          </div>
+          <ul class="ing-list">
+            {% for item in o.items %}
+            <li>{{ item.quantity }}× {{ item.product.name }}</li>
+            {% endfor %}
+            {% for ci in o.custom_items %}
+            <li>
+              <strong style="color:#e94560;">
+                {{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder
+              </strong>
+              <ul class="ing-list" style="padding-left:10px;">
+                {% for ing in ci.ingredients %}
+                <li>{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} <small class="text-muted">(+{{ '%.2f'|format(ing.price_extra) }}€)</small>{% endif %}</li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if o.notes %}
+          <div class="note-badge"><i class="fas fa-comment mr-1"></i>{{ o.notes }}</div>
+          {% endif %}
+        </div>
+        <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
+          <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+            <input type="hidden" name="status" value="preparing">
+            <button type="submit" class="kds-action-btn" style="background:#3498db;color:#fff;">
+              <i class="fas fa-fire mr-1"></i>Inizia preparazione
+            </button>
+          </form>
+          <a href="{{ url_for('admin.order_slip', oid=o.id) }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary" title="Stampa scontrino"
+             style="min-width:38px;display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-print"></i>
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5" style="color:#bbb;">
+        <i class="fas fa-check-circle fa-2x mb-2" style="color:#d5d5d5;"></i><br>
+        <small>Nessun ordine in attesa</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Col 2: In preparazione ── -->
+  <div class="col-lg-4 mb-4">
+    <div class="kds-col-header" style="background:#2980b9;color:#fff;">
+      <span><i class="fas fa-fire mr-2"></i>In preparazione</span>
+      <span class="badge" style="background:rgba(255,255,255,.25);color:#fff;font-size:.9rem;">
+        {{ orders_in_prep|length }}
+      </span>
+    </div>
+    <div class="kds-body col-in-prep">
+      {% for o in orders_in_prep %}
+      <div class="kds-card card">
+        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+          <span class="kds-code">{{ o.order_code or ('#' ~ o.id) }}</span>
+          <span class="badge badge-info" style="font-size:.85rem;">{{ o.slot.time_str }}</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="mb-1">
+            <i class="fas fa-user mr-1 text-muted"></i>
+            <strong>{{ o.user.username }}</strong>
+          </div>
+          <ul class="ing-list">
+            {% for item in o.items %}
+            <li>{{ item.quantity }}× {{ item.product.name }}</li>
+            {% endfor %}
+            {% for ci in o.custom_items %}
+            <li>
+              <strong style="color:#e94560;">
+                {{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder
+              </strong>
+              <ul class="ing-list" style="padding-left:10px;">
+                {% for ing in ci.ingredients %}
+                <li>{{ ing.ingredient_name }}</li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+          </ul>
+          {% if o.notes %}
+          <div class="note-badge"><i class="fas fa-comment mr-1"></i>{{ o.notes }}</div>
+          {% endif %}
+        </div>
+        <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
+          <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+            <input type="hidden" name="status" value="ready">
+            <button type="submit" class="kds-action-btn" style="background:#27ae60;color:#fff;">
+              <i class="fas fa-bell mr-1"></i>Pronto per ritiro
+            </button>
+          </form>
+          <a href="{{ url_for('admin.order_slip', oid=o.id) }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary" title="Stampa scontrino"
+             style="min-width:38px;display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-print"></i>
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5" style="color:#bbb;">
+        <i class="fas fa-fire fa-2x mb-2" style="color:#d5d5d5;"></i><br>
+        <small>Nessun ordine in preparazione</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Col 3: Pronti ── -->
+  <div class="col-lg-4 mb-4">
+    <div class="kds-col-header" style="background:#27ae60;color:#fff;">
+      <span><i class="fas fa-bell mr-2"></i>Pronti per ritiro</span>
+      <span class="badge" style="background:rgba(255,255,255,.25);color:#fff;font-size:.9rem;">
+        {{ orders_pronti|length }}
+      </span>
+    </div>
+    <div class="kds-body col-pronti">
+      {% for o in orders_pronti %}
+      <div class="kds-card card">
+        <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+          <span class="kds-code">{{ o.order_code or ('#' ~ o.id) }}</span>
+          <span class="badge badge-success" style="font-size:.85rem;">{{ o.slot.time_str }}</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="mb-1">
+            <i class="fas fa-user mr-1 text-muted"></i>
+            <strong>{{ o.user.username }}</strong>
+          </div>
+          <ul class="ing-list">
+            {% for item in o.items %}
+            <li>{{ item.quantity }}× {{ item.product.name }}</li>
+            {% endfor %}
+            {% for ci in o.custom_items %}
+            <li><strong style="color:#e94560;">{{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder</strong></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
+          <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+            <input type="hidden" name="status" value="completed">
+            <button type="submit" class="kds-action-btn" style="background:#7f8c8d;color:#fff;">
+              <i class="fas fa-check-double mr-1"></i>Consegnato
+            </button>
+          </form>
+          <a href="{{ url_for('admin.order_slip', oid=o.id) }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary" title="Stampa scontrino"
+             style="min-width:38px;display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-print"></i>
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5" style="color:#bbb;">
+        <i class="fas fa-bell fa-2x mb-2" style="color:#d5d5d5;"></i><br>
+        <small>Nessun ordine pronto</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Countdown e auto-refresh
+var remaining = 20;
+var cdEl = document.getElementById('kds-countdown');
+setInterval(function() {
+  remaining--;
+  if (cdEl) cdEl.textContent = remaining;
+  if (remaining <= 0) location.reload();
+}, 1000);
+
+// Rilevamento nuovi ordini con alert visivo + audio
+var currentIds = {{ ((orders_da_fare + orders_in_prep) | map(attribute='id') | list) | tojson }};
+var storageKey = 'bsr_kds_order_ids';
+var stored = [];
+try { stored = JSON.parse(sessionStorage.getItem(storageKey) || '[]'); } catch(e) {}
+sessionStorage.setItem(storageKey, JSON.stringify(currentIds));
+
+if (stored.length > 0) {
+  var newOnes = currentIds.filter(function(id) { return stored.indexOf(id) < 0; });
+  if (newOnes.length > 0) {
+    // Flash giallo breve
+    var body = document.body;
+    body.style.transition = 'background-color .25s';
+    body.style.backgroundColor = '#fff3cd';
+    setTimeout(function() { body.style.backgroundColor = ''; }, 700);
+    // Beep breve
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [660, 880].forEach(function(freq, i) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.18);
+        osc.start(ctx.currentTime + i * 0.18);
+        osc.stop(ctx.currentTime + i * 0.18 + 0.18);
+      });
+    } catch(e) {}
+  }
+}
+</script>
+{% endblock %}

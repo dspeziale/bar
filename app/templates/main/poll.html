@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Sondaggio{% endblock %}
+{% block page_title %}Referendum Menu{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Sondaggio</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Scheda scelta (pre-voto) */
+.vote-card {
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
+  background: var(--bsr-card-bg, #fff);
+  position: relative;
+  user-select: none;
+}
+.vote-card:hover {
+  border-color: #e94560;
+  box-shadow: 0 4px 16px rgba(233,69,96,.18);
+  transform: translateY(-2px);
+}
+.vote-card.selected {
+  border-color: #e94560;
+  box-shadow: 0 0 0 3px rgba(233,69,96,.25);
+  background: linear-gradient(135deg, rgba(233,69,96,.06), rgba(15,52,96,.06));
+}
+.vote-card .check-mark {
+  display: none;
+  position: absolute;
+  top: 10px; right: 12px;
+  font-size: 1.2rem;
+  color: #e94560;
+}
+.vote-card.selected .check-mark { display: block; }
+.vote-emoji { font-size: 2.8rem; line-height: 1; margin-bottom: 8px; }
+.vote-text  { font-size: 1rem; font-weight: 600; }
+
+/* Barra risultato (post-voto) */
+.res-bar-wrap { background: #e9ecef; border-radius: 6px; height: 22px; overflow: hidden; margin: 4px 0 2px; }
+.res-bar      { height: 100%; border-radius: 6px;
+                background: linear-gradient(90deg, #e94560, #0f3460);
+                transition: width .5s ease; min-width: 4px; }
+.res-mine .res-bar { background: linear-gradient(90deg, #e94560, #c0392b); }
+
+/* Confetti emoji on success */
+@keyframes fadeDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+.voted-badge { animation: fadeDown .4s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if not poll %}
+{# ── Nessun sondaggio attivo ── #}
+<div class="text-center py-5">
+  <i class="fas fa-poll fa-4x mb-3" style="color:#ddd;"></i>
+  <h4 class="text-muted">Nessun sondaggio attivo al momento</h4>
+  <p class="text-muted">Il team ti invierà una notifica quando apriremo la prossima votazione.</p>
+  <a href="{{ url_for('main.index') }}" class="btn btn-primary mt-2">
+    <i class="fas fa-home mr-1"></i>Torna alla Home
+  </a>
+</div>
+
+{% elif user_vote %}
+{# ── Già votato: mostra risultati ── #}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <div class="card card-outline card-success voted-badge">
+      <div class="card-header text-center py-3"
+           style="background:linear-gradient(135deg,#e94560,#0f3460);border-radius:inherit;">
+        <div style="font-size:2.5rem;">📊</div>
+        <h4 class="text-white mb-1">{{ poll.title }}</h4>
+        <p class="text-white mb-0" style="opacity:.85;">
+          Per il {{ poll.poll_date.strftime('%d/%m/%Y') }} —
+          <strong>{{ total }} vot{{ 'o' if total == 1 else 'i' }}</strong>
+        </p>
+      </div>
+
+      <div class="card-body pt-3">
+        <div class="alert alert-success d-flex align-items-center py-2 mb-3">
+          <i class="fas fa-check-circle mr-2 fa-lg"></i>
+          Hai votato: <strong class="ml-1">{{ user_vote.choice.emoji }} {{ user_vote.choice.text }}</strong>
+        </div>
+
+        {% for c in poll.choices | sort(attribute='vote_count', reverse=True) %}
+        {% set pct = ((c.vote_count / total * 100) | round(1)) if total > 0 else 0 %}
+        <div class="mb-3 {{ 'res-mine' if c.id == user_vote.choice_id else '' }}">
+          <div class="d-flex justify-content-between align-items-baseline mb-1">
+            <span style="font-size:.95rem;font-weight:{{ '700' if c.id == user_vote.choice_id else '400' }};">
+              {{ c.emoji }} {{ c.text }}
+              {% if c.id == user_vote.choice_id %}
+              <span class="badge badge-danger ml-1" style="font-size:.65rem;">il tuo voto</span>
+              {% endif %}
+            </span>
+            <span class="text-muted" style="font-size:.82rem;white-space:nowrap;">
+              {{ c.vote_count }} ({{ pct }}%)
+            </span>
+          </div>
+          <div class="res-bar-wrap">
+            <div class="res-bar" style="width:{{ pct }}%;"></div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="text-center mt-3">
+          <a href="{{ url_for('main.index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-home mr-1"></i>Torna alla Home
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% else %}
+{# ── Vota ── #}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <div class="card card-outline card-primary">
+      <div class="card-header text-center py-3"
+           style="background:linear-gradient(135deg,#0f3460,#e94560);border-radius:inherit;">
+        <div style="font-size:2.5rem;">🗳️</div>
+        <h4 class="text-white mb-1">{{ poll.title }}</h4>
+        <p class="text-white mb-0" style="opacity:.85;">
+          Scegli cosa vuoi per il <strong>{{ poll.poll_date.strftime('%d/%m/%Y') }}</strong>
+        </p>
+      </div>
+      <div class="card-body pt-4">
+
+        {% if not poll.is_active %}
+        <div class="alert alert-warning">
+          <i class="fas fa-lock mr-2"></i>Questo sondaggio è chiuso.
+        </div>
+        {% else %}
+        <form method="POST" action="{{ url_for('main.poll_vote', pid=poll.id) }}" id="vote-form">
+          <div class="row" id="choices-grid">
+            {% for c in poll.choices %}
+            <div class="col-sm-6 col-md-4 mb-3">
+              <label class="vote-card d-block" onclick="selectChoice({{ c.id }}, this)">
+                <span class="check-mark">✓</span>
+                <div class="vote-emoji">{{ c.emoji }}</div>
+                <div class="vote-text">{{ c.text }}</div>
+                <input type="radio" name="choice_id" value="{{ c.id }}"
+                       style="position:absolute;opacity:0;pointer-events:none;">
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="text-center mt-2">
+            <button type="submit" id="vote-btn" class="btn btn-lg btn-primary px-5" disabled>
+              <i class="fas fa-vote-yea mr-2"></i>Invia il mio voto
+            </button>
+            <p class="text-muted mt-2" style="font-size:.82rem;" id="vote-hint">
+              Seleziona una scelta per votare
+            </p>
+          </div>
+        </form>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if poll and not user_vote and poll.is_active %}
+<script>
+var selectedId = null;
+
+function selectChoice(id, card) {
+  // Deselect all
+  document.querySelectorAll('.vote-card').forEach(function(el) {
+    el.classList.remove('selected');
+    el.querySelector('input[type=radio]').checked = false;
+  });
+  // Select this
+  card.classList.add('selected');
+  card.querySelector('input[type=radio]').checked = true;
+  selectedId = id;
+  document.getElementById('vote-btn').disabled  = false;
+  document.getElementById('vote-hint').textContent = 'Premi "Invia il mio voto" per confermare';
+}
+</script>
+{% endif %}
+{% endblock %}

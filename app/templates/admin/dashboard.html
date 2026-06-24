@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
+
+{% block content %}
+<!-- KPI -->
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-info">
+      <div class="inner"><h3>{{ orders_today|length }}</h3><p>Ordini Oggi</p></div>
+      <div class="icon"><i class="fas fa-receipt"></i></div>
+      <a href="{{ url_for('admin.orders') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-warning">
+      <div class="inner"><h3>{{ pending|length }}</h3><p>In attesa</p></div>
+      <div class="icon"><i class="fas fa-clock"></i></div>
+      <a href="{{ url_for('admin.orders') }}?status=confirmed" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-success">
+      <div class="inner"><h3>{{ '%.2f'|format(revenue_today) }}€</h3><p>Incasso Oggi</p></div>
+      <div class="icon"><i class="fas fa-euro-sign"></i></div>
+      <a href="{{ url_for('admin.report') }}" class="small-box-footer">Report <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-primary">
+      <div class="inner"><h3>{{ users_count }}</h3><p>Utenti Registrati</p></div>
+      <div class="icon"><i class="fas fa-users"></i></div>
+      <a href="{{ url_for('admin.users') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Ordini oggi per slot -->
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-receipt me-2"></i>Ordini di Oggi</h3>
+        <div class="card-tools">
+          <a href="{{ url_for('admin.orders') }}" class="btn btn-primary btn-sm">Tutti</a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if orders_today %}
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-dark">
+            <tr><th>Codice</th><th>Utente</th><th>Slot</th><th>Prodotti</th><th>Totale</th><th>Stato</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for o in orders_today %}
+          {% set lbl = o.label() %}
+          <tr>
+            <td>
+              <code style="font-size:.75rem;color:#e94560;font-weight:700;white-space:nowrap;">
+                {{ o.order_code or ('#' ~ o.id) }}
+              </code>
+            </td>
+            <td>{{ o.user.username }}</td>
+            <td>{{ o.slot.time_str }}</td>
+            <td>
+              {% for item in o.items %}
+              <small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </td>
+            <td>{{ '%.2f'|format(o.total_price) }}€</td>
+            <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
+            <td>
+              <div class="d-flex gap-1">
+                {% if o.status == 'confirmed' %}
+                <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                  <input type="hidden" name="status" value="ready">
+                  <button class="btn btn-xs btn-success" title="Pronto"><i class="fas fa-check"></i></button>
+                </form>
+                {% elif o.status == 'ready' %}
+                <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                  <input type="hidden" name="status" value="completed">
+                  <button class="btn btn-xs btn-secondary" title="Consegnato"><i class="fas fa-check-double"></i></button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">Nessun ordine per oggi.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Alert stock -->
+    {% if stock_alerts %}
+    <div class="card card-outline card-danger">
+      <div class="card-header">
+        <h3 class="card-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Stock in esaurimento</h3>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for p, avail in stock_alerts %}
+          <li class="list-group-item d-flex justify-content-between py-2">
+            <span>{{ p.name }}</span>
+            <span class="badge badge-{{ 'danger' if avail == 0 else 'warning' }}">
+              {{ avail }} rimaste
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        <div class="card-footer">
+          <a href="{{ url_for('admin.stock') }}" class="btn btn-sm btn-danger btn-block">
+            <i class="fas fa-boxes-stacked me-1"></i>Gestisci Stock
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick actions -->
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title">Azioni Rapide</h3></div>
+      <div class="card-body">
+        <a href="{{ url_for('admin.stock') }}" class="btn btn-block btn-outline-warning mb-2">
+          <i class="fas fa-boxes-stacked me-2"></i>Aggiorna Stock
+        </a>
+        <a href="{{ url_for('admin.orders') }}" class="btn btn-block btn-outline-info mb-2">
+          <i class="fas fa-receipt me-2"></i>Gestisci Ordini
+        </a>
+        <a href="{{ url_for('admin.products') }}" class="btn btn-block btn-outline-primary mb-2">
+          <i class="fas fa-burger me-2"></i>Gestisci Prodotti
+        </a>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-block btn-outline-success">
+          <i class="fas fa-wallet me-2"></i>Ricarica Wallet Utenti
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

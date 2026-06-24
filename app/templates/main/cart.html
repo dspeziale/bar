@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Carrello{% endblock %}
+{% block page_title %}Il tuo Carrello{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('main.menu') }}">Menu</a></li>
+<li class="breadcrumb-item active">Carrello</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+
+    <!-- Prodotti regolari -->
+    {% if items %}
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-burger mr-2"></i>Prodotti dal Menu</h3>
+        <div class="card-tools">
+          <a href="{{ url_for('main.menu') }}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-plus mr-1"></i>Aggiungi
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <form method="POST" action="{{ url_for('main.cart_update') }}">
+          <table class="table table-hover mb-0">
+            <thead class="thead-light">
+              <tr><th>Prodotto</th><th>Prezzo</th><th style="width:100px;">Qtà</th><th>Sub</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for item in items %}
+            <tr>
+              <td>
+                <strong>{{ item.product.name }}</strong><br>
+                <small class="text-muted">{{ item.product.category.name }}</small>
+              </td>
+              <td>{{ '%.2f'|format(item.product.price) }}€</td>
+              <td>
+                <input type="number" name="qty_{{ item.product.id }}" value="{{ item.qty }}"
+                       min="1" max="{{ item.product.available_today() }}"
+                       class="form-control form-control-sm">
+              </td>
+              <td><strong>{{ '%.2f'|format(item.subtotal) }}€</strong></td>
+              <td>
+                <form method="POST" action="{{ url_for('main.cart_remove', product_id=item.product.id) }}">
+                  <button class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          <div class="card-footer text-right">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-sync mr-1"></i>Aggiorna quantità
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Custom items (builder) -->
+    {% if custom_cart %}
+    <div class="card card-outline mb-3" style="border-top:3px solid #e94560 !important;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-wand-magic-sparkles mr-2" style="color:#e94560;"></i>Personalizzati
+        </h3>
+        <div class="card-tools">
+          <a href="{{ url_for('main.builder') }}" class="btn btn-sm btn-outline-danger">
+            <i class="fas fa-plus mr-1"></i>Nuovo
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="thead-light">
+            <tr><th>Composizione</th><th>Prezzo</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for ci in custom_cart %}
+          <tr>
+            <td>
+              <span class="badge mb-1" style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;font-size:.75rem;">
+                {{ 'Panino' if ci.type=='panino' else 'Insalata' }}
+              </span><br>
+              <small>
+                {% for ing in ci.ingredients %}
+                <span class="badge badge-light border mr-1 mb-1">{{ ing.name }}</span>
+                {% endfor %}
+              </small>
+            </td>
+            <td><strong>{{ '%.2f'|format(ci.total_price) }}€</strong>
+              {% if ci.extra_price > 0 %}
+              <br><small class="text-muted">Base {{ '%.2f'|format(ci.base_price) }}€ + extra {{ '%.2f'|format(ci.extra_price) }}€</small>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('main.cart_remove_custom', uid=ci.uid) }}">
+                <button class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not items and not custom_cart %}
+    <div class="card">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="fas fa-cart-shopping fa-3x mb-3"></i><br>
+        Il carrello è vuoto.<br>
+        <a href="{{ url_for('main.menu') }}" class="btn btn-primary mt-2 mr-2">
+          <i class="fas fa-utensils mr-1"></i>Menu
+        </a>
+        <a href="{{ url_for('main.builder') }}" class="btn btn-outline-danger mt-2">
+          <i class="fas fa-wand-magic-sparkles mr-1"></i>Builder
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Riepilogo ordine -->
+  {% if items or custom_cart %}
+  <div class="col-lg-4">
+    <div class="card card-outline card-success">
+      <div class="card-header bg-gradient-success text-white">
+        <h3 class="card-title"><i class="fas fa-check-circle mr-2"></i>Riepilogo Ordine</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('main.place_order') }}">
+          <div class="form-group">
+            <label><i class="fas fa-clock mr-1"></i><strong>Orario di ritiro</strong></label>
+            {% for slot in slots %}
+            <div class="custom-control custom-radio mb-1">
+              <input type="radio" id="slot_{{ slot.id }}" name="slot_id" value="{{ slot.id }}"
+                     class="custom-control-input"
+                     {% if slot.is_full() %}disabled{% endif %}
+                     {% if loop.first and not slot.is_full() %}checked{% endif %}>
+              <label class="custom-control-label {% if slot.is_full() %}text-muted{% endif %}"
+                     for="slot_{{ slot.id }}">
+                {{ slot.time_str }}
+                {% if slot.is_full() %}
+                  <span class="badge badge-danger ml-1" style="font-size:.65rem;">Pieno</span>
+                {% else %}
+                  <span class="badge badge-success ml-1" style="font-size:.65rem;">
+                    {{ slot.max_orders - slot.orders_today() }} posti
+                  </span>
+                {% endif %}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-comment mr-1"></i>Note</label>
+            <textarea name="notes" class="form-control form-control-sm" rows="2"
+                      placeholder="Allergie, preferenze..."></textarea>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between mb-1">
+            <span>Totale ordine:</span>
+            <strong class="text-success">{{ '%.2f'|format(total) }}€</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span>Saldo wallet:</span>
+            <span class="{{ 'text-success' if wallet >= total else 'text-danger' }} font-weight-bold">
+              {{ '%.2f'|format(wallet) }}€
+            </span>
+          </div>
+          {% if wallet < total %}
+          <div class="alert alert-danger py-2 mb-3">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            Saldo insufficiente (–{{ '%.2f'|format(total - wallet) }}€).
+            <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica</a>.
+          </div>
+          {% endif %}
+          <button type="submit" class="btn btn-success btn-block"
+                  {% if wallet < total %}disabled{% endif %}>
+            <i class="fas fa-check mr-1"></i>Conferma Ordine
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

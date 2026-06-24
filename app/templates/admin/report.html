@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Report{% endblock %}
+{% block page_title %}Report & Statistiche{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Report</li>
+{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-chart-line me-2"></i>Incasso ultimi 30 giorni</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="revenueChart" height="120"></canvas>
+      </div>
+    </div>
+    <div class="card card-outline card-info">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-chart-bar me-2"></i>Ordini ultimi 30 giorni</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="ordersChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-outline card-warning">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-trophy me-2"></i>Top 10 Prodotti</h3>
+      </div>
+      <div class="card-body p-0">
+        {% if top_products %}
+        <table class="table table-sm mb-0">
+          <thead class="thead-light"><tr><th>#</th><th>Prodotto</th><th>Vendute</th></tr></thead>
+          <tbody>
+          {% for name, sold in top_products %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ name }}</td>
+            <td><span class="badge badge-warning">{{ sold }}</span></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-3 text-muted">Nessun dato.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card card-outline card-success">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-pie me-2"></i>Incasso per giorno</h3></div>
+      <div class="card-body">
+        <canvas id="pieChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const days = {{ days | tojson }};
+const revenueData = days.map(d => {{ revenue_by_day | tojson }}[d] || 0);
+const ordersData  = days.map(d => {{ orders_by_day | tojson }}[d] || 0);
+
+const labels = days.map(d => d.slice(5)); // MM-DD
+
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Incasso (€)',
+      data: revenueData,
+      borderColor: '#e94560',
+      backgroundColor: 'rgba(233,69,96,.1)',
+      fill: true,
+      tension: .4,
+      pointRadius: 3,
+    }]
+  },
+  options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+});
+
+new Chart(document.getElementById('ordersChart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Ordini',
+      data: ordersData,
+      backgroundColor: 'rgba(23,162,184,.7)',
+    }]
+  },
+  options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+// Ultimi 7 giorni nel pie
+const last7 = days.slice(-7);
+const last7Rev = last7.map(d => {{ revenue_by_day | tojson }}[d] || 0);
+new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: last7.map(d => d.slice(5)),
+    datasets: [{ data: last7Rev, backgroundColor: ['#e94560','#0f3460','#198754','#ffc107','#0dcaf0','#6f42c1','#fd7e14'] }]
+  },
+  options: { plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+{% endblock %}

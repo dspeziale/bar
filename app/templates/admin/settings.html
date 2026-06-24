@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Impostazioni{% endblock %}
+{% block page_title %}Impostazioni Sistema{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Impostazioni</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  <!-- ── Telegram ── -->
+  <div class="col-lg-6">
+    <div class="card card-outline" style="border-top:3px solid #229ED9 !important;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fab fa-telegram mr-2" style="color:#229ED9;"></i>Telegram Bot
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.settings_save') }}">
+          <div class="form-group">
+            <label>Token Bot</label>
+            <input type="text" name="telegram_bot_token" class="form-control"
+                   value="{{ cfg.telegram_bot_token }}"
+                   placeholder="123456789:ABCdef...">
+            <small class="form-text text-muted">
+              Crealo con <strong>@BotFather</strong> su Telegram → /newbot
+            </small>
+          </div>
+          <div class="form-group">
+            <label>Chat ID</label>
+            <input type="text" name="telegram_chat_id" class="form-control"
+                   value="{{ cfg.telegram_chat_id }}"
+                   placeholder="-100123456789">
+            <small class="form-text text-muted">
+              Per un gruppo: aggiungi il bot, poi invia un messaggio e visita
+              <code>api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
+            </small>
+          </div>
+          <!-- preserve gmail fields as hidden -->
+          <input type="hidden" name="gmail_user"         value="{{ cfg.gmail_user }}">
+          <input type="hidden" name="gmail_app_password" value="{{ cfg.gmail_app_password }}">
+          <button type="submit" class="btn btn-primary mr-2">
+            <i class="fas fa-save mr-1"></i>Salva
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.settings_test_telegram') }}" class="mt-2">
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-paper-plane mr-1"></i>Invia messaggio di test
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Broadcast Telegram -->
+    <div class="card card-outline card-secondary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-bullhorn mr-2"></i>Broadcast Telegram
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.broadcast_telegram') }}">
+          <div class="form-group">
+            <label>Messaggio (HTML supportato)</label>
+            <textarea name="message" class="form-control" rows="4"
+                      placeholder="&lt;b&gt;Oggi&lt;/b&gt; il menu include..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-info">
+            <i class="fab fa-telegram mr-1"></i>Invia a tutti
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Gmail ── -->
+  <div class="col-lg-6">
+    <div class="card card-outline" style="border-top:3px solid #EA4335 !important;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-envelope mr-2" style="color:#EA4335;"></i>Gmail
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="callout callout-warning mb-3" style="border-left:4px solid #ffc107;">
+          <h6><i class="fas fa-info-circle mr-1"></i>Come configurare</h6>
+          <ol class="mb-0" style="font-size:.85rem;padding-left:18px;">
+            <li>Abilita <strong>2-Step Verification</strong> sul tuo account Google</li>
+            <li>Vai su <strong>Account Google → Sicurezza → App password</strong></li>
+            <li>Crea una password per "App personalizzata" → BSR</li>
+            <li>Incolla qui sotto quella password (16 caratteri)</li>
+          </ol>
+        </div>
+        <form method="POST" action="{{ url_for('admin.settings_save') }}">
+          <!-- preserve telegram fields as hidden -->
+          <input type="hidden" name="telegram_bot_token" value="{{ cfg.telegram_bot_token }}">
+          <input type="hidden" name="telegram_chat_id"   value="{{ cfg.telegram_chat_id }}">
+          <div class="form-group">
+            <label>Account Gmail mittente</label>
+            <input type="email" name="gmail_user" class="form-control"
+                   value="{{ cfg.gmail_user }}"
+                   placeholder="bsr.ufficio@gmail.com">
+          </div>
+          <div class="form-group">
+            <label>App Password <small class="text-muted">(non la password normale)</small></label>
+            <input type="password" name="gmail_app_password" class="form-control"
+                   value="{{ cfg.gmail_app_password }}"
+                   placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary mr-2">
+            <i class="fas fa-save mr-1"></i>Salva
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.settings_test_email') }}" class="mt-2">
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-paper-plane mr-1"></i>Invia email di test a se stessi
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Broadcast Email -->
+    <div class="card card-outline card-secondary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-envelope-open-text mr-2"></i>Broadcast Email
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.broadcast_email') }}">
+          <div class="form-group">
+            <label>Oggetto</label>
+            <input type="text" name="subject" class="form-control"
+                   placeholder="Comunicazione BSR" value="Comunicazione BSR">
+          </div>
+          <div class="form-group">
+            <label>Testo</label>
+            <textarea name="message" class="form-control" rows="4"
+                      placeholder="Domani il menu include..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-envelope mr-1"></i>Invia a tutti gli utenti
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

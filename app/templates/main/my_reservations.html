@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Le Mie Prenotazioni{% endblock %}
+{% block page_title %}Le Mie Prenotazioni{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Prenotazioni</li>
+{% endblock %}
+
+{% block content %}
+{% set today = today_date %}
+<div class="card card-outline card-primary">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-calendar-check mr-2"></i>Storico prenotazioni tavoli</h3>
+    <div class="card-tools">
+      <a href="{{ url_for('main.tables') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus mr-1"></i>Nuova prenotazione
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if reservations %}
+    <table class="table table-striped table-hover mb-0">
+      <thead class="thead-dark">
+        <tr><th>Data</th><th>Tavolo</th><th>Slot</th><th>Persone</th><th>Note</th><th>Stato</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for r in reservations %}
+      {% set lbl = r.label() %}
+      <tr>
+        <td>{{ r.reservation_date.strftime('%d/%m/%Y') }}</td>
+        <td>
+          <strong>Tavolo {{ r.table.number }}</strong><br>
+          <small class="text-muted">
+            <i class="fas fa-users mr-1"></i>{{ r.table.seats }} posti
+            {% if r.table.location %}&bull; {{ r.table.location }}{% endif %}
+          </small>
+        </td>
+        <td><span class="badge badge-info">{{ r.slot.time_str }}</span></td>
+        <td><i class="fas fa-users mr-1 text-muted"></i>{{ r.party_size }}</td>
+        <td><small class="text-muted">{{ r.notes or '—' }}</small></td>
+        <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
+        <td>
+          {% if r.status == 'confirmed' and r.reservation_date >= today %}
+          <form method="POST" action="{{ url_for('main.cancel_reservation', rid=r.id) }}"
+                onsubmit="return confirm('Annullare la prenotazione del tavolo {{ r.table.number }}?')">
+            <button class="btn btn-sm btn-outline-danger">
+              <i class="fas fa-times mr-1"></i>Annulla
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-chair fa-3x mb-3"></i><br>
+      Nessuna prenotazione.<br>
+      <a href="{{ url_for('main.tables') }}" class="btn btn-primary mt-3">
+        <i class="fas fa-chair mr-1"></i>Prenota un tavolo
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

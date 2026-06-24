@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Tenant | Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+
+    {# ── Lista tenant ────────────────────────────────────────────────────────── #}
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-building mr-2" style="color:#e94560;"></i>Tenant registrati
+          </h3>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Nome / Slug</th>
+                <th>Colore</th>
+                <th>Utenti</th>
+                <th>Stato</th>
+                <th>Link registrazione</th>
+                <th class="text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in tenants %}
+              <tr>
+                <td>
+                  <strong>{{ t.name }}</strong><br>
+                  <small class="text-muted"><code>/t/{{ t.slug }}</code></small>
+                </td>
+                <td>
+                  <span style="display:inline-block;width:24px;height:24px;border-radius:4px;
+                               background:{{ t.primary_color }};border:1px solid rgba(0,0,0,.15);"
+                        title="{{ t.primary_color }}"></span>
+                </td>
+                <td>{{ t.user_count }}</td>
+                <td>
+                  {% if t.is_active %}
+                    <span class="badge badge-success">Attivo</span>
+                  {% else %}
+                    <span class="badge badge-secondary">Disattivo</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ t.register_url }}" target="_blank" class="text-truncate d-inline-block"
+                     style="max-width:180px;" title="{{ t.register_url }}">
+                    <i class="fas fa-external-link-alt mr-1"></i>Apri
+                  </a>
+                  <button class="btn btn-xs btn-outline-secondary ml-1"
+                          onclick="navigator.clipboard.writeText('{{ t.register_url }}');
+                                   this.innerHTML='<i class=\'fas fa-check\'></i>';
+                                   setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i>',1500);"
+                          title="Copia link">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </td>
+                <td class="text-right">
+                  <button class="btn btn-xs btn-outline-primary"
+                          data-toggle="modal" data-target="#editModal{{ t.id }}">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  {% if not t.is_active %}
+                  <form action="{{ url_for('admin.tenant_delete', tid=t.id) }}" method="POST"
+                        class="d-inline"
+                        onsubmit="return confirm('Eliminare il tenant {{ t.name }}?')">
+                    <button type="submit" class="btn btn-xs btn-outline-danger">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">Nessun tenant ancora.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {# ── Crea nuovo tenant ────────────────────────────────────────────────────── #}
+    <div class="col-lg-4">
+      <div class="card card-outline card-primary sticky-top" style="top:70px;">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-plus-circle mr-1"></i> Nuovo tenant</h3>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('admin.tenant_new') }}" method="POST">
+            <div class="form-group">
+              <label>Nome azienda <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="Es. Bar Rossi" required>
+            </div>
+            <div class="form-group">
+              <label>Slug URL <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <span class="input-group-text text-muted">/t/</span>
+                </div>
+                <input type="text" name="slug" id="slugInput" class="form-control"
+                       placeholder="bar-rossi" pattern="[a-z0-9\-]+" required>
+              </div>
+              <small class="form-text text-muted">Solo lettere minuscole, numeri e trattini.</small>
+            </div>
+            <div class="form-group">
+              <label>Colore primario</label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <input type="color" name="primary_color" value="#e94560"
+                         class="form-control form-control-color" style="width:50px;padding:2px;">
+                </div>
+                <input type="text" id="colorText" class="form-control" value="#e94560" readonly>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>URL logo <small class="text-muted">(opzionale)</small></label>
+              <input type="url" name="logo_url" class="form-control" placeholder="https://...">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-building mr-1"></i> Crea tenant
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>{# /row #}
+</div>
+
+{# ── Modal di modifica per ogni tenant ──────────────────────────────────────── #}
+{% for t in tenants %}
+<div class="modal fade" id="editModal{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('admin.tenant_edit', tid=t.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-pen mr-1"></i> Modifica: {{ t.name }}</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nome azienda</label>
+            <input type="text" name="name" class="form-control" value="{{ t.name }}" required>
+          </div>
+          <div class="form-group">
+            <label>Colore primario</label>
+            <input type="color" name="primary_color" class="form-control form-control-color"
+                   value="{{ t.primary_color }}" style="width:60px;">
+          </div>
+          <div class="form-group">
+            <label>URL logo</label>
+            <input type="url" name="logo_url" class="form-control" value="{{ t.logo_url or '' }}">
+          </div>
+          <div class="form-group">
+            <label>Stato</label>
+            <select name="is_active" class="form-control">
+              <option value="1" {% if t.is_active %}selected{% endif %}>Attivo</option>
+              <option value="0" {% if not t.is_active %}selected{% endif %}>Disattivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i> Salva
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+// Auto-slug dal nome
+document.querySelector('[name="name"]')?.addEventListener('input', function() {
+  const slug = this.value.toLowerCase()
+    .replace(/[àáâã]/g, 'a').replace(/[èéê]/g, 'e')
+    .replace(/[ìíî]/g, 'i').replace(/[òóô]/g, 'o').replace(/[ùúû]/g, 'u')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  document.getElementById('slugInput').value = slug;
+});
+// Sync color picker → text
+document.querySelector('[name="primary_color"]')?.addEventListener('input', function() {
+  document.getElementById('colorText').value = this.value;
+});
+</script>
+{% endblock %}

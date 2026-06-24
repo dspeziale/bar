@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scontrino {{ order.order_code or order.id }}</title>
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 4mm 3mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #000;
+      background: #fff;
+    }
+
+    .wrap { width: 74mm; }
+
+    .center { text-align: center; }
+    .right  { text-align: right; }
+    .bold   { font-weight: bold; }
+    .upper  { text-transform: uppercase; }
+
+    .div-solid  { border-top: 2px solid #000; margin: 4px 0; }
+    .div-dashed { border-top: 1px dashed #555; margin: 4px 0; }
+
+    .shop-name { font-size: 15pt; font-weight: 900; letter-spacing: .06em; }
+    .order-code { font-size: 17pt; font-weight: 900; letter-spacing: .08em; word-break: break-all; }
+
+    .row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+    .row .label { color: #444; flex-shrink: 0; }
+    .row .val   { font-weight: bold; text-align: right; }
+
+    .section-title {
+      font-size: 7.5pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #555;
+      margin: 5px 0 2px;
+    }
+
+    .item-row { display: flex; justify-content: space-between; gap: 4px; margin: 1px 0; }
+    .item-row .item-name { flex: 1; }
+    .item-row .item-price { flex-shrink: 0; text-align: right; }
+
+    .builder-title { font-weight: bold; margin-top: 4px; }
+    .builder-ing { font-size: 8.5pt; padding-left: 8px; color: #222; }
+    .builder-ing::before { content: "- "; }
+
+    .total-row { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 900; }
+
+    .footer-text { font-size: 7.5pt; color: #444; }
+
+    /* ── Preview a schermo (non stampa) ── */
+    @media screen {
+      body {
+        background: #f0f0f0;
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+      }
+      .wrap {
+        background: #fff;
+        padding: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,.15);
+        border-radius: 4px;
+        width: 330px;
+      }
+      .print-btn {
+        display: block;
+        margin: 18px auto 0;
+        padding: 10px 28px;
+        background: #e94560;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        font-family: sans-serif;
+        width: 100%;
+      }
+      .print-btn:hover { background: #c73652; }
+      .no-print { display: block; }
+    }
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Intestazione -->
+  <div class="center">
+    <div class="shop-name">BSR UFFICIO</div>
+    <div style="font-size:7.5pt;letter-spacing:.04em;color:#555;">Bar Self-Service Ristoro</div>
+  </div>
+
+  <div class="div-solid"></div>
+
+  <!-- Codice ordine (grande, centrale) -->
+  <div class="center order-code" style="margin:6px 0;">
+    {{ order.order_code or ('#' ~ order.id) }}
+  </div>
+
+  <div class="div-solid"></div>
+
+  <!-- Dettagli -->
+  <div class="row" style="margin:2px 0;"><span class="label">Data:</span><span class="val">{{ order.order_date.strftime('%d/%m/%Y') }}</span></div>
+  <div class="row" style="margin:2px 0;"><span class="label">Utente:</span><span class="val">{{ order.user.username }}</span></div>
+  <div class="row" style="margin:2px 0;"><span class="label">Orario ritiro:</span><span class="val bold" style="font-size:11pt;">{{ order.slot.time_str }}</span></div>
+  {% if order.notes %}
+  <div class="row" style="margin:2px 0;"><span class="label">Note:</span><span class="val" style="font-style:italic;">{{ order.notes }}</span></div>
+  {% endif %}
+
+  <div class="div-dashed" style="margin-top:6px;"></div>
+  <div class="section-title">Articoli</div>
+
+  <!-- Prodotti standard -->
+  {% for item in order.items %}
+  <div class="item-row">
+    <span class="item-name">{{ item.quantity }}x {{ item.product.name }}</span>
+    <span class="item-price">{{ '%.2f'|format(item.unit_price * item.quantity) }}€</span>
+  </div>
+  {% endfor %}
+
+  <!-- Prodotti builder -->
+  {% for ci in order.custom_items %}
+  <div style="margin-top:5px;">
+    <div class="item-row">
+      <span class="builder-title item-name">
+        {{ 'PANINO' if ci.builder_type == 'panino' else 'INSALATA' }} CUSTOM
+      </span>
+      <span class="item-price bold">{{ '%.2f'|format(ci.unit_price) }}€</span>
+    </div>
+    {% for ing in ci.ingredients %}
+    <div class="builder-ing">{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} +{{ '%.2f'|format(ing.price_extra) }}€{% endif %}</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <div class="div-solid" style="margin-top:6px;"></div>
+
+  <!-- Totale -->
+  <div class="total-row">
+    <span>TOTALE</span>
+    <span>{{ '%.2f'|format(order.total_price) }}€</span>
+  </div>
+
+  <div class="div-solid"></div>
+
+  <!-- Footer -->
+  <div class="center footer-text" style="margin-top:5px;">
+    Buon appetito!<br>
+    Stampato: {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+  </div>
+
+  <!-- Pulsante stampa visibile solo a schermo -->
+  <button class="print-btn no-print" onclick="window.print()">
+    Stampa scontrino
+  </button>
+
+</div>
+
+<script>
+  window.addEventListener('load', function() {
+    // Auto-print solo se aperto come popup/nuova tab
+    if (window.opener || window.history.length <= 1) {
+      window.print();
+    }
+  });
+</script>
+</body>
+</html>

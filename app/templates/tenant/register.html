@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if mode == 'login' %}Accedi{% else %}Registrati{% endif %} | {{ tenant.name }}</title>
+  <script>(function(){ var t=localStorage.getItem('bsr-theme')||'light'; document.documentElement.setAttribute('data-bsr-theme',t); })();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <style>
+    * { font-family: 'PT Sans Narrow', sans-serif; }
+    :root {
+      --tenant-primary: {{ tenant.primary_color or '#e94560' }};
+      --auth-bg-from: #1a1a2e; --auth-bg-to: #0f3460;
+      --auth-card: #ffffff; --auth-text: #212529;
+      --auth-input-bg: #fff; --auth-input-border: #ced4da; --auth-input-color: #495057;
+      --auth-muted: #6c757d; --auth-card-border: #dee2e6;
+    }
+    [data-bsr-theme="dark"] {
+      --auth-bg-from: #050810; --auth-bg-to: #040b18;
+      --auth-card: #16213e; --auth-text: #e2e8f0;
+      --auth-input-bg: #0a1628; --auth-input-border: #1e3058; --auth-input-color: #e2e8f0;
+      --auth-muted: #7a8fa8; --auth-card-border: #1e3058;
+    }
+    body {
+      background: linear-gradient(135deg, var(--auth-bg-from) 0%, var(--auth-bg-to) 100%) !important;
+      min-height: 100vh;
+    }
+
+    /* Layout: form a sx, QR a dx su schermi grandi */
+    .page-wrap {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .content-wrap {
+      display: flex; align-items: flex-start; gap: 2rem;
+      max-width: 780px; width: 100%;
+    }
+    .form-col { flex: 1; min-width: 0; }
+    .qr-col {
+      flex-shrink: 0; width: 200px;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 2.5rem;
+    }
+    @media (max-width: 640px) { .qr-col { display: none; } }
+
+    .login-box { width: 100%; max-width: 400px; }
+    .card { background: var(--auth-card) !important; border-color: var(--auth-card-border) !important; color: var(--auth-text) !important; }
+    .card-header { background: var(--auth-card) !important; border-color: var(--auth-card-border) !important; }
+    .form-control {
+      background: var(--auth-input-bg) !important; border-color: var(--auth-input-border) !important;
+      color: var(--auth-input-color) !important; font-size: 1rem; padding: .55rem .75rem;
+    }
+    .form-control::placeholder { color: var(--auth-muted) !important; opacity: .7; }
+    .input-group-text { background: var(--auth-input-bg) !important; border-color: var(--auth-input-border) !important; color: var(--auth-muted) !important; }
+    .text-muted { color: var(--auth-muted) !important; }
+    .card-outline.card-primary { border-top: 3px solid var(--tenant-primary) !important; }
+
+    .tenant-logo { font-size: 2rem; font-weight: 700; color: var(--tenant-primary); text-align: center; margin-bottom: .25rem; }
+    .tenant-name { text-align: center; color: rgba(255,255,255,.7); font-size: 1rem; margin-bottom: 1.5rem; }
+
+    .btn-tenant {
+      background: linear-gradient(135deg, var(--tenant-primary), #0f3460) !important;
+      border: none !important; padding: .6rem; font-size: 1rem;
+    }
+    .btn-google {
+      background: #fff; color: #333; border: 1px solid #ced4da;
+      font-size: .95rem; display: flex; align-items: center; justify-content: center; gap: 8px; padding: .55rem;
+    }
+    .btn-google:hover { background: #f8f9fa; }
+    [data-bsr-theme="dark"] .btn-google { background: #0a1628; color: #e2e8f0; border-color: #1e3058; }
+    [data-bsr-theme="dark"] .btn-google:hover { background: #16213e; }
+
+    .divider-text {
+      text-align: center; color: var(--auth-muted); margin: 1rem 0; position: relative;
+    }
+    .divider-text::before, .divider-text::after {
+      content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: var(--auth-card-border);
+    }
+    .divider-text::before { left: 0; }
+    .divider-text::after  { right: 0; }
+
+    /* QR panel */
+    .qr-panel {
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 16px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .qr-panel p { color: rgba(255,255,255,.6); font-size: .8rem; margin: .75rem 0 0; line-height: 1.4; }
+    #qrcode canvas, #qrcode img { border-radius: 8px; }
+
+    /* QR mobile: collassabile sotto il form */
+    .qr-mobile {
+      display: none;
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 640px) {
+      .qr-mobile { display: block; }
+    }
+    .qr-mobile .qr-toggle {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.75); border-radius: 20px; padding: 5px 14px;
+      font-size: .85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .qr-mobile-box { margin-top: .75rem; display: none; }
+
+    #bsr-theme-toggle-auth {
+      position: fixed; top: 14px; right: 14px;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+      border-radius: 20px; color: #fff; padding: 5px 12px;
+      font-size: .85rem; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: background .2s;
+    }
+    #bsr-theme-toggle-auth:hover { background: rgba(255,255,255,.25); }
+  </style>
+</head>
+<body class="hold-transition">
+  <button id="bsr-theme-toggle-auth" onclick="bsrToggle()">
+    <i class="fas fa-moon" id="ti"></i> <span id="tl">Scuro</span>
+  </button>
+
+  <div class="page-wrap">
+    <div class="content-wrap">
+
+      {# ── Colonna form ──────────────────────────────────────────────────────── #}
+      <div class="form-col">
+        <div class="login-box">
+          {% if tenant.logo_url %}
+          <div class="text-center mb-2">
+            <img src="{{ tenant.logo_url }}" alt="{{ tenant.name }}" style="max-height:56px;max-width:160px;">
+          </div>
+          {% else %}
+          <div class="tenant-logo"><i class="fas fa-building"></i></div>
+          {% endif %}
+          <div class="tenant-name">{{ tenant.name }}</div>
+
+          <div class="card card-outline card-primary">
+            <div class="card-header text-center">
+              <p class="mb-0" style="color:var(--auth-muted);">
+                {% if mode == 'login' %}Accedi al tuo account{% else %}Crea il tuo account{% endif %}
+              </p>
+            </div>
+            <div class="card-body">
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+              {% endwith %}
+
+              {# Google button #}
+              <a href="{{ url_for('tenant.google_start', slug=tenant.slug) }}"
+                 class="btn btn-block btn-google mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
+                  <path fill="#4285F4" d="M47.5 24.6c0-1.6-.1-3.1-.4-4.6H24v8.7h13.2c-.6 3-2.3 5.5-4.8 7.2v6h7.8c4.6-4.2 7.3-10.4 7.3-17.3z"/>
+                  <path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.8-6c-2.2 1.5-5 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9H2.4v6.2C6.4 42.6 14.6 48 24 48z"/>
+                  <path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6v-6.2H2.4C.9 16.3 0 20 0 24s.9 7.7 2.4 10.8l8.1-6.2z"/>
+                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.6l6.9-6.9C35.9 2.3 30.4 0 24 0 14.6 0 6.4 5.4 2.4 13.2l8.1 6.2C12.4 13.7 17.7 9.5 24 9.5z"/>
+                </svg>
+                {% if mode == 'login' %}Accedi con Google{% else %}Registrati con Google{% endif %}
+              </a>
+
+              <div class="divider-text">oppure</div>
+
+              {# Form email/password #}
+              <form method="POST">
+                <div class="input-group mb-3">
+                  <input type="email" name="email" class="form-control"
+                         placeholder="Email" required autofocus
+                         value="{{ request.form.get('email','') }}">
+                  <div class="input-group-append">
+                    <div class="input-group-text"><i class="fas fa-envelope"></i></div>
+                  </div>
+                </div>
+                <div class="input-group mb-3">
+                  <input type="password" name="password" class="form-control" placeholder="Password" required>
+                  <div class="input-group-append">
+                    <div class="input-group-text"><i class="fas fa-lock"></i></div>
+                  </div>
+                </div>
+                {% if mode == 'register' %}
+                <div class="input-group mb-3">
+                  <input type="password" name="password2" class="form-control" placeholder="Ripeti password" required>
+                  <div class="input-group-append">
+                    <div class="input-group-text"><i class="fas fa-lock"></i></div>
+                  </div>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-block btn-primary btn-tenant">
+                  {% if mode == 'login' %}
+                    <i class="fas fa-sign-in-alt mr-1"></i> Accedi
+                  {% else %}
+                    <i class="fas fa-user-plus mr-1"></i> Crea account
+                  {% endif %}
+                </button>
+              </form>
+
+              <p class="mt-3 mb-0 text-center" style="color:var(--auth-muted);font-size:.9rem;">
+                {% if mode == 'login' %}
+                  Non hai un account? <a href="{{ url_for('tenant.register', slug=tenant.slug) }}">Registrati</a>
+                {% else %}
+                  Hai già un account? <a href="{{ url_for('tenant.login', slug=tenant.slug) }}">Accedi</a>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          {# QR collassabile su mobile #}
+          <div class="qr-mobile">
+            <button class="qr-toggle" onclick="toggleMobileQr(this)">
+              <i class="fas fa-qrcode"></i> Mostra QR code
+            </button>
+            <div class="qr-mobile-box" id="qrMobile">
+              <div id="qrcodeMobile" style="display:inline-block;background:#fff;padding:8px;border-radius:8px;margin-top:.5rem;"></div>
+              <p style="color:rgba(255,255,255,.5);font-size:.75rem;margin-top:.5rem;">
+                Inquadra per aprire questa pagina
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {# ── Colonna QR (solo desktop) ─────────────────────────────────────────── #}
+      <div class="qr-col">
+        <div class="qr-panel">
+          <div id="qrcode"></div>
+          <p>
+            <i class="fas fa-qrcode" style="color:var(--tenant-primary);"></i><br>
+            Inquadra con il telefono per{% if mode == 'login' %} accedere{% else %} registrarti{% endif %}
+          </p>
+        </div>
+        <p style="color:rgba(255,255,255,.3);font-size:.72rem;margin-top:1rem;text-align:center;">
+          Powered by BSR Pranzo
+        </p>
+      </div>
+
+    </div>{# /content-wrap #}
+  </div>{# /page-wrap #}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    var pageUrl = window.location.href;
+
+    new QRCode(document.getElementById('qrcode'), {
+      text:         pageUrl,
+      width:        160,
+      height:       160,
+      colorDark:    '#000000',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    function toggleMobileQr(btn) {
+      var box = document.getElementById('qrMobile');
+      var showing = box.style.display === 'block';
+      box.style.display = showing ? 'none' : 'block';
+      btn.innerHTML = showing
+        ? '<i class="fas fa-qrcode"></i> Mostra QR code'
+        : '<i class="fas fa-times"></i> Nascondi QR code';
+      if (!showing && !document.getElementById('qrcodeMobile').querySelector('canvas')) {
+        new QRCode(document.getElementById('qrcodeMobile'), {
+          text:         pageUrl,
+          width:        150,
+          height:       150,
+          colorDark:    '#000000',
+          colorLight:   '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      }
+    }
+
+    function bsrApplyTheme(t) {
+      document.documentElement.setAttribute('data-bsr-theme', t);
+      document.getElementById('ti').className = t==='dark' ? 'fas fa-sun' : 'fas fa-moon';
+      document.getElementById('tl').textContent = t==='dark' ? 'Chiaro' : 'Scuro';
+    }
+    function bsrToggle() {
+      var cur = document.documentElement.getAttribute('data-bsr-theme') || 'light';
+      var next = cur === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('bsr-theme', next); bsrApplyTheme(next);
+    }
+    bsrApplyTheme(localStorage.getItem('bsr-theme') || 'light');
+  </script>
+</body>
+</html>

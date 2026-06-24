@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Componi il tuo {{ 'Panino' if builder_type=='panino' else 'Insalata' }}{% endblock %}
+{% block page_title %}Componi il Tuo{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Builder</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .builder-header { border-radius: 16px; padding: 1.25rem; margin-bottom: 1.5rem;
+    background: linear-gradient(135deg,#e94560,#0f3460); color: #fff; }
+  .cat-section { margin-bottom: 1.25rem; }
+  .cat-label { font-weight: 700; font-size: 1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem; }
+  .cat-required::after { content: ' *'; color: #e94560; }
+  .cat-max   { font-size: .75rem; color: var(--bsr-text-muted); margin-left: auto; }
+  .ing-chips-wrap { display: flex; flex-wrap: wrap; gap: 2px; }
+  #price-bar  { font-size: 1.3rem; font-weight: 700; color: #e94560; }
+  #summary-list { font-size: .82rem; max-height: 60px; overflow-y: auto; }
+  .veg-dot { width: 8px; height: 8px; border-radius: 50%; background: #28a745; display: inline-block; }
+  .extra-badge { font-size: .7rem; background: #e94560; color: #fff; border-radius: 8px; padding: 1px 5px; margin-left: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Selettore tipo -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="d-flex gap-2" style="gap:.75rem;">
+      <a href="{{ url_for('main.builder', type='panino') }}"
+         class="builder-type-btn {{ 'active' if builder_type=='panino' }}" style="text-align:center;text-decoration:none;">
+        <i class="fas fa-burger mr-2"></i>Panino
+        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ '%.2f'|format(config.BUILDER_PRICES.panino) }}€</div>
+      </a>
+      <a href="{{ url_for('main.builder', type='insalata') }}"
+         class="builder-type-btn {{ 'active' if builder_type=='insalata' }}" style="text-align:center;text-decoration:none;">
+        <i class="fas fa-leaf mr-2"></i>Insalata
+        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ '%.2f'|format(config.BUILDER_PRICES.insalata) }}€</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('main.builder_add') }}" id="builderForm">
+  <input type="hidden" name="builder_type" value="{{ builder_type }}">
+
+  <div class="row">
+    <div class="col-lg-8">
+      {% for cat in categories %}
+      <div class="card cat-section" id="cat-card-{{ cat.id }}">
+        <div class="card-body pb-2">
+          <div class="cat-label {% if cat.is_required %}cat-required{% endif %}">
+            <i class="fas {{ cat.icon }} mr-1" style="color:#e94560;"></i>
+            {{ cat.name }}
+            {% if cat.is_required %}<span class="badge badge-danger ml-1" style="font-size:.65rem;">Obbligatorio</span>{% endif %}
+            <span class="cat-max">max {{ cat.max_choices }}</span>
+          </div>
+          <div class="ing-chips-wrap" id="chips-{{ cat.id }}">
+            {% for ing in cat.ingredients %}
+            {% if ing.is_active %}
+            <label class="ing-chip" data-cat="{{ cat.id }}" data-max="{{ cat.max_choices }}"
+                   data-price="{{ ing.price_extra }}" data-name="{{ ing.name }}"
+                   for="ing_{{ ing.id }}">
+              <input type="checkbox" name="ing_{{ ing.id }}" id="ing_{{ ing.id }}"
+                     value="{{ ing.id }}" style="display:none;">
+              {% if ing.is_vegetarian %}<span class="veg-dot" title="Vegetariano"></span>{% endif %}
+              {{ ing.name }}
+              {% if ing.price_extra > 0 %}<span class="extra-badge">+{{ '%.2f'|format(ing.price_extra) }}€</span>{% endif %}
+            </label>
+            {% endif %}
+            {% endfor %}
+          </div>
+          <div class="mt-1" id="count-{{ cat.id }}" style="font-size:.75rem;color:var(--bsr-text-muted);">
+            0 / {{ cat.max_choices }} selezionati
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Riepilogo sticky (desktop) -->
+    <div class="col-lg-4 d-none d-lg-block">
+      <div class="card" style="position:sticky;top:70px;">
+        <div class="card-header" style="background:linear-gradient(135deg,#e94560,#0f3460) !important;color:#fff !important;">
+          <h5 class="card-title mb-0"><i class="fas fa-receipt mr-2"></i>Riepilogo</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-2" id="summary-list-desk" style="font-size:.82rem;min-height:60px;"></div>
+          <hr>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Prezzo base:</span>
+            <strong>{{ '%.2f'|format(base_price) }}€</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Extra:</span>
+            <strong id="extra-price-desk">+0.00€</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-2" style="font-size:1.2rem;">
+            <span><strong>Totale:</strong></span>
+            <strong id="total-price-desk" style="color:#e94560;">{{ '%.2f'|format(base_price) }}€</strong>
+          </div>
+          <button type="submit" class="btn btn-block mt-3"
+                  style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;font-size:1rem;font-weight:700;">
+            <i class="fas fa-cart-plus mr-1"></i> Aggiungi al carrello
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra sticky mobile -->
+  <div class="builder-sticky d-lg-none">
+    <div>
+      <div style="font-size:.75rem;color:var(--bsr-text-muted);">Totale</div>
+      <div id="price-bar">{{ '%.2f'|format(base_price) }}€</div>
+      <div id="summary-list" class="text-muted"></div>
+    </div>
+    <button type="submit" class="btn"
+            style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;font-weight:700;white-space:nowrap;">
+      <i class="fas fa-cart-plus mr-1"></i> Aggiungi
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var BASE_PRICE = {{ base_price }};
+var selected   = {};   // {catId: [{id, name, price}]}
+
+document.querySelectorAll('.ing-chip').forEach(function(chip) {
+  chip.addEventListener('click', function(e) {
+    e.preventDefault();
+    var checkbox = chip.querySelector('input[type=checkbox]');
+    var catId    = chip.dataset.cat;
+    var maxCat   = parseInt(chip.dataset.max);
+    var price    = parseFloat(chip.dataset.price) || 0;
+    var name     = chip.dataset.name;
+    var id       = checkbox.id.replace('ing_', '');
+
+    if (!selected[catId]) selected[catId] = [];
+
+    var idx = selected[catId].findIndex(function(x){ return x.id === id; });
+    if (idx >= 0) {
+      // Deseleziona
+      selected[catId].splice(idx, 1);
+      chip.classList.remove('selected');
+      checkbox.checked = false;
+    } else {
+      // Seleziona (controlla max)
+      if (selected[catId].length >= maxCat) {
+        // rimuovi il primo se max==1 (radio-like)
+        if (maxCat === 1) {
+          var old = selected[catId][0];
+          selected[catId] = [];
+          var oldChip = document.querySelector('[data-cat="'+catId+'"][data-name="'+old.name+'"]');
+          if (oldChip) { oldChip.classList.remove('selected'); oldChip.querySelector('input').checked = false; }
+        } else {
+          return; // ignora se max raggiunto
+        }
+      }
+      selected[catId].push({id: id, name: name, price: price});
+      chip.classList.add('selected');
+      checkbox.checked = true;
+    }
+    updateCounters(catId, maxCat);
+    updateSummary();
+  });
+});
+
+function updateCounters(catId, maxCat) {
+  var n = (selected[catId] || []).length;
+  var el = document.getElementById('count-' + catId);
+  if (el) {
+    el.textContent = n + ' / ' + maxCat + ' selezionati';
+    el.style.color = n >= maxCat ? '#e94560' : '';
+  }
+  // Blocca/sblocca chips non selezionate se max raggiunto
+  document.querySelectorAll('.ing-chip[data-cat="'+catId+'"]').forEach(function(c) {
+    var isSelected = c.classList.contains('selected');
+    if (n >= maxCat && !isSelected) {
+      c.classList.add('disabled-chip');
+    } else {
+      c.classList.remove('disabled-chip');
+    }
+  });
+}
+
+function updateSummary() {
+  var extras = 0, names = [];
+  Object.values(selected).forEach(function(arr) {
+    arr.forEach(function(item) { extras += item.price; names.push(item.name); });
+  });
+  var total = BASE_PRICE + extras;
+
+  // Mobile
+  var pb = document.getElementById('price-bar');
+  var sl = document.getElementById('summary-list');
+  if (pb) pb.textContent = total.toFixed(2) + '€';
+  if (sl) sl.textContent = names.join(', ') || '–';
+
+  // Desktop
+  var ep = document.getElementById('extra-price-desk');
+  var tp = document.getElementById('total-price-desk');
+  var sd = document.getElementById('summary-list-desk');
+  if (ep) ep.textContent = '+' + extras.toFixed(2) + '€';
+  if (tp) tp.textContent = total.toFixed(2) + '€';
+  if (sd) sd.innerHTML = names.length
+    ? names.map(function(n){ return '<span class="badge badge-light border mr-1 mb-1">'+n+'</span>'; }).join('')
+    : '<span class="text-muted">Nessun ingrediente selezionato</span>';
+}
+updateSummary();
+</script>
+{% endblock %}

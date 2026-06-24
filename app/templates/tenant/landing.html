@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ tenant.name }} | BSR Pranzo</title>
+  <script>(function(){ var t=localStorage.getItem('bsr-theme')||'light'; document.documentElement.setAttribute('data-bsr-theme',t); })();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <style>
+    * { font-family: 'PT Sans Narrow', sans-serif; }
+    :root {
+      --tenant-primary: {{ tenant.primary_color or '#e94560' }};
+      --bg-from: #1a1a2e; --bg-to: #0f3460;
+      --card-bg: rgba(255,255,255,.08);
+      --card-border: rgba(255,255,255,.12);
+    }
+    body {
+      background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 100%) !important;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .landing-box { max-width: 480px; width: 95vw; text-align: center; }
+    .tenant-hero {
+      color: #fff; margin-bottom: 2rem;
+    }
+    .tenant-hero h1 {
+      font-size: 2.4rem; font-weight: 700;
+      color: var(--tenant-primary); margin: 0;
+    }
+    .tenant-hero p {
+      color: rgba(255,255,255,.6); font-size: 1.1rem; margin: .5rem 0 0;
+    }
+    .logo-img { max-height: 80px; max-width: 220px; margin-bottom: 1rem; }
+
+    .action-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(8px);
+    }
+    .btn-tenant-primary {
+      background: var(--tenant-primary) !important;
+      border: none !important;
+      color: #fff !important;
+      font-size: 1.1rem; padding: .7rem 2rem;
+      border-radius: 30px;
+      font-weight: 700;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: opacity .2s;
+    }
+    .btn-tenant-primary:hover { opacity: .85; color: #fff !important; }
+    .btn-tenant-outline {
+      background: transparent !important;
+      border: 2px solid rgba(255,255,255,.3) !important;
+      color: rgba(255,255,255,.8) !important;
+      font-size: 1rem; padding: .6rem 1.5rem;
+      border-radius: 30px;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-tenant-outline:hover { border-color: #fff !important; color: #fff !important; }
+    .divider { color: rgba(255,255,255,.3); margin: 1.2rem 0; font-size: .9rem; }
+    .powered { color: rgba(255,255,255,.3); font-size: .8rem; margin-top: 2rem; }
+    .powered a { color: rgba(255,255,255,.4); }
+  </style>
+</head>
+<body>
+  <div class="landing-box">
+    {% if tenant.logo_url %}
+    <img src="{{ tenant.logo_url }}" class="logo-img" alt="{{ tenant.name }}">
+    {% endif %}
+    <div class="tenant-hero">
+      <h1>{{ tenant.name }}</h1>
+      <p>Ordina il tuo pasto, veloce e senza attese.</p>
+    </div>
+
+    <div class="action-card">
+      <a href="{{ url_for('tenant.register', slug=tenant.slug) }}"
+         class="btn btn-tenant-primary btn-block mb-3">
+        <i class="fas fa-user-plus"></i> Crea account
+      </a>
+      <a href="{{ url_for('tenant.login', slug=tenant.slug) }}"
+         class="btn btn-tenant-outline btn-block">
+        <i class="fas fa-sign-in-alt"></i> Accedi
+      </a>
+      <div class="divider">oppure accedi subito con</div>
+      <a href="{{ url_for('tenant.google_start', slug=tenant.slug) }}"
+         class="btn btn-light btn-block" style="border-radius:30px; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#4285F4" d="M47.5 24.6c0-1.6-.1-3.1-.4-4.6H24v8.7h13.2c-.6 3-2.3 5.5-4.8 7.2v6h7.8c4.6-4.2 7.3-10.4 7.3-17.3z"/>
+          <path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.8-6c-2.2 1.5-5 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9H2.4v6.2C6.4 42.6 14.6 48 24 48z"/>
+          <path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6v-6.2H2.4C.9 16.3 0 20 0 24s.9 7.7 2.4 10.8l8.1-6.2z"/>
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.6l6.9-6.9C35.9 2.3 30.4 0 24 0 14.6 0 6.4 5.4 2.4 13.2l8.1 6.2C12.4 13.7 17.7 9.5 24 9.5z"/>
+        </svg>
+        Continua con Google
+      </a>
+    </div>
+
+    <p class="powered">Powered by <a href="#">BSR Pranzo</a></p>
+  </div>
+</body>
+</html>

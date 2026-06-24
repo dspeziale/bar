@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrazione | BSR Pranzo</title>
+  <script>(function(){ var t=localStorage.getItem('bsr-theme')||'light'; document.documentElement.setAttribute('data-bsr-theme',t); })();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <style>
+    * { font-family: 'PT Sans Narrow', sans-serif; }
+    :root {
+      --auth-bg-from:#1a1a2e;--auth-bg-to:#0f3460;--auth-card:#fff;--auth-text:#212529;
+      --auth-input-bg:#fff;--auth-input-border:#ced4da;--auth-input-color:#495057;
+      --auth-muted:#6c757d;--auth-card-border:#dee2e6;
+    }
+    [data-bsr-theme="dark"] {
+      --auth-bg-from:#050810;--auth-bg-to:#040b18;--auth-card:#16213e;--auth-text:#e2e8f0;
+      --auth-input-bg:#0a1628;--auth-input-border:#1e3058;--auth-input-color:#e2e8f0;
+      --auth-muted:#7a8fa8;--auth-card-border:#1e3058;
+    }
+    body { background: linear-gradient(135deg,var(--auth-bg-from) 0%,var(--auth-bg-to) 100%) !important; min-height:100vh; }
+    .register-box { width:380px; max-width:95vw; }
+    .card { background:var(--auth-card) !important; border-color:var(--auth-card-border) !important; color:var(--auth-text) !important; }
+    .card-header { background:var(--auth-card) !important; border-color:var(--auth-card-border) !important; }
+    .form-control { background:var(--auth-input-bg) !important; border-color:var(--auth-input-border) !important; color:var(--auth-input-color) !important; padding:.55rem .75rem; font-size:1rem; }
+    .form-control::placeholder { color:var(--auth-muted) !important; opacity:.7; }
+    .input-group-text { background:var(--auth-input-bg) !important; border-color:var(--auth-input-border) !important; color:var(--auth-muted) !important; }
+    .text-muted { color:var(--auth-muted) !important; }
+    .card-outline.card-success { border-top:3px solid #28a745 !important; }
+    #bsr-theme-toggle-auth {
+      position:fixed;top:14px;right:14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+      border-radius:20px;color:#fff;padding:5px 12px;font-family:'PT Sans Narrow',sans-serif;
+      font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s;
+    }
+    #bsr-theme-toggle-auth:hover { background:rgba(255,255,255,.25); }
+  </style>
+</head>
+<body class="hold-transition register-page">
+  <button id="bsr-theme-toggle-auth" onclick="bsrToggle()">
+    <i class="fas fa-moon" id="ti"></i> <span id="tl">Scuro</span>
+  </button>
+
+  <div class="register-box">
+    <div class="login-logo" style="font-size:2rem;font-weight:700;text-align:center;margin-bottom:1rem;">
+      <i class="fas fa-utensils mr-2" style="color:#e94560;"></i>
+      <span style="color:#fff;">BSR</span> Pranzo
+    </div>
+    <div class="card card-outline card-success">
+      <div class="card-header text-center">
+        <p class="mb-0" style="color:var(--auth-muted);">Crea il tuo account</p>
+      </div>
+      <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+        <form method="POST">
+          <div class="input-group mb-3">
+            <input type="email" name="email" class="form-control" placeholder="Email" required autofocus
+                   value="{{ request.form.get('email','') }}">
+            <div class="input-group-append"><div class="input-group-text"><i class="fas fa-envelope"></i></div></div>
+          </div>
+          <div class="input-group mb-3">
+            <input type="password" name="password" class="form-control" placeholder="Password (min 6 car.)" required minlength="6">
+            <div class="input-group-append"><div class="input-group-text"><i class="fas fa-lock"></i></div></div>
+          </div>
+          <div class="input-group mb-3">
+            <input type="password" name="password2" class="form-control" placeholder="Conferma password" required>
+            <div class="input-group-append"><div class="input-group-text"><i class="fas fa-lock"></i></div></div>
+          </div>
+          <button type="submit" class="btn btn-success btn-block" style="padding:.6rem;font-size:1rem;">
+            <i class="fas fa-user-plus mr-1"></i> Registrati
+          </button>
+        </form>
+        <p class="mt-3 mb-0 text-center">
+          Hai già un account? <a href="{{ url_for('auth.login') }}">Accedi</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+  <script>
+    function bsrApplyTheme(t) {
+      document.documentElement.setAttribute('data-bsr-theme',t);
+      document.getElementById('ti').className = t==='dark'?'fas fa-sun':'fas fa-moon';
+      document.getElementById('tl').textContent = t==='dark'?'Chiaro':'Scuro';
+    }
+    function bsrToggle() {
+      var cur = document.documentElement.getAttribute('data-bsr-theme')||'light';
+      var next = cur==='dark'?'light':'dark';
+      localStorage.setItem('bsr-theme',next); bsrApplyTheme(next);
+    }
+    bsrApplyTheme(localStorage.getItem('bsr-theme')||'light');
+  </script>
+</body>
+</html>

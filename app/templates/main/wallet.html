@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Wallet & Fedeltà{% endblock %}
+{% block page_title %}Wallet & Carta Fedeltà{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Wallet</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Card saldo -->
+  <div class="col-md-4">
+    <div class="card" style="background:linear-gradient(135deg,#0f3460,#1a1a2e);color:#fff;border:none;">
+      <div class="card-body text-center py-4">
+        <div style="font-size:3rem;font-weight:700;color:#0dcaf0;">
+          {{ '%.2f'|format(current_user.wallet_balance) }}€
+        </div>
+        <div class="text-white-50 mb-3">Saldo disponibile</div>
+        <div class="mb-3">
+          <i class="fas fa-star" style="color:#ffc107;"></i>
+          <strong style="font-size:1.3rem;">{{ current_user.loyalty_points }}</strong>
+          <span class="text-white-50"> punti fedeltà</span>
+        </div>
+        <div style="font-size:.8rem;color:rgba(255,255,255,.5);">
+          {{ current_user.username }} &bull; {{ current_user.email }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Riscatta punti -->
+    <div class="card card-outline" style="border-top:3px solid #6f42c1;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-gift me-2" style="color:#6f42c1;"></i>Premi Fedeltà</h3>
+      </div>
+      <div class="card-body">
+        {% set progress = (current_user.loyalty_points % loyalty_threshold) * 100 // loyalty_threshold %}
+        <p>Ogni <strong>{{ loyalty_threshold }} punti</strong> = <strong>+{{ '%.2f'|format(reward_amount) }}€</strong> wallet</p>
+        <div class="progress mb-2" style="height:14px;">
+          <div class="progress-bar" role="progressbar"
+               style="width:{{ progress }}%; background:linear-gradient(90deg,#6f42c1,#e94560);">
+            {{ progress }}%
+          </div>
+        </div>
+        <small class="text-muted">
+          {{ current_user.loyalty_points % loyalty_threshold }}/{{ loyalty_threshold }} punti
+        </small>
+        {% if current_user.loyalty_points >= loyalty_threshold %}
+        <form method="POST" action="{{ url_for('main.redeem_points') }}" class="mt-3">
+          {% set blocks = current_user.loyalty_points // loyalty_threshold %}
+          <button class="btn btn-block btn-warning font-weight-bold">
+            <i class="fas fa-gift me-1"></i>
+            Riscatta {{ blocks * loyalty_threshold }} punti → +{{ '%.2f'|format(blocks * reward_amount) }}€
+          </button>
+        </form>
+        {% else %}
+        <div class="alert alert-light mt-3 mb-0 py-2 text-center text-muted" style="font-size:.85rem;">
+          Ancora {{ loyalty_threshold - (current_user.loyalty_points % loyalty_threshold) }} punti al prossimo premio
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-1"></i>
+      Guadagni <strong>{{ (1 * 10)|int }} punti</strong> per ogni euro speso.
+      Chiedi all'admin la ricarica del wallet.
+    </div>
+  </div>
+
+  <!-- Storico transazioni -->
+  <div class="col-md-8">
+    <div class="card card-outline card-info">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-history me-2"></i>Storico Transazioni</h3>
+      </div>
+      <div class="card-body p-0">
+        {% if transactions %}
+        <table class="table table-striped table-hover mb-0">
+          <thead class="thead-light">
+            <tr><th>Data</th><th>Tipo</th><th>Descrizione</th><th class="text-right">Importo</th></tr>
+          </thead>
+          <tbody>
+          {% for t in transactions %}
+          {% set info = t.icon_info() %}
+          <tr>
+            <td nowrap><small>{{ t.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+            <td>
+              <span class="badge badge-{{ info[1] }}">
+                <i class="fas {{ info[0] }} me-1"></i>{{ info[2] }}
+              </span>
+            </td>
+            <td><small>{{ t.description }}</small></td>
+            <td class="text-right">
+              {% if t.amount != 0 %}
+              <strong class="{{ 'text-success' if t.amount > 0 else 'text-danger' }}">
+                {{ '+' if t.amount > 0 else '' }}{{ '%.2f'|format(t.amount) }}€
+              </strong>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fas fa-history fa-2x mb-2"></i><br>Nessuna transazione.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
