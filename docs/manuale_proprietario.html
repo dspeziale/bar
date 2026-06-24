@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSR Pranzo – Manuale del Proprietario</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red:    #e94560;
+    --navy:   #0f3460;
+    --dark:   #16213e;
+    --gray:   #6c757d;
+    --light:  #f8f9fa;
+    --border: #dee2e6;
+    --text:   #212529;
+    --font:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    color: var(--text);
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--dark) 0%, var(--navy) 55%, #1a1a2e 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(233,69,96,.18) 0%, transparent 70%);
+    top: -150px; right: -150px;
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(15,52,96,.4) 0%, transparent 70%);
+    bottom: -100px; left: -100px;
+  }
+  .cover-logo {
+    font-size: 4.5rem;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 4px 12px rgba(233,69,96,.5));
+    position: relative; z-index: 1;
+  }
+  .cover-title {
+    font-size: 3.2rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.5px;
+    position: relative; z-index: 1;
+    line-height: 1.15;
+  }
+  .cover-title span { color: var(--red); }
+  .cover-sub {
+    font-size: 1.25rem;
+    color: rgba(255,255,255,.65);
+    margin-top: .75rem;
+    position: relative; z-index: 1;
+  }
+  .cover-badge {
+    margin-top: 2.5rem;
+    display: inline-flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    position: relative; z-index: 1;
+  }
+  .cover-badge span {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    color: rgba(255,255,255,.9);
+    padding: .4rem 1rem;
+    border-radius: 20px;
+    font-size: .85rem;
+    backdrop-filter: blur(4px);
+  }
+  .cover-note {
+    position: absolute;
+    bottom: 2rem;
+    color: rgba(255,255,255,.35);
+    font-size: .8rem;
+    z-index: 1;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── TOC ── */
+  .toc-section {
+    background: var(--light);
+    border-bottom: 3px solid var(--red);
+    padding: 3rem 0;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: .5rem;
+    margin-top: 1.5rem;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem .75rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--navy);
+    font-weight: 500;
+    transition: background .15s;
+    border: 1px solid transparent;
+  }
+  .toc-item:hover { background: #fff; border-color: var(--border); }
+  .toc-item .num {
+    min-width: 24px; height: 24px;
+    background: var(--red);
+    color: #fff;
+    border-radius: 50%;
+    font-size: .72rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Sezioni ── */
+  .section {
+    padding: 4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .section:last-child { border-bottom: none; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .section-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  .icon-red   { background: rgba(233,69,96,.12); color: var(--red); }
+  .icon-navy  { background: rgba(15,52,96,.1);  color: var(--navy); }
+  .icon-green { background: rgba(39,174,96,.12); color: #27ae60; }
+  .icon-amber { background: rgba(243,156,18,.12); color: #e67e22; }
+  .icon-purple{ background: rgba(142,68,173,.12); color: #8e44ad; }
+  .icon-teal  { background: rgba(26,188,156,.12); color: #1abc9c; }
+
+  h2 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--dark);
+    line-height: 1.2;
+  }
+  h2 .label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--red);
+    margin-bottom: .2rem;
+  }
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: .6rem;
+    margin-top: 1.8rem;
+  }
+  h3:first-child { margin-top: 0; }
+  p { margin-bottom: .9rem; color: #495057; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Feature grid ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .feature-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .feature-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-2px); }
+  .feature-card .fc-icon { font-size: 1.8rem; margin-bottom: .6rem; }
+  .feature-card h4 { font-size: .95rem; font-weight: 700; color: var(--dark); margin-bottom: .35rem; }
+  .feature-card p  { font-size: .85rem; color: var(--gray); margin: 0; }
+
+  /* ── Steps ── */
+  .steps { margin-top: 1.5rem; }
+  .step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+  }
+  .step-num {
+    min-width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--red), var(--navy));
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+  .step-body h4 { font-weight: 700; color: var(--dark); margin-bottom: .25rem; }
+  .step-body p  { font-size: .9rem; color: #495057; margin: 0; }
+
+  /* ── Info box ── */
+  .info-box {
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    font-size: .9rem;
+  }
+  .info-box .ib-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: .1rem; }
+  .info-box p { margin: 0; }
+  .info-tip     { background: rgba(15,52,96,.07);  border-left: 4px solid var(--navy); }
+  .info-warning { background: rgba(233,69,96,.07); border-left: 4px solid var(--red); }
+  .info-success { background: rgba(39,174,96,.07); border-left: 4px solid #27ae60; }
+
+  /* ── Role pills ── */
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .75rem;
+    margin-top: 1.25rem;
+  }
+  .role-card {
+    border-radius: 10px;
+    padding: 1rem;
+    border: 1px solid;
+  }
+  .role-card h4 { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+  .role-card ul { padding-left: 1rem; font-size: .82rem; }
+  .role-card ul li { margin-bottom: .2rem; }
+  .rc-red    { border-color: rgba(233,69,96,.3);  background: rgba(233,69,96,.05); }
+  .rc-red h4 { color: var(--red); }
+  .rc-navy   { border-color: rgba(15,52,96,.2);   background: rgba(15,52,96,.04); }
+  .rc-navy h4{ color: var(--navy); }
+  .rc-amber  { border-color: rgba(230,126,34,.3); background: rgba(230,126,34,.05); }
+  .rc-amber h4{ color: #e67e22; }
+  .rc-green  { border-color: rgba(39,174,96,.3);  background: rgba(39,174,96,.05); }
+  .rc-green h4{ color: #27ae60; }
+  .rc-gray   { border-color: rgba(108,117,125,.3);background: rgba(108,117,125,.05); }
+  .rc-gray h4{ color: var(--gray); }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.25rem;
+    font-size: .88rem;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    padding: .65rem .9rem;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: .6rem .9rem;
+    border-bottom: 1px solid var(--border);
+    color: #495057;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--light); }
+  td strong { color: var(--dark); }
+
+  /* ── Credential box ── */
+  .cred-box {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.25rem;
+    font-family: 'Courier New', monospace;
+  }
+  .cred-box .cb-title {
+    color: var(--red);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: .75rem;
+    font-family: var(--font);
+    font-weight: 600;
+  }
+  .cred-row {
+    display: flex;
+    gap: 1rem;
+    padding: .4rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    font-size: .9rem;
+  }
+  .cred-row:last-child { border-bottom: none; }
+  .cred-key  { color: rgba(255,255,255,.45); min-width: 120px; }
+  .cred-val  { color: #fff; font-weight: 500; }
+  .cred-val.highlight { color: #ffd700; }
+
+  /* ── Workflow ── */
+  .workflow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .wf-step {
+    flex: 1;
+    min-width: 130px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .wf-step:last-child { border-right: none; }
+  .wf-step .wf-num {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: rgba(233,69,96,.2);
+    line-height: 1;
+  }
+  .wf-step .wf-icon { font-size: 1.5rem; margin: .25rem 0; }
+  .wf-step h5 { font-size: .8rem; font-weight: 700; color: var(--dark); margin-bottom: .2rem; }
+  .wf-step p  { font-size: .75rem; color: var(--gray); margin: 0; }
+
+  /* ── FAQ ── */
+  .faq { margin-top: 1.5rem; }
+  .faq-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: .75rem;
+    overflow: hidden;
+  }
+  .faq-q {
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .faq-q::before { content: 'D.'; color: var(--red); font-weight: 700; }
+  .faq-a {
+    padding: 0 1.25rem 1rem 1.25rem;
+    font-size: .9rem;
+    color: #495057;
+    border-top: 1px solid var(--border);
+    padding-top: .75rem;
+  }
+  .faq-a::before { content: 'R. '; color: #27ae60; font-weight: 700; }
+
+  /* ── Footer ── */
+  .doc-footer {
+    background: var(--dark);
+    color: rgba(255,255,255,.5);
+    text-align: center;
+    padding: 2.5rem 2rem;
+    font-size: .85rem;
+  }
+  .doc-footer strong { color: rgba(255,255,255,.8); }
+
+  /* ── Print ── */
+  @media print {
+    .cover { min-height: auto; padding: 2rem; page-break-after: always; }
+    .section { page-break-inside: avoid; }
+    .feature-card:hover { box-shadow: none; transform: none; }
+    a { text-decoration: none; color: inherit; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .cover-title { font-size: 2rem; }
+    h2 { font-size: 1.35rem; }
+    .workflow { flex-direction: column; }
+    .wf-step { border-right: none; border-bottom: 1px solid var(--border); }
+    .wf-step:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-logo">🍽️</div>
+  <h1 class="cover-title"><span>BSR</span> Pranzo</h1>
+  <p class="cover-sub">Sistema di gestione per bar, mense e caffetterie</p>
+  <div class="cover-badge">
+    <span>📦 Ordini & Cucina</span>
+    <span>💳 Wallet Digitale</span>
+    <span>⭐ Fidelizzazione</span>
+    <span>🪑 Prenotazione Tavoli</span>
+    <span>📊 Report</span>
+    <span>📱 Notifiche Telegram</span>
+  </div>
+  <p class="cover-note">Manuale del Proprietario — versione 2.0 · Giugno 2026</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ TOC -->
+<div class="toc-section">
+  <div class="container">
+    <h2 style="color:var(--dark);">
+      <span style="color:var(--red);font-size:.75rem;display:block;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">Indice</span>
+      Cosa trovi in questo manuale
+    </h2>
+    <div class="toc-grid">
+      <a class="toc-item" href="#intro">      <span class="num">1</span> Cos'è BSR Pranzo</a>
+      <a class="toc-item" href="#features">   <span class="num">2</span> Funzionalità principali</a>
+      <a class="toc-item" href="#start">       <span class="num">3</span> Come iniziare</a>
+      <a class="toc-item" href="#orders">      <span class="num">4</span> Gestione ordini</a>
+      <a class="toc-item" href="#menu">        <span class="num">5</span> Menu e prodotti</a>
+      <a class="toc-item" href="#builder">     <span class="num">6</span> Panino &amp; Insalata builder</a>
+      <a class="toc-item" href="#wallet">      <span class="num">7</span> Wallet e fidelizzazione</a>
+      <a class="toc-item" href="#tables">      <span class="num">8</span> Tavoli e prenotazioni</a>
+      <a class="toc-item" href="#people">      <span class="num">9</span> Personale e clienti</a>
+      <a class="toc-item" href="#roles">       <span class="num">10</span> Ruoli e permessi</a>
+      <a class="toc-item" href="#notify">      <span class="num">11</span> Notifiche e sondaggi</a>
+      <a class="toc-item" href="#report">      <span class="num">12</span> Report e statistiche</a>
+      <a class="toc-item" href="#multitenant"> <span class="num">13</span> Multi-sede</a>
+      <a class="toc-item" href="#faq">         <span class="num">14</span> Domande frequenti</a>
+      <a class="toc-item" href="#credentials"> <span class="num">15</span> Credenziali di accesso</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 1. INTRO -->
+<div class="section" id="intro">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-red">🍽️</div>
+      <h2><span class="label">Sezione 1</span>Cos'è BSR Pranzo</h2>
+    </div>
+
+    <p>
+      <strong>BSR Pranzo</strong> è una piattaforma web completa progettata per semplificare
+      la gestione quotidiana di bar, mense aziendali e caffetterie. Funziona direttamente
+      dal browser — senza installazioni, senza app da aggiornare — ed è accessibile
+      da qualsiasi dispositivo: computer, tablet o smartphone.
+    </p>
+    <p>
+      I clienti possono sfogliare il menu, comporre il proprio pasto su misura e
+      preordinare con anticipo scegliendo lo slot orario di ritiro. Il personale
+      riceve gli ordini in tempo reale e gestisce la cucina da un pannello dedicato.
+      Il proprietario ha visibilità completa su incassi, prodotti più venduti e
+      clienti fidelizzati.
+    </p>
+
+    <div class="info-box info-success">
+      <span class="ib-icon">✅</span>
+      <p><strong>Zero carta, zero code.</strong> Il sistema elimina il listino cartaceo,
+      le ordinazioni verbali e le incomprensioni: ogni ordine è digitale, tracciato e
+      confermato automaticamente.</p>
+    </div>
+
+    <h3>A chi è rivolto</h3>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fc-icon">🏢</div>
+        <h4>Bar aziendale / Mensa</h4>
+        <p>Gestione turni di pranzo, slot orari, preordini del mattino e pagamento con wallet prepagato.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">☕</div>
+        <h4>Caffetteria / Tavola Calda</h4>
+        <p>Ordini veloci al banco, panini personalizzati, fidelizzazione con punti e premi.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🏬</div>
+        <h4>Catene multi-sede</h4>
+        <p>Ogni punto vendita è un tenant indipendente con il suo menu, i suoi clienti e il suo staff.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 2. FEATURES -->
+<div class="section" id="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-navy">⚡</div>
+      <h2><span class="label">Sezione 2</span>Funzionalità principali</h2>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fc-icon">📋</div>
+        <h4>Ordini online</h4>
+        <p>I clienti ordinano da telefono o PC, scelgono lo slot orario e ricevono conferma immediata.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">👨‍🍳</div>
+        <h4>Cucina / KDS</h4>
+        <p>Pannello cucina dedicato con ordini raggruppati per slot, avanzamento stato in un clic.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🥪</div>
+        <h4>Builder personalizzato</h4>
+        <p>Il cliente compone il panino o l'insalata ingrediente per ingrediente. Prezzi calcolati in automatico.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">💳</div>
+        <h4>Wallet digitale</h4>
+        <p>Ogni cliente ha un portafoglio prepagato. Ricarica in pochi secondi dal pannello admin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">⭐</div>
+        <h4>Punti fedeltà</h4>
+        <p>Accumulo automatico a ogni acquisto. Soglia personalizzabile di riscatto in buono sconto.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🪑</div>
+        <h4>Prenotazione tavoli</h4>
+        <p>I clienti prenotano il posto con slot e numero di coperti. Vista disponibilità real-time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📦</div>
+        <h4>Stock giornaliero</h4>
+        <p>Imposta le quantità disponibili ogni mattina. Quando finiscono, il prodotto si disattiva da solo.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📊</div>
+        <h4>Report e statistiche</h4>
+        <p>Incasso degli ultimi 30 giorni, prodotti più venduti, andamento giornaliero in grafici.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📣</div>
+        <h4>Comunicazioni</h4>
+        <p>Invia notifiche push via Telegram o email a tutti gli utenti con un clic. Sondaggi interattivi.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">👤</div>
+        <h4>Gestione clienti</h4>
+        <p>Anagrafica completa: nome, contatti, data di nascita, indirizzo, Telegram Chat ID.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔐</div>
+        <h4>Ruoli e permessi</h4>
+        <p>Ogni membro del personale vede solo ciò che gli compete. Cassiere, cuoco, manager, admin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔑</div>
+        <h4>Accesso Google</h4>
+        <p>I clienti possono registrarsi e accedere con il loro account Google, senza creare una password.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 3. START -->
+<div class="section" id="start">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-green">🚀</div>
+      <h2><span class="label">Sezione 3</span>Come iniziare</h2>
+    </div>
+
+    <p>Per attivare il sistema nel suo locale bastano pochi passaggi, eseguibili
+    tutti dal pannello admin senza bisogno di assistenza tecnica.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Accedere come amministratore</h4>
+          <p>Apri il link del sistema e accedi con le credenziali admin. Le credenziali iniziali le trovi nella sezione <a href="#credentials">Credenziali di accesso</a> a fondo manuale. Si raccomanda di cambiare la password al primo accesso.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Crea le categorie del menu</h4>
+          <p>Vai su <strong>Admin → Prodotti → Categorie</strong>. Aggiungi le macro-categorie del tuo menu (es. Panini, Primi, Dolci, Bevande). Assegna a ognuna un'icona e un colore.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Inserisci i prodotti</h4>
+          <p>Vai su <strong>Admin → Prodotti</strong>. Per ogni voce inserisci nome, descrizione, prezzo e quantità giornaliera disponibile. Puoi attivare e disattivare ogni prodotto in qualsiasi momento.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Configura gli slot orari</h4>
+          <p>Vai su <strong>Admin → Slot orari</strong>. Gli slot determinano quando i clienti possono ritirare (es. 12:00 – 12:15 – 12:30…). Imposta la capienza massima per fascia oraria.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h4>Aggiungi il personale</h4>
+          <p>Vai su <strong>Admin → Persone → Personale</strong>. Crea un account per ogni dipendente e assegna il ruolo corretto (cassiere, cuoco, manager). Ciascuno vedrà solo le sezioni di sua competenza.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h4>Condividi il link ai clienti</h4>
+          <p>Il link di registrazione per i clienti è nella forma <code>https://tuodominio.it/t/slug-locale/register</code>. Puoi trovarlo nella pagina <strong>Admin → Tenant</strong> accanto al tuo locale.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info-tip">
+      <span class="ib-icon">💡</span>
+      <p><strong>Suggerimento:</strong> stampa o incornicia il QR code del link di registrazione e mettilo sul banco o sui tavoli. I clienti si registrano in 30 secondi con il cellulare.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 4. ORDERS -->
+<div class="section" id="orders">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-amber">📋</div>
+      <h2><span class="label">Sezione 4</span>Gestione ordini</h2>
+    </div>
+
+    <h3>Come funziona il flusso di un ordine</h3>
+
+    <div class="workflow">
+      <div class="wf-step">
+        <div class="wf-num">01</div>
+        <div class="wf-icon">📱</div>
+        <h5>Cliente ordina</h5>
+        <p>Sceglie i prodotti e lo slot orario dal proprio dispositivo</p>
+      </div>
+      <div class="wf-step">
+        <div class="wf-num">02</div>
+        <div class="wf-icon">💳</div>
+        <h5>Pagamento</h5>
+        <p>Il costo viene scalato automaticamente dal wallet</p>
+      </div>
+      <div class="wf-step">
+        <div class="wf-num">03</div>
+        <div class="wf-icon">👨‍🍳</div>
+        <h5>Cucina</h5>
+        <p>L'ordine appare nel pannello cucina per la preparazione</p>
+      </div>
+      <div class="wf-step">
+        <div class="wf-num">04</div>
+        <div class="wf-icon">🔔</div>
+        <h5>Pronto</h5>
+        <p>Lo stato passa a "Pronto" — il cliente può ritirare</p>
+      </div>
+      <div class="wf-step">
+        <div class="wf-num">05</div>
+        <div class="wf-icon">✅</div>
+        <h5>Completato</h5>
+        <p>Il cassiere segna come consegnato e accredita i punti fedeltà</p>
+      </div>
+    </div>
+
+    <h3>Pannello Cucina (KDS)</h3>
+    <p>
+      Il pannello cucina (<strong>Admin → Cucina / KDS</strong>) mostra gli ordini
+      del giorno divisi in tre colonne: <em>Da preparare</em>, <em>In preparazione</em>
+      e <em>Pronti</em>. Con un clic il cuoco fa avanzare ogni ordine.
+      Non serve stampante termica: il display basta da solo.
+    </p>
+
+    <h3>Annullamento e rimborso</h3>
+    <p>
+      Se un ordine viene annullato dall'admin, l'importo pagato viene rimborsato
+      automaticamente sul wallet del cliente, senza operazioni manuali.
+    </p>
+
+    <h3>Vista per data</h3>
+    <p>
+      In <strong>Admin → Ordini</strong> puoi filtrare per data e per stato
+      (in attesa, confermato, in preparazione, pronto, completato, annullato).
+      Ogni ordine ha una <em>scheda di prelievo</em> stampabile con il riepilogo.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 5. MENU -->
+<div class="section" id="menu">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-red">🍕</div>
+      <h2><span class="label">Sezione 5</span>Menu e prodotti</h2>
+    </div>
+
+    <h3>Categorie</h3>
+    <p>
+      Ogni prodotto appartiene a una categoria (es. Panini, Primo Piatto, Dolci, Bevande).
+      Le categorie hanno un'icona Font Awesome e un colore di accento visibile nel menu clienti.
+      Puoi creare tutte le categorie che vuoi da <strong>Admin → Prodotti → Categorie</strong>.
+    </p>
+
+    <h3>Prodotti</h3>
+    <p>
+      Per ogni prodotto puoi impostare:
+    </p>
+    <table>
+      <tr><th>Campo</th><th>Descrizione</th></tr>
+      <tr><td><strong>Nome</strong></td><td>Nome che vedono i clienti nel menu</td></tr>
+      <tr><td><strong>Descrizione</strong></td><td>Ingredienti, allergeni, note (opzionale)</td></tr>
+      <tr><td><strong>Prezzo</strong></td><td>In euro, con decimali (es. 4,50)</td></tr>
+      <tr><td><strong>Categoria</strong></td><td>Dove appare nel menu</td></tr>
+      <tr><td><strong>Quantità giornaliera</strong></td><td>Pezzi disponibili ogni giorno</td></tr>
+      <tr><td><strong>Attivo/Disattivo</strong></td><td>Nasconde il prodotto senza eliminarlo</td></tr>
+    </table>
+
+    <h3>Stock giornaliero</h3>
+    <p>
+      Ogni mattina vai su <strong>Admin → Stock giornaliero</strong> e aggiusta le
+      quantità disponibili per il giorno. Quando i pezzi si esauriscono durante il
+      servizio, il prodotto sparisce automaticamente dal menu dei clienti.
+      La dashboard mostra in rosso i prodotti con meno di 3 pezzi rimasti.
+    </p>
+
+    <div class="info-box info-tip">
+      <span class="ib-icon">💡</span>
+      <p>Per i prodotti con quantità illimitata (es. acqua, caffè) imposta una
+      quantità alta come 999. Non apparirà mai in esaurimento.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 6. BUILDER -->
+<div class="section" id="builder">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🥪</div>
+      <h2><span class="label">Sezione 6</span>Panino &amp; Insalata builder</h2>
+    </div>
+
+    <p>
+      Il <strong>builder</strong> è la funzione più apprezzata dai clienti: permette
+      di comporre il panino o l'insalata personalizzati scegliendo gli ingredienti
+      uno a uno. Il prezzo finale si calcola in automatico sommando i prezzi
+      degli ingredienti extra scelti.
+    </p>
+
+    <h3>Come funziona per il cliente</h3>
+    <p>
+      Il cliente clicca su <em>"Componi il tuo panino"</em> o <em>"Componi la tua insalata"</em>
+      nel menu e viene guidato passo passo nelle categorie di ingredienti:
+      tipo di pane → proteina → verdure → salse → extra.
+      Ogni categoria ha un numero minimo e massimo di scelte configurabile.
+    </p>
+
+    <h3>Come configurare gli ingredienti</h3>
+    <p>
+      Vai su <strong>Admin → Ingredienti Builder</strong>.
+      Trovi le categorie di ingredienti (Pane, Proteina, Verdure, Salse, Extra per il panino;
+      Base, Condimento, Topping per l'insalata).
+      Per ogni ingrediente puoi impostare:
+    </p>
+    <table>
+      <tr><th>Campo</th><th>Descrizione</th></tr>
+      <tr><td><strong>Nome</strong></td><td>Es. "Pane integrale", "Prosciutto crudo"</td></tr>
+      <tr><td><strong>Prezzo extra</strong></td><td>Sovrapprezzo rispetto al prezzo base (0 = incluso)</td></tr>
+      <tr><td><strong>Vegetariano</strong></td><td>Mostra il simbolo 🌿 nell'interfaccia</td></tr>
+      <tr><td><strong>Allergeni</strong></td><td>Testo libero: "glutine, latte, uova"</td></tr>
+      <tr><td><strong>Attivo</strong></td><td>Disattiva temporaneamente se esaurito</td></tr>
+    </table>
+
+    <div class="info-box info-warning">
+      <span class="ib-icon">⚠️</span>
+      <p>Il prezzo base del panino e dell'insalata è configurato nell'applicazione.
+      Gli ingredienti con <strong>prezzo extra &gt; 0</strong> vengono sommati al prezzo base.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 7. WALLET -->
+<div class="section" id="wallet">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-green">💳</div>
+      <h2><span class="label">Sezione 7</span>Wallet digitale e fidelizzazione</h2>
+    </div>
+
+    <h3>Come funziona il wallet</h3>
+    <p>
+      Ogni cliente ha un <strong>portafoglio digitale</strong> con saldo in euro.
+      Prima di ordinare deve ricaricare il wallet. Il pagamento avviene in automatico
+      al momento dell'ordine scalando il saldo. Se il saldo è insufficiente,
+      l'ordine non viene accettato.
+    </p>
+
+    <h3>Ricaricare un wallet</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Vai su Admin → Persone → Clienti (o Personale)</h4>
+          <p>Cerca l'utente nella lista.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Clicca su "+ Ricarica"</h4>
+          <p>Si apre un popup. Inserisci l'importo e la causale (es. "Ricarica mensile").</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Conferma</h4>
+          <p>Il saldo viene aggiornato immediatamente e la transazione è tracciata nello storico.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Programma fedeltà</h3>
+    <p>
+      Ad ogni acquisto il cliente accumula <strong>punti fedeltà</strong> proporzionali
+      alla spesa. Quando raggiunge la soglia configurata, può riscattare i punti
+      in un buono sconto accreditato automaticamente sul wallet.
+    </p>
+
+    <table>
+      <tr><th>Parametro</th><th>Valore predefinito</th><th>Dove cambiarlo</th></tr>
+      <tr><td>Punti per ogni euro speso</td><td><strong>10 punti/€</strong></td><td>config.py → LOYALTY_POINTS_PER_EURO</td></tr>
+      <tr><td>Punti necessari per il premio</td><td><strong>100 punti</strong></td><td>config.py → LOYALTY_REWARD_POINTS</td></tr>
+      <tr><td>Valore del premio</td><td><strong>1,00 €</strong></td><td>config.py → LOYALTY_REWARD_AMOUNT</td></tr>
+    </table>
+
+    <div class="info-box info-tip">
+      <span class="ib-icon">💡</span>
+      <p>Con i valori predefiniti: spendendo 10 € si accumulano 100 punti e si ottiene 1 € di buono.
+      Equivale a uno sconto del 10%. Modificare i valori in <code>config.py</code> per adattarli alla propria politica commerciale.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 8. TABLES -->
+<div class="section" id="tables">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-teal">🪑</div>
+      <h2><span class="label">Sezione 8</span>Tavoli e prenotazioni</h2>
+    </div>
+
+    <p>
+      Il modulo tavoli permette ai clienti di prenotare un posto a sedere scegliendo
+      data, fascia oraria e numero di coperti. L'admin vede in tempo reale la
+      disponibilità di ogni tavolo per ogni slot.
+    </p>
+
+    <h3>Configurare i tavoli</h3>
+    <p>
+      Vai su <strong>Admin → Tavoli</strong>. Per ogni tavolo imposta:
+      numero identificativo, posti disponibili e zona (es. Finestra, Centro, Bancone).
+      Puoi aggiungere o disattivare tavoli in qualsiasi momento.
+    </p>
+
+    <h3>Gestire le prenotazioni</h3>
+    <p>
+      La vista disponibilità mostra una griglia tavoli × slot.
+      Le celle verdi sono libere, quelle colorate sono occupate con il nome del cliente.
+      Da <strong>Admin → Prenotazioni</strong> puoi vedere l'elenco completo
+      e annullare una prenotazione se necessario.
+    </p>
+
+    <div class="info-box info-tip">
+      <span class="ib-icon">💡</span>
+      <p>La prenotazione tavolo è <strong>indipendente</strong> dall'ordine pasto.
+      Un cliente può prenotare un posto senza ordinare online (e viceversa).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 9. PEOPLE -->
+<div class="section" id="people">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-navy">👥</div>
+      <h2><span class="label">Sezione 9</span>Personale e clienti</h2>
+    </div>
+
+    <p>
+      Il sistema distingue due tipologie di utenti: il <strong>personale interno</strong>
+      (dipendenti che usano il backoffice) e i <strong>clienti</strong> (chi ordina).
+      Entrambi si gestiscono da <strong>Admin → Persone</strong>.
+    </p>
+
+    <h3>Personale (utenti interni)</h3>
+    <p>
+      Gli utenti personale accedono al pannello admin con il loro account e vedono
+      solo le sezioni corrispondenti al loro ruolo. Non hanno anagrafica estesa.
+      Per crearli: <strong>Admin → Persone → Personale → Crea nuovo utente</strong>.
+    </p>
+
+    <h3>Clienti</h3>
+    <p>
+      I clienti hanno un'anagrafica completa:
+    </p>
+    <table>
+      <tr><th>Campo</th><th>Obbligatorio</th><th>Note</th></tr>
+      <tr><td>Nome e Cognome</td><td>✅ Sì</td><td>Visualizzati nel pannello admin</td></tr>
+      <tr><td>Email</td><td>✅ Sì</td><td>Usata per l'accesso e le comunicazioni</td></tr>
+      <tr><td>Telefono</td><td>No</td><td>Visualizzato in lista clienti</td></tr>
+      <tr><td>Data di nascita</td><td>No</td><td>Utile per promozioni birthday</td></tr>
+      <tr><td>Indirizzo</td><td>No</td><td>Per eventuali consegne o corrispondenza</td></tr>
+      <tr><td>Telegram Chat ID</td><td>No</td><td>Per notifiche personalizzate su Telegram</td></tr>
+    </table>
+
+    <p style="margin-top:1rem;">
+      I clienti possono registrarsi autonomamente dal link pubblico del locale,
+      oppure essere inseriti dall'admin da <strong>Admin → Persone → Clienti → Registra nuovo cliente</strong>.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 10. ROLES -->
+<div class="section" id="roles">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🔐</div>
+      <h2><span class="label">Sezione 10</span>Ruoli e permessi</h2>
+    </div>
+
+    <p>
+      Ogni membro del personale ha uno o più <strong>ruoli</strong> che determinano
+      a quali sezioni del pannello admin può accedere. Il sistema è preconfigurato
+      con i ruoli più comuni, ma puoi crearne di personalizzati.
+    </p>
+
+    <div class="role-grid">
+      <div class="role-card rc-red">
+        <h4>👑 Super Admin</h4>
+        <ul>
+          <li>Accesso totale</li>
+          <li>Gestione tenant</li>
+          <li>Unico account globale</li>
+        </ul>
+      </div>
+      <div class="role-card rc-navy">
+        <h4>🏢 Manager</h4>
+        <ul>
+          <li>Ordini e cucina</li>
+          <li>Prodotti e stock</li>
+          <li>Tavoli e slot</li>
+          <li>Report</li>
+        </ul>
+      </div>
+      <div class="role-card rc-amber">
+        <h4>💰 Cassiere</h4>
+        <ul>
+          <li>Visualizza ordini</li>
+          <li>Gestisce stato ordini</li>
+          <li>Vede i report</li>
+        </ul>
+      </div>
+      <div class="role-card rc-green">
+        <h4>👨‍🍳 Cuoco</h4>
+        <ul>
+          <li>Pannello cucina</li>
+          <li>Avanza stato ordini</li>
+          <li>Solo vista cucina</li>
+        </ul>
+      </div>
+      <div class="role-card rc-gray">
+        <h4>👤 Utente</h4>
+        <ul>
+          <li>Nessun accesso admin</li>
+          <li>Solo area clienti</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Creare un ruolo personalizzato</h3>
+    <p>
+      Vai su <strong>Admin → Persone → Ruoli &amp; Permessi → Nuovo ruolo</strong>.
+      Assegna un nome, un'etichetta visibile e seleziona i permessi dalla lista.
+      I permessi sono granulari: puoi creare un ruolo "Magazziniere" che gestisce
+      solo lo stock, oppure un "Responsabile Comunicazioni" che invia notifiche
+      e gestisce i sondaggi.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 11. NOTIFY -->
+<div class="section" id="notify">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-red">📣</div>
+      <h2><span class="label">Sezione 11</span>Notifiche e sondaggi</h2>
+    </div>
+
+    <h3>Notifiche Telegram</h3>
+    <p>
+      Collega il sistema al tuo Bot Telegram per inviare messaggi a tutti i clienti
+      con un clic. Utile per avvisare del menu del giorno, di chiusure straordinarie
+      o promozioni.
+    </p>
+    <p>
+      Configurazione: <strong>Admin → Impostazioni → Token Bot Telegram</strong>.
+      Inserisci il token del bot (ottenuto da <em>@BotFather</em> su Telegram)
+      e il Chat ID del gruppo o canale. Usa il pulsante <em>"Test connessione"</em>
+      per verificare che funzioni.
+    </p>
+
+    <h3>Notifiche Email</h3>
+    <p>
+      Per le comunicazioni via email configura le credenziali Gmail in
+      <strong>Admin → Impostazioni</strong>. Inserisci l'indirizzo Gmail e
+      la <em>App Password</em> (non la password normale — si ottiene dalle
+      impostazioni di sicurezza di Google).
+    </p>
+
+    <h3>Sondaggi</h3>
+    <p>
+      I sondaggi permettono di chiedere ai clienti cosa vogliono mangiare domani.
+      Vai su <strong>Admin → Comunicazioni → Sondaggi → Nuovo sondaggio</strong>.
+      Seleziona i prodotti del giorno seguente come opzioni, poi invia il link
+      via Telegram o email. I clienti votano e tu vedi i risultati in tempo reale.
+    </p>
+
+    <div class="info-box info-success">
+      <span class="ib-icon">📊</span>
+      <p><strong>Usa i sondaggi per pianificare la produzione.</strong>
+      Sapere in anticipo quanti voti ha ricevuto ogni piatto ti aiuta a preparare
+      le giuste quantità, riducendo gli sprechi.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 12. REPORT -->
+<div class="section" id="report">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-amber">📊</div>
+      <h2><span class="label">Sezione 12</span>Report e statistiche</h2>
+    </div>
+
+    <p>
+      Il modulo report (<strong>Admin → Report</strong>) mostra una panoramica
+      degli ultimi 30 giorni di attività con grafici interattivi.
+    </p>
+
+    <table>
+      <tr><th>Dato</th><th>Cosa mostra</th></tr>
+      <tr><td><strong>Incasso giornaliero</strong></td><td>Grafico a barre degli ultimi 30 giorni (ordini non annullati)</td></tr>
+      <tr><td><strong>Numero ordini</strong></td><td>Trend del volume ordini giorno per giorno</td></tr>
+      <tr><td><strong>Top 10 prodotti</strong></td><td>I prodotti più venduti per quantità</td></tr>
+    </table>
+
+    <h3>Dashboard</h3>
+    <p>
+      La <strong>dashboard</strong> (<strong>Admin → Dashboard</strong>) è il cruscotto
+      quotidiano con i dati del giorno in corso:
+      incasso odierno, ordini aperti, numero clienti, prodotti attivi,
+      prenotazioni tavoli e alert prodotti in esaurimento.
+    </p>
+
+    <div class="info-box info-tip">
+      <span class="ib-icon">💡</span>
+      <p>Per esportare i dati ai fini contabili, il sistema non ha ancora un export diretto
+      in Excel. I dati storici sono consultabili filtrando per data nella pagina Ordini.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 13. MULTI -->
+<div class="section" id="multitenant">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-navy">🏬</div>
+      <h2><span class="label">Sezione 13</span>Multi-sede (Multi-tenant)</h2>
+    </div>
+
+    <p>
+      Se gestisci <strong>più punti vendita</strong> (bar in sedi diverse, mense in
+      aziende diverse), il sistema supporta nativamente la multi-sede tramite il
+      concetto di <em>tenant</em>. Ogni tenant è un'istanza completamente separata
+      con il proprio menu, clienti, staff e configurazioni.
+    </p>
+
+    <h3>Gerarchia degli accessi</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">👑</div>
+        <div class="step-body">
+          <h4>Super Admin (admin@bar.local)</h4>
+          <p>Un solo account globale. Crea e gestisce tutti i tenant. Vede tutti i dati di tutte le sedi. Non appartiene a nessun tenant specifico.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">🏢</div>
+        <div class="step-body">
+          <h4>Admin Tenant</h4>
+          <p>Un account per ogni sede. Gestisce il menu, il personale e i clienti del proprio locale. Non può accedere agli altri tenant né alla gestione globale.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">👤</div>
+        <div class="step-body">
+          <h4>Personale &amp; Clienti</h4>
+          <p>Appartengono a un singolo tenant e vedono solo i dati di quella sede.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Creare una nuova sede</h3>
+    <p>
+      Accedi come Super Admin e vai su <strong>Admin → Tenant → Nuovo tenant</strong>.
+      Inserisci il nome della sede, lo slug URL e il colore. Poi clicca su
+      <em>"Crea admin"</em> nella riga del tenant appena creato: il sistema genera
+      automaticamente le credenziali dell'admin di quella sede e le mostra una sola volta.
+    </p>
+
+    <div class="info-box info-warning">
+      <span class="ib-icon">⚠️</span>
+      <p>La <strong>password dell'admin tenant</strong> viene mostrata una sola volta al momento della creazione.
+      Annotala subito e consegnala al responsabile della sede.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 14. FAQ -->
+<div class="section" id="faq">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-teal">❓</div>
+      <h2><span class="label">Sezione 14</span>Domande frequenti</h2>
+    </div>
+
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q">Un cliente ha dimenticato la password. Come faccio?</div>
+        <div class="faq-a">Vai su <strong>Admin → Persone → Clienti</strong>, clicca "Modifica" per quel cliente
+        e inserisci una nuova password nel campo apposito. Il cliente può poi cambiarla dal suo profilo.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Posso disattivare un prodotto temporaneamente senza eliminarlo?</div>
+        <div class="faq-a">Sì. In <strong>Admin → Prodotti</strong> clicca l'interruttore
+        (attiva/disattiva) accanto al prodotto. Il prodotto sparisce dal menu clienti ma rimane nel sistema
+        con tutto lo storico degli ordini.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Come faccio a chiudere il servizio per un giorno festivo?</div>
+        <div class="faq-a">Puoi disattivare tutti gli slot orari da <strong>Admin → Slot orari</strong>:
+        senza slot attivi, i clienti non possono effettuare ordini. Ricordati di riattivare gli slot
+        il giorno prima della riapertura.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Un cliente vuole un rimborso. Come si gestisce?</div>
+        <div class="faq-a">Se l'ordine è ancora aperto, annullalo da <strong>Admin → Ordini</strong>:
+        il rimborso viene accreditato automaticamente sul wallet del cliente. Se l'ordine è già completato,
+        usa la funzione di ricarica manuale del wallet con causale "Rimborso ordine #XXX".</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Posso vedere quanti clienti si sono iscritti questo mese?</div>
+        <div class="faq-a">Al momento il report mostra ordini e incassi, non la crescita clienti.
+        La lista completa dei clienti con data di iscrizione è in <strong>Admin → Persone → Clienti</strong>.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Il sistema funziona anche da smartphone?</div>
+        <div class="faq-a">Sì. Sia il pannello admin che l'area clienti sono responsivi
+        e funzionano da qualsiasi browser mobile. Non serve installare nessuna app.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Come faccio a cambiare il colore e il logo del mio locale?</div>
+        <div class="faq-a">Il Super Admin può modificare colore primario e URL logo di ogni tenant da
+        <strong>Admin → Tenant → Modifica</strong>. Il colore cambia l'accento grafico su tutti i pulsanti e
+        gli elementi attivi dell'interfaccia.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Cosa succede se Internet va giù durante il servizio?</div>
+        <div class="faq-a">Il sistema è cloud (Vercel + PostgreSQL). Se la connessione Internet
+        del locale cade, non sarà temporaneamente accessibile. Si raccomanda una connessione
+        con SIM di backup o failover per ambienti critici.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Posso avere più admin per lo stesso locale?</div>
+        <div class="faq-a">Sì. Crea un utente personale e assegnagli il ruolo <strong>superadmin</strong>
+        da <strong>Admin → Persone → Personale → Assegna ruoli</strong>. Avrà gli stessi permessi dell'admin tenant
+        senza essere l'account principale.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">I dati sono al sicuro? Dove vengono salvati?</div>
+        <div class="faq-a">I dati sono salvati su <strong>Neon PostgreSQL</strong>, un database cloud
+        con backup automatici, crittografia a riposo e in transito. Il sito è hostato su <strong>Vercel</strong>
+        con HTTPS obbligatorio su tutte le connessioni.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 15. CREDENTIALS -->
+<div class="section" id="credentials" style="background:var(--light);">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-icon icon-red">🔑</div>
+      <h2><span class="label">Sezione 15</span>Credenziali di accesso</h2>
+    </div>
+
+    <div class="info-box info-warning">
+      <span class="ib-icon">⚠️</span>
+      <p><strong>Attenzione:</strong> cambia tutte le password predefinite al primo accesso.
+      Le credenziali qui sotto sono quelle iniziali di configurazione.</p>
+    </div>
+
+    <h3>Super Admin (accesso globale)</h3>
+    <div class="cred-box">
+      <div class="cb-title">Super Admin — un solo account, accesso totale</div>
+      <div class="cred-row"><span class="cred-key">URL</span><span class="cred-val highlight">https://tuo-dominio.vercel.app/admin</span></div>
+      <div class="cred-row"><span class="cred-key">Email</span><span class="cred-val">admin@bar.local</span></div>
+      <div class="cred-row"><span class="cred-key">Password</span><span class="cred-val highlight">admin123</span></div>
+    </div>
+
+    <h3 style="margin-top:2rem;">Admin tenant (dati demo)</h3>
+    <div class="cred-box">
+      <div class="cb-title">Admin per ogni sede — password identica sui tre tenant demo</div>
+      <div class="cred-row"><span class="cred-key">Bar Centrale</span><span class="cred-val">admin@bar-centrale.local</span></div>
+      <div class="cred-row"><span class="cred-key">Mensa Tech</span><span class="cred-val">admin@mensa-tech.local</span></div>
+      <div class="cred-row"><span class="cred-key">Caffetteria Duomo</span><span class="cred-val">admin@caffetteria-duomo.local</span></div>
+      <div class="cred-row"><span class="cred-key">Password comune</span><span class="cred-val highlight">demo1234</span></div>
+    </div>
+
+    <h3 style="margin-top:2rem;">Clienti demo</h3>
+    <div class="cred-box">
+      <div class="cb-title">36 clienti demo con anagrafica completa</div>
+      <div class="cred-row"><span class="cred-key">Email</span><span class="cred-val">nome.cognome@gmail.com (vedi lista clienti)</span></div>
+      <div class="cred-row"><span class="cred-key">Password comune</span><span class="cred-val highlight">cliente123</span></div>
+    </div>
+
+    <h3 style="margin-top:2rem;">Link di registrazione clienti</h3>
+    <table>
+      <tr><th>Sede</th><th>Link di registrazione</th></tr>
+      <tr><td>Bar Centrale</td><td><code>/t/bar-centrale/register</code></td></tr>
+      <tr><td>Mensa AziendaTech</td><td><code>/t/mensa-tech/register</code></td></tr>
+      <tr><td>Caffetteria Duomo</td><td><code>/t/caffetteria-duomo/register</code></td></tr>
+    </table>
+
+    <div class="info-box info-success" style="margin-top:1.5rem;">
+      <span class="ib-icon">✅</span>
+      <p>Per creare le credenziali di un nuovo admin tenant (in produzione),
+      usa il pulsante <strong>"Crea admin"</strong> nella pagina <em>Admin → Tenant</em>.
+      Il sistema genera una password casuale sicura e la mostra una sola volta.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ FOOTER -->
+<div class="doc-footer">
+  <p>
+    <strong>BSR Pranzo</strong> — Sistema di gestione bar e mense<br>
+    Documento riservato al proprietario · Versione 2.0 · Giugno 2026
+  </p>
+  <p style="margin-top:.5rem;">
+    Per assistenza tecnica o personalizzazioni contatta il tuo referente tecnico.
+  </p>
+</div>
+
+</body>
+</html>
