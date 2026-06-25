@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registrazione | BSR Pranzo</title>
-  <script>(function(){ var t=localStorage.getItem('bsr-theme')||'light'; document.documentElement.setAttribute('data-bsr-theme',t); })();</script>
+  <title>Registrazione | QuickLunch</title>
+  <script>(function(){ var t=localStorage.getItem('QuickLunch-theme')||'light'; document.documentElement.setAttribute('data-QuickLunch-theme',t); })();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
       --auth-input-bg:#fff;--auth-input-border:#ced4da;--auth-input-color:#495057;
       --auth-muted:#6c757d;--auth-card-border:#dee2e6;
     }
-    [data-bsr-theme="dark"] {
+    [data-QuickLunch-theme="dark"] {
       --auth-bg-from:#050810;--auth-bg-to:#040b18;--auth-card:#16213e;--auth-text:#e2e8f0;
       --auth-input-bg:#0a1628;--auth-input-border:#1e3058;--auth-input-color:#e2e8f0;
       --auth-muted:#7a8fa8;--auth-card-border:#1e3058;
@@ -31,23 +31,23 @@
     .input-group-text { background:var(--auth-input-bg) !important; border-color:var(--auth-input-border) !important; color:var(--auth-muted) !important; }
     .text-muted { color:var(--auth-muted) !important; }
     .card-outline.card-success { border-top:3px solid #28a745 !important; }
-    #bsr-theme-toggle-auth {
+    #QuickLunch-theme-toggle-auth {
       position:fixed;top:14px;right:14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
       border-radius:20px;color:#fff;padding:5px 12px;font-family:'PT Sans Narrow',sans-serif;
       font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s;
     }
-    #bsr-theme-toggle-auth:hover { background:rgba(255,255,255,.25); }
+    #QuickLunch-theme-toggle-auth:hover { background:rgba(255,255,255,.25); }
   </style>
 </head>
 <body class="hold-transition register-page">
-  <button id="bsr-theme-toggle-auth" onclick="bsrToggle()">
+  <button id="QuickLunch-theme-toggle-auth" onclick="bsrToggle()">
     <i class="fas fa-moon" id="ti"></i> <span id="tl">Scuro</span>
   </button>
 
   <div class="register-box">
     <div class="login-logo" style="font-size:2rem;font-weight:700;text-align:center;margin-bottom:1rem;">
       <i class="fas fa-utensils mr-2" style="color:#e94560;"></i>
-      <span style="color:#fff;">BSR</span> Pranzo
+      <span style="color:#fff;">QuickLunch</span>
     </div>
     <div class="card card-outline card-success">
       <div class="card-header text-center">
@@ -84,21 +84,25 @@
     </div>
   </div>
 
+  <p style="text-align:center;font-size:.75rem;color:rgba(255,255,255,.4);margin-top:1.5rem;">
+    &copy; 2024&ndash;26 DS Consulting &bull; QuickLunch
+  </p>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
   <script>
     function bsrApplyTheme(t) {
-      document.documentElement.setAttribute('data-bsr-theme',t);
+      document.documentElement.setAttribute('data-QuickLunch-theme',t);
       document.getElementById('ti').className = t==='dark'?'fas fa-sun':'fas fa-moon';
       document.getElementById('tl').textContent = t==='dark'?'Chiaro':'Scuro';
     }
     function bsrToggle() {
-      var cur = document.documentElement.getAttribute('data-bsr-theme')||'light';
+      var cur = document.documentElement.getAttribute('data-QuickLunch-theme')||'light';
       var next = cur==='dark'?'light':'dark';
-      localStorage.setItem('bsr-theme',next); bsrApplyTheme(next);
+      localStorage.setItem('QuickLunch-theme',next); bsrApplyTheme(next);
     }
-    bsrApplyTheme(localStorage.getItem('bsr-theme')||'light');
+    bsrApplyTheme(localStorage.getItem('QuickLunch-theme')||'light');
   </script>
 </body>
 </html>

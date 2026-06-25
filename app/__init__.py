@@ -1,4 +1,4 @@
-import os
+﻿import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -116,7 +116,7 @@ def _seed_defaults():
     default_tenant = Tenant.query.filter_by(slug='default').first()
     if not default_tenant:
         default_tenant = Tenant(
-            name='BSR Pranzo',
+            name='QuickLunch',
             slug='default',
             primary_color='#e94560',
             is_active=True,

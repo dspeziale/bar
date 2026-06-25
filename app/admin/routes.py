@@ -1,4 +1,4 @@
-from datetime import date
+﻿from datetime import date
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
@@ -750,7 +750,7 @@ def settings_save():
 @bp.route('/settings/test-telegram', methods=['POST'])
 @require_permission('manage_settings')
 def settings_test_telegram():
-    ok, msg = send_telegram('✅ <b>Test BSR</b>\nConnessione Telegram funzionante!')
+    ok, msg = send_telegram('✅ <b>Test QuickLunch</b>\nConnessione Telegram funzionante!')
     flash(f'Telegram: {msg}', 'success' if ok else 'danger')
     return redirect(url_for('admin.settings'))
 
@@ -760,7 +760,7 @@ def settings_test_telegram():
 def settings_test_email():
     from app.notifications import send_email
     dest = get_setting('gmail_user')
-    ok, msg = send_email(dest, 'Test BSR', '<b>Test email BSR</b> — configurazione Gmail funzionante!')
+    ok, msg = send_email(dest, 'Test QuickLunch', '<b>Test email QuickLunch</b> — configurazione Gmail funzionante!')
     flash(f'Email: {msg}', 'success' if ok else 'danger')
     return redirect(url_for('admin.settings'))
 
@@ -780,7 +780,7 @@ def broadcast_telegram():
 @bp.route('/settings/broadcast-email', methods=['POST'])
 @require_permission('send_notifications')
 def broadcast_email():
-    subject = request.form.get('subject', 'Comunicazione BSR').strip()
+    subject = request.form.get('subject', 'Comunicazione QuickLunch').strip()
     text    = request.form.get('message', '').strip()
     if not text:
         flash('Messaggio vuoto.', 'warning')

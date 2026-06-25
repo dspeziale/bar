@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Impostazioni{% endblock %}
 {% block page_title %}Impostazioni Sistema{% endblock %}
 {% block breadcrumb %}
@@ -89,7 +89,7 @@
           <ol class="mb-0" style="font-size:.85rem;padding-left:18px;">
             <li>Abilita <strong>2-Step Verification</strong> sul tuo account Google</li>
             <li>Vai su <strong>Account Google → Sicurezza → App password</strong></li>
-            <li>Crea una password per "App personalizzata" → BSR</li>
+            <li>Crea una password per "App personalizzata" → QuickLunch</li>
             <li>Incolla qui sotto quella password (16 caratteri)</li>
           </ol>
         </div>
@@ -101,7 +101,7 @@
             <label>Account Gmail mittente</label>
             <input type="email" name="gmail_user" class="form-control"
                    value="{{ cfg.gmail_user }}"
-                   placeholder="bsr.ufficio@gmail.com">
+                   placeholder="QuickLunch.ufficio@gmail.com">
           </div>
           <div class="form-group">
             <label>App Password <small class="text-muted">(non la password normale)</small></label>
@@ -133,7 +133,7 @@
           <div class="form-group">
             <label>Oggetto</label>
             <input type="text" name="subject" class="form-control"
-                   placeholder="Comunicazione BSR" value="Comunicazione BSR">
+                   placeholder="Comunicazione QuickLunch" value="Comunicazione QuickLunch">
           </div>
           <div class="form-group">
             <label>Testo</label>

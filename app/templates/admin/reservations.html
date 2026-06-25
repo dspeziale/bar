@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Prenotazioni Tavoli{% endblock %}
 {% block page_title %}Prenotazioni Tavoli{% endblock %}
 {% block breadcrumb %}
@@ -9,7 +9,7 @@
 {% block content %}
 <div class="card card-outline card-secondary mb-3">
   <div class="card-body py-2">
-    <form method="GET" class="bsr-filter-form">
+    <form method="GET" class="QuickLunch-filter-form">
       <div class="input-group" style="max-width:180px;">
         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-calendar"></i></span></div>
         <input type="date" name="date" class="form-control" value="{{ filter_date }}">

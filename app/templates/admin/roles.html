@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Ruoli & Permessi{% endblock %}
 {% block page_title %}Ruoli & Permessi{% endblock %}
 {% block breadcrumb %}
@@ -10,16 +10,16 @@
 <style>
   .perm-badge { display:inline-block; padding:2px 8px; border-radius:10px;
                 font-size:.72rem; font-weight:600; margin:2px;
-                background:var(--bsr-ig-bg); color:var(--bsr-ig-text); border:1px solid var(--bsr-card-border); }
+                background:var(--QuickLunch-ig-bg); color:var(--QuickLunch-ig-text); border:1px solid var(--QuickLunch-card-border); }
   .perm-badge.granted { background:rgba(40,167,69,.15); color:#28a745; border-color:#28a745; }
   .role-card { border-radius:12px; overflow:hidden; }
   .role-card .card-header { padding:.6rem 1rem; }
   .perm-check-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.35rem; }
   .perm-check-item { display:flex; align-items:center; gap:8px; padding:.3rem .5rem;
-                     border-radius:6px; border:1px solid var(--bsr-card-border); font-size:.83rem; }
+                     border-radius:6px; border:1px solid var(--QuickLunch-card-border); font-size:.83rem; }
   .perm-check-item input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
   .perm-cat-lbl { font-size:.7rem; font-weight:700; text-transform:uppercase;
-                  letter-spacing:.06em; color:var(--bsr-text-muted); margin:.6rem 0 .3rem; }
+                  letter-spacing:.06em; color:var(--QuickLunch-text-muted); margin:.6rem 0 .3rem; }
   .color-dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0; }
 </style>
 {% endblock %}
@@ -70,7 +70,7 @@
         {% else %}
           <span class="text-muted" style="font-size:.82rem;">Nessun permesso backoffice (solo area utente)</span>
         {% endif %}
-        <div class="mt-2" style="font-size:.78rem;color:var(--bsr-text-muted);">
+        <div class="mt-2" style="font-size:.78rem;color:var(--QuickLunch-text-muted);">
           <i class="fas fa-users mr-1"></i>{{ role.users.count() }} utenti con questo ruolo
         </div>
       </div>

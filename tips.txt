@@ -1,0 +1,3 @@
+App online: https://bar-tau-cyan.vercel.app
+Login: admin@bar.local / admin123
+Git: configurato con dspeziale@gmail.com / Daniele Speziale

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Prenota Tavolo{% endblock %}
 {% block page_title %}Prenota un Tavolo{% endblock %}
 {% block breadcrumb %}
@@ -9,8 +9,8 @@
 {% block extra_css %}
 <style>
   .slot-tab { cursor:pointer; padding:.5rem 1rem; border-radius:20px; margin:.2rem;
-              border:2px solid var(--bsr-card-border); background:var(--bsr-card-bg);
-              color:var(--bsr-text); font-weight:600; transition:all .15s; display:inline-block; }
+              border:2px solid var(--QuickLunch-card-border); background:var(--QuickLunch-card-bg);
+              color:var(--QuickLunch-text); font-weight:600; transition:all .15s; display:inline-block; }
   .slot-tab.active { background:linear-gradient(135deg,#e94560,#0f3460); color:#fff; border-color:transparent; }
   .tables-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:.75rem; }
   .tbl-card { border-radius:14px; padding:1rem .75rem; text-align:center; border:2px solid transparent;
@@ -19,11 +19,11 @@
   .tbl-card.free:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(40,167,69,.2); }
   .tbl-card.mine  { border-color:#0f3460; background:rgba(15,52,96,.12); }
   .tbl-card.taken { border-color:#dc3545; background:rgba(220,53,69,.06); cursor:not-allowed; opacity:.75; }
-  .tbl-card.off   { border-color:var(--bsr-card-border); background:var(--bsr-stripe); cursor:not-allowed; opacity:.5; }
+  .tbl-card.off   { border-color:var(--QuickLunch-card-border); background:var(--QuickLunch-stripe); cursor:not-allowed; opacity:.5; }
   .tbl-number { font-size:1.6rem; font-weight:700; line-height:1; }
-  .tbl-seats  { font-size:.78rem; color:var(--bsr-text-muted); }
+  .tbl-seats  { font-size:.78rem; color:var(--QuickLunch-text-muted); }
   .tbl-status { font-size:.72rem; font-weight:600; margin-top:.25rem; }
-  [data-bsr-theme="dark"] .tbl-card.mine { border-color:#6ea8fe; background:rgba(110,168,254,.1); }
+  [data-QuickLunch-theme="dark"] .tbl-card.mine { border-color:#6ea8fe; background:rgba(110,168,254,.1); }
 </style>
 {% endblock %}
 

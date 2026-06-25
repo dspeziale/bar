@@ -1,4 +1,4 @@
-import secrets
+﻿import secrets
 from datetime import date
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
@@ -188,7 +188,7 @@ def place_order():
             ))
 
     order.order_code = (
-        f"BSR-{order.order_date.strftime('%y%m%d')}"
+        f"QuickLunch-{order.order_date.strftime('%y%m%d')}"
         f"-{slot.time_str.replace(':', '')}"
         f"-{order.id:04d}"
     )

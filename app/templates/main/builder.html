@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Componi il tuo {{ 'Panino' if builder_type=='panino' else 'Insalata' }}{% endblock %}
 {% block page_title %}Componi il Tuo{% endblock %}
 {% block breadcrumb %}
@@ -13,7 +13,7 @@
   .cat-section { margin-bottom: 1.25rem; }
   .cat-label { font-weight: 700; font-size: 1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem; }
   .cat-required::after { content: ' *'; color: #e94560; }
-  .cat-max   { font-size: .75rem; color: var(--bsr-text-muted); margin-left: auto; }
+  .cat-max   { font-size: .75rem; color: var(--QuickLunch-text-muted); margin-left: auto; }
   .ing-chips-wrap { display: flex; flex-wrap: wrap; gap: 2px; }
   #price-bar  { font-size: 1.3rem; font-weight: 700; color: #e94560; }
   #summary-list { font-size: .82rem; max-height: 60px; overflow-y: auto; }
@@ -70,7 +70,7 @@
             {% endif %}
             {% endfor %}
           </div>
-          <div class="mt-1" id="count-{{ cat.id }}" style="font-size:.75rem;color:var(--bsr-text-muted);">
+          <div class="mt-1" id="count-{{ cat.id }}" style="font-size:.75rem;color:var(--QuickLunch-text-muted);">
             0 / {{ cat.max_choices }} selezionati
           </div>
         </div>
@@ -111,7 +111,7 @@
   <!-- Barra sticky mobile -->
   <div class="builder-sticky d-lg-none">
     <div>
-      <div style="font-size:.75rem;color:var(--bsr-text-muted);">Totale</div>
+      <div style="font-size:.75rem;color:var(--QuickLunch-text-muted);">Totale</div>
       <div id="price-bar">{{ '%.2f'|format(base_price) }}€</div>
       <div id="summary-list" class="text-muted"></div>
     </div>

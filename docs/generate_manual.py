@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Genera docs/manuale_proprietario.docx con PT Sans Narrow."""
 
 import os
@@ -477,7 +477,7 @@ def build_cover(doc):
     r0 = p0.add_run('🍽️')
     _run_font(r0, size=54, color=WHITE)
 
-    cp('BSR',    size=52, bold=True, color=RED,   after=0)
+    cp('QuickLunch',    size=52, bold=True, color=RED,   after=0)
     cp('PRANZO', size=52, bold=True, color=WHITE, after=16)
     cp('Sistema di gestione per bar, mense e caffetterie',
        size=14, color=RGBColor(0xa0, 0xb8, 0xd0), after=32)
@@ -495,7 +495,7 @@ def build_cover(doc):
             sep = pf.add_run('   ·   ')
             _run_font(sep, size=11, color=RGBColor(0x40, 0x55, 0x70))
 
-    cp('Manuale del Proprietario  ·  Versione 2.0  ·  Giugno 2026',
+    cp('Manuale del Proprietario  ·  Versione 2.0  ·  Giugno 2026  ·  © 2024–26 DS Consulting',
        size=9, color=RGBColor(0x40, 0x55, 0x70), after=0)
 
     _page_break(doc)
@@ -511,7 +511,7 @@ def build_toc(doc):
     _para_border(p, bottom_color=HEX_RED, bottom_sz='8')
 
     toc_items = [
-        ('1',  '🍽️',  "Cos'è BSR Pranzo"),
+        ('1',  '🍽️',  "Cos'è QuickLunch"),
         ('2',  '⚡',  'Funzionalità principali'),
         ('3',  '🚀',  'Come iniziare'),
         ('4',  '📋',  'Gestione ordini'),
@@ -526,6 +526,7 @@ def build_toc(doc):
         ('13', '🏬',  'Multi-sede (Multi-tenant)'),
         ('14', '❓',  'Domande frequenti'),
         ('15', '🔑',  'Credenziali di accesso'),
+        ('A',  '🖥️',  'Pagine principali del sito (mockup)'),
     ]
 
     tbl = doc.add_table(rows=len(toc_items), cols=2)
@@ -559,9 +560,9 @@ def build_toc(doc):
 
 
 def s01(doc):
-    h1(doc, 1, "Cos'è BSR Pranzo", '🍽️')
+    h1(doc, 1, "Cos'è QuickLunch", '🍽️')
     body_para(doc,
-        "BSR Pranzo è una piattaforma web completa progettata per semplificare la gestione "
+        "QuickLunch è una piattaforma web completa progettata per semplificare la gestione "
         "quotidiana di bar, mense aziendali e caffetterie. Funziona direttamente dal browser — "
         "senza installazioni, senza app da aggiornare — ed è accessibile da qualsiasi dispositivo: "
         "computer, tablet o smartphone.")
@@ -1019,6 +1020,533 @@ def s14(doc):
     doc.add_paragraph().paragraph_format.space_after = Pt(6)
 
 
+def _win_chrome(tbl, url, row_idx=0):
+    """Barra browser-like nella riga indicata di una tabella."""
+    cell = tbl.rows[row_idx].cells[0]
+    _cell_shd(cell, '1E2A38')
+    _cell_margins(cell, top=45, bottom=45, left=80, right=80)
+    p = cell.paragraphs[0]
+    _p_spacing(p, before=0, after=0)
+    _run_font(p.add_run('● ● ●   '), size=8, color=RGBColor(0x6c, 0x82, 0x96))
+    _run_font(p.add_run(url), size=8, color=RGBColor(0x90, 0xb8, 0xd8))
+
+
+def _win_row(tbl, row_idx, text, bg, fg=None, size=9, bold=False, center=False):
+    cell = tbl.rows[row_idx].cells[0]
+    _cell_shd(cell, bg)
+    _cell_margins(cell, top=40, bottom=40, left=80, right=80)
+    p = cell.paragraphs[0]
+    if center:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p, before=0, after=0)
+    _run_font(p.add_run(text), size=size, bold=bold, color=fg or DARK)
+
+
+def _ingredient_cards(doc, cards, selected_idx=None, bg='F8F9FA'):
+    """Riga di carte ingrediente come tabella multi-colonna."""
+    n = len(cards)
+    tbl = doc.add_table(rows=1, cols=n)
+    _no_borders(tbl)
+    _table_width(tbl, 16.5)
+
+    for ci, (emoji, name) in enumerate(cards):
+        is_sel = (ci == selected_idx)
+        c = tbl.rows[0].cells[ci]
+        cbg = 'FCE4EC' if is_sel else 'FFFFFF'
+        _cell_shd(c, cbg)
+        _cell_margins(c, top=70, bottom=70, left=30, right=30)
+        _cell_border(c,
+                     top='E94560' if is_sel else 'DEE2E6',
+                     bottom='E94560' if is_sel else 'DEE2E6',
+                     left='E94560' if is_sel else 'DEE2E6',
+                     right='E94560' if is_sel else 'DEE2E6')
+        p = c.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _p_spacing(p, before=0, after=3)
+        _run_font(p.add_run(emoji + '\n'), size=14)
+        nt = p.add_run(name)
+        _run_font(nt, size=7, bold=True, color=RED if is_sel else DARK)
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(2)
+    return tbl
+
+
+def _progress_steps(doc, steps, active):
+    """Barra step numerata colorata."""
+    n = len(steps)
+    tbl = doc.add_table(rows=1, cols=n)
+    _no_borders(tbl)
+    _table_width(tbl, 16.5)
+
+    for i, label in enumerate(steps):
+        c = tbl.rows[0].cells[i]
+        if i < active:
+            bg, tc = '28A745', HEX_WHITE
+        elif i == active:
+            bg, tc = HEX_RED, HEX_WHITE
+        else:
+            bg, tc = 'DEE2E6', '6C757D'
+        _cell_shd(c, bg)
+        _cell_margins(c, top=45, bottom=45, left=10, right=10)
+        p = c.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _p_spacing(p, before=0, after=2)
+        num = '✓' if i < active else (str(i + 1) if i < n - 1 else '⊙')
+        _run_font(p.add_run(num + '\n'), size=9, bold=True,
+                  color=RGBColor(*bytes.fromhex(tc)))
+        _run_font(p.add_run(label), size=6.5,
+                  color=RGBColor(*bytes.fromhex(tc)))
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(2)
+    return tbl
+
+
+def _step_header(doc, step_n, total, emoji, title, hint, required=False):
+    tbl = doc.add_table(rows=1, cols=1)
+    _no_borders(tbl)
+    _table_width(tbl, 16.5)
+    cell = tbl.rows[0].cells[0]
+    _cell_shd(cell, HEX_WHITE)
+    _cell_margins(cell, top=100, bottom=80, left=80, right=80)
+
+    p = cell.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p, before=0, after=4)
+    _run_font(p.add_run(f'STEP {step_n} DI {total}  '), size=7,
+              bold=True, color=RGBColor(0x6c, 0x75, 0x7d))
+    if required:
+        _run_font(p.add_run('★ OBBLIGATORIO'), size=7,
+                  bold=True, color=RED)
+
+    p2 = cell.add_paragraph()
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p2, before=4, after=4)
+    _run_font(p2.add_run(emoji + '  '), size=20)
+    _run_font(p2.add_run(title), size=16, bold=True, color=NAVY)
+
+    p3 = cell.add_paragraph()
+    p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p3, before=0, after=0)
+    _run_font(p3.add_run(hint), size=9, color=GRAY)
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(2)
+    return tbl
+
+
+def _bottom_nav(doc, price_str, show_prev=True, show_next=True, show_add=False):
+    tbl = doc.add_table(rows=1, cols=3)
+    _no_borders(tbl)
+    _table_width(tbl, 16.5)
+    _set_col_width(tbl, 0, 3.5)
+    _set_col_width(tbl, 1, 9.0)
+    _set_col_width(tbl, 2, 4.0)
+
+    for cell in tbl.rows[0].cells:
+        _cell_shd(cell, HEX_WHITE)
+        _cell_border(cell, top='DEE2E6')
+        _cell_margins(cell, top=70, bottom=70, left=80, right=80)
+
+    # price
+    pl = tbl.rows[0].cells[0].paragraphs[0]
+    _p_spacing(pl, before=0, after=0)
+    _run_font(pl.add_run('Totale\n'), size=7, color=GRAY)
+    _run_font(pl.add_run(price_str), size=13, bold=True, color=RED)
+
+    # spacer
+    ps = tbl.rows[0].cells[1].paragraphs[0]
+    _p_spacing(ps, before=0, after=0)
+
+    # buttons
+    pr = tbl.rows[0].cells[2].paragraphs[0]
+    pr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    _p_spacing(pr, before=0, after=0)
+    if show_prev:
+        _run_font(pr.add_run('← Indietro   '), size=9, color=GRAY)
+    if show_next:
+        _run_font(pr.add_run('AVANTI →'), size=9, bold=True, color=WHITE)
+        # simulate button bg inline (can't set bg on run; use a small table trick)
+    if show_add:
+        _run_font(pr.add_run('🛒 Aggiungi'), size=9, bold=True, color=WHITE)
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(10)
+    return tbl
+
+
+def _kpi_card_row(doc, cards):
+    """Riga di KPI card (max 4 colonne)."""
+    n = len(cards)
+    tbl = doc.add_table(rows=1, cols=n)
+    _no_borders(tbl)
+    _table_width(tbl, 16.5)
+    for i, (icon, val, label, bg) in enumerate(cards):
+        c = tbl.rows[0].cells[i]
+        _cell_shd(c, bg)
+        _cell_margins(c, top=80, bottom=80, left=100, right=100)
+        p = c.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _p_spacing(p, before=0, after=3)
+        _run_font(p.add_run(icon + '\n'), size=18)
+        _run_font(p.add_run(val + '\n'), size=14, bold=True, color=WHITE)
+        _run_font(p.add_run(label), size=8, color=RGBColor(0xc0, 0xd5, 0xe8))
+    doc.add_paragraph().paragraph_format.space_after = Pt(6)
+    return tbl
+
+
+def s_appendix(doc):
+    h1(doc, 'A', 'Pagine principali del sito', '🖥️')
+    body_para(doc,
+        "Le rappresentazioni seguenti mostrano le schermate chiave che clienti e personale "
+        "utilizzano ogni giorno. L'interfaccia è accessibile da qualsiasi browser, senza "
+        "installare alcuna app. La versione mobile adatta automaticamente tutti i layout.")
+
+    # ─────────────────────────────────────────────
+    # 1. MENU DI OGGI
+    # ─────────────────────────────────────────────
+    h2(doc, '1 · Menu di oggi  —  /t/{slug}/menu')
+    body_para(doc,
+        "I clienti sfogliano i prodotti disponibili oggi, filtrano per categoria "
+        "con le pillole di scelta rapida e aggiungono al carrello con la quantità desiderata.")
+
+    n_rows = 7
+    m = doc.add_table(rows=n_rows, cols=1)
+    _no_borders(m)
+    _table_width(m, 16.5)
+    _win_chrome(m, 'app.bsrpranzo.it/t/bar-centrale/menu', 0)
+    _win_row(m, 1,
+             '🔵 Tutto   🔴 Panini   🟢 Primi   🟠 Dolci   🔵 Bevande   🟣 Insalate',
+             'F0F4F8', fg=DARK, size=9)
+    _win_row(m, 2,
+             '─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─',
+             'FFFFFF', fg=RGBColor(0xde, 0xe2, 0xe6), size=6)
+    prod_rows = [
+        ('🥪', 'Panino Classico',       '4.50 €'),
+        ('🍝', 'Spaghetti al Pomodoro', '5.00 €'),
+        ('🧁', 'Tiramisù',              '2.50 €'),
+    ]
+    for ri, (ic, name, price) in enumerate(prod_rows, 3):
+        bg = HEX_WHITE if ri % 2 == 0 else 'F8F9FA'
+        c = m.rows[ri].cells[0]
+        _cell_shd(c, bg)
+        _cell_margins(c, top=50, bottom=50, left=80, right=80)
+        p = c.paragraphs[0]
+        _p_spacing(p, before=0, after=0)
+        _run_font(p.add_run(ic + '  '), size=11)
+        _run_font(p.add_run(f'{name:<32}'), size=9, color=DARK)
+        _run_font(p.add_run(price), size=9, bold=True, color=RED)
+        _run_font(p.add_run('   [+ Aggiungi]'), size=8, color=GRAY)
+    _win_row(m, 6,
+             '🛒 Carrello (2 prodotti)   |   💳 Wallet: 12.50 €   |   ⭐ 145 punti',
+             '1E2A38', fg=RGBColor(0x90, 0xb8, 0xd8), size=8)
+    doc.add_paragraph().paragraph_format.space_after = Pt(10)
+
+    info_box(doc,
+        "Il menu mostra solo i prodotti attivi con quantità > 0 aggiornate dal pannello admin. "
+        "I prodotti esauriti scompaiono automaticamente.",
+        style='tip')
+
+    # ─────────────────────────────────────────────
+    # 2. BUILDER — SCELTA TIPO
+    # ─────────────────────────────────────────────
+    h2(doc, '2 · Builder — scelta tipo piatto  —  /t/{slug}/builder/visual')
+    body_para(doc,
+        "Il cliente sceglie tra Panino o Insalata. Ogni opzione mostra il prezzo di partenza "
+        "e una breve descrizione degli ingredienti che potrà personalizzare nei passi successivi.")
+
+    tc = doc.add_table(rows=2, cols=1)
+    _no_borders(tc)
+    _table_width(tc, 16.5)
+    _win_chrome(tc, 'app.bsrpranzo.it/t/bar-centrale/builder/visual', 0)
+
+    cards_cell = tc.rows[1].cells[0]
+    _cell_shd(cards_cell, 'F8F9FA')
+    _cell_margins(cards_cell, top=80, bottom=80, left=80, right=80)
+    p_title = cards_cell.paragraphs[0]
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p_title, before=0, after=10)
+    _run_font(p_title.add_run('🍴  Componi il tuo piatto'),
+              size=14, bold=True, color=NAVY)
+    _run_font(p_title.add_run('\nScegli e personalizza passo per passo'),
+              size=9, color=GRAY)
+
+    inner = cards_cell.add_table(rows=1, cols=2)
+    _no_borders(inner)
+    for ci, (emoji, label, desc, price, bg) in enumerate([
+        ('🥪', 'PANINO',   'Pane · Proteina · Verdure · Salse',   'da 3.50 €', 'FFF5F7'),
+        ('🥗', 'INSALATA', 'Base · Proteina · Verdure · Condimento', 'da 3.00 €', 'F0FFF4'),
+    ]):
+        c = inner.rows[0].cells[ci]
+        _cell_shd(c, bg)
+        _cell_border(c, top='E94560' if ci == 0 else '28A745',
+                     bottom='E94560' if ci == 0 else '28A745',
+                     left='E94560' if ci == 0 else '28A745',
+                     right='E94560' if ci == 0 else '28A745',
+                     sz='12')
+        _cell_margins(c, top=100, bottom=100, left=80, right=80)
+        p = c.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _p_spacing(p, before=0, after=6)
+        _run_font(p.add_run(emoji + '\n'), size=24)
+        _run_font(p.add_run(label + '\n'), size=13, bold=True, color=DARK)
+        _run_font(p.add_run(desc + '\n'), size=8, color=GRAY)
+        _run_font(p.add_run(price), size=9, bold=True,
+                  color=RED if ci == 0 else RGBColor(0x28, 0xa7, 0x45))
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(10)
+
+    # ─────────────────────────────────────────────
+    # 3. BUILDER — STEP INGREDIENTI (KIOSK STYLE)
+    # ─────────────────────────────────────────────
+    h2(doc, '3 · Builder — step ingredienti (stile kiosk McDonald\'s)')
+    body_para(doc,
+        "Il cliente è guidato passo per passo. Ogni categoria di ingredienti occupa "
+        "uno step distinto. Le carte sono grandi e touch-friendly. "
+        "La carta selezionata si evidenzia in rosso. "
+        "L'utente non può passare allo step successivo senza aver scelto in uno step obbligatorio.")
+
+    # -- Chrome
+    chrome_tbl = doc.add_table(rows=1, cols=1)
+    _no_borders(chrome_tbl)
+    _table_width(chrome_tbl, 16.5)
+    _win_chrome(chrome_tbl,
+                'app.bsrpranzo.it/t/bar-centrale/builder/visual?type=panino', 0)
+
+    # -- Progress bar
+    _progress_steps(doc, ['Pane', 'Proteina', 'Verdure', 'Salse', 'Fine'], active=0)
+
+    # -- Step header
+    _step_header(doc, 1, 4, '🍞', 'Scegli il Pane',
+                 'Scegli 1 opzione', required=True)
+
+    # -- Ingredient cards
+    _ingredient_cards(doc, [
+        ('🍞', 'Bianco'),
+        ('🌾', 'Integrale'),
+        ('🥖', 'Ciabatta'),
+        ('🫓', 'Rosetta'),
+        ('✨', 'S. Glutine'),
+    ], selected_idx=None)
+
+    # -- Bottom nav
+    _bottom_nav(doc, '3.50 €', show_prev=False, show_next=True)
+
+    info_box(doc,
+        "Se lo step è obbligatorio e il cliente preme «Avanti» senza scegliere, "
+        "il pannello si agita (animazione shake) e il titolo diventa rosso.",
+        style='warning', label='Validazione:')
+
+    # 3b — Step con selezione attiva
+    body_para(doc, 'Dopo aver selezionato un ingrediente, la carta si evidenzia e compare '
+                   'il segno di spunta. Il totale nella barra inferiore si aggiorna in tempo reale.')
+
+    chrome2 = doc.add_table(rows=1, cols=1)
+    _no_borders(chrome2)
+    _table_width(chrome2, 16.5)
+    _win_chrome(chrome2,
+                'app.bsrpranzo.it/t/bar-centrale/builder/visual?type=panino', 0)
+
+    _progress_steps(doc, ['Pane', 'Proteina', 'Verdure', 'Salse', 'Fine'], active=1)
+    _step_header(doc, 2, 4, '🥩', 'Scegli la Proteina', 'Scegli 1 opzione', required=True)
+    _ingredient_cards(doc, [
+        ('🥩', 'Prosciutto Cotto'),
+        ('🍖', 'Prosciutto Crudo'),
+        ('🐟', 'Tonno'),
+        ('🧀', 'Mozzarella'),
+        ('🥩', 'Bresaola ✓'),
+    ], selected_idx=4)
+    _bottom_nav(doc, '3.50 €', show_prev=True, show_next=True)
+
+    # ─────────────────────────────────────────────
+    # 4. BUILDER — RIEPILOGO FINALE
+    # ─────────────────────────────────────────────
+    h2(doc, '4 · Builder — riepilogo e aggiunta al carrello')
+    body_para(doc,
+        "All'ultimo step il cliente vede tutte le sue scelte in un riepilogo visivo "
+        "con emoji e prezzi. Il totale è evidenziato in grande con sfondo in gradiente. "
+        "Il pulsante verde «Aggiungi al carrello» invia l'ordine.")
+
+    chrome3 = doc.add_table(rows=1, cols=1)
+    _no_borders(chrome3)
+    _table_width(chrome3, 16.5)
+    _win_chrome(chrome3,
+                'app.bsrpranzo.it/t/bar-centrale/builder/visual?type=panino', 0)
+
+    _progress_steps(doc, ['✓ Pane', '✓ Proteina', '✓ Verdure', '✓ Salse', 'Fine'], active=4)
+
+    sum_tbl = doc.add_table(rows=1, cols=1)
+    _no_borders(sum_tbl)
+    _table_width(sum_tbl, 16.5)
+    sc = sum_tbl.rows[0].cells[0]
+    _cell_shd(sc, HEX_WHITE)
+    _cell_margins(sc, top=80, bottom=60, left=80, right=80)
+    ph = sc.paragraphs[0]
+    ph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(ph, before=0, after=8)
+    _run_font(ph.add_run('🎉\n'), size=22)
+    _run_font(ph.add_run('Il tuo panino\n'), size=14, bold=True, color=NAVY)
+    _run_font(ph.add_run('Controlla gli ingredienti e aggiungi al carrello'),
+              size=9, color=GRAY)
+
+    si = sc.add_table(rows=2, cols=4)
+    _no_borders(si)
+    sum_items = [
+        ('Base', '🥖', 'Ciabatta', '3.50 €'),
+        ('Proteina', '🥩', 'Bresaola', '+0.00 €'),
+        ('Verdure', '🥗', 'Rucola · Pomodoro', '+0.00 €'),
+        ('Salse', '🌿', 'Pesto', '+0.30 €'),
+        ('Extra', '🧀', 'Parmigiano', '+0.50 €'),
+        ('Extra', '🥓', 'Bacon', '+0.70 €'),
+        ('',      '',   '',          ''),
+        ('',      '',   '',          ''),
+    ]
+    for ri in range(2):
+        for ci in range(4):
+            idx = ri * 4 + ci
+            if idx >= len(sum_items):
+                break
+            cat, em_s, name_s, price_s = sum_items[idx]
+            c = si.rows[ri].cells[ci]
+            _cell_shd(c, 'F8F9FA' if ri % 2 == 0 else HEX_WHITE)
+            _cell_border(c, top='DEE2E6', bottom='DEE2E6',
+                         left='DEE2E6', right='DEE2E6')
+            _cell_margins(c, top=60, bottom=60, left=30, right=30)
+            p = c.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _p_spacing(p, before=0, after=2)
+            _run_font(p.add_run((cat + '\n') if cat else ''), size=6.5, color=GRAY)
+            _run_font(p.add_run((em_s + '\n') if em_s else ''), size=12)
+            _run_font(p.add_run((name_s + '\n') if name_s else ''), size=7.5, bold=True, color=DARK)
+            _run_font(p.add_run(price_s if price_s else ''), size=7.5, color=RED)
+
+    total_tbl = doc.add_table(rows=1, cols=1)
+    _no_borders(total_tbl)
+    _table_width(total_tbl, 16.5)
+    tc2 = total_tbl.rows[0].cells[0]
+    _cell_shd(tc2, HEX_RED)
+    _cell_margins(tc2, top=80, bottom=80, left=100, right=100)
+    pt2 = tc2.paragraphs[0]
+    pt2.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _p_spacing(pt2, before=0, after=0)
+    _run_font(pt2.add_run('Totale    '), size=9, color=RGBColor(0xff, 0xd0, 0xd8))
+    _run_font(pt2.add_run('5.00 €'), size=18, bold=True, color=WHITE)
+    _run_font(pt2.add_run('         🛒 Aggiungi al carrello'),
+              size=11, bold=True, color=WHITE)
+    doc.add_paragraph().paragraph_format.space_after = Pt(10)
+
+    # ─────────────────────────────────────────────
+    # 5. ADMIN — DASHBOARD
+    # ─────────────────────────────────────────────
+    h2(doc, '5 · Pannello Admin — Dashboard  —  /admin/dashboard')
+    body_para(doc,
+        "Il pannello admin è accessibile solo al personale autorizzato. "
+        "La dashboard mostra in tempo reale i dati del giorno: "
+        "incasso, ordini, clienti e alert prodotti in esaurimento.")
+
+    chrome_adm = doc.add_table(rows=1, cols=1)
+    _no_borders(chrome_adm)
+    _table_width(chrome_adm, 16.5)
+    _win_chrome(chrome_adm, 'app.bsrpranzo.it/admin/dashboard', 0)
+
+    # nav bar
+    nav_tbl = doc.add_table(rows=1, cols=1)
+    _no_borders(nav_tbl)
+    _table_width(nav_tbl, 16.5)
+    nav_c = nav_tbl.rows[0].cells[0]
+    _cell_shd(nav_c, HEX_DARK)
+    _cell_margins(nav_c, top=50, bottom=50, left=80, right=80)
+    pn = nav_c.paragraphs[0]
+    _p_spacing(pn, before=0, after=0)
+    _run_font(pn.add_run('🍽️ QuickLunch   '), size=10, bold=True, color=RED)
+    _run_font(pn.add_run('│ Dashboard │ Ordini │ Prodotti │ Personale │ Report │ ...'),
+              size=8, color=RGBColor(0x90, 0xa8, 0xc0))
+
+    # KPI cards
+    _kpi_card_row(doc, [
+        ('💰', '€ 248.50',   'Incasso oggi',      HEX_RED),
+        ('📋', '23',         'Ordini aperti',     HEX_NAVY),
+        ('👥', '148',        'Clienti registrati','1A4A70'),
+        ('⭐', '4 prodotti', 'In esaurimento',    '5D4037'),
+    ])
+
+    # orders table
+    ord_tbl = doc.add_table(rows=4, cols=4)
+    _table_width(ord_tbl, 16.5)
+    _set_col_width(ord_tbl, 0, 1.0)
+    _set_col_width(ord_tbl, 1, 5.5)
+    _set_col_width(ord_tbl, 2, 5.0)
+    _set_col_width(ord_tbl, 3, 5.0)
+    header_row = ord_tbl.rows[0]
+    for ci, hdr in enumerate(['#', 'Cliente', 'Prodotti', 'Stato']):
+        c = header_row.cells[ci]
+        _cell_shd(c, HEX_NAVY)
+        _cell_margins(c, top=45, bottom=45, left=60, right=60)
+        _cell_border(c)
+        p = c.paragraphs[0]
+        _p_spacing(p, before=0, after=0)
+        _run_font(p.add_run(hdr), size=9, bold=True, color=WHITE)
+    order_data = [
+        ('#101', 'Marco Rossi',    'Panino Classico × 1', '🟡 In preparazione'),
+        ('#102', 'Giulia Ferrari', 'Insalata Greca × 2',  '🟢 Pronto'),
+        ('#103', 'Luca Bianchi',   'Pasta al Pesto × 1',  '🔵 In attesa'),
+    ]
+    for ri, (n, cl, pr, st) in enumerate(order_data, 1):
+        bg = HEX_WHITE if ri % 2 == 0 else 'F8F9FA'
+        for ci, val in enumerate([n, cl, pr, st]):
+            c = ord_tbl.rows[ri].cells[ci]
+            _cell_shd(c, bg)
+            _cell_margins(c, top=40, bottom=40, left=60, right=60)
+            _cell_border(c, bottom='DEE2E6')
+            p = c.paragraphs[0]
+            _p_spacing(p, before=0, after=0)
+            _run_font(p.add_run(val), size=9, bold=(ci == 0), color=DARK)
+    doc.add_paragraph().paragraph_format.space_after = Pt(6)
+
+    # ─────────────────────────────────────────────
+    # 6. CUCINA / KDS
+    # ─────────────────────────────────────────────
+    h2(doc, '6 · Pannello Cucina (KDS)  —  /admin/kds')
+    body_para(doc,
+        "Il pannello cucina mostra gli ordini del giorno in tre colonne. "
+        "Un clic fa avanzare ogni ordine allo stato successivo, senza tastiera e senza mouse: "
+        "ideale per un tablet montato in cucina.")
+
+    chrome_kds = doc.add_table(rows=1, cols=1)
+    _no_borders(chrome_kds)
+    _table_width(chrome_kds, 16.5)
+    _win_chrome(chrome_kds, 'app.bsrpranzo.it/admin/kds', 0)
+
+    kds = doc.add_table(rows=1, cols=3)
+    _table_width(kds, 16.5)
+    kds_cols = [
+        ('🔵 Da preparare (4)', [('#101 · Mario B.', '🥪 Panino Classico'),
+                                  ('#104 · Anna V.',  '🍝 Pasta al Pesto')]),
+        ('🟡 In preparazione (2)', [('#102 · Giulia F.', '🥗 Insalata Greca × 2')]),
+        ('🟢 Pronti (3)', [('#099 · Luca M.',  '☕ Caffè + 🧁 Brioche'),
+                            ('#100 · Sara C.',  '🥪 Panino Vegano')]),
+    ]
+    col_bgs = ['EBF5FB', 'FFF8E1', 'E8F5E9']
+    col_hdrs = ['1565C0', 'F57C00', '2E7D32']
+    for ci, (col_title, items) in enumerate(kds_cols):
+        c = kds.rows[0].cells[ci]
+        _cell_shd(c, col_bgs[ci])
+        _cell_margins(c, top=60, bottom=60, left=60, right=60)
+        ph = c.paragraphs[0]
+        _p_spacing(ph, before=0, after=8)
+        _run_font(ph.add_run(col_title), size=9, bold=True,
+                  color=RGBColor(*bytes.fromhex(col_hdrs[ci])))
+        for order_id, dishes in items:
+            po = c.add_paragraph()
+            _p_spacing(po, before=4, after=4)
+            _cell_border(c, bottom='CCCCCC')
+            _run_font(po.add_run(order_id + '\n'), size=8, bold=True, color=DARK)
+            _run_font(po.add_run(dishes), size=8, color=GRAY)
+    doc.add_paragraph().paragraph_format.space_after = Pt(6)
+
+    info_box(doc,
+        "Il pannello KDS non richiede aggiornamento manuale: gli ordini appaiono "
+        "in tempo reale appena il cliente completa il checkout.",
+        style='success', label='Aggiornamento real-time:')
+
+
 def s15(doc):
     h1(doc, 15, 'Credenziali di accesso', '🔑')
     info_box(doc,
@@ -1087,7 +1615,7 @@ def set_document_defaults(doc):
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         _p_spacing(p, before=0, after=4)
         _para_border(p, bottom_color='DEE2E6', bottom_sz='4')
-        r1 = p.add_run('BSR Pranzo  ')
+        r1 = p.add_run('QuickLunch  ')
         _run_font(r1, size=8, bold=True, color=RED)
         r2 = p.add_run('· Manuale del Proprietario')
         _run_font(r2, size=8, color=GRAY)
@@ -1128,7 +1656,7 @@ def main():
     build_toc(doc)
 
     sections = [s01, s02, s03, s04, s05, s06, s07,
-                s08, s09, s10, s11, s12, s13, s14, s15]
+                s08, s09, s10, s11, s12, s13, s14, s15, s_appendix]
 
     for i, fn in enumerate(sections):
         fn(doc)
@@ -1140,7 +1668,7 @@ def main():
     _p_spacing(p, before=20, after=0)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _para_border(p, bottom_color=None)
-    r = p.add_run('BSR Pranzo  ·  Sistema di gestione bar e mense  ·  v2.0  ·  Giugno 2026')
+    r = p.add_run('QuickLunch  ·  Sistema di gestione bar e mense  ·  v2.0  ·  Giugno 2026  ·  © 2024–26 DS Consulting')
     _run_font(r, size=9, color=GRAY)
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

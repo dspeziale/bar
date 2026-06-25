@@ -1,4 +1,4 @@
-import ssl
+﻿import ssl
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -77,7 +77,7 @@ def send_email(to_addr, subject, html_body, text_body=None):
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
-        msg['From']    = f'BSR Ufficio <{gmail_user}>'
+        msg['From']    = f'QuickLunch Ufficio <{gmail_user}>'
         msg['To']      = to_addr
         if text_body:
             msg.attach(MIMEText(text_body, 'plain'))
@@ -129,7 +129,7 @@ def email_poll_html(poll, base_url):
     </a>
   </div>
   <p style="margin-top:24px;color:#888;font-size:12px;">
-    BSR Ufficio — Bar Self-Service Ristoro
+    QuickLunch Ufficio — Bar Self-Service Ristoro
   </p>
 </div>
 """

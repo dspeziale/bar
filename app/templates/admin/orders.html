@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Ordini{% endblock %}
 {% block page_title %}Gestione Ordini{% endblock %}
 {% block breadcrumb %}
@@ -10,7 +10,7 @@
 <!-- Filtri -->
 <div class="card card-outline card-secondary mb-3">
   <div class="card-body py-2">
-    <form method="GET" class="bsr-filter-form">
+    <form method="GET" class="QuickLunch-filter-form">
       <div class="input-group" style="max-width:180px;flex:1 1 140px;">
         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-calendar"></i></span></div>
         <input type="date" name="date" class="form-control" value="{{ filter_date }}">
@@ -214,7 +214,7 @@ function openBuilderDetail(key) {
           + '<span style="font-size:.88rem;">' + ing.name + '</span>'
           + (ing.extra > 0
               ? '<span style="font-size:.8rem;color:#e94560;font-weight:700;">+' + ing.extra.toFixed(2) + '€</span>'
-              : '<span style="font-size:.8rem;color:var(--bsr-text-muted);">incluso</span>')
+              : '<span style="font-size:.8rem;color:var(--QuickLunch-text-muted);">incluso</span>')
           + '</li>';
   });
 

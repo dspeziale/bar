@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if mode == 'login' %}Accedi{% else %}Registrati{% endif %} | {{ tenant.name }}</title>
-  <script>(function(){ var t=localStorage.getItem('bsr-theme')||'light'; document.documentElement.setAttribute('data-bsr-theme',t); })();</script>
+  <script>(function(){ var t=localStorage.getItem('QuickLunch-theme')||'light'; document.documentElement.setAttribute('data-QuickLunch-theme',t); })();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
       --auth-input-bg: #fff; --auth-input-border: #ced4da; --auth-input-color: #495057;
       --auth-muted: #6c757d; --auth-card-border: #dee2e6;
     }
-    [data-bsr-theme="dark"] {
+    [data-QuickLunch-theme="dark"] {
       --auth-bg-from: #050810; --auth-bg-to: #040b18;
       --auth-card: #16213e; --auth-text: #e2e8f0;
       --auth-input-bg: #0a1628; --auth-input-border: #1e3058; --auth-input-color: #e2e8f0;
@@ -72,8 +72,8 @@
       font-size: .95rem; display: flex; align-items: center; justify-content: center; gap: 8px; padding: .55rem;
     }
     .btn-google:hover { background: #f8f9fa; }
-    [data-bsr-theme="dark"] .btn-google { background: #0a1628; color: #e2e8f0; border-color: #1e3058; }
-    [data-bsr-theme="dark"] .btn-google:hover { background: #16213e; }
+    [data-QuickLunch-theme="dark"] .btn-google { background: #0a1628; color: #e2e8f0; border-color: #1e3058; }
+    [data-QuickLunch-theme="dark"] .btn-google:hover { background: #16213e; }
 
     .divider-text {
       text-align: center; color: var(--auth-muted); margin: 1rem 0; position: relative;
@@ -111,18 +111,18 @@
     }
     .qr-mobile-box { margin-top: .75rem; display: none; }
 
-    #bsr-theme-toggle-auth {
+    #QuickLunch-theme-toggle-auth {
       position: fixed; top: 14px; right: 14px;
       background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
       border-radius: 20px; color: #fff; padding: 5px 12px;
       font-size: .85rem; cursor: pointer;
       display: flex; align-items: center; gap: 6px; transition: background .2s;
     }
-    #bsr-theme-toggle-auth:hover { background: rgba(255,255,255,.25); }
+    #QuickLunch-theme-toggle-auth:hover { background: rgba(255,255,255,.25); }
   </style>
 </head>
 <body class="hold-transition">
-  <button id="bsr-theme-toggle-auth" onclick="bsrToggle()">
+  <button id="QuickLunch-theme-toggle-auth" onclick="bsrToggle()">
     <i class="fas fa-moon" id="ti"></i> <span id="tl">Scuro</span>
   </button>
 
@@ -237,7 +237,7 @@
           </p>
         </div>
         <p style="color:rgba(255,255,255,.3);font-size:.72rem;margin-top:1rem;text-align:center;">
-          Powered by BSR Pranzo
+          Powered by QuickLunch
         </p>
       </div>
 
@@ -279,16 +279,16 @@
     }
 
     function bsrApplyTheme(t) {
-      document.documentElement.setAttribute('data-bsr-theme', t);
+      document.documentElement.setAttribute('data-QuickLunch-theme', t);
       document.getElementById('ti').className = t==='dark' ? 'fas fa-sun' : 'fas fa-moon';
       document.getElementById('tl').textContent = t==='dark' ? 'Chiaro' : 'Scuro';
     }
     function bsrToggle() {
-      var cur = document.documentElement.getAttribute('data-bsr-theme') || 'light';
+      var cur = document.documentElement.getAttribute('data-QuickLunch-theme') || 'light';
       var next = cur === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('bsr-theme', next); bsrApplyTheme(next);
+      localStorage.setItem('QuickLunch-theme', next); bsrApplyTheme(next);
     }
-    bsrApplyTheme(localStorage.getItem('bsr-theme') || 'light');
+    bsrApplyTheme(localStorage.getItem('QuickLunch-theme') || 'light');
   </script>
 </body>
 </html>

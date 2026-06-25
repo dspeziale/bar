@@ -1,320 +1,460 @@
-{% extends "base.html" %}
-{% block title %}Builder Visuale{% endblock %}
+﻿{% extends "base.html" %}
+{% block title %}Builder{% endblock %}
 {% block page_title %}
   {% if builder_type %}
     {{ 'Componi il Tuo Panino' if builder_type == 'panino' else 'Componi la Tua Insalata' }}
   {% else %}
-    Builder Visuale
+    Cosa vuoi creare?
   {% endif %}
 {% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
-<li class="breadcrumb-item active">Builder Visuale</li>
+<li class="breadcrumb-item active">Builder</li>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-  /* ── Layout ── */
-  .bv-wrap { display: flex; gap: 1.5rem; align-items: flex-start; }
-  .bv-main { flex: 1; min-width: 0; }
-  .bv-side  { width: 240px; flex-shrink: 0; }
+/* ═══════════════════════════════════════════════════
+   MC BUILDER — McDonald's kiosk visual style
+═══════════════════════════════════════════════════ */
 
-  /* ── Steps bar ── */
-  .bv-steps-outer { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .bv-steps { display: flex; align-items: flex-start; gap: 0; min-width: max-content; }
-  .bv-step  { display: flex; flex-direction: column; align-items: center; min-width: 64px; cursor: pointer; position: relative; }
-  .bv-step:not(:last-child)::after {
-    content: ''; position: absolute; top: 17px; left: calc(50% + 18px);
-    width: calc(100% - 36px); height: 2px; background: var(--bsr-card-border);
-  }
-  .bv-step.done::after  { background: #28a745; }
-  .bv-step-dot {
-    width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--bsr-card-border);
-    background: var(--bsr-card-bg); display: flex; align-items: center; justify-content: center;
-    font-size: .8rem; font-weight: 700; color: var(--bsr-text-muted); transition: all .22s; position: relative; z-index: 1;
-  }
-  .bv-step.active .bv-step-dot { background: #e94560; border-color: #e94560; color: #fff; box-shadow: 0 0 0 4px rgba(233,69,96,.2); }
-  .bv-step.done   .bv-step-dot { background: #28a745; border-color: #28a745; color: #fff; }
-  .bv-step-lbl { font-size: .65rem; text-align: center; margin-top: 5px; color: var(--bsr-text-muted); white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
-  .bv-step.active .bv-step-lbl { color: #e94560; font-weight: 700; }
-  .bv-step.done   .bv-step-lbl { color: #28a745; }
+/* ── Global wrap ── */
+.mc-wrap { max-width: 960px; margin: 0 auto; }
 
-  /* ── Type chooser ── */
-  .bv-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 440px; margin: 1.5rem auto; }
-  .bv-type-card {
-    border-radius: 20px; padding: 2rem 1rem; text-align: center; cursor: pointer;
-    border: 3px solid var(--bsr-card-border); background: var(--bsr-card-bg);
-    transition: all .2s; text-decoration: none; color: var(--bsr-text); display: block;
-  }
-  .bv-type-card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,.18); text-decoration: none; color: var(--bsr-text); }
-  .bv-type-card.tc-panino:hover   { border-color: #e94560; }
-  .bv-type-card.tc-insalata:hover { border-color: #28a745; }
-  .bv-type-emoji { font-size: 3.8rem; line-height: 1; }
-  .bv-type-name  { font-size: 1.3rem; font-weight: 700; margin: .6rem 0 .25rem; }
-  .bv-type-sub   { font-size: .8rem; color: var(--bsr-text-muted); }
-  .bv-type-price { font-size: 1rem; font-weight: 700; margin-top: .5rem; }
-  .tc-panino   .bv-type-price { color: #e94560; }
-  .tc-insalata .bv-type-price { color: #28a745; }
+/* ══════════════════ TYPE CHOOSER ══════════════════ */
+.mc-hero {
+  text-align: center;
+  padding: 1.5rem 0 1rem;
+}
+.mc-hero-title {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -.5px;
+  margin-bottom: .25rem;
+}
+.mc-hero-sub {
+  font-size: 1rem;
+  color: var(--QuickLunch-text-muted);
+}
 
-  /* ── Category step ── */
-  .bv-cat-hd { text-align: center; padding: 1rem 0 1.25rem; }
-  .bv-cat-ico  { font-size: 2rem; }
-  .bv-cat-name { font-size: 1.2rem; font-weight: 700; margin-top: .3rem; }
-  .bv-cat-hint { font-size: .82rem; color: var(--bsr-text-muted); margin-top: .15rem; }
-  .bv-badge-req { display: inline-block; background: #e94560; color: #fff; font-size: .65rem; padding: 1px 7px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+.mc-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  max-width: 640px;
+  margin: 2rem auto 1.5rem;
+}
+.mc-type-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--QuickLunch-text);
+  border: 3px solid var(--QuickLunch-card-border);
+  background: var(--QuickLunch-card-bg);
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  display: block;
+}
+.mc-type-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 50px rgba(0,0,0,.2);
+  text-decoration: none;
+  color: var(--QuickLunch-text);
+}
+.mc-type-card.t-panino:hover   { border-color: #e94560; }
+.mc-type-card.t-insalata:hover { border-color: #28a745; }
+.mc-type-banner { height: 8px; }
+.t-panino   .mc-type-banner { background: linear-gradient(90deg,#e94560,#ff7094); }
+.t-insalata .mc-type-banner { background: linear-gradient(90deg,#28a745,#5dd87a); }
+.mc-type-body { padding: 1.75rem 1.25rem 1.5rem; text-align: center; }
+.mc-type-emoji { font-size: 4.5rem; line-height: 1; margin-bottom: .75rem; display: block; }
+.mc-type-name  { font-size: 1.5rem; font-weight: 900; margin-bottom: .35rem; }
+.mc-type-desc  { font-size: .85rem; color: var(--QuickLunch-text-muted); margin-bottom: .75rem; }
+.mc-type-pill {
+  display: inline-block;
+  padding: .35rem 1.1rem;
+  border-radius: 999px;
+  font-size: .85rem;
+  font-weight: 800;
+}
+.t-panino   .mc-type-pill { background: rgba(233,69,96,.12); color: #e94560; }
+.t-insalata .mc-type-pill { background: rgba(40,167,69,.12); color: #28a745; }
 
-  /* ── Ingredient cards ── */
-  .bv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: .75rem; }
-  .bv-card {
-    border-radius: 14px; padding: .75rem .5rem .65rem; text-align: center; cursor: pointer;
-    border: 2.5px solid var(--bsr-card-border); background: var(--bsr-card-bg);
-    transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
-    position: relative; user-select: none;
-  }
-  .bv-card:hover:not(.bv-dis) { transform: scale(1.07); box-shadow: 0 8px 20px rgba(0,0,0,.18); border-color: #e94560; }
-  .bv-card.bv-sel { border-color: #e94560; background: linear-gradient(135deg,rgba(233,69,96,.11),rgba(15,52,96,.07)); }
-  .bv-card.bv-dis { opacity: .32; cursor: not-allowed; }
-  .bv-card-check {
-    position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
-    border-radius: 50%; background: #e94560; color: #fff;
-    display: none; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 900; box-shadow: 0 2px 6px rgba(233,69,96,.5);
-  }
-  .bv-card.bv-sel .bv-card-check { display: flex; }
-  .bv-card-emoji { font-size: 2rem; line-height: 1; }
-  .bv-card-name  { font-size: .7rem; font-weight: 700; margin-top: .35rem; line-height: 1.25; color: var(--bsr-text); }
-  .bv-card-price { font-size: .68rem; color: #e94560; font-weight: 700; margin-top: 2px; }
+.mc-alt-link {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: .85rem;
+  color: var(--QuickLunch-text-muted);
+}
 
-  /* ── Receipt sidebar ── */
-  .bv-receipt {
-    border-radius: 16px; overflow: hidden;
-    background: var(--bsr-card-bg); border: 1px solid var(--bsr-card-border);
-    box-shadow: var(--bsr-shadow); position: sticky; top: 70px;
-  }
-  .bv-receipt-hd {
-    background: linear-gradient(135deg,#e94560,#0f3460); color: #fff;
-    padding: .9rem 1rem; text-align: center;
-  }
-  .bv-receipt-hd-emoji { font-size: 2rem; line-height: 1; }
-  .bv-receipt-hd-title { font-size: .9rem; font-weight: 700; margin-top: .2rem; }
-  .bv-receipt-body { padding: .65rem 1rem; min-height: 100px; }
-  .bv-rx-item {
-    display: flex; align-items: center; gap: 7px; padding: .3rem 0;
-    border-bottom: 1px dashed var(--bsr-card-border); font-size: .78rem;
-  }
-  .bv-rx-item:last-child { border: none; }
-  .bv-rx-emoji { font-size: 1rem; flex-shrink: 0; }
-  .bv-rx-name  { flex: 1; color: var(--bsr-text); }
-  .bv-rx-price { color: #e94560; font-weight: 700; font-size: .72rem; white-space: nowrap; }
-  .bv-rx-empty { color: var(--bsr-text-muted); font-size: .8rem; text-align: center; padding: 1.2rem 0; }
-  .bv-receipt-ft {
-    padding: .65rem 1rem; border-top: 2px solid var(--bsr-card-border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .bv-rx-total-lbl   { font-size: .78rem; color: var(--bsr-text-muted); }
-  .bv-rx-total-price { font-size: 1.35rem; font-weight: 700; color: #e94560; }
+/* ══════════════════ PROGRESS BAR ══════════════════ */
+.mc-progress-wrap {
+  background: var(--QuickLunch-card-bg);
+  border: 1px solid var(--QuickLunch-card-border);
+  border-radius: 18px;
+  padding: 1rem 1.25rem .65rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mc-steps { display: flex; align-items: flex-start; min-width: max-content; }
+.mc-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  cursor: pointer;
+  position: relative;
+}
+.mc-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: calc(50% + 22px);
+  width: calc(100% - 44px);
+  height: 3px;
+  background: var(--QuickLunch-card-border);
+  border-radius: 2px;
+}
+.mc-step.done::after   { background: #28a745; }
+.mc-step.active::after { background: linear-gradient(90deg,#e94560,var(--QuickLunch-card-border)); }
 
-  /* ── Summary step ── */
-  .bv-sum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
-  .bv-sum-item { border-radius: 12px; padding: .65rem .5rem; text-align: center; background: var(--bsr-card-bg); border: 2px solid var(--bsr-card-border); }
-  .bv-sum-cat  { font-size: .6rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bsr-text-muted); margin-bottom: .2rem; }
-  .bv-sum-emoji{ font-size: 1.5rem; line-height: 1; }
-  .bv-sum-name { font-size: .72rem; font-weight: 700; margin-top: .25rem; }
-  .bv-sum-xprice{ font-size: .68rem; color: #e94560; }
-  .bv-total-big { text-align: center; padding: 1.25rem 0 .5rem; }
-  .bv-total-num { font-size: 2.5rem; font-weight: 700; color: #e94560; }
-  .bv-total-sub { font-size: .85rem; color: var(--bsr-text-muted); }
+.mc-step-dot {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 3px solid var(--QuickLunch-card-border);
+  background: var(--QuickLunch-card-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; font-weight: 800; color: var(--QuickLunch-text-muted);
+  transition: all .22s; position: relative; z-index: 1;
+}
+.mc-step.active .mc-step-dot {
+  background: #e94560; border-color: #e94560; color: #fff;
+  box-shadow: 0 0 0 5px rgba(233,69,96,.2);
+}
+.mc-step.done .mc-step-dot { background: #28a745; border-color: #28a745; color: #fff; }
+.mc-step-lbl {
+  font-size: .62rem; font-weight: 700; margin-top: 6px;
+  text-align: center; color: var(--QuickLunch-text-muted);
+  white-space: nowrap; max-width: 72px; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: .02em; text-transform: uppercase;
+}
+.mc-step.active .mc-step-lbl { color: #e94560; }
+.mc-step.done   .mc-step-lbl { color: #28a745; }
 
-  /* ── Nav bar (sticky bottom) ── */
-  .bv-nav {
-    position: sticky; bottom: 0; z-index: 300;
-    background: var(--bsr-card-bg); border-top: 1px solid var(--bsr-card-border);
-    padding: .8rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    box-shadow: 0 -4px 20px rgba(0,0,0,.12);
-  }
-  .bv-nav-info .bv-nav-step { font-size: .72rem; color: var(--bsr-text-muted); }
-  .bv-nav-info .bv-nav-price { font-size: 1.3rem; font-weight: 700; color: #e94560; }
-  .bv-btns { display: flex; gap: .6rem; }
-  .bv-btn {
-    border: none; border-radius: 12px; padding: .6rem 1.25rem;
-    font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .15s, transform .1s;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .bv-btn:active { transform: scale(.96); }
-  .bv-btn-prev { background: var(--bsr-ig-bg); color: var(--bsr-text); }
-  .bv-btn-next { background: linear-gradient(135deg,#e94560,#0f3460); color: #fff; }
-  .bv-btn-add  { background: linear-gradient(135deg,#28a745,#198754); color: #fff; }
-  .bv-btn:disabled { opacity: .38; cursor: not-allowed; }
+/* ══════════════════ STEP PANEL ══════════════════ */
+.mc-panel {
+  background: var(--QuickLunch-card-bg);
+  border: 1px solid var(--QuickLunch-card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 5rem;
+}
 
-  /* ── Animations ── */
-  @keyframes bv-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-  @keyframes bv-pop   { 0%{transform:scale(.95);opacity:0} 100%{transform:scale(1);opacity:1} }
-  .bv-panel-in { animation: bv-pop .22s ease both; }
+.mc-step-hd {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 1.5rem 1.5rem;
+  border-bottom: 1px solid var(--QuickLunch-card-border);
+  text-align: center;
+}
+.mc-step-num {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .72rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--QuickLunch-text-muted); margin-bottom: .75rem;
+}
+.mc-step-num-badge {
+  background: #e94560; color: #fff; border-radius: 999px;
+  padding: .1rem .6rem; font-size: .65rem;
+}
+.mc-step-emoji { font-size: 3.5rem; line-height: 1; margin-bottom: .6rem; }
+.mc-step-title { font-size: 1.75rem; font-weight: 900; letter-spacing: -.5px; margin-bottom: .35rem; }
+.mc-step-hint  { font-size: .9rem; color: var(--QuickLunch-text-muted); }
+.mc-badge-req {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: #fff3cd; color: #856404;
+  border: 1px solid #ffc107; border-radius: 999px;
+  font-size: .72rem; font-weight: 700; padding: .2rem .75rem; margin-top: .5rem;
+}
 
-  /* ── Mobile ── */
-  @media (max-width: 767px) {
-    .bv-side { display: none; }
-    .bv-grid { grid-template-columns: repeat(3, 1fr); gap: .5rem; }
-  }
-  @media (max-width: 380px) {
-    .bv-grid { grid-template-columns: repeat(2, 1fr); }
-  }
+/* ══════════════════ INGREDIENT GRID ══════════════════ */
+.mc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+.mc-card {
+  border-radius: 18px; padding: 1.25rem .75rem 1rem;
+  text-align: center; cursor: pointer;
+  border: 3px solid var(--QuickLunch-card-border); background: var(--QuickLunch-card-bg);
+  transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
+  position: relative; user-select: none;
+}
+.mc-card:hover:not(.mc-dis) {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 12px 30px rgba(0,0,0,.14);
+  border-color: #e94560;
+}
+.mc-card.mc-sel {
+  border-color: #e94560;
+  background: linear-gradient(135deg, rgba(233,69,96,.08), rgba(15,52,96,.05));
+}
+.mc-card.mc-dis { opacity: .3; cursor: not-allowed; }
+.mc-card-check {
+  position: absolute; top: -10px; right: -10px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #e94560; color: #fff;
+  display: none; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 900; box-shadow: 0 3px 8px rgba(233,69,96,.5);
+}
+.mc-card.mc-sel .mc-card-check { display: flex; }
+.mc-card-emoji { font-size: 3.2rem; line-height: 1; display: block; margin-bottom: .6rem; }
+.mc-card-name  {
+  font-size: .8rem; font-weight: 800; line-height: 1.3;
+  color: var(--QuickLunch-text); text-transform: uppercase; letter-spacing: .03em;
+}
+.mc-card-price {
+  display: inline-block; margin-top: .45rem;
+  background: rgba(233,69,96,.12); color: #e94560;
+  border-radius: 999px; font-size: .72rem; font-weight: 800; padding: .1rem .55rem;
+}
+
+/* ══════════════════ SUMMARY PANEL ══════════════════ */
+.mc-sum-hd {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--QuickLunch-card-border); text-align: center;
+}
+.mc-sum-title { font-size: 1.75rem; font-weight: 900; letter-spacing: -.5px; }
+.mc-sum-sub   { font-size: .9rem; color: var(--QuickLunch-text-muted); margin-top: .3rem; }
+.mc-sum-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: .85rem; padding: 1.5rem;
+}
+.mc-sum-item {
+  border-radius: 14px; padding: .9rem .6rem; text-align: center;
+  background: var(--QuickLunch-card-bg); border: 2px solid var(--QuickLunch-card-border);
+}
+.mc-sum-cat   { font-size: .58rem; text-transform: uppercase; letter-spacing: .07em; color: var(--QuickLunch-text-muted); font-weight: 700; margin-bottom: .3rem; }
+.mc-sum-emoji { font-size: 2rem; display: block; line-height: 1; }
+.mc-sum-name  { font-size: .75rem; font-weight: 800; margin-top: .3rem; text-transform: uppercase; letter-spacing: .02em; }
+.mc-sum-price { display: inline-block; margin-top: .25rem; font-size: .68rem; font-weight: 700; color: #e94560; }
+
+.mc-total-block {
+  margin: 0 1.5rem 1.5rem;
+  border-radius: 18px; padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg,#e94560,#0f3460);
+  display: flex; align-items: center; justify-content: space-between; color: #fff;
+}
+.mc-total-lbl { font-size: .85rem; font-weight: 700; opacity: .85; }
+.mc-total-num { font-size: 2rem; font-weight: 900; letter-spacing: -.5px; }
+
+/* ══════════════════ BOTTOM NAV ══════════════════ */
+.mc-bottom {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 400;
+  background: var(--QuickLunch-card-bg); border-top: 2px solid var(--QuickLunch-card-border);
+  padding: .85rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  box-shadow: 0 -6px 30px rgba(0,0,0,.15);
+}
+.mc-bottom-left  { display: flex; align-items: center; }
+.mc-bottom-right { display: flex; align-items: center; gap: .75rem; }
+.mc-price-badge  { display: flex; flex-direction: column; align-items: flex-start; margin-left: .25rem; }
+.mc-price-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: var(--QuickLunch-text-muted); font-weight: 700; }
+.mc-price-val { font-size: 1.5rem; font-weight: 900; color: #e94560; letter-spacing: -.5px; }
+
+.mc-btn {
+  border: none; border-radius: 14px; padding: .75rem 1.75rem;
+  font-size: .95rem; font-weight: 900; cursor: pointer;
+  transition: transform .1s, opacity .15s, box-shadow .15s;
+  display: flex; align-items: center; gap: 7px; letter-spacing: .02em;
+}
+.mc-btn:active   { transform: scale(.95); }
+.mc-btn:disabled { opacity: .35; cursor: not-allowed; }
+.mc-btn-prev {
+  background: var(--QuickLunch-ig-bg); color: var(--QuickLunch-text);
+  border: 2px solid var(--QuickLunch-card-border);
+  padding-left: 1.1rem; padding-right: 1.1rem;
+}
+.mc-btn-next {
+  background: linear-gradient(135deg,#e94560 0%,#c0274a 100%);
+  color: #fff; min-width: 140px; justify-content: center;
+  box-shadow: 0 6px 20px rgba(233,69,96,.4);
+  font-size: 1rem; text-transform: uppercase; letter-spacing: .06em;
+}
+.mc-btn-next:hover:not(:disabled) { box-shadow: 0 8px 28px rgba(233,69,96,.55); }
+.mc-btn-add {
+  background: linear-gradient(135deg,#28a745 0%,#1a7a31 100%);
+  color: #fff; min-width: 180px; justify-content: center;
+  box-shadow: 0 6px 20px rgba(40,167,69,.4);
+  font-size: 1rem; text-transform: uppercase; letter-spacing: .06em;
+}
+.mc-btn-add:hover:not(:disabled) { box-shadow: 0 8px 28px rgba(40,167,69,.55); }
+
+/* ── Animations ── */
+@keyframes mc-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 60%{transform:translateX(8px)} }
+@keyframes mc-pop   { 0%{transform:scale(.94);opacity:0} 100%{transform:scale(1);opacity:1} }
+.mc-panel-in { animation: mc-pop .25s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .mc-type-grid { grid-template-columns: 1fr; max-width: 320px; }
+  .mc-grid { grid-template-columns: repeat(3, 1fr); gap: .6rem; padding: 1rem; }
+  .mc-card-emoji { font-size: 2.4rem; }
+  .mc-step-title { font-size: 1.35rem; }
+  .mc-btn-prev span { display: none; }
+  .mc-bottom { padding: .65rem 1rem; }
+}
+@media (max-width: 380px) {
+  .mc-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="mc-wrap">
 
-{# ─────────────────────────────────────────── TYPE CHOOSER (no type yet) ── #}
+{# ═══════════════════════════════════ TYPE CHOOSER ═══════════════════════════════════ #}
 {% if not builder_type %}
-<div class="card" style="max-width:520px;margin:0 auto;">
-  <div class="card-body text-center py-4">
-    <h4 class="mb-1"><i class="fas fa-fire mr-2" style="color:#e94560;"></i>Cosa vuoi creare?</h4>
-    <p class="text-muted mb-3" style="font-size:.9rem;">Scegli il tipo e componi il tuo piatto passo per passo</p>
-    <div class="bv-type-grid">
-      <a href="{{ url_for('main.builder_visual', type='panino') }}" class="bv-type-card tc-panino">
-        <div class="bv-type-emoji">🥪</div>
-        <div class="bv-type-name">Panino</div>
-        <div class="bv-type-sub">Pane, farcitura e salse</div>
-        <div class="bv-type-price">da {{ '%.2f'|format(config.BUILDER_PRICES['panino']) }}€</div>
-      </a>
-      <a href="{{ url_for('main.builder_visual', type='insalata') }}" class="bv-type-card tc-insalata">
-        <div class="bv-type-emoji">🥗</div>
-        <div class="bv-type-name">Insalata</div>
-        <div class="bv-type-sub">Base, proteine e condimento</div>
-        <div class="bv-type-price">da {{ '%.2f'|format(config.BUILDER_PRICES['insalata']) }}€</div>
-      </a>
+
+<div class="mc-hero">
+  <div class="mc-hero-title">🍴 Componi il tuo piatto</div>
+  <div class="mc-hero-sub">Scegli e personalizza passo per passo</div>
+</div>
+
+<div class="mc-type-grid">
+  <a href="{{ url_for('main.builder_visual', type='panino') }}" class="mc-type-card t-panino">
+    <div class="mc-type-banner"></div>
+    <div class="mc-type-body">
+      <span class="mc-type-emoji">🥪</span>
+      <div class="mc-type-name">Panino</div>
+      <div class="mc-type-desc">Pane, farcitura, contorni e salse</div>
+      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['panino']) }}€</span>
     </div>
-    <p class="text-muted mt-3 mb-0" style="font-size:.8rem;">
-      <i class="fas fa-layer-group mr-1"></i>Preferisci la vista compatta?
-      <a href="{{ url_for('main.builder') }}">Usa il Builder Classico</a>
-    </p>
+  </a>
+  <a href="{{ url_for('main.builder_visual', type='insalata') }}" class="mc-type-card t-insalata">
+    <div class="mc-type-banner"></div>
+    <div class="mc-type-body">
+      <span class="mc-type-emoji">🥗</span>
+      <div class="mc-type-name">Insalata</div>
+      <div class="mc-type-desc">Base, proteine, verdure e condimento</div>
+      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['insalata']) }}€</span>
+    </div>
+  </a>
+</div>
+
+<div class="mc-alt-link">
+  <i class="fas fa-list mr-1"></i>
+  Preferisci la vista classica?
+  <a href="{{ url_for('main.builder') }}">Usa il Builder Compatto</a>
+</div>
+
+{# ═══════════════════════════════════ VISUAL BUILDER ═══════════════════════════════════ #}
+{% else %}
+<div id="mc-root">
+
+  {# ── Progress steps ── #}
+  <div class="mc-progress-wrap">
+    <div class="mc-steps" id="mc-steps-bar"></div>
+  </div>
+
+  {# ── Category panels ── #}
+  {% for cat in categories %}
+  <div class="mc-panel" id="mc-p{{ loop.index0 }}"
+       data-cid="{{ cat.id }}"
+       data-req="{{ 'true' if cat.is_required else 'false' }}"
+       data-max="{{ cat.max_choices }}"
+       style="display:none;">
+    <div class="mc-step-hd">
+      <div class="mc-step-num">
+        <span class="mc-step-num-badge">Step {{ loop.index }}</span>
+        di {{ categories|length }}
+      </div>
+      <div class="mc-step-emoji">
+        <i class="fas {{ cat.icon }}" style="font-size:3rem;color:#e94560;"></i>
+      </div>
+      <div class="mc-step-title">{{ cat.name }}</div>
+      <div class="mc-step-hint">
+        {% if cat.max_choices == 1 %}Scegli 1 opzione{% else %}Fino a {{ cat.max_choices }} scelte{% endif %}
+      </div>
+      {% if cat.is_required %}
+      <div class="mc-badge-req"><i class="fas fa-star" style="font-size:.6rem;"></i> Obbligatorio</div>
+      {% endif %}
+    </div>
+    <div class="mc-grid">
+      {% for ing in cat.ingredients if ing.is_active %}
+      <div class="mc-card"
+           data-iid="{{ ing.id }}"
+           data-name="{{ ing.name }}"
+           data-price="{{ ing.price_extra }}"
+           data-cid="{{ cat.id }}"
+           data-max="{{ cat.max_choices }}"
+           onclick="mcToggle(this)">
+        <div class="mc-card-check">✓</div>
+        <span class="mc-card-emoji" id="mce{{ ing.id }}">🍽️</span>
+        <div class="mc-card-name">{{ ing.name }}</div>
+        {% if ing.price_extra > 0 %}
+        <div class="mc-card-price">+{{ '%.2f'|format(ing.price_extra) }}€</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {# ── Summary panel ── #}
+  <div class="mc-panel" id="mc-psum" style="display:none;">
+    <div class="mc-sum-hd">
+      <div style="font-size:3rem;margin-bottom:.5rem;">🎉</div>
+      <div class="mc-sum-title">Il tuo {{ 'panino' if builder_type == 'panino' else 'insalata' }}</div>
+      <div class="mc-sum-sub">Controlla gli ingredienti e aggiungi al carrello</div>
+    </div>
+    <div id="mc-sum-grid" class="mc-sum-grid"></div>
+    <div id="mc-total-block" class="mc-total-block">
+      <div class="mc-total-lbl">Totale</div>
+      <div class="mc-total-num" id="mc-total-num">{{ '%.2f'|format(base_price) }}€</div>
+    </div>
+    <form method="POST" action="{{ url_for('main.builder_add') }}" id="mc-form" style="padding:0 1.5rem 1.5rem;">
+      <input type="hidden" name="builder_type" value="{{ builder_type }}">
+      <div id="mc-hidden-ings"></div>
+    </form>
+  </div>
+
+</div>{# /mc-root #}
+
+{# ── Sticky bottom nav ── #}
+<div class="mc-bottom">
+  <div class="mc-bottom-left">
+    <button class="mc-btn mc-btn-prev" onclick="mcPrev()" id="mc-bp" style="display:none;">
+      <i class="fas fa-chevron-left"></i><span>Indietro</span>
+    </button>
+    <div class="mc-price-badge">
+      <div class="mc-price-lbl">Totale</div>
+      <div class="mc-price-val" id="mc-nav-price">{{ '%.2f'|format(base_price) }}€</div>
+    </div>
+  </div>
+  <div class="mc-bottom-right">
+    <button class="mc-btn mc-btn-next" onclick="mcNext()" id="mc-bn">
+      <span>Avanti</span><i class="fas fa-chevron-right"></i>
+    </button>
+    <button class="mc-btn mc-btn-add" onclick="document.getElementById('mc-form').submit()" id="mc-ba" style="display:none;">
+      <i class="fas fa-cart-plus"></i><span>Aggiungi al carrello</span>
+    </button>
   </div>
 </div>
 
-{# ─────────────────────────────────────────── FULL VISUAL BUILDER ── #}
-{% else %}
-<div id="bv-root">
-
-  {# Steps bar #}
-  <div class="card mb-3">
-    <div class="card-body py-2 px-3">
-      <div class="bv-steps-outer">
-        <div class="bv-steps" id="bv-steps"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="bv-wrap">
-    {# ── Main column ── #}
-    <div class="bv-main">
-
-      {# Category panels #}
-      {% for cat in categories %}
-      <div class="bv-panel card" id="bv-p{{ loop.index0 }}"
-           data-cid="{{ cat.id }}"
-           data-req="{{ 'true' if cat.is_required else 'false' }}"
-           data-max="{{ cat.max_choices }}"
-           style="display:none;">
-        <div class="card-body">
-          <div class="bv-cat-hd">
-            <div class="bv-cat-ico"><i class="fas {{ cat.icon }}"></i></div>
-            <div class="bv-cat-name">
-              {{ cat.name }}
-              {% if cat.is_required %}<span class="bv-badge-req">Obbligatorio</span>{% endif %}
-            </div>
-            <div class="bv-cat-hint">
-              {% if cat.max_choices == 1 %}Scegli 1{% else %}Fino a {{ cat.max_choices }} scelte{% endif %}
-            </div>
-          </div>
-          <div class="bv-grid">
-            {% for ing in cat.ingredients if ing.is_active %}
-            <div class="bv-card"
-                 data-iid="{{ ing.id }}"
-                 data-name="{{ ing.name }}"
-                 data-price="{{ ing.price_extra }}"
-                 data-cid="{{ cat.id }}"
-                 data-max="{{ cat.max_choices }}"
-                 onclick="bvToggle(this)">
-              <div class="bv-card-check">✓</div>
-              <div class="bv-card-emoji" id="ei{{ ing.id }}">🍽️</div>
-              <div class="bv-card-name">{{ ing.name }}</div>
-              {% if ing.price_extra > 0 %}
-              <div class="bv-card-price">+{{ '%.2f'|format(ing.price_extra) }}€</div>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-
-      {# Summary panel #}
-      <div class="bv-panel card" id="bv-psum" style="display:none;">
-        <div class="card-body">
-          <div class="bv-cat-hd">
-            <div class="bv-cat-ico" style="font-size:2.2rem;">🎉</div>
-            <div class="bv-cat-name">Il tuo riepilogo</div>
-            <div class="bv-cat-hint">Controlla e aggiungi al carrello</div>
-          </div>
-          <div id="bv-sum-content"></div>
-          <form method="POST" action="{{ url_for('main.builder_add') }}" id="bv-form">
-            <input type="hidden" name="builder_type" value="{{ builder_type }}">
-            <div id="bv-hidden-ings"></div>
-          </form>
-        </div>
-      </div>
-
-    </div>{# /bv-main #}
-
-    {# ── Receipt sidebar ── #}
-    <div class="bv-side">
-      <div class="bv-receipt">
-        <div class="bv-receipt-hd">
-          <div class="bv-receipt-hd-emoji">{{ '🥪' if builder_type == 'panino' else '🥗' }}</div>
-          <div class="bv-receipt-hd-title">{{ 'Il Tuo Panino' if builder_type == 'panino' else 'La Tua Insalata' }}</div>
-        </div>
-        <div class="bv-receipt-body" id="bv-rx-items">
-          <div class="bv-rx-empty">Aggiungi ingredienti<br>per vederli qui</div>
-        </div>
-        <div class="bv-receipt-ft">
-          <div class="bv-rx-total-lbl">Totale</div>
-          <div class="bv-rx-total-price" id="bv-rx-total">{{ '%.2f'|format(base_price) }}€</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# ── Bottom nav bar ── #}
-  <div class="bv-nav">
-    <div class="bv-nav-info">
-      <div class="bv-nav-step" id="bv-nav-step">Step 1 di {{ categories|length }}</div>
-      <div class="bv-nav-price" id="bv-nav-price">{{ '%.2f'|format(base_price) }}€</div>
-    </div>
-    <div class="bv-btns">
-      <button class="bv-btn bv-btn-prev" onclick="bvPrev()" id="bv-bp" style="display:none;">
-        <i class="fas fa-chevron-left"></i><span class="d-none d-sm-inline">Indietro</span>
-      </button>
-      <button class="bv-btn bv-btn-next" onclick="bvNext()" id="bv-bn">
-        <span>Avanti</span><i class="fas fa-chevron-right"></i>
-      </button>
-      <button class="bv-btn bv-btn-add" onclick="document.getElementById('bv-form').submit()" id="bv-ba" style="display:none;">
-        <i class="fas fa-cart-plus"></i><span>Aggiungi</span>
-      </button>
-    </div>
-  </div>
-
-</div>{# /bv-root #}
-{% endif %}
+{% endif %}{# /builder_type #}
+</div>{# /mc-wrap #}
 {% endblock %}
 
 {% block extra_js %}
 {% if builder_type %}
 <script>
 /* ── Config ── */
-var BV_STEPS  = {{ categories|length }};
-var BV_BASE   = {{ base_price }};
-var BV_CUR    = 0;
-var BV_SEL    = {};   /* {catId: [{iid, name, price, emoji}]} */
+var MC_STEPS = {{ categories|length }};
+var MC_BASE  = {{ base_price }};
+var MC_CUR   = 0;
+var MC_SEL   = {};  /* {catId: [{iid, name, price, emoji}]} */
 
 /* ── Emoji map ── */
 var EM = {
@@ -333,191 +473,187 @@ var EM = {
   'bacon':'🥓','parmigiano':'🧀','mozzarella extra':'🧀','crostini':'🍞',
   'pinoli':'🫘','semi di girasole':'🌻','sesamo':'⚪','granola salata':'🌾',
 };
-function em(name){ return EM[name.toLowerCase()] || '🍽️'; }
+function em(n){ return EM[n.toLowerCase()] || '🍽️'; }
 
-/* Apply emojis */
-document.querySelectorAll('.bv-card').forEach(function(c){
-  var name = c.querySelector('.bv-card-name').textContent.trim();
-  c.querySelector('.bv-card-emoji').textContent = em(name);
+/* Apply emojis to cards */
+document.querySelectorAll('.mc-card').forEach(function(c){
+  c.querySelector('.mc-card-emoji').textContent = em(c.querySelector('.mc-card-name').textContent.trim());
 });
 
-/* ── Steps bar ── */
-var stepsEl = document.getElementById('bv-steps');
-var CATS = [
+/* ── Steps bar data ── */
+var MC_CATS = [
 {% for cat in categories %}
-  { id:{{ cat.id }}, name:'{{ cat.name|replace("'","\\'")|truncate(10, true, "…") }}' },
+  { id:{{ cat.id }}, name:'{{ cat.name|replace("'","\\'")|truncate(9,true,"…") }}' },
 {% endfor %}
 ];
-function bvRenderBar(){
-  stepsEl.innerHTML = '';
-  CATS.forEach(function(cat, i){
-    var cls = (i < BV_CUR ? 'done' : '') + (i === BV_CUR ? ' active' : '');
-    var dot = i < BV_CUR ? '<i class="fas fa-check" style="font-size:.65rem;"></i>' : (i+1);
-    stepsEl.innerHTML += '<div class="bv-step '+cls+'" onclick="bvGoTo('+i+')" title="'+cat.name+'"><div class="bv-step-dot">'+dot+'</div><div class="bv-step-lbl">'+cat.name+'</div></div>';
+
+/* ── Render progress bar ── */
+function mcRenderBar(){
+  var el = document.getElementById('mc-steps-bar');
+  el.innerHTML = '';
+  MC_CATS.forEach(function(cat, i){
+    var cls = (i < MC_CUR ? 'done' : '') + (i === MC_CUR ? ' active' : '');
+    var dot = i < MC_CUR ? '<i class="fas fa-check" style="font-size:.7rem;"></i>' : (i+1);
+    el.innerHTML += '<div class="mc-step ' + cls + '" onclick="mcGoTo(' + i + ')" title="' + cat.name + '">'
+      + '<div class="mc-step-dot">' + dot + '</div>'
+      + '<div class="mc-step-lbl">' + cat.name + '</div>'
+      + '</div>';
   });
-  var sumCls = (BV_CUR === BV_STEPS ? 'active' : '');
-  stepsEl.innerHTML += '<div class="bv-step '+sumCls+'" onclick="bvGoTo('+BV_STEPS+')" title="Riepilogo"><div class="bv-step-dot"><i class="fas fa-receipt" style="font-size:.65rem;"></i></div><div class="bv-step-lbl">Fine</div></div>';
+  var sc = MC_CUR === MC_STEPS ? 'active' : '';
+  el.innerHTML += '<div class="mc-step ' + sc + '" onclick="mcGoTo(' + MC_STEPS + ')" title="Riepilogo">'
+    + '<div class="mc-step-dot"><i class="fas fa-receipt" style="font-size:.7rem;"></i></div>'
+    + '<div class="mc-step-lbl">Fine</div>'
+    + '</div>';
 }
 
 /* ── Show step ── */
-function bvShow(idx){
-  document.querySelectorAll('.bv-panel').forEach(function(p){ p.style.display='none'; p.classList.remove('bv-panel-in'); });
-  BV_CUR = idx;
+function mcShow(idx){
+  document.querySelectorAll('.mc-panel').forEach(function(p){
+    p.style.display = 'none';
+    p.classList.remove('mc-panel-in');
+  });
+  MC_CUR = idx;
   var panel;
-  if(idx === BV_STEPS){
-    panel = document.getElementById('bv-psum');
-    bvRenderSummary();
-    document.getElementById('bv-bn').style.display = 'none';
-    document.getElementById('bv-ba').style.display = 'flex';
+  var isSummary = idx === MC_STEPS;
+
+  if(isSummary){
+    panel = document.getElementById('mc-psum');
+    mcRenderSummary();
+    document.getElementById('mc-bn').style.display = 'none';
+    document.getElementById('mc-ba').style.display = 'flex';
   } else {
-    panel = document.getElementById('bv-p'+idx);
-    document.getElementById('bv-bn').style.display = 'flex';
-    document.getElementById('bv-ba').style.display = 'none';
+    panel = document.getElementById('mc-p' + idx);
+    document.getElementById('mc-bn').style.display = 'flex';
+    document.getElementById('mc-ba').style.display = 'none';
   }
-  if(panel){ panel.style.display=''; panel.classList.add('bv-panel-in'); }
-  document.getElementById('bv-bp').style.display = idx > 0 ? 'flex' : 'none';
-  var stepLbl = idx < BV_STEPS ? 'Step '+(idx+1)+' di '+BV_STEPS : 'Riepilogo';
-  document.getElementById('bv-nav-step').textContent = stepLbl;
-  bvRenderBar();
-  window.scrollTo({top:0, behavior:'smooth'});
+
+  if(panel){ panel.style.display = ''; panel.classList.add('mc-panel-in'); }
+  document.getElementById('mc-bp').style.display = idx > 0 ? 'flex' : 'none';
+
+  mcRenderBar();
+  mcUpdatePrice();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* ── Navigate ── */
-function bvNext(){
-  if(BV_CUR < BV_STEPS){
-    var panel = document.getElementById('bv-p'+BV_CUR);
+function mcNext(){
+  if(MC_CUR < MC_STEPS){
+    var panel = document.getElementById('mc-p' + MC_CUR);
     var isReq = panel && panel.getAttribute('data-req') === 'true';
     var cid   = panel && parseInt(panel.getAttribute('data-cid'));
-    if(isReq && (!BV_SEL[cid] || BV_SEL[cid].length === 0)){
-      /* shake */
-      panel.style.animation = 'bv-shake .3s';
-      setTimeout(function(){ panel.style.animation=''; }, 320);
-      var hd = panel.querySelector('.bv-cat-name');
-      var orig = hd.style.color;
-      hd.style.color = '#e94560';
-      setTimeout(function(){ hd.style.color = orig; }, 900);
+    if(isReq && (!MC_SEL[cid] || !MC_SEL[cid].length)){
+      panel.style.animation = 'mc-shake .35s';
+      setTimeout(function(){ panel.style.animation = ''; }, 380);
+      var title = panel.querySelector('.mc-step-title');
+      var orig  = title.style.color;
+      title.style.color = '#e94560';
+      setTimeout(function(){ title.style.color = orig; }, 900);
       return;
     }
   }
-  if(BV_CUR <= BV_STEPS) bvShow(BV_CUR + 1);
+  if(MC_CUR <= MC_STEPS) mcShow(MC_CUR + 1);
 }
-function bvPrev(){ if(BV_CUR > 0) bvShow(BV_CUR - 1); }
-function bvGoTo(idx){
-  /* allow going back or to any already-seen step */
-  if(idx <= BV_CUR) bvShow(idx);
-}
+function mcPrev(){ if(MC_CUR > 0) mcShow(MC_CUR - 1); }
+function mcGoTo(idx){ if(idx <= MC_CUR) mcShow(idx); }
 
 /* ── Toggle ingredient ── */
-function bvToggle(card){
-  if(card.classList.contains('bv-dis')) return;
-  var cid  = parseInt(card.getAttribute('data-cid'));
-  var max  = parseInt(card.getAttribute('data-max'));
-  var iid  = parseInt(card.getAttribute('data-iid'));
-  var name = card.getAttribute('data-name');
-  var price= parseFloat(card.getAttribute('data-price'));
-  var emoji= card.querySelector('.bv-card-emoji').textContent;
+function mcToggle(card){
+  if(card.classList.contains('mc-dis')) return;
+  var cid   = parseInt(card.getAttribute('data-cid'));
+  var max   = parseInt(card.getAttribute('data-max'));
+  var iid   = parseInt(card.getAttribute('data-iid'));
+  var name  = card.getAttribute('data-name');
+  var price = parseFloat(card.getAttribute('data-price'));
+  var emoji = card.querySelector('.mc-card-emoji').textContent;
 
-  if(!BV_SEL[cid]) BV_SEL[cid] = [];
-  var isSel = card.classList.contains('bv-sel');
+  if(!MC_SEL[cid]) MC_SEL[cid] = [];
+  var isSel = card.classList.contains('mc-sel');
 
   if(isSel){
-    card.classList.remove('bv-sel');
-    BV_SEL[cid] = BV_SEL[cid].filter(function(i){ return i.iid !== iid; });
+    card.classList.remove('mc-sel');
+    MC_SEL[cid] = MC_SEL[cid].filter(function(i){ return i.iid !== iid; });
   } else {
     if(max === 1){
-      /* radio: deselect others */
-      document.querySelectorAll('.bv-card[data-cid="'+cid+'"]').forEach(function(c){ c.classList.remove('bv-sel'); });
-      BV_SEL[cid] = [];
+      document.querySelectorAll('.mc-card[data-cid="' + cid + '"]').forEach(function(c){
+        c.classList.remove('mc-sel');
+      });
+      MC_SEL[cid] = [];
     }
-    if(BV_SEL[cid].length < max){
-      card.classList.add('bv-sel');
-      BV_SEL[cid].push({iid:iid, name:name, price:price, emoji:emoji});
+    if(MC_SEL[cid].length < max){
+      card.classList.add('mc-sel');
+      MC_SEL[cid].push({ iid:iid, name:name, price:price, emoji:emoji });
     }
   }
 
-  /* disable/enable sibling cards when max reached (only for multi-choice) */
   if(max > 1){
-    var cnt = BV_SEL[cid].length;
-    document.querySelectorAll('.bv-card[data-cid="'+cid+'"]').forEach(function(c){
-      if(c.classList.contains('bv-sel')) return;
-      if(cnt >= max) c.classList.add('bv-dis');
-      else           c.classList.remove('bv-dis');
+    var cnt = MC_SEL[cid].length;
+    document.querySelectorAll('.mc-card[data-cid="' + cid + '"]').forEach(function(c){
+      if(c.classList.contains('mc-sel')) return;
+      cnt >= max ? c.classList.add('mc-dis') : c.classList.remove('mc-dis');
     });
   }
 
-  bvUpdatePrice();
-  bvUpdateReceipt();
+  mcUpdatePrice();
 }
 
 /* ── Price ── */
-function bvCalcTotal(){
-  var t = BV_BASE;
-  Object.values(BV_SEL).forEach(function(arr){ arr.forEach(function(i){ t += i.price; }); });
+function mcCalcTotal(){
+  var t = MC_BASE;
+  Object.values(MC_SEL).forEach(function(arr){
+    arr.forEach(function(i){ t += i.price; });
+  });
   return Math.round(t * 100) / 100;
 }
-function bvUpdatePrice(){
-  var t = bvCalcTotal().toFixed(2) + '€';
-  document.getElementById('bv-nav-price').textContent = t;
-  document.getElementById('bv-rx-total').textContent  = t;
-}
-
-/* ── Receipt sidebar ── */
-function bvUpdateReceipt(){
-  var all = [];
-  Object.values(BV_SEL).forEach(function(arr){ arr.forEach(function(i){ all.push(i); }); });
-  var el = document.getElementById('bv-rx-items');
-  if(!all.length){
-    el.innerHTML = '<div class="bv-rx-empty">Aggiungi ingredienti<br>per vederli qui</div>';
-    return;
-  }
-  var html = '<div class="bv-rx-item"><div class="bv-rx-emoji">{{ '🥪' if builder_type == 'panino' else '🥗' }}</div><div class="bv-rx-name">Base</div><div class="bv-rx-price">'+BV_BASE.toFixed(2)+'€</div></div>';
-  all.forEach(function(i){
-    html += '<div class="bv-rx-item"><div class="bv-rx-emoji">'+i.emoji+'</div><div class="bv-rx-name">'+i.name+'</div>'+(i.price>0?'<div class="bv-rx-price">+'+i.price.toFixed(2)+'€</div>':'')+'</div>';
-  });
-  el.innerHTML = html;
+function mcUpdatePrice(){
+  var v = mcCalcTotal().toFixed(2) + '€';
+  document.getElementById('mc-nav-price').textContent = v;
+  var tn = document.getElementById('mc-total-num');
+  if(tn) tn.textContent = v;
 }
 
 /* ── Summary ── */
-var CAT_NAMES = {};
-{% for cat in categories %}CAT_NAMES[{{ cat.id }}] = '{{ cat.name|replace("'", "\\'") }}';{% endfor %}
+var MC_CAT_NAMES = {};
+{% for cat in categories %}MC_CAT_NAMES[{{ cat.id }}] = '{{ cat.name|replace("'", "\\'") }}';{% endfor %}
 
-function bvRenderSummary(){
+function mcRenderSummary(){
   var all = [];
-  Object.entries(BV_SEL).forEach(function(e){
-    var cid = parseInt(e[0]), arr = e[1];
-    arr.forEach(function(i){ all.push(Object.assign({}, i, {cid:cid})); });
+  Object.entries(MC_SEL).forEach(function(e){
+    var cid = parseInt(e[0]);
+    e[1].forEach(function(i){ all.push(Object.assign({}, i, { cid:cid })); });
   });
 
-  var html = '<div class="bv-sum-grid">';
-  html += '<div class="bv-sum-item"><div class="bv-sum-cat">Base</div><div class="bv-sum-emoji">{{ '🥪' if builder_type == 'panino' else '🥗' }}</div><div class="bv-sum-name">{{ 'Panino' if builder_type == 'panino' else 'Insalata' }}</div><div class="bv-sum-xprice">{{ '%.2f'|format(base_price) }}€</div></div>';
+  var html = '<div class="mc-sum-item">'
+    + '<div class="mc-sum-cat">Base</div>'
+    + '<span class="mc-sum-emoji">{{ "🥪" if builder_type == "panino" else "🥗" }}</span>'
+    + '<div class="mc-sum-name">{{ "Panino" if builder_type == "panino" else "Insalata" }}</div>'
+    + '<div class="mc-sum-price">{{ "%.2f"|format(base_price) }}€</div>'
+    + '</div>';
+
   all.forEach(function(i){
-    html += '<div class="bv-sum-item">';
-    html += '<div class="bv-sum-cat">'+(CAT_NAMES[i.cid]||'')+'</div>';
-    html += '<div class="bv-sum-emoji">'+i.emoji+'</div>';
-    html += '<div class="bv-sum-name">'+i.name+'</div>';
-    if(i.price>0) html += '<div class="bv-sum-xprice">+'+i.price.toFixed(2)+'€</div>';
-    html += '</div>';
+    html += '<div class="mc-sum-item">'
+      + '<div class="mc-sum-cat">' + (MC_CAT_NAMES[i.cid] || '') + '</div>'
+      + '<span class="mc-sum-emoji">' + i.emoji + '</span>'
+      + '<div class="mc-sum-name">' + i.name + '</div>'
+      + (i.price > 0 ? '<div class="mc-sum-price">+' + i.price.toFixed(2) + '€</div>' : '')
+      + '</div>';
   });
-  html += '</div>';
 
-  var total = bvCalcTotal();
-  html += '<div class="bv-total-big"><div class="bv-total-num">'+total.toFixed(2)+'€</div><div class="bv-total-sub">Totale</div></div>';
+  document.getElementById('mc-sum-grid').innerHTML = html;
+  var tn = document.getElementById('mc-total-num');
+  if(tn) tn.textContent = mcCalcTotal().toFixed(2) + '€';
 
-  document.getElementById('bv-sum-content').innerHTML = html;
-
-  /* Build hidden form inputs */
-  var hd = document.getElementById('bv-hidden-ings');
+  var hd = document.getElementById('mc-hidden-ings');
   hd.innerHTML = '';
   all.forEach(function(i){
     var inp = document.createElement('input');
-    inp.type = 'hidden'; inp.name = 'ing_'+i.iid; inp.value = '1';
+    inp.type = 'hidden'; inp.name = 'ing_' + i.iid; inp.value = '1';
     hd.appendChild(inp);
   });
 }
 
 /* ── Init ── */
-bvRenderBar();
-bvShow(0);
+mcRenderBar();
+mcShow(0);
 </script>
 {% endif %}
 {% endblock %}
