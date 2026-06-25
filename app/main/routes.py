@@ -4,6 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
+from app.notifications import send_telegram_to_user
 from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
@@ -177,7 +178,8 @@ def place_order():
 
     for ci in custom_cart:
         coi = CustomOrderItem(order_id=order.id, builder_type=ci['type'],
-                              label=ci['label'], unit_price=ci['total_price'])
+                              label=ci['label'], unit_price=ci['total_price'],
+                              grill_requested=ci.get('grill_requested', False))
         db.session.add(coi)
         db.session.flush()
         for ing in ci.get('ingredients', []):
@@ -202,6 +204,11 @@ def place_order():
     session.pop('cart', None)
     session.pop('custom_cart', None)
     flash(f'Ordine {order.order_code} confermato! Ritira alle {slot.time_str}.', 'success')
+    send_telegram_to_user(
+        current_user,
+        f'✅ Ordine <b>{order.order_code}</b> confermato!\n'
+        f'Ritiro alle <b>{slot.time_str}</b>. Totale: <b>{total:.2f}€</b>'
+    )
     return redirect(url_for('main.my_orders'))
 
 
@@ -238,6 +245,11 @@ def cancel_order(order_id):
 
     db.session.commit()
     flash(f'Ordine #{order.id} annullato. Rimborso {order.total_price:.2f}€.', 'info')
+    send_telegram_to_user(
+        current_user,
+        f'❌ Ordine <b>#{order.id}</b> annullato.\n'
+        f'Rimborso di <b>{order.total_price:.2f}€</b> sul tuo wallet.'
+    )
     return redirect(url_for('main.my_orders'))
 
 
@@ -274,7 +286,7 @@ def redeem_points():
 @login_required
 def builder():
     builder_type = request.args.get('type', 'panino')
-    if builder_type not in ('panino', 'insalata'):
+    if builder_type not in ('panino', 'insalata', 'poke'):
         builder_type = 'panino'
 
     categories = IngredientCategory.query.filter(
@@ -293,7 +305,7 @@ def builder():
 @login_required
 def builder_add():
     builder_type = request.form.get('builder_type', 'panino')
-    if builder_type not in ('panino', 'insalata'):
+    if builder_type not in ('panino', 'insalata', 'poke'):
         flash('Tipo non valido.', 'danger')
         return redirect(url_for('main.builder'))
 
@@ -338,9 +350,15 @@ def builder_add():
 
     base_price = Config.BUILDER_PRICES[builder_type]
     total_price = round(base_price + extra_price, 2)
+    grill_requested = (builder_type == 'panino' and
+                       request.form.get('grill_requested', '0') == '1')
+
+    _meta = {'panino': ('Panino', 'o', 'o'), 'insalata': ('Insalata', 'a', 'a'), 'poke': ('Poke', 'o', 'o')}
+    type_name, gen_adj, gen_add = _meta[builder_type]
 
     names = [i['name'] for i in ingredients_data]
-    label = f"{'Panino' if builder_type == 'panino' else 'Insalata'} personalizzat{'o' if builder_type == 'panino' else 'a'}: " + ', '.join(names)
+    grill_tag = ' 🔥' if grill_requested else ''
+    label = f"{type_name} personalizzat{gen_adj}{grill_tag}: " + ', '.join(names)
 
     custom_cart = session.get('custom_cart', [])
     custom_cart.append({
@@ -350,10 +368,11 @@ def builder_add():
         'extra_price': round(extra_price, 2),
         'total_price': total_price,
         'label': label,
+        'grill_requested': grill_requested,
         'ingredients': ingredients_data,
     })
     session['custom_cart'] = custom_cart
-    flash(f'{"Panino" if builder_type == "panino" else "Insalata"} personalizzat{"o" if builder_type == "panino" else "a"} aggiunt{"o" if builder_type == "panino" else "a"} al carrello!', 'success')
+    flash(f'{type_name} personalizzat{gen_adj}{grill_tag} aggiunt{gen_add} al carrello!', 'success')
     return redirect(url_for('main.cart'))
 
 
@@ -363,7 +382,7 @@ def builder_add():
 @login_required
 def builder_visual():
     builder_type = request.args.get('type')
-    if builder_type not in ('panino', 'insalata'):
+    if builder_type not in ('panino', 'insalata', 'poke'):
         builder_type = None
 
     categories = []

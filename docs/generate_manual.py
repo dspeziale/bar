@@ -516,7 +516,7 @@ def build_toc(doc):
         ('3',  '🚀',  'Come iniziare'),
         ('4',  '📋',  'Gestione ordini'),
         ('5',  '🍕',  'Menu e prodotti'),
-        ('6',  '🥪',  'Panino & Insalata builder'),
+        ('6',  '🥪',  'Builder: Panino, Insalata & Poke Bowl'),
         ('7',  '💳',  'Wallet digitale e fidelizzazione'),
         ('8',  '🪑',  'Tavoli e prenotazioni'),
         ('9',  '👥',  'Personale e clienti'),
@@ -527,6 +527,7 @@ def build_toc(doc):
         ('14', '❓',  'Domande frequenti'),
         ('15', '🔑',  'Credenziali di accesso'),
         ('A',  '🖥️',  'Pagine principali del sito (mockup)'),
+        ('B',  '⚖️',  'Gestione Wallet — Aspetti Fiscali'),
     ]
 
     tbl = doc.add_table(rows=len(toc_items), cols=2)
@@ -722,34 +723,58 @@ def s05(doc):
 
 
 def s06(doc):
-    h1(doc, 6, 'Panino & Insalata builder', '🥪')
+    h1(doc, 6, 'Builder: Panino, Insalata & Poke Bowl', '🥪')
     body_para(doc,
         "Il builder è la funzione più apprezzata dai clienti: permette di comporre "
-        "il panino o l'insalata personalizzati scegliendo gli ingredienti uno a uno. "
+        "un pasto personalizzato scegliendo gli ingredienti uno a uno. "
         "Il prezzo finale si calcola in automatico sommando i prezzi degli ingredienti "
-        "extra scelti al prezzo base del prodotto.")
+        "extra scelti al prezzo base. Il builder visuale ha uno stile kiosk passo-passo, "
+        "ispirato ai chioschi moderni.")
 
-    h2(doc, "Come funziona per il cliente")
+    h2(doc, "Tre tipologie di builder")
+    data_table(doc,
+        ['Tipo', 'Prezzo base', 'Flusso step'],
+        [
+            ['🥪 Panino',      '3,50 €', 'Pane → Proteina → Verdure → Salse → Extra'],
+            ['🥗 Insalata',    '3,00 €', 'Base insalata → Proteina → Verdure → Condimento → Topping'],
+            ['🍱 Poke Bowl',   '4,00 €', 'Base riso → Proteina → Verdure → Salsa → Extra'],
+        ],
+        col_widths=[3.5, 3.0, 10.0])
+    info_box(doc,
+        "I prezzi base si modificano in config.py → BUILDER_PRICES. "
+        "Le categorie e gli ingredienti di ogni tipo si gestiscono da Admin → Ingredienti Builder.",
+        style='tip')
+
+    h2(doc, "🔥 Opzione piastra (panino)")
     body_para(doc,
-        "Il cliente clicca su «Componi il tuo panino» o «Componi la tua insalata» nel menu "
-        "e viene guidato passo passo: tipo di pane → proteina → verdure → salse → extra. "
-        "Ogni categoria ha un numero minimo e massimo di scelte configurabile.")
+        "Nella schermata di riepilogo del panino, il cliente può attivare l'opzione "
+        "«Alla piastra» con un singolo tap. Questa opzione è disponibile solo per il "
+        "builder Panino e non comporta sovrapprezzo — è un'indicazione operativa "
+        "che la cucina deve scaldare il panino al momento.")
+    step_row(doc, '1', 'Il cliente attiva «Vuoi il panino alla piastra?»',
+             'Un toggle nella schermata di riepilogo prima di aggiungere al carrello.')
+    step_row(doc, '2', 'L\'ordine entra nel KDS cucina con il badge 🔥 piastra',
+             'I cuochi vedono immediatamente quale panino richiede preparazione al momento.')
+    step_row(doc, '3', 'Preparazione prioritaria',
+             'Il cuoco tiene visibile il badge e prepara il panino alla piastra appena '
+             'l\'ordine passa in «In preparazione».')
+    info_box(doc,
+        "L'etichetta 🔥 piastra è visibile in tutte e tre le colonne del KDS "
+        "(Da preparare, In preparazione, Pronti) per evitare che venga consegnato freddo.",
+        style='warning')
 
     h2(doc, "Configurazione ingredienti — Admin → Ingredienti Builder")
     data_table(doc,
         ['Campo', 'Descrizione'],
         [
-            ['Nome',         'Es. «Pane integrale», «Prosciutto crudo»'],
-            ['Prezzo extra', 'Sovrapprezzo rispetto al base (0 = incluso nel prezzo)'],
-            ['Vegetariano',  'Mostra il simbolo 🌿 nell\'interfaccia cliente'],
-            ['Allergeni',    'Testo libero: «glutine, latte, uova»'],
-            ['Attivo',       'Disattiva temporaneamente se esaurito'],
+            ['Nome',              'Es. «Riso bianco», «Salmone», «Salsa ponzu»'],
+            ['Tipo builder',      '«panino», «insalata», «poke» o «entrambi»'],
+            ['Prezzo extra',      'Sovrapprezzo rispetto al base (0 = incluso)'],
+            ['Vegetariano',       'Mostra il simbolo 🌿 nell\'interfaccia cliente'],
+            ['Allergeni',         'Testo libero: «pesce», «sesamo», «crostacei»'],
+            ['Attivo',            'Disattiva temporaneamente se esaurito'],
         ],
         col_widths=[4.5, 12.0])
-    info_box(doc,
-        "Gli ingredienti con prezzo extra > 0 vengono sommati al prezzo base. "
-        "Il prezzo base del panino e dell'insalata è definito nella configurazione dell'applicazione.",
-        style='warning')
 
 
 def s07(doc):
@@ -870,7 +895,7 @@ def s10(doc):
 
 def s11(doc):
     h1(doc, 11, 'Notifiche e sondaggi', '📣')
-    h2(doc, 'Notifiche Telegram')
+    h2(doc, 'Notifiche Telegram — canale broadcast')
     body_para(doc,
         "Collega il sistema al tuo Bot Telegram per inviare messaggi a tutti i clienti "
         "con un clic. Utile per avvisare del menu del giorno, chiusure straordinarie o promozioni.")
@@ -878,6 +903,29 @@ def s11(doc):
         "Configurazione: Admin → Impostazioni → Token Bot Telegram. Inserisci il token "
         "del bot (ottenuto da @BotFather) e il Chat ID del gruppo o canale. "
         "Usa il pulsante «Test connessione» per verificare.")
+
+    h2(doc, 'Notifiche Telegram — messaggi individuali al cliente')
+    body_para(doc,
+        "Se un cliente ha registrato il proprio Telegram Chat ID nel profilo, "
+        "il sistema gli invia automaticamente messaggi personali per i seguenti eventi:")
+    data_table(doc,
+        ['Evento', 'Messaggio inviato al cliente'],
+        [
+            ['Ordine confermato',
+             '✅ «Ordine QuickLunch-YYMMDD-HHMM-XXXX confermato! Ritiro alle HH:MM. Totale: X,XX€»'],
+            ['Ordine pronto (admin)',
+             '🔔 «Il tuo ordine è PRONTO per il ritiro! Vieni a ritirarlo entro qualche minuto.»'],
+            ['Ordine annullato dal cliente',
+             '❌ «Ordine #XXX annullato. Rimborso di X,XX€ sul tuo wallet.»'],
+            ['Ordine annullato dall\'admin',
+             '❌ «Ordine annullato dall\'amministratore. Rimborso di X,XX€ sul tuo wallet.»'],
+        ],
+        col_widths=[4.5, 12.0])
+    info_box(doc,
+        "Per raccogliere il Telegram Chat ID di un cliente: il cliente deve avviare una "
+        "chat con il tuo bot su Telegram e poi comunicarti il numero ID (visibile da app "
+        "come @userinfobot). Inseriscilo in Admin → Persone → Clienti → campo «Telegram Chat ID».",
+        style='tip', label='Come ottenere il Telegram Chat ID:')
 
     h2(doc, 'Notifiche Email')
     body_para(doc,
@@ -1547,6 +1595,126 @@ def s_appendix(doc):
         style='success', label='Aggiornamento real-time:')
 
 
+def s_appendix_wallet(doc):
+    h1(doc, 'B', 'Gestione Wallet — Aspetti Fiscali', '⚖️')
+    body_para(doc,
+        "Documento riepilogativo delle possibili modalità di gestione del wallet ricaricabile "
+        "di QuickLunch, utilizzato per l'acquisto di pranzi e consumazioni in bar e mense. "
+        "Esistono due approcci distinti con implicazioni fiscali differenti.")
+
+    info_box(doc,
+        "Prima dell'adozione operativa del sistema è opportuno richiedere una verifica da parte "
+        "del commercialista o consulente fiscale incaricato, poiché il corretto inquadramento "
+        "dipende dalle specifiche modalità di utilizzo del wallet.",
+        style='warning', label='Nota legale:')
+
+    # ── Tabella di confronto rapido ──
+    h2(doc, 'Confronto tra le due soluzioni')
+    data_table(doc,
+        ['Aspetto', 'Sol. 1 — Voucher multiuso', 'Sol. 2 — Voucher monouso'],
+        [
+            ['Momento fiscale',
+             'Al consumo: scontrino a ogni acquisto',
+             'Alla ricarica: scontrino unico anticipato'],
+            ['Quando si applica',
+             'Prodotti diversi, IVA non determinabile alla ricarica',
+             'Beni/servizi noti e aliquota IVA identificabile subito'],
+            ['Flessibilità',
+             'Alta — credito spendibile su qualsiasi prodotto',
+             'Bassa — legata a pasti o pacchetti predefiniti'],
+            ['Complessità gestionale',
+             'Maggiore (scontrino a ogni transazione)',
+             'Minore (scontrino solo alla ricarica)'],
+            ['Caso d\'uso tipico',
+             'Bar aziendale / mensa con menu variabile',
+             'Abbonamento pasto a pacchetto fisso (es. 10 pasti)'],
+        ],
+        col_widths=[4.2, 6.15, 6.15])
+
+    # ══════════════════════════════════════════════
+    # SOLUZIONE 1
+    # ══════════════════════════════════════════════
+    h2(doc, 'Soluzione 1 — Wallet come voucher multiuso  (generalmente consigliata)')
+    body_para(doc,
+        "Il cliente ricarica un credito (es. 50 €) utilizzabile successivamente per acquistare "
+        "prodotti diversi del bar. La ricarica non rappresenta ancora una cessione di beni o "
+        "servizi, poiché la natura degli acquisti futuri non è determinata al momento del versamento.")
+
+    h2(doc, 'Flusso operativo — Soluzione 1')
+    step_row(doc, 1, 'Ricarica wallet',
+             "Il cliente versa l'importo scelto. Il sistema registra il credito e produce "
+             "un documento/ricevuta di ricarica. Nessuno scontrino fiscale viene emesso in questa fase.")
+    step_row(doc, 2, 'Nessuna fiscalizzazione alla ricarica',
+             "La ricarica è un acconto su prestazioni future non ancora determinate. "
+             "L'IVA non è esigibile e non si emette documento commerciale.")
+    step_row(doc, 3, 'Al consumo — documento commerciale obbligatorio',
+             "Ogni volta che il cliente acquista un prodotto, il sistema scala il credito dal wallet "
+             "ed è obbligatoria l'emissione del documento commerciale (scontrino elettronico) "
+             "relativo alla vendita effettiva.")
+
+    h2(doc, 'Riferimenti normativi — Soluzione 1')
+    data_table(doc,
+        ['Norma', 'Contenuto rilevante per il wallet multiuso'],
+        [
+            ['DPR 633/1972  art. 6-bis',
+             'Voucher monouso — esigibilità IVA al momento dell\'emissione del voucher'],
+            ['DPR 633/1972  art. 6-ter',
+             'Voucher multiuso — IVA esigibile al momento del riscatto (consumo effettivo)'],
+            ['DPR 633/1972  art. 6-quater',
+             'Distribuzione di voucher tramite intermediari — trattamento IVA'],
+            ['D.Lgs. 141/2018',
+             'Recepimento Direttiva UE 2016/1065 relativa al trattamento IVA dei voucher'],
+        ],
+        col_widths=[4.5, 12.0])
+
+    info_box(doc,
+        "Con la Soluzione 1 il registratore di cassa (o il sistema di cassa) deve emettere "
+        "scontrino elettronico a ogni singola transazione di consumo. "
+        "QuickLunch registra ogni ordine con importo e data, facilitando la riconciliazione contabile.",
+        style='success', label='Come QuickLunch supporta questa soluzione:')
+
+    # ══════════════════════════════════════════════
+    # SOLUZIONE 2
+    # ══════════════════════════════════════════════
+    h2(doc, 'Soluzione 2 — Voucher monouso fiscalizzato alla ricarica')
+    body_para(doc,
+        "Il credito acquistato corrisponde a beni o servizi già determinati e fiscalmente "
+        "identificabili al momento del pagamento. Questa soluzione è applicabile solo quando "
+        "la natura della prestazione e il trattamento IVA sono già noti alla ricarica.")
+
+    body_para(doc, 'Esempio pratico:')
+    step_row(doc, 1, 'Acquisto pacchetto pasti predefinito',
+             "Il cliente acquista 10 pasti completi (es. primo + secondo + acqua a prezzo fisso). "
+             "Natura della prestazione e aliquota IVA sono già note e determinate.")
+    step_row(doc, 2, 'Emissione scontrino alla ricarica',
+             "Lo scontrino fiscale viene emesso al momento dell'acquisto del voucher/pacchetto, "
+             "per l'intero importo versato, con indicazione dell'IVA applicabile.")
+    step_row(doc, 3, 'Utilizzo senza nuova fiscalizzazione',
+             "I pasti successivi vengono erogati senza emettere ulteriori documenti commerciali, "
+             "poiché la vendita era già stata registrata e fiscalizzata integralmente.")
+
+    info_box(doc,
+        "Questa soluzione è applicabile solo quando prodotti, quantità e aliquota IVA sono "
+        "predeterminati. Non è adatta a bar con menu variabile o credito a utilizzo libero.",
+        style='tip', label='Quando NON applicare la Soluzione 2:')
+
+    # ── Flusso a confronto ──
+    h2(doc, 'Flusso operativo a confronto')
+    workflow_table(doc, [
+        ('💳', 'Ricarica wallet',   'Cliente versa il credito'),
+        ('🧾', '→ Scontrino?',      'Sol. 1: NO\nSol. 2: SÌ (immediato)'),
+        ('🍽️', 'Consumo / acquisto', 'Credito scalato da wallet'),
+        ('🧾', '→ Scontrino?',      'Sol. 1: SÌ (obbligatorio)\nSol. 2: NO'),
+        ('✅', 'Chiusura',          'Credito azzerato o esaurito'),
+    ])
+
+    info_box(doc,
+        "Indipendentemente dalla soluzione adottata, QuickLunch conserva lo storico completo "
+        "di tutte le ricariche e transazioni. Questo registro è utile per le verifiche fiscali "
+        "e per la riconciliazione con il registratore di cassa.",
+        style='tip', label='Registro transazioni QuickLunch:')
+
+
 def s15(doc):
     h1(doc, 15, 'Credenziali di accesso', '🔑')
     info_box(doc,
@@ -1656,7 +1824,8 @@ def main():
     build_toc(doc)
 
     sections = [s01, s02, s03, s04, s05, s06, s07,
-                s08, s09, s10, s11, s12, s13, s14, s15, s_appendix]
+                s08, s09, s10, s11, s12, s13, s14, s15,
+                s_appendix, s_appendix_wallet]
 
     for i, fn in enumerate(sections):
         fn(doc)

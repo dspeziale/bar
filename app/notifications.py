@@ -49,6 +49,33 @@ def send_telegram(text):
         return False, str(exc)
 
 
+def send_telegram_to_user(user, text):
+    """Invia un messaggio Telegram direttamente all'utente tramite il suo chat_id personale."""
+    token   = get_setting('telegram_bot_token')
+    chat_id = getattr(user, 'telegram_chat_id', None)
+    if not token or not chat_id:
+        return False, 'Token o Telegram Chat ID utente non disponibili'
+    url     = f'https://api.telegram.org/bot{token}/sendMessage'
+    payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
+    try:
+        if _HAS_REQUESTS:
+            r    = _requests.post(url, json=payload, timeout=8)
+            data = r.json()
+            if r.ok and data.get('ok'):
+                return True, 'Messaggio inviato'
+            return False, data.get('description', 'Errore Telegram')
+        else:
+            body = _urllib_parse.urlencode(payload).encode()
+            req  = _urllib_req.Request(url, data=body)
+            resp = _urllib_req.urlopen(req, timeout=8)
+            data = _json.loads(resp.read())
+            if data.get('ok'):
+                return True, 'Messaggio inviato'
+            return False, data.get('description', 'Errore Telegram')
+    except Exception as exc:
+        return False, str(exc)
+
+
 def telegram_poll_message(poll, base_url):
     """Formatta il messaggio Telegram per un sondaggio."""
     choices = '\n'.join(

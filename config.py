@@ -42,6 +42,7 @@ class Config:
     BUILDER_PRICES = {
         'panino':   3.50,
         'insalata': 3.00,
+        'poke':     4.00,
     }
 
     # Slot di ritiro

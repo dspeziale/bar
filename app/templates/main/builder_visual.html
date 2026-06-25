@@ -39,9 +39,9 @@
 
 .mc-type-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  max-width: 640px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  max-width: 820px;
   margin: 2rem auto 1.5rem;
 }
 .mc-type-card {
@@ -64,13 +64,15 @@
 }
 .mc-type-card.t-panino:hover   { border-color: #e94560; }
 .mc-type-card.t-insalata:hover { border-color: #28a745; }
+.mc-type-card.t-poke:hover     { border-color: #00b4d8; }
 .mc-type-banner { height: 8px; }
 .t-panino   .mc-type-banner { background: linear-gradient(90deg,#e94560,#ff7094); }
 .t-insalata .mc-type-banner { background: linear-gradient(90deg,#28a745,#5dd87a); }
-.mc-type-body { padding: 1.75rem 1.25rem 1.5rem; text-align: center; }
-.mc-type-emoji { font-size: 4.5rem; line-height: 1; margin-bottom: .75rem; display: block; }
-.mc-type-name  { font-size: 1.5rem; font-weight: 900; margin-bottom: .35rem; }
-.mc-type-desc  { font-size: .85rem; color: var(--QuickLunch-text-muted); margin-bottom: .75rem; }
+.t-poke     .mc-type-banner { background: linear-gradient(90deg,#00b4d8,#48cae4); }
+.mc-type-body { padding: 1.75rem 1rem 1.5rem; text-align: center; }
+.mc-type-emoji { font-size: 4rem; line-height: 1; margin-bottom: .75rem; display: block; }
+.mc-type-name  { font-size: 1.4rem; font-weight: 900; margin-bottom: .35rem; }
+.mc-type-desc  { font-size: .8rem; color: var(--QuickLunch-text-muted); margin-bottom: .75rem; }
 .mc-type-pill {
   display: inline-block;
   padding: .35rem 1.1rem;
@@ -80,6 +82,29 @@
 }
 .t-panino   .mc-type-pill { background: rgba(233,69,96,.12); color: #e94560; }
 .t-insalata .mc-type-pill { background: rgba(40,167,69,.12); color: #28a745; }
+.t-poke     .mc-type-pill { background: rgba(0,180,216,.12); color: #00b4d8; }
+
+/* ── Piastra toggle ── */
+.mc-grill-row {
+  margin: 0 1.5rem 1.5rem;
+  border: 2px solid var(--QuickLunch-card-border);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.mc-grill-row.active { border-color: #e94560; background: rgba(233,69,96,.04); }
+.mc-grill-info { flex: 1; }
+.mc-grill-info strong { font-size: 1rem; font-weight: 800; }
+.mc-grill-info small  { display: block; font-size: .78rem; color: var(--QuickLunch-text-muted); margin-top: .15rem; }
+.mc-grill-btn {
+  border: 2px solid var(--QuickLunch-card-border);
+  background: var(--QuickLunch-card-bg);
+  color: var(--QuickLunch-text-muted);
+  border-radius: 999px; padding: .45rem 1.2rem;
+  font-size: .9rem; font-weight: 700; cursor: pointer;
+  transition: all .2s; white-space: nowrap;
+}
+.mc-grill-btn.on { background: #e94560; color: #fff; border-color: #e94560; }
 
 .mc-alt-link {
   text-align: center;
@@ -297,6 +322,9 @@
 .mc-panel-in { animation: mc-pop .25s cubic-bezier(.34,1.56,.64,1) both; }
 
 /* ── Mobile ── */
+@media (max-width: 720px) {
+  .mc-type-grid { grid-template-columns: 1fr; max-width: 320px; }
+}
 @media (max-width: 600px) {
   .mc-type-grid { grid-template-columns: 1fr; max-width: 320px; }
   .mc-grid { grid-template-columns: repeat(3, 1fr); gap: .6rem; padding: 1rem; }
@@ -339,6 +367,15 @@
       <div class="mc-type-name">Insalata</div>
       <div class="mc-type-desc">Base, proteine, verdure e condimento</div>
       <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['insalata']) }}€</span>
+    </div>
+  </a>
+  <a href="{{ url_for('main.builder_visual', type='poke') }}" class="mc-type-card t-poke">
+    <div class="mc-type-banner"></div>
+    <div class="mc-type-body">
+      <span class="mc-type-emoji">🍱</span>
+      <div class="mc-type-name">Poke Bowl</div>
+      <div class="mc-type-desc">Riso, proteine, verdure e salsa fusion</div>
+      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['poke']) }}€</span>
     </div>
   </a>
 </div>
@@ -406,16 +443,32 @@
   <div class="mc-panel" id="mc-psum" style="display:none;">
     <div class="mc-sum-hd">
       <div style="font-size:3rem;margin-bottom:.5rem;">🎉</div>
-      <div class="mc-sum-title">Il tuo {{ 'panino' if builder_type == 'panino' else 'insalata' }}</div>
+      <div class="mc-sum-title">
+        {% if builder_type == 'panino' %}Il tuo panino
+        {% elif builder_type == 'insalata' %}La tua insalata
+        {% else %}La tua poke bowl{% endif %}
+      </div>
       <div class="mc-sum-sub">Controlla gli ingredienti e aggiungi al carrello</div>
     </div>
     <div id="mc-sum-grid" class="mc-sum-grid"></div>
+    {% if builder_type == 'panino' %}
+    <div class="mc-grill-row" id="mc-grill-row">
+      <div class="mc-grill-info">
+        <strong>🔥 Vuoi il panino alla piastra?</strong>
+        <small>Preparazione al momento — richiede qualche minuto in più</small>
+      </div>
+      <button type="button" class="mc-grill-btn" id="mc-grill-btn" onclick="mcToggleGrill()">No</button>
+    </div>
+    {% endif %}
     <div id="mc-total-block" class="mc-total-block">
       <div class="mc-total-lbl">Totale</div>
       <div class="mc-total-num" id="mc-total-num">{{ '%.2f'|format(base_price) }}€</div>
     </div>
     <form method="POST" action="{{ url_for('main.builder_add') }}" id="mc-form" style="padding:0 1.5rem 1.5rem;">
       <input type="hidden" name="builder_type" value="{{ builder_type }}">
+      {% if builder_type == 'panino' %}
+      <input type="hidden" name="grill_requested" id="mc-grill-input" value="0">
+      {% endif %}
       <div id="mc-hidden-ings"></div>
     </form>
   </div>
@@ -461,17 +514,23 @@ var EM = {
   'pane bianco':'🍞','pane integrale':'🌾','ciabatta':'🥖','rosetta':'🫓','baguette':'🥖',
   'senza glutine':'✨','pane ai cereali':'🌾','pane di segale':'🍞',
   'prosciutto cotto':'🥩','prosciutto crudo':'🍖','tonno':'🐟','tonno al naturale':'🐟',
-  'mozzarella':'🧀','formaggio':'🧀','bresaola':'🥩','salmone':'🐠','feta':'🧀',
-  'pollo grigliato':'🍗','legumi misti':'🫘','ceci':'🫘','fagioli':'🫘',
+  'tonno marinato':'🐟','mozzarella':'🧀','formaggio':'🧀','bresaola':'🥩',
+  'salmone':'🐠','feta':'🧀','pollo grigliato':'🍗','pollo teriyaki':'🍗',
+  'legumi misti':'🫘','ceci':'🫘','fagioli':'🫘','tofu':'🟫',
   'uovo sodo':'🥚','uova':'🥚','uovo':'🥚',
   'lattuga':'🥬','rucola':'🌿','pomodoro':'🍅','cetriolo':'🥒','cipolla rossa':'🧅',
   'cipolla':'🧅','peperoni':'🫑','mais':'🌽','olive':'🫒','carote':'🥕','avocado':'🥑',
   'spinaci baby':'🌿','iceberg':'🥬','lattuga mista':'🥗','radicchio':'🌺',
+  'edamame':'🫘','carota julienne':'🥕','cavolo rosso':'🥬','mango':'🥭',
   'maionese':'🥛','senape':'🟡','ketchup':'🍅','pesto':'🌿','hummus':'🫘',
   'yogurt greco':'🫙','tahini':'🫙','tzatziki':'🫙','olio e limone':'🍋',
   'aceto balsamico':'🫙','ranch':'🥛','salsa rosa':'🥛','vinaigrette':'🫙',
+  'salsa ponzu':'🫙','maionese spicy':'🌶️','teriyaki':'🍯','salsa di sesamo':'🫙','miso':'🍜',
   'bacon':'🥓','parmigiano':'🧀','mozzarella extra':'🧀','crostini':'🍞',
   'pinoli':'🫘','semi di girasole':'🌻','sesamo':'⚪','granola salata':'🌾',
+  'cipollotto':'🌱','tempura flakes':'✨','alga nori':'🌿','lime':'🍋',
+  'riso bianco':'🍚','riso integrale':'🍚','quinoa':'🌾','mix riso e quinoa':'🍚',
+  'polpo':'🐙','gamberi':'🦐',
 };
 function em(n){ return EM[n.toLowerCase()] || '🍽️'; }
 
@@ -624,8 +683,8 @@ function mcRenderSummary(){
 
   var html = '<div class="mc-sum-item">'
     + '<div class="mc-sum-cat">Base</div>'
-    + '<span class="mc-sum-emoji">{{ "🥪" if builder_type == "panino" else "🥗" }}</span>'
-    + '<div class="mc-sum-name">{{ "Panino" if builder_type == "panino" else "Insalata" }}</div>'
+    + '<span class="mc-sum-emoji">{{ "🥪" if builder_type == "panino" else ("🥗" if builder_type == "insalata" else "🍱") }}</span>'
+    + '<div class="mc-sum-name">{{ "Panino" if builder_type == "panino" else ("Insalata" if builder_type == "insalata" else "Poke Bowl") }}</div>'
     + '<div class="mc-sum-price">{{ "%.2f"|format(base_price) }}€</div>'
     + '</div>';
 
@@ -650,6 +709,27 @@ function mcRenderSummary(){
     hd.appendChild(inp);
   });
 }
+
+/* ── Piastra toggle (panino only) ── */
+{% if builder_type == 'panino' %}
+var MC_GRILL = false;
+function mcToggleGrill() {
+  MC_GRILL = !MC_GRILL;
+  var btn = document.getElementById('mc-grill-btn');
+  var row = document.getElementById('mc-grill-row');
+  var inp = document.getElementById('mc-grill-input');
+  if (MC_GRILL) {
+    btn.textContent = 'Sì 🔥';
+    btn.classList.add('on');
+    row.classList.add('active');
+  } else {
+    btn.textContent = 'No';
+    btn.classList.remove('on');
+    row.classList.remove('active');
+  }
+  if (inp) inp.value = MC_GRILL ? '1' : '0';
+}
+{% endif %}
 
 /* ── Init ── */
 mcRenderBar();

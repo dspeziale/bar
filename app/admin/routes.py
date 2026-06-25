@@ -10,7 +10,8 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Table, TableReservation,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
                         Tenant)
-from app.notifications import (send_telegram, send_email_to_all_users,
+from app.notifications import (send_telegram, send_telegram_to_user,
+                                send_email_to_all_users,
                                 telegram_poll_message, email_poll_html, get_setting)
 
 
@@ -216,6 +217,19 @@ def order_status(oid):
     order.status = new_status
     db.session.commit()
     flash(f'Ordine #{order.id} → {new_status}', 'success')
+    order_ref = order.order_code or f'#{order.id}'
+    if new_status == 'ready':
+        send_telegram_to_user(
+            order.user,
+            f'🔔 Il tuo ordine <b>{order_ref}</b> è <b>PRONTO</b> per il ritiro!\n'
+            f'Vieni a ritirarlo entro qualche minuto.'
+        )
+    elif new_status == 'cancelled':
+        send_telegram_to_user(
+            order.user,
+            f'❌ Ordine <b>{order_ref}</b> annullato dall\'amministratore.\n'
+            f'Rimborso di <b>{order.total_price:.2f}€</b> sul tuo wallet.'
+        )
     referer = request.referrer or ''
     if 'cucina' in referer:
         return redirect(url_for('admin.cucina'))

@@ -350,6 +350,7 @@ class CustomOrderItem(db.Model):
     label = db.Column(db.String(512), default='')
     unit_price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, default=1)
+    grill_requested = db.Column(db.Boolean, default=False)
     order = db.relationship('Order', back_populates='custom_items')
     ingredients = db.relationship('CustomOrderItemIngredient', cascade='all, delete-orphan')
 

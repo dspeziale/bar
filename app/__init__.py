@@ -104,6 +104,9 @@ def _migrate_tenant_columns():
     _ensure('users', 'address',           "TEXT DEFAULT ''")
     _ensure('users', 'telegram_chat_id',  "VARCHAR(64) DEFAULT ''")
 
+    # Colonna piastra per ordini builder
+    _ensure('custom_order_items', 'grill_requested', "BOOLEAN DEFAULT FALSE")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,
@@ -323,6 +326,66 @@ def _seed_defaults():
             Ingredient(name='Parmigiano',         price_extra=0.20, category_id=topping.id,  is_vegetarian=True,  allergens='latte'),
         ]
         db.session.add_all(ingredients)
+
+    # ── Categorie poke (aggiunta idempotente) ─────────────────────────────
+    if not IngredientCategory.query.filter_by(builder_type='poke').first():
+        poke_cats = [
+            IngredientCategory(name='Base poke',     builder_type='poke', is_required=True,
+                               max_choices=1,  sort_order=1, icon='fa-bowl-food'),
+            IngredientCategory(name='Proteina poke', builder_type='poke', is_required=True,
+                               max_choices=2,  sort_order=2, icon='fa-fish'),
+            IngredientCategory(name='Verdure poke',  builder_type='poke', is_required=False,
+                               max_choices=5,  sort_order=3, icon='fa-seedling'),
+            IngredientCategory(name='Salsa poke',    builder_type='poke', is_required=True,
+                               max_choices=1,  sort_order=4, icon='fa-droplet'),
+            IngredientCategory(name='Extra poke',    builder_type='poke', is_required=False,
+                               max_choices=3,  sort_order=5, icon='fa-plus'),
+        ]
+        db.session.add_all(poke_cats)
+        db.session.flush()
+
+        bp = IngredientCategory.query.filter_by(name='Base poke').first()
+        pp = IngredientCategory.query.filter_by(name='Proteina poke').first()
+        vp = IngredientCategory.query.filter_by(name='Verdure poke').first()
+        sp = IngredientCategory.query.filter_by(name='Salsa poke').first()
+        ep = IngredientCategory.query.filter_by(name='Extra poke').first()
+
+        poke_ings = [
+            # Basi
+            Ingredient(name='Riso bianco',       price_extra=0.00, category_id=bp.id, is_vegetarian=True),
+            Ingredient(name='Riso integrale',    price_extra=0.00, category_id=bp.id, is_vegetarian=True),
+            Ingredient(name='Quinoa',            price_extra=0.30, category_id=bp.id, is_vegetarian=True),
+            Ingredient(name='Mix riso e quinoa', price_extra=0.20, category_id=bp.id, is_vegetarian=True),
+            # Proteine
+            Ingredient(name='Tonno marinato',    price_extra=0.00, category_id=pp.id, allergens='pesce'),
+            Ingredient(name='Salmone',           price_extra=0.50, category_id=pp.id, allergens='pesce'),
+            Ingredient(name='Polpo',             price_extra=0.50, category_id=pp.id, allergens='molluschi'),
+            Ingredient(name='Gamberi',           price_extra=0.50, category_id=pp.id, allergens='crostacei'),
+            Ingredient(name='Tofu',              price_extra=0.00, category_id=pp.id, is_vegetarian=True),
+            Ingredient(name='Pollo teriyaki',    price_extra=0.30, category_id=pp.id),
+            Ingredient(name='Avocado',           price_extra=0.50, category_id=pp.id, is_vegetarian=True),
+            # Verdure
+            Ingredient(name='Edamame',           price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Cetriolo',          price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Mais',              price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Carota julienne',   price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Cavolo rosso',      price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Mango',             price_extra=0.30, category_id=vp.id, is_vegetarian=True),
+            Ingredient(name='Cipolla rossa',     price_extra=0.00, category_id=vp.id, is_vegetarian=True),
+            # Salse
+            Ingredient(name='Salsa ponzu',       price_extra=0.00, category_id=sp.id, is_vegetarian=True),
+            Ingredient(name='Maionese spicy',    price_extra=0.00, category_id=sp.id, is_vegetarian=True, allergens='uova'),
+            Ingredient(name='Teriyaki',          price_extra=0.00, category_id=sp.id, is_vegetarian=True),
+            Ingredient(name='Salsa di sesamo',   price_extra=0.20, category_id=sp.id, is_vegetarian=True, allergens='sesamo'),
+            Ingredient(name='Miso',              price_extra=0.20, category_id=sp.id, is_vegetarian=True),
+            # Extra
+            Ingredient(name='Sesamo',            price_extra=0.00, category_id=ep.id, is_vegetarian=True, allergens='sesamo'),
+            Ingredient(name='Cipollotto',        price_extra=0.00, category_id=ep.id, is_vegetarian=True),
+            Ingredient(name='Tempura flakes',    price_extra=0.30, category_id=ep.id, allergens='glutine, uova'),
+            Ingredient(name='Alga nori',         price_extra=0.20, category_id=ep.id, is_vegetarian=True),
+            Ingredient(name='Lime',              price_extra=0.00, category_id=ep.id, is_vegetarian=True),
+        ]
+        db.session.add_all(poke_ings)
 
     # ── Nuovi permessi (idempotente su DB esistenti) ───────────────────────
     extra_perms = [

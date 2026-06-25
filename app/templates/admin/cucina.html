@@ -137,7 +137,7 @@
             {% for ci in o.custom_items %}
             <li>
               <strong style="color:#e94560;">
-                {{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder
+                {{ 'Panino' if ci.builder_type == 'panino' else ('Poke' if ci.builder_type == 'poke' else 'Insalata') }} builder{% if ci.grill_requested %} <span style="background:#e94560;color:#fff;border-radius:4px;font-size:.75rem;padding:1px 5px;">🔥 piastra</span>{% endif %}
               </strong>
               <ul class="ing-list" style="padding-left:10px;">
                 {% for ing in ci.ingredients %}
@@ -201,7 +201,7 @@
             {% for ci in o.custom_items %}
             <li>
               <strong style="color:#e94560;">
-                {{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder
+                {{ 'Panino' if ci.builder_type == 'panino' else ('Poke' if ci.builder_type == 'poke' else 'Insalata') }} builder{% if ci.grill_requested %} <span style="background:#e94560;color:#fff;border-radius:4px;font-size:.75rem;padding:1px 5px;">🔥 piastra</span>{% endif %}
               </strong>
               <ul class="ing-list" style="padding-left:10px;">
                 {% for ing in ci.ingredients %}
@@ -263,7 +263,7 @@
             <li>{{ item.quantity }}× {{ item.product.name }}</li>
             {% endfor %}
             {% for ci in o.custom_items %}
-            <li><strong style="color:#e94560;">{{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder</strong></li>
+            <li><strong style="color:#e94560;">{{ 'Panino' if ci.builder_type == 'panino' else ('Poke' if ci.builder_type == 'poke' else 'Insalata') }} builder{% if ci.grill_requested %} 🔥{% endif %}</strong></li>
             {% endfor %}
           </ul>
         </div>
