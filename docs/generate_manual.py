@@ -1297,13 +1297,14 @@ def s_appendix(doc):
     # ─────────────────────────────────────────────
     h2(doc, '2 · Builder — scelta tipo piatto  —  /t/{slug}/builder/visual')
     body_para(doc,
-        "Il cliente sceglie tra Panino o Insalata. Ogni opzione mostra il prezzo di partenza "
-        "e una breve descrizione degli ingredienti che potrà personalizzare nei passi successivi.")
+        "Il cliente sceglie tra Panino, Insalata o Poke Bowl. Ogni opzione mostra il prezzo "
+        "di partenza e una breve descrizione degli ingredienti che potrà personalizzare "
+        "nei passi successivi.")
 
     tc = doc.add_table(rows=2, cols=1)
     _no_borders(tc)
     _table_width(tc, 16.5)
-    _win_chrome(tc, 'app.bsrpranzo.it/t/bar-centrale/builder/visual', 0)
+    _win_chrome(tc, 'app.quicklunch.it/t/bar-centrale/builder/visual', 0)
 
     cards_cell = tc.rows[1].cells[0]
     _cell_shd(cards_cell, 'F8F9FA')
@@ -1316,28 +1317,29 @@ def s_appendix(doc):
     _run_font(p_title.add_run('\nScegli e personalizza passo per passo'),
               size=9, color=GRAY)
 
-    inner = cards_cell.add_table(rows=1, cols=2)
+    _card_colors = [
+        # emoji, label, desc, price, bg, border_hex, price_rgb
+        ('🥪', 'PANINO',     'Pane · Proteina · Verdure · Salse',
+         'da 3.50 €', 'FFF5F7', 'E94560', RED),
+        ('🥗', 'INSALATA',   'Base · Proteina · Verdure · Condimento',
+         'da 3.00 €', 'F0FFF4', '28A745', RGBColor(0x28, 0xa7, 0x45)),
+        ('🍱', 'POKE BOWL',  'Base riso · Proteina · Verdure · Salsa fusion',
+         'da 4.00 €', 'EBF8FC', '00B4D8', RGBColor(0x00, 0xb4, 0xd8)),
+    ]
+    inner = cards_cell.add_table(rows=1, cols=3)
     _no_borders(inner)
-    for ci, (emoji, label, desc, price, bg) in enumerate([
-        ('🥪', 'PANINO',   'Pane · Proteina · Verdure · Salse',   'da 3.50 €', 'FFF5F7'),
-        ('🥗', 'INSALATA', 'Base · Proteina · Verdure · Condimento', 'da 3.00 €', 'F0FFF4'),
-    ]):
+    for ci, (emoji, label, desc, price, bg, border, price_rgb) in enumerate(_card_colors):
         c = inner.rows[0].cells[ci]
         _cell_shd(c, bg)
-        _cell_border(c, top='E94560' if ci == 0 else '28A745',
-                     bottom='E94560' if ci == 0 else '28A745',
-                     left='E94560' if ci == 0 else '28A745',
-                     right='E94560' if ci == 0 else '28A745',
-                     sz='12')
-        _cell_margins(c, top=100, bottom=100, left=80, right=80)
+        _cell_border(c, top=border, bottom=border, left=border, right=border, sz='12')
+        _cell_margins(c, top=100, bottom=100, left=60, right=60)
         p = c.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _p_spacing(p, before=0, after=6)
-        _run_font(p.add_run(emoji + '\n'), size=24)
-        _run_font(p.add_run(label + '\n'), size=13, bold=True, color=DARK)
-        _run_font(p.add_run(desc + '\n'), size=8, color=GRAY)
-        _run_font(p.add_run(price), size=9, bold=True,
-                  color=RED if ci == 0 else RGBColor(0x28, 0xa7, 0x45))
+        _run_font(p.add_run(emoji + '\n'), size=22)
+        _run_font(p.add_run(label + '\n'), size=11, bold=True, color=DARK)
+        _run_font(p.add_run(desc + '\n'), size=7, color=GRAY)
+        _run_font(p.add_run(price), size=9, bold=True, color=price_rgb)
 
     doc.add_paragraph().paragraph_format.space_after = Pt(10)
 
