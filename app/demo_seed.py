@@ -11,6 +11,7 @@ from app.models import (
     Role, Permission, AppSetting, Supplier, ConsumableItem,
     DailyStock, Order, OrderItem, IngredientCategory, Ingredient,
     CustomOrderItem, CustomOrderItemIngredient, Table, TableReservation,
+    TableTimeBand,
     Transaction, ConsumableMovement, CorporateAccount, CorporateMembership,
     DailyFixedMeal, CorporateMealBooking, PollVote, user_roles,
 )
@@ -51,6 +52,34 @@ def _slots(tenant_id):
     for t in Config.PICKUP_SLOTS:
         db.session.add(TimeSlot(time_str=t, max_orders=30, is_active=True,
                                 tenant_id=tenant_id))
+
+
+def _tables(tenant_id):
+    if Table.query.filter_by(tenant_id=tenant_id).first():
+        return
+    specs = [
+        (1, 4, 'Finestra'), (2, 4, 'Finestra'),
+        (3, 2, 'Centro'),   (4, 2, 'Centro'),
+        (5, 4, 'Terrazzo'), (6, 4, 'Terrazzo'),
+    ]
+    for number, seats, location in specs:
+        db.session.add(Table(number=number, seats=seats,
+                             location=location, is_active=True,
+                             tenant_id=tenant_id))
+
+
+def _bands(tenant_id):
+    if TableTimeBand.query.filter_by(tenant_id=tenant_id).first():
+        return
+    configs = [
+        ('11:25', '12:30', 30, 0),
+        ('12:30', '13:30', 20, 1),
+        ('13:30', '15:00', 25, 2),
+    ]
+    for start, end, dur, order in configs:
+        db.session.add(TableTimeBand(start_time=start, end_time=end,
+                                     duration_minutes=dur, sort_order=order,
+                                     tenant_id=tenant_id))
 
 
 def _cat(name, icon, color, tenant_id):
@@ -112,6 +141,8 @@ def _seed_bar_centrale(sa_role):
     t = _tenant('Bar Centrale', 'bar-centrale', '#e94560')
     _tenant_admin(t, sa_role)
     _slots(t.id)
+    _tables(t.id)
+    _bands(t.id)
 
     pan  = _cat('Panini & Piadine',  'fa-burger',       'warning',  t.id)
     cal  = _cat('Piatti Caldi',      'fa-bowl-food',    'danger',   t.id)
@@ -211,6 +242,8 @@ def _seed_mensa_tech(sa_role):
     t = _tenant('Mensa AziendaTech', 'mensa-tech', '#0f3460')
     _tenant_admin(t, sa_role)
     _slots(t.id)
+    _tables(t.id)
+    _bands(t.id)
 
     pri  = _cat('Primo Piatto',  'fa-bowl-food',    'danger',    t.id)
     sec  = _cat('Secondo Piatto','fa-drumstick-bite','warning',  t.id)
@@ -310,6 +343,8 @@ def _seed_caffetteria_duomo(sa_role):
     t = _tenant('Caffetteria Duomo', 'caffetteria-duomo', '#8e44ad')
     _tenant_admin(t, sa_role)
     _slots(t.id)
+    _tables(t.id)
+    _bands(t.id)
 
     caf  = _cat('Caffetteria',       'fa-mug-hot',       'warning',   t.id)
     ape  = _cat('Aperitivi',         'fa-wine-glass',    'danger',    t.id)
@@ -457,8 +492,9 @@ def reset_demo_data():
         OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
     Order.query.filter(Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # tavoli e prenotazioni
+    # tavoli, fasce orarie e prenotazioni
     TableReservation.query.filter(TableReservation.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    TableTimeBand.query.filter(TableTimeBand.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
     Table.query.filter(Table.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
     # menu / magazzino prodotti

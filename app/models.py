@@ -387,12 +387,44 @@ class Table(db.Model):
         return self.reservation_for(slot_id, res_date) is None
 
 
+class TableTimeBand(db.Model):
+    """Fascia oraria dei tavoli con durata seduta variabile."""
+    __tablename__ = 'table_time_bands'
+    id               = db.Column(db.Integer, primary_key=True)
+    start_time       = db.Column(db.String(5), nullable=False)   # 'HH:MM'
+    end_time         = db.Column(db.String(5), nullable=False)   # 'HH:MM'
+    duration_minutes = db.Column(db.Integer, nullable=False, default=30)
+    sort_order       = db.Column(db.Integer, default=0)
+    tenant_id        = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+
+    reservations = db.relationship('TableReservation', back_populates='band')
+
+    def computed_slots(self):
+        """Restituisce la lista di orari di inizio (HH:MM) calcolati per questa fascia."""
+        from datetime import datetime as _dt, timedelta as _td
+        fmt = '%H:%M'
+        t   = _dt.strptime(self.start_time, fmt)
+        end = _dt.strptime(self.end_time, fmt)
+        delta = _td(minutes=self.duration_minutes)
+        slots = []
+        while t + delta <= end:
+            slots.append(t.strftime(fmt))
+            t += delta
+        return slots
+
+    @property
+    def label(self):
+        return f'{self.start_time} – {self.end_time}  ({self.duration_minutes} min)'
+
+
 class TableReservation(db.Model):
     __tablename__ = 'table_reservations'
     id               = db.Column(db.Integer, primary_key=True)
     user_id          = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     table_id         = db.Column(db.Integer, db.ForeignKey('tables.id'), nullable=False)
-    slot_id          = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=False)
+    slot_id          = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=True)
+    band_id          = db.Column(db.Integer, db.ForeignKey('table_time_bands.id'), nullable=True)
+    session_start    = db.Column(db.String(5), default='')  # 'HH:MM' computed from band
     reservation_date = db.Column(db.Date, nullable=False, default=date.today)
     party_size       = db.Column(db.Integer, default=1)
     notes            = db.Column(db.Text, default='')
@@ -402,9 +434,10 @@ class TableReservation(db.Model):
     table_alert_sent = db.Column(db.Boolean, default=False)
     tenant_id        = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
-    user = db.relationship('User', back_populates='reservations')
+    user  = db.relationship('User', back_populates='reservations')
     table = db.relationship('Table', back_populates='reservations')
-    slot = db.relationship('TimeSlot', back_populates='table_reservations')
+    slot  = db.relationship('TimeSlot', back_populates='table_reservations')
+    band  = db.relationship('TableTimeBand', back_populates='reservations')
 
     @property
     def minutes_remaining(self):

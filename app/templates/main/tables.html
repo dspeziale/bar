@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Prenota Tavolo{% endblock %}
 {% block page_title %}Prenota un Tavolo{% endblock %}
 {% block breadcrumb %}
@@ -8,131 +8,179 @@
 
 {% block extra_css %}
 <style>
-  .slot-tab { cursor:pointer; padding:.5rem 1rem; border-radius:20px; margin:.2rem;
-              border:2px solid var(--QuickLunch-card-border); background:var(--QuickLunch-card-bg);
-              color:var(--QuickLunch-text); font-weight:600; transition:all .15s; display:inline-block; }
-  .slot-tab.active { background:linear-gradient(135deg,#e94560,#0f3460); color:#fff; border-color:transparent; }
-  .tables-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:.75rem; }
-  .tbl-card { border-radius:14px; padding:1rem .75rem; text-align:center; border:2px solid transparent;
-              transition:all .15s; cursor:pointer; }
-  .tbl-card.free  { border-color:#28a745; background:rgba(40,167,69,.08); }
-  .tbl-card.free:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(40,167,69,.2); }
-  .tbl-card.mine  { border-color:#0f3460; background:rgba(15,52,96,.12); }
-  .tbl-card.taken { border-color:#dc3545; background:rgba(220,53,69,.06); cursor:not-allowed; opacity:.75; }
-  .tbl-card.off   { border-color:var(--QuickLunch-card-border); background:var(--QuickLunch-stripe); cursor:not-allowed; opacity:.5; }
-  .tbl-number { font-size:1.6rem; font-weight:700; line-height:1; }
-  .tbl-seats  { font-size:.78rem; color:var(--QuickLunch-text-muted); }
-  .tbl-status { font-size:.72rem; font-weight:600; margin-top:.25rem; }
+  .tables-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:.65rem; }
+  .tbl-card { border-radius:12px; padding:.85rem .6rem; text-align:center; border:2px solid transparent;
+              transition:all .15s; }
+  .tbl-card.free  { border-color:#28a745; background:rgba(40,167,69,.09); cursor:pointer; }
+  .tbl-card.free:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(40,167,69,.22); }
+  .tbl-card.mine  { border-color:#0f3460; background:rgba(15,52,96,.11); cursor:default; }
+  .tbl-card.taken { border-color:#dc3545; background:rgba(220,53,69,.07); cursor:not-allowed; opacity:.75; }
+  .tbl-card.off   { border-color:#adb5bd; background:rgba(173,181,189,.1); cursor:not-allowed; opacity:.5; }
+  .tbl-number { font-size:1.5rem; font-weight:700; line-height:1; }
+  .tbl-seats  { font-size:.75rem; color:var(--QuickLunch-text-muted); }
+  .tbl-status { font-size:.72rem; font-weight:600; margin-top:.2rem; }
+  .band-section { margin-bottom:1.5rem; }
+  .band-header { background:linear-gradient(90deg,#17a2b8,#0f3460);
+                 color:#fff; border-radius:.5rem .5rem 0 0; padding:.6rem 1rem;
+                 font-weight:700; font-size:.95rem; }
+  .band-body { border:1px solid #dee2e6; border-top:0; border-radius:0 0 .5rem .5rem;
+               padding:1rem; }
+  .slot-section { margin-bottom:1rem; }
+  .slot-heading { font-size:.8rem; font-weight:700; color:#495057; text-transform:uppercase;
+                  letter-spacing:.05em; margin-bottom:.5rem; }
   [data-QuickLunch-theme="dark"] .tbl-card.mine { border-color:#6ea8fe; background:rgba(110,168,254,.1); }
+  [data-QuickLunch-theme="dark"] .band-body { border-color:#444; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="alert alert-info">
-  <i class="fas fa-info-circle mr-2"></i>
-  Disponibilità per <strong>oggi, {{ res_date.strftime('%d/%m/%Y') }}</strong>.
-  Seleziona uno slot orario e poi clicca un tavolo libero per prenotare.
-</div>
 
-<!-- Tabs slot -->
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <div class="d-flex flex-wrap" id="slot-tabs">
-      {% for slot in slots %}
-      <span class="slot-tab {{ 'active' if loop.first }}" data-slot="{{ slot.id }}"
-            data-time="{{ slot.time_str }}" onclick="selectSlot(this)">
-        <i class="fas fa-clock mr-1"></i>{{ slot.time_str }}
-      </span>
-      {% endfor %}
-    </div>
+{# Navigazione data #}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <a href="{{ url_for('main.tables', d=prev_day) }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-chevron-left"></i>
+  </a>
+  <div class="d-flex align-items-center" style="gap:.5rem;">
+    <form method="GET" class="mb-0">
+      <input type="date" name="d" value="{{ res_date_str }}" class="form-control form-control-sm"
+             style="max-width:150px;" onchange="this.form.submit()">
+    </form>
+    {% if res_date_str == today %}
+    <span class="badge badge-success">Oggi</span>
+    {% else %}
+    <a href="{{ url_for('main.tables') }}" class="btn btn-sm btn-outline-primary">Oggi</a>
+    {% endif %}
   </div>
+  <a href="{{ url_for('main.tables', d=next_day) }}" class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-chevron-right"></i>
+  </a>
 </div>
 
-<!-- Griglia tavoli per slot -->
-{% for slot in slots %}
-<div class="slot-panel" id="panel-{{ slot.id }}" style="{{ 'display:block' if loop.first else 'display:none' }}">
-  <div class="row">
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-chair mr-2"></i>Tavoli disponibili alle {{ slot.time_str }}
-          </h5>
-        </div>
-        <div class="card-body">
+{% if not bands %}
+<div class="alert alert-warning">
+  <i class="fas fa-exclamation-triangle mr-2"></i>
+  Nessuna fascia oraria configurata dal gestore. Riprova più tardi.
+</div>
+
+{% elif not tables %}
+<div class="alert alert-warning">
+  <i class="fas fa-chair mr-2"></i>
+  Nessun tavolo disponibile al momento.
+</div>
+
+{% else %}
+
+<div class="row">
+  {# Colonna principale: fasce orarie #}
+  <div class="col-lg-9">
+
+    {% for band in bands %}
+    {% set slots = band.computed_slots() %}
+    <div class="band-section">
+      <div class="band-header">
+        <i class="fas fa-hourglass-half mr-2"></i>
+        {{ band.start_time }} – {{ band.end_time }}
+        <span style="opacity:.75;font-weight:400;font-size:.85rem;margin-left:.5rem;">
+          ({{ band.duration_minutes }} min a seduta)
+        </span>
+      </div>
+      <div class="band-body">
+        {% if slots %}
+        {% for slot_time in slots %}
+        <div class="slot-section">
+          <div class="slot-heading">
+            <i class="fas fa-clock mr-1"></i>{{ slot_time }}
+          </div>
           <div class="tables-grid">
-            {% for table in tables %}
-            {% set res = availability[table.id][slot.id] %}
-            {% set is_mine = (table.id, slot.id) in my_booked %}
-            {% if not table.is_active %}
+            {% for t in tables %}
+            {% set res = res_index.get((t.id, slot_time)) %}
+            {% set is_mine = slot_time in my_starts and res and res.user_id == current_user.id %}
+            {% if not t.is_active %}
             <div class="tbl-card off">
-              <div class="tbl-number text-muted">{{ table.number }}</div>
-              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ table.seats }} posti</div>
-              {% if table.location %}<div class="tbl-status text-muted">{{ table.location }}</div>{% endif %}
-              <div class="tbl-status text-muted">Non disponibile</div>
+              <div class="tbl-number text-muted">{{ t.number }}</div>
+              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ t.seats }}p</div>
+              {% if t.location %}<div class="tbl-status text-muted">{{ t.location }}</div>{% endif %}
+              <div class="tbl-status text-muted">N/D</div>
             </div>
             {% elif is_mine %}
             <div class="tbl-card mine">
-              <div class="tbl-number" style="color:#0f3460;">{{ table.number }}</div>
-              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ table.seats }} posti</div>
-              {% if table.location %}<div class="tbl-status text-muted">{{ table.location }}</div>{% endif %}
-              <div class="tbl-status" style="color:#0f3460;"><i class="fas fa-check mr-1"></i>Tuo</div>
+              <div class="tbl-number" style="color:#0f3460;">{{ t.number }}</div>
+              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ t.seats }}p</div>
+              {% if t.location %}<div class="tbl-status text-muted">{{ t.location }}</div>{% endif %}
+              <div class="tbl-status" style="color:#0f3460;">
+                <i class="fas fa-check mr-1"></i>Tuo
+              </div>
             </div>
             {% elif res %}
             <div class="tbl-card taken">
-              <div class="tbl-number text-danger">{{ table.number }}</div>
-              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ table.seats }} posti</div>
-              {% if table.location %}<div class="tbl-status text-muted">{{ table.location }}</div>{% endif %}
-              <div class="tbl-status text-danger"><i class="fas fa-times mr-1"></i>Occupato</div>
+              <div class="tbl-number text-danger">{{ t.number }}</div>
+              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ t.seats }}p</div>
+              {% if t.location %}<div class="tbl-status text-muted">{{ t.location }}</div>{% endif %}
+              <div class="tbl-status text-danger">
+                <i class="fas fa-times mr-1"></i>Occupato
+              </div>
             </div>
             {% else %}
             <div class="tbl-card free"
-                 onclick="openBook({{ table.id }}, {{ slot.id }}, '{{ slot.time_str }}', {{ table.number }}, {{ table.seats }})">
-              <div class="tbl-number text-success">{{ table.number }}</div>
-              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ table.seats }} posti</div>
-              {% if table.location %}<div class="tbl-status text-muted">{{ table.location }}</div>{% endif %}
-              <div class="tbl-status text-success"><i class="fas fa-check mr-1"></i>Libero</div>
+                 onclick="openBook({{ t.id }}, {{ band.id }}, '{{ slot_time }}', {{ t.number }}, {{ t.seats }}, '{{ band.start_time }} – {{ band.end_time }}')">
+              <div class="tbl-number text-success">{{ t.number }}</div>
+              <div class="tbl-seats"><i class="fas fa-users mr-1"></i>{{ t.seats }}p</div>
+              {% if t.location %}<div class="tbl-status text-muted">{{ t.location }}</div>{% endif %}
+              <div class="tbl-status text-success">
+                <i class="fas fa-circle mr-1" style="font-size:.55rem;"></i>Libero
+              </div>
             </div>
             {% endif %}
             {% endfor %}
           </div>
         </div>
+        {% if not loop.last %}<hr style="margin:.75rem 0;">{% endif %}
+        {% endfor %}
+        {% else %}
+        <p class="text-muted mb-0" style="font-size:.9rem;">
+          Nessuna sessione calcolabile per questa fascia.
+        </p>
+        {% endif %}
       </div>
     </div>
+    {% endfor %}
 
-    <!-- Legenda -->
-    <div class="col-lg-4">
-      <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0">Legenda</h5></div>
-        <div class="card-body">
-          <div class="d-flex align-items-center mb-2">
-            <div style="width:16px;height:16px;border-radius:4px;background:#28a745;margin-right:8px;"></div>
-            <span>Libero — clicca per prenotare</span>
-          </div>
-          <div class="d-flex align-items-center mb-2">
-            <div style="width:16px;height:16px;border-radius:4px;background:#0f3460;margin-right:8px;"></div>
-            <span>Prenotato da te</span>
-          </div>
-          <div class="d-flex align-items-center mb-2">
-            <div style="width:16px;height:16px;border-radius:4px;background:#dc3545;margin-right:8px;"></div>
-            <span>Occupato</span>
-          </div>
-          <div class="d-flex align-items-center">
-            <div style="width:16px;height:16px;border-radius:4px;background:#6c757d;margin-right:8px;"></div>
-            <span>Non disponibile</span>
-          </div>
-          <hr>
-          <a href="{{ url_for('main.my_reservations') }}" class="btn btn-outline-primary btn-sm btn-block">
-            <i class="fas fa-calendar-check mr-1"></i>Le mie prenotazioni
-          </a>
+  </div>
+
+  {# Colonna laterale: legenda #}
+  <div class="col-lg-3">
+    <div class="card sticky-top" style="top:1rem;">
+      <div class="card-header py-2">
+        <h6 class="card-title mb-0"><i class="fas fa-info-circle mr-1"></i>Legenda</h6>
+      </div>
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center mb-2">
+          <div style="width:14px;height:14px;border-radius:3px;background:#28a745;flex-shrink:0;margin-right:8px;"></div>
+          <small>Libero — clicca per prenotare</small>
         </div>
+        <div class="d-flex align-items-center mb-2">
+          <div style="width:14px;height:14px;border-radius:3px;background:#0f3460;flex-shrink:0;margin-right:8px;"></div>
+          <small>Tua prenotazione</small>
+        </div>
+        <div class="d-flex align-items-center mb-2">
+          <div style="width:14px;height:14px;border-radius:3px;background:#dc3545;flex-shrink:0;margin-right:8px;"></div>
+          <small>Occupato</small>
+        </div>
+        <div class="d-flex align-items-center mb-3">
+          <div style="width:14px;height:14px;border-radius:3px;background:#adb5bd;flex-shrink:0;margin-right:8px;"></div>
+          <small>Non disponibile</small>
+        </div>
+        <a href="{{ url_for('main.my_reservations') }}" class="btn btn-outline-primary btn-sm btn-block">
+          <i class="fas fa-calendar-check mr-1"></i>Le mie prenotazioni
+        </a>
       </div>
     </div>
   </div>
 </div>
-{% endfor %}
 
-<!-- Modal prenotazione -->
+{% endif %}
+
+{# Modal prenotazione #}
 <div class="modal fade" id="bookModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
@@ -141,22 +189,29 @@
           <h5 class="modal-title">
             <i class="fas fa-chair mr-2"></i>Prenota Tavolo <span id="modal-table-n"></span>
           </h5>
-          <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+          <button type="button" class="close text-white" data-dismiss="modal">
+            <span>&times;</span>
+          </button>
         </div>
         <div class="modal-body">
-          <input type="hidden" name="table_id" id="modal-table-id">
-          <input type="hidden" name="slot_id"  id="modal-slot-id">
-          <p class="text-muted mb-2">
+          <input type="hidden" name="table_id"     id="modal-table-id">
+          <input type="hidden" name="band_id"      id="modal-band-id">
+          <input type="hidden" name="session_start" id="modal-session">
+          <input type="hidden" name="res_date"     value="{{ res_date_str }}">
+          <p class="text-muted mb-3" style="font-size:.9rem;">
+            <i class="fas fa-hourglass-half mr-1"></i>Fascia: <strong id="modal-band-label"></strong><br>
             <i class="fas fa-clock mr-1"></i>Orario: <strong id="modal-time"></strong><br>
-            <i class="fas fa-users mr-1"></i>Posti disponibili: <strong id="modal-seats"></strong>
+            <i class="fas fa-users mr-1"></i>Posti: <strong id="modal-seats"></strong>
           </p>
           <div class="form-group mb-2">
             <label>Numero persone</label>
-            <input type="number" name="party_size" class="form-control" value="1" min="1" id="modal-party">
+            <input type="number" name="party_size" id="modal-party"
+                   class="form-control" value="1" min="1">
           </div>
           <div class="form-group mb-0">
             <label>Note (opzionale)</label>
-            <textarea name="notes" class="form-control" rows="2" placeholder="Es: sedia alta, allergie..."></textarea>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="Es: sedia alta, allergie..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -173,19 +228,14 @@
 
 {% block extra_js %}
 <script>
-function selectSlot(el) {
-  document.querySelectorAll('.slot-tab').forEach(function(t){ t.classList.remove('active'); });
-  el.classList.add('active');
-  document.querySelectorAll('.slot-panel').forEach(function(p){ p.style.display = 'none'; });
-  document.getElementById('panel-' + el.dataset.slot).style.display = 'block';
-}
-
-function openBook(tableId, slotId, time, tableNum, seats) {
-  document.getElementById('modal-table-id').value = tableId;
-  document.getElementById('modal-slot-id').value  = slotId;
-  document.getElementById('modal-table-n').textContent = tableNum;
-  document.getElementById('modal-time').textContent    = time;
-  document.getElementById('modal-seats').textContent   = seats;
+function openBook(tableId, bandId, sessionStart, tableNum, seats, bandLabel) {
+  document.getElementById('modal-table-id').value  = tableId;
+  document.getElementById('modal-band-id').value   = bandId;
+  document.getElementById('modal-session').value   = sessionStart;
+  document.getElementById('modal-table-n').textContent    = tableNum;
+  document.getElementById('modal-band-label').textContent = bandLabel;
+  document.getElementById('modal-time').textContent       = sessionStart;
+  document.getElementById('modal-seats').textContent      = seats;
   document.getElementById('modal-party').max = seats;
   $('#bookModal').modal('show');
 }

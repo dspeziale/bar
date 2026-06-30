@@ -7,7 +7,7 @@ from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
                         IngredientCategory, Ingredient,
-                        Table, TableReservation,
+                        Table, TableReservation, TableTimeBand,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
                         Tenant, Supplier, ConsumableItem, ConsumableMovement,
                         CorporateAccount, CorporateMembership,
@@ -602,27 +602,83 @@ def tavoli():
     prev_day = (sel_date - timedelta(days=1)).isoformat()
     next_day = (sel_date + timedelta(days=1)).isoformat()
 
-    all_tables = Table.query.order_by(Table.number).all()
-    active_slots = TimeSlot.query.order_by(TimeSlot.time_str).all()
+    all_tables = Table.query.filter_by(is_active=True).order_by(Table.number).all()
+    all_tables_with_inactive = Table.query.order_by(Table.number).all()
+    bands = TableTimeBand.query.order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
+    order_slots = TimeSlot.query.order_by(TimeSlot.time_str).all()
 
-    # Griglia disponibilità per la data selezionata
-    availability = {
-        t.id: {s.id: t.reservation_for(s.id, sel_date) for s in active_slots}
-        for t in all_tables
-    }
-
-    # Lista prenotazioni del giorno
+    # Per la panoramica: prenotazioni del giorno indicizzate per (table_id, session_start)
     day_reservations = (TableReservation.query
                         .filter_by(reservation_date=sel_date)
-                        .order_by(TableReservation.slot_id, TableReservation.table_id)
+                        .filter(TableReservation.status != 'cancelled')
                         .all())
+    # index: (table_id, session_start) → reservation
+    res_index = {(r.table_id, r.session_start): r for r in day_reservations}
+
+    # Tutte le prenotazioni del giorno (incluse annullate) per la lista completa
+    all_day_res = (TableReservation.query
+                   .filter_by(reservation_date=sel_date)
+                   .order_by(TableReservation.session_start, TableReservation.table_id)
+                   .all())
 
     return render_template('admin/tavoli.html',
                            tab=tab, sel_date=raw_date, today=str(date.today()),
                            prev_day=prev_day, next_day=next_day,
-                           all_tables=all_tables, active_slots=active_slots,
-                           availability=availability,
-                           day_reservations=day_reservations)
+                           all_tables=all_tables,
+                           all_tables_with_inactive=all_tables_with_inactive,
+                           bands=bands, order_slots=order_slots,
+                           res_index=res_index,
+                           all_day_res=all_day_res)
+
+
+@bp.route('/tavoli/bande/new', methods=['POST'])
+@require_permission('manage_tables_admin')
+def band_new():
+    start = request.form.get('start_time', '').strip()
+    end   = request.form.get('end_time',   '').strip()
+    dur   = request.form.get('duration_minutes', type=int)
+    if not start or not end or not dur or dur < 1:
+        flash('Compila tutti i campi della fascia oraria.', 'danger')
+        return redirect(url_for('admin.tavoli', tab='fasce'))
+    tid = current_user.tenant_id if not current_user.is_admin else None
+    # calcola sort_order come posizione temporale
+    existing = TableTimeBand.query.count()
+    band = TableTimeBand(start_time=start, end_time=end,
+                         duration_minutes=dur, sort_order=existing,
+                         tenant_id=tid)
+    db.session.add(band)
+    db.session.commit()
+    flash(f'Fascia {start}–{end} ({dur} min) aggiunta.', 'success')
+    return redirect(url_for('admin.tavoli', tab='fasce'))
+
+
+@bp.route('/tavoli/bande/<int:bid>/delete', methods=['POST'])
+@require_permission('manage_tables_admin')
+def band_delete(bid):
+    band = TableTimeBand.query.get_or_404(bid)
+    label = band.label
+    if band.reservations:
+        flash(f'Impossibile eliminare la fascia "{label}": ha prenotazioni collegate.', 'danger')
+        return redirect(url_for('admin.tavoli', tab='fasce'))
+    db.session.delete(band)
+    db.session.commit()
+    flash(f'Fascia "{label}" eliminata.', 'success')
+    return redirect(url_for('admin.tavoli', tab='fasce'))
+
+
+@bp.route('/tables/<int:tid>/delete', methods=['POST'])
+@require_permission('manage_tables_admin')
+def table_delete(tid):
+    t = Table.query.get_or_404(tid)
+    active_res = TableReservation.query.filter_by(
+        table_id=tid, status='confirmed').count()
+    if active_res:
+        flash(f'Tavolo {t.number} ha {active_res} prenotazioni attive: annullale prima.', 'danger')
+        return redirect(url_for('admin.tavoli', tab='tavoli'))
+    db.session.delete(t)
+    db.session.commit()
+    flash(f'Tavolo {t.number} eliminato.', 'success')
+    return redirect(url_for('admin.tavoli', tab='tavoli'))
 
 
 # ── Ingredienti builder ───────────────────────────────────────────────────────

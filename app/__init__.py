@@ -145,6 +145,23 @@ def _migrate_tenant_columns():
     _ensure('daily_fixed_meals', 'bevanda',  "VARCHAR(256) DEFAULT ''")
     _ensure('daily_fixed_meals', 'caffe',    "VARCHAR(128) DEFAULT ''")
 
+    # Fasce orarie tavoli (nuova tabella) — creata da create_all se non esiste
+    # Colonne aggiuntive su table_reservations per il nuovo sistema a fasce
+    _ensure('table_reservations', 'band_id',       "INTEGER")
+    _ensure('table_reservations', 'session_start',  "VARCHAR(5) DEFAULT ''")
+    # Rendi slot_id nullable su PostgreSQL (in SQLite la colonna viene ricreata dal seed)
+    if is_pg and 'table_reservations' in existing_tables:
+        cols = {c['name']: c for c in insp.get_columns('table_reservations')}
+        if 'slot_id' in cols and not cols['slot_id'].get('nullable', True):
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(
+                        'ALTER TABLE table_reservations ALTER COLUMN slot_id DROP NOT NULL'))
+                    conn.commit()
+                print('[migration] table_reservations.slot_id → nullable')
+            except Exception:
+                pass
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

@@ -406,62 +406,94 @@ def builder_visual():
 @bp.route('/tables')
 @login_required
 def tables():
-    slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
+    from app.models import TableTimeBand
+    res_date_str = request.args.get('d', str(date.today()))
+    try:
+        from datetime import datetime as _dt
+        res_date = _dt.strptime(res_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        res_date = date.today()
+        res_date_str = str(res_date)
+
     all_tables = Table.query.filter_by(is_active=True).order_by(Table.number).all()
-    res_date = date.today()
+    bands = TableTimeBand.query.order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
 
-    # Matrice disponibilità: {table_id: {slot_id: reservation_or_None}}
-    availability = {}
-    for t in all_tables:
-        availability[t.id] = {}
-        for s in slots:
-            availability[t.id][s.id] = t.reservation_for(s.id, res_date)
+    # Prenotazioni attive del giorno indicizzate per (table_id, session_start)
+    day_res = (TableReservation.query
+               .filter_by(reservation_date=res_date)
+               .filter(TableReservation.status != 'cancelled')
+               .all())
+    res_index = {(r.table_id, r.session_start): r for r in day_res}
 
-    # Prenotazione già fatta oggi dall'utente
-    my_res_today = TableReservation.query.filter_by(
-        user_id=current_user.id, reservation_date=res_date
-    ).filter(TableReservation.status != 'cancelled').all()
-    my_booked = {(r.table_id, r.slot_id) for r in my_res_today}
+    # Prenotazioni dell'utente per il giorno
+    my_starts = {r.session_start for r in day_res if r.user_id == current_user.id}
+
+    from datetime import timedelta as _td
+    prev_day = (res_date - _td(days=1)).isoformat()
+    next_day = (res_date + _td(days=1)).isoformat()
 
     return render_template('main/tables.html',
-                           tables=all_tables, slots=slots,
-                           availability=availability,
-                           my_booked=my_booked,
-                           res_date=res_date)
+                           tables=all_tables, bands=bands,
+                           res_index=res_index, my_starts=my_starts,
+                           res_date=res_date, res_date_str=res_date_str,
+                           today=str(date.today()),
+                           prev_day=prev_day, next_day=next_day)
 
 
 @bp.route('/tables/book', methods=['POST'])
 @login_required
 def table_book():
-    table_id = request.form.get('table_id', type=int)
-    slot_id = request.form.get('slot_id', type=int)
-    party_size = request.form.get('party_size', type=int, default=1)
-    notes = request.form.get('notes', '').strip()
-    res_date = date.today()
+    from app.models import TableTimeBand
+    table_id      = request.form.get('table_id', type=int)
+    band_id       = request.form.get('band_id', type=int)
+    session_start = request.form.get('session_start', '').strip()
+    party_size    = request.form.get('party_size', type=int, default=1)
+    notes         = request.form.get('notes', '').strip()
+    res_date_str  = request.form.get('res_date', str(date.today()))
+    try:
+        from datetime import datetime as _dt
+        res_date = _dt.strptime(res_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        res_date = date.today()
+        res_date_str = str(res_date)
 
     table = db.get_or_404(Table, table_id)
-    slot = db.get_or_404(TimeSlot, slot_id)
+    band  = db.get_or_404(TableTimeBand, band_id)
 
-    if not table.is_active or not slot.is_active:
-        flash('Tavolo o slot non disponibile.', 'danger')
-        return redirect(url_for('main.tables'))
+    if not table.is_active:
+        flash('Tavolo non disponibile.', 'danger')
+        return redirect(url_for('main.tables', d=res_date_str))
 
-    if not table.is_available(slot_id, res_date):
-        flash('Tavolo già occupato per questo slot.', 'warning')
-        return redirect(url_for('main.tables'))
+    if session_start not in band.computed_slots():
+        flash('Orario non valido per questa fascia.', 'danger')
+        return redirect(url_for('main.tables', d=res_date_str))
 
     if party_size > table.seats:
         flash(f'Il tavolo {table.number} ha solo {table.seats} posti.', 'warning')
-        return redirect(url_for('main.tables'))
+        return redirect(url_for('main.tables', d=res_date_str))
+
+    conflict = (TableReservation.query
+                .filter_by(table_id=table_id, reservation_date=res_date,
+                           session_start=session_start)
+                .filter(TableReservation.status != 'cancelled')
+                .first())
+    if conflict:
+        flash('Tavolo già prenotato per questo orario.', 'warning')
+        return redirect(url_for('main.tables', d=res_date_str))
+
+    is_pg = db.engine.url.drivername.startswith('postgresql')
+    slot_sentinel = None if is_pg else 0
 
     res = TableReservation(
         user_id=current_user.id, table_id=table_id,
-        slot_id=slot_id, reservation_date=res_date,
+        band_id=band_id, session_start=session_start,
+        slot_id=slot_sentinel,
+        reservation_date=res_date,
         party_size=party_size, notes=notes, status='confirmed'
     )
     db.session.add(res)
     db.session.commit()
-    flash(f'Tavolo {table.number} prenotato per le {slot.time_str}!', 'success')
+    flash(f'Tavolo {table.number} prenotato per le {session_start}!', 'success')
     return redirect(url_for('main.my_reservations'))
 
 
