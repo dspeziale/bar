@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}Gestione Tavoli{% endblock %}
+{% block page_title %}Gestione Tavoli{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Tavoli</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .grid-cell-free     { background:#d4edda; color:#155724; font-size:.78rem; text-align:center; padding:.3rem; border-radius:.25rem; }
+  .grid-cell-taken    { background:#f8d7da; color:#721c24; font-size:.78rem; text-align:center; padding:.3rem; border-radius:.25rem; cursor:default; }
+  .grid-cell-inactive { background:#e9ecef; color:#6c757d; font-size:.78rem; text-align:center; padding:.3rem; border-radius:.25rem; }
+  .grid-slot-head     { font-size:.8rem; font-weight:700; }
+  .slot-bar           { height:6px; border-radius:3px; }
+</style>
+
+{# ── Tabs ── #}
+<ul class="nav nav-tabs mb-3" id="tavoliTabs">
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if tab == 'panoramica' }}"
+       href="{{ url_for('admin.tavoli', tab='panoramica', date=sel_date) }}">
+      <i class="fas fa-calendar-day mr-1"></i>Panoramica
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if tab == 'tavoli' }}"
+       href="{{ url_for('admin.tavoli', tab='tavoli') }}">
+      <i class="fas fa-chair mr-1"></i>Tavoli
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if tab == 'slot' }}"
+       href="{{ url_for('admin.tavoli', tab='slot') }}">
+      <i class="fas fa-clock mr-1"></i>Slot orari
+    </a>
+  </li>
+</ul>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   TAB 1 — PANORAMICA
+   ════════════════════════════════════════════════════════════════════════════ #}
+{% if tab == 'panoramica' %}
+
+{# Navigazione data #}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <a href="{{ url_for('admin.tavoli', tab='panoramica', date=prev_day) }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-chevron-left"></i>
+  </a>
+  <div class="d-flex align-items-center" style="gap:.5rem;">
+    <form method="GET" class="mb-0">
+      <input type="hidden" name="tab" value="panoramica">
+      <input type="date" name="date" value="{{ sel_date }}" class="form-control form-control-sm"
+             style="max-width:140px;" onchange="this.form.submit()">
+    </form>
+    {% if sel_date == today %}
+    <span class="badge badge-success">Oggi</span>
+    {% else %}
+    <a href="{{ url_for('admin.tavoli') }}" class="btn btn-sm btn-outline-primary">Vai a oggi</a>
+    {% endif %}
+  </div>
+  {% if sel_date < today %}
+  <a href="{{ url_for('admin.tavoli', tab='panoramica', date=next_day) }}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="fas fa-chevron-right"></i>
+  </a>
+  {% else %}
+  <span style="width:38px;"></span>
+  {% endif %}
+</div>
+
+{# ── Griglia tavoli × slot ── #}
+{% if active_slots %}
+<div class="card card-outline card-info mb-4">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-table mr-2"></i>Occupazione — {{ sel_date }}</h3>
+    <div class="card-tools">
+      <span class="badge badge-success mr-1">Libero</span>
+      <span class="badge badge-danger mr-1">Occupato</span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm mb-0" style="min-width:400px;">
+        <thead class="thead-dark">
+          <tr>
+            <th style="width:90px;">Tavolo</th>
+            {% for slot in active_slots %}
+            <th class="text-center grid-slot-head" style="min-width:80px;">
+              {{ slot.time_str }}
+              {% if not slot.is_active %}
+              <span class="badge badge-secondary ml-1" style="font-size:.65rem;">off</span>
+              {% endif %}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+        {% for table in all_tables %}
+        <tr>
+          <td>
+            <strong>T{{ table.number }}</strong>
+            <small class="text-muted d-block" style="font-size:.75rem;">
+              <i class="fas fa-users"></i>{{ table.seats }}
+              {% if table.location %}&nbsp;{{ table.location }}{% endif %}
+            </small>
+            {% if not table.is_active %}
+            <span class="badge badge-secondary" style="font-size:.65rem;">Off</span>
+            {% endif %}
+          </td>
+          {% for slot in active_slots %}
+          {% set res = availability[table.id][slot.id] %}
+          <td style="padding:.35rem;">
+            {% if not table.is_active or not slot.is_active %}
+            <div class="grid-cell-inactive">–</div>
+            {% elif res %}
+            <div class="grid-cell-taken"
+                 title="{{ res.user.username }} — {{ res.party_size }} persone{% if res.notes %} — {{ res.notes }}{% endif %}">
+              <i class="fas fa-user"></i> {{ res.user.username[:8] }}<br>
+              <span style="font-size:.7rem;">{{ res.party_size }}p</span>
+              {% if res.checkin_at %}
+              <span class="badge badge-dark" style="font-size:.6rem;">✓ in</span>
+              {% endif %}
+            </div>
+            {% else %}
+            <div class="grid-cell-free">
+              <i class="fas fa-check-circle"></i> Libero
+            </div>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Lista prenotazioni del giorno ── #}
+<div class="card card-outline card-primary">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title">
+      <i class="fas fa-list-check mr-2"></i>Prenotazioni — {{ sel_date }}
+    </h3>
+    <span class="badge badge-info" style="font-size:.9rem;">
+      {{ day_reservations | selectattr('status','eq','confirmed') | list | length }} attive
+    </span>
+  </div>
+  <div class="card-body p-0">
+    {% if day_reservations %}
+    <table class="table table-hover table-sm mb-0">
+      <thead class="thead-dark">
+        <tr>
+          <th>Utente</th>
+          <th>Tavolo</th>
+          <th>Slot</th>
+          <th>Persone</th>
+          <th>Stato</th>
+          <th>Check-in</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in day_reservations %}
+      {% set lbl = r.label() %}
+      <tr class="{{ 'table-secondary text-muted' if r.status == 'cancelled' }}">
+        <td class="align-middle"><strong>{{ r.user.username }}</strong></td>
+        <td class="align-middle">
+          <strong>T{{ r.table.number }}</strong>
+          <small class="text-muted">
+            ({{ r.table.seats }}p{% if r.table.location %}, {{ r.table.location }}{% endif %})
+          </small>
+        </td>
+        <td class="align-middle">
+          <span class="badge badge-info">{{ r.slot.time_str }}</span>
+        </td>
+        <td class="align-middle text-center">{{ r.party_size }}</td>
+        <td class="align-middle">
+          <span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span>
+          {% if r.notes %}
+          <small class="text-muted d-block">{{ r.notes }}</small>
+          {% endif %}
+        </td>
+        <td class="align-middle">
+          {% if r.checkin_at %}
+          <span class="badge badge-dark">
+            <i class="fas fa-check mr-1"></i>{{ r.checkin_at.strftime('%H:%M') }}
+          </span>
+          {% if r.minutes_remaining is not none %}
+          <small class="text-muted d-block">{{ r.minutes_remaining|int }} min rim.</small>
+          {% endif %}
+          {% elif r.status == 'confirmed' %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="align-middle text-right" style="white-space:nowrap;">
+          {% if r.status == 'confirmed' %}
+            {% if not r.checkin_at %}
+            <form method="POST"
+                  action="{{ url_for('admin.reservation_checkin', rid=r.id) }}"
+                  style="display:inline;">
+              <button class="btn btn-xs btn-success" title="Registra check-in">
+                <i class="fas fa-sign-in-alt mr-1"></i>Check-in
+              </button>
+            </form>
+            {% endif %}
+            <form method="POST"
+                  action="{{ url_for('admin.reservation_cancel', rid=r.id) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Annullare prenotazione di {{ r.user.username }}?')">
+              <button class="btn btn-xs btn-outline-danger" title="Annulla">
+                <i class="fas fa-times"></i>
+              </button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-calendar-check fa-2x mb-2 d-block"></i>
+      Nessuna prenotazione per {{ sel_date }}.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   TAB 2 — ANAGRAFICA TAVOLI
+   ════════════════════════════════════════════════════════════════════════════ #}
+{% elif tab == 'tavoli' %}
+
+<div class="row">
+  {# Lista tavoli #}
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-chair mr-2"></i>Tavoli registrati</h3></div>
+      <div class="card-body p-0">
+        {% if all_tables %}
+        <table class="table table-hover mb-0">
+          <thead class="thead-dark">
+            <tr><th>N.</th><th>Posti</th><th>Posizione</th><th>Stato</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for t in all_tables %}
+          <tr>
+            <td class="align-middle"><strong>Tavolo {{ t.number }}</strong></td>
+            <td class="align-middle"><i class="fas fa-users text-muted mr-1"></i>{{ t.seats }}</td>
+            <td class="align-middle">{{ t.location or '–' }}</td>
+            <td class="align-middle">
+              <span class="badge badge-{{ 'success' if t.is_active else 'secondary' }}">
+                {{ 'Attivo' if t.is_active else 'Disattivo' }}
+              </span>
+            </td>
+            <td class="align-middle text-right">
+              <button class="btn btn-xs btn-outline-info"
+                      data-toggle="modal" data-target="#editTable{{ t.id }}">
+                <i class="fas fa-pen"></i> Modifica
+              </button>
+            </td>
+          </tr>
+          {# Modal modifica #}
+          <div class="modal fade" id="editTable{{ t.id }}" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+              <div class="modal-content">
+                <form method="POST" action="{{ url_for('admin.table_edit', tid=t.id) }}">
+                  <div class="modal-header bg-info text-white py-2">
+                    <h6 class="modal-title mb-0">Modifica Tavolo {{ t.number }}</h6>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label>Posti</label>
+                      <input type="number" name="seats" class="form-control" value="{{ t.seats }}" min="1">
+                    </div>
+                    <div class="form-group">
+                      <label>Posizione</label>
+                      <input type="text" name="location" class="form-control"
+                             value="{{ t.location }}" placeholder="es. Finestra, Terrazzo">
+                    </div>
+                    <div class="form-check">
+                      <input type="checkbox" name="is_active" id="ta{{ t.id }}" class="form-check-input"
+                             {{ 'checked' if t.is_active }}>
+                      <label class="form-check-label" for="ta{{ t.id }}">Attivo</label>
+                    </div>
+                  </div>
+                  <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-info btn-sm">Salva</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">Nessun tavolo registrato.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Aggiungi tavolo #}
+  <div class="col-lg-4">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Aggiungi tavolo</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.table_new') }}">
+          <div class="form-group">
+            <label>Numero <span class="text-danger">*</span></label>
+            <input type="number" name="number" class="form-control" placeholder="11" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Posti</label>
+            <input type="number" name="seats" class="form-control" value="4" min="1">
+          </div>
+          <div class="form-group">
+            <label>Posizione</label>
+            <input type="text" name="location" class="form-control" placeholder="es. Finestra">
+          </div>
+          <button type="submit" class="btn btn-success btn-block">
+            <i class="fas fa-plus mr-1"></i>Aggiungi
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════════════════════════
+   TAB 3 — SLOT ORARI
+   ════════════════════════════════════════════════════════════════════════════ #}
+{% elif tab == 'slot' %}
+
+<div class="callout callout-info">
+  <i class="fas fa-info-circle mr-1"></i>
+  Gli slot sono fasce orarie condivise tra ordini e prenotazioni tavoli.
+  Attiva/disattiva uno slot per nasconderlo ai clienti; modifica la capacità per limitare gli ordini contemporanei.
+</div>
+
+<div class="row">
+{% for slot in active_slots %}
+<div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+  <div class="card card-outline card-{{ 'success' if slot.is_active else 'secondary' }} h-100">
+    <div class="card-body py-3 text-center">
+
+      <div style="font-size:2rem;font-weight:800;
+                  color:{{ '#28a745' if slot.is_active else '#6c757d' }};">
+        {{ slot.time_str }}
+      </div>
+
+      {% if not slot.is_active %}
+      <div class="badge badge-secondary mb-2">Disattivo</div>
+      {% endif %}
+
+      {# Capacità ordini #}
+      <div class="mt-2 mb-1" style="font-size:.82rem;">
+        <strong>Capacità ordini</strong>
+      </div>
+      <form method="POST" action="{{ url_for('admin.slot_capacity', sid=slot.id) }}"
+            class="d-flex mb-1" style="gap:.3rem;">
+        <input type="number" name="max_orders" value="{{ slot.max_orders }}"
+               min="1" class="form-control form-control-sm text-center">
+        <button class="btn btn-sm btn-outline-info" title="Salva capacità">
+          <i class="fas fa-save"></i>
+        </button>
+      </form>
+
+      {% set oggi_count = slot.orders_today() %}
+      {% set pct = (oggi_count * 100 // slot.max_orders) if slot.max_orders else 0 %}
+      <div class="progress mb-1" style="height:6px;" title="{{ oggi_count }}/{{ slot.max_orders }} ordini oggi">
+        <div class="progress-bar bg-{{ 'danger' if pct >= 90 else ('warning' if pct >= 60 else 'success') }}"
+             style="width:{{ pct }}%;"></div>
+      </div>
+      <small class="text-muted">{{ oggi_count }}/{{ slot.max_orders }} ordini oggi</small>
+
+      {# Durata seduta #}
+      <div class="mt-2 mb-1" style="font-size:.82rem;">
+        <strong>Durata seduta (min)</strong>
+      </div>
+      <form method="POST" action="{{ url_for('admin.slot_durata', sid=slot.id) }}"
+            class="d-flex mb-2" style="gap:.3rem;">
+        <input type="number" name="seat_duration_minutes"
+               value="{{ slot.seat_duration_minutes or '' }}"
+               min="0" placeholder="0=∞" class="form-control form-control-sm text-center">
+        <button class="btn btn-sm btn-outline-secondary" title="Salva durata">
+          <i class="fas fa-save"></i>
+        </button>
+      </form>
+
+      {# Attiva/Disattiva #}
+      <form method="POST" action="{{ url_for('admin.slot_toggle', sid=slot.id) }}">
+        <button class="btn btn-sm btn-block btn-{{ 'warning' if slot.is_active else 'success' }}">
+          <i class="fas fa-{{ 'eye-slash' if slot.is_active else 'eye' }} mr-1"></i>
+          {{ 'Disattiva' if slot.is_active else 'Attiva' }}
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+{% endif %}
+{% endblock %}

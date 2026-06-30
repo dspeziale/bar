@@ -483,13 +483,26 @@ def category_new():
     return redirect(url_for('admin.categories'))
 
 
+@bp.route('/categories/<int:cid>/delete', methods=['POST'])
+@require_permission('manage_categories')
+def category_delete(cid):
+    cat = Category.query.get_or_404(cid)
+    if cat.products:
+        flash(f'Impossibile eliminare "{cat.name}": contiene {len(cat.products)} prodott{"o" if len(cat.products)==1 else "i"}. Spostali prima.', 'danger')
+        return redirect(url_for('admin.categories'))
+    name = cat.name
+    db.session.delete(cat)
+    db.session.commit()
+    flash(f'Categoria "{name}" eliminata.', 'success')
+    return redirect(url_for('admin.categories'))
+
+
 # ── Slot orari ────────────────────────────────────────────────────────────────
 
 @bp.route('/slots')
 @require_permission('manage_slots')
 def slots():
-    return render_template('admin/slots.html',
-                           slots=TimeSlot.query.order_by(TimeSlot.time_str).all())
+    return redirect(url_for('admin.tavoli', tab='slot'))
 
 
 @bp.route('/slots/<int:sid>/toggle', methods=['POST'])
@@ -499,7 +512,7 @@ def slot_toggle(sid):
     slot.is_active = not slot.is_active
     db.session.commit()
     flash(f'Slot {slot.time_str} {"attivato" if slot.is_active else "disattivato"}.', 'info')
-    return redirect(url_for('admin.slots'))
+    return redirect(url_for('admin.tavoli', tab='slot'))
 
 
 @bp.route('/slots/<int:sid>/capacity', methods=['POST'])
@@ -511,7 +524,7 @@ def slot_capacity(sid):
         slot.max_orders = cap
         db.session.commit()
         flash(f'Capacità slot {slot.time_str} → {cap}.', 'success')
-    return redirect(url_for('admin.slots'))
+    return redirect(url_for('admin.tavoli', tab='slot'))
 
 
 # ── Tavoli ────────────────────────────────────────────────────────────────────
@@ -519,22 +532,7 @@ def slot_capacity(sid):
 @bp.route('/tables')
 @require_permission('manage_tables_admin')
 def tables():
-    filter_date = request.args.get('date', str(date.today()))
-    try:
-        from datetime import datetime as dt
-        filter_date_obj = dt.strptime(filter_date, '%Y-%m-%d').date()
-    except ValueError:
-        filter_date_obj = date.today()
-        filter_date = str(filter_date_obj)
-    all_tables = Table.query.order_by(Table.number).all()
-    slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
-    availability = {t.id: {s.id: t.reservation_for(s.id, filter_date_obj)
-                            for s in slots}
-                    for t in all_tables}
-    return render_template('admin/tables.html',
-                           tables=all_tables, slots=slots,
-                           availability=availability,
-                           filter_date=filter_date)
+    return redirect(url_for('admin.tavoli', tab='tavoli'))
 
 
 @bp.route('/tables/new', methods=['POST'])
@@ -552,7 +550,7 @@ def table_new():
     db.session.add(Table(number=number, seats=seats, location=location))
     db.session.commit()
     flash(f'Tavolo {number} aggiunto.', 'success')
-    return redirect(url_for('admin.tables'))
+    return redirect(url_for('admin.tavoli', tab='tavoli'))
 
 
 @bp.route('/tables/<int:tid>/edit', methods=['POST'])
@@ -564,7 +562,7 @@ def table_edit(tid):
     t.is_active = 'is_active' in request.form
     db.session.commit()
     flash(f'Tavolo {t.number} aggiornato.', 'success')
-    return redirect(url_for('admin.tables'))
+    return redirect(url_for('admin.tavoli', tab='tavoli'))
 
 
 # ── Prenotazioni tavoli ───────────────────────────────────────────────────────
@@ -572,17 +570,8 @@ def table_edit(tid):
 @bp.route('/reservations')
 @require_permission('manage_reservations_admin')
 def reservations():
-    filter_date = request.args.get('date', str(date.today()))
-    try:
-        from datetime import datetime as dt
-        filter_date_obj = dt.strptime(filter_date, '%Y-%m-%d').date()
-    except ValueError:
-        filter_date_obj = date.today()
-        filter_date = str(filter_date_obj)
-    res = TableReservation.query.filter_by(reservation_date=filter_date_obj)\
-        .order_by(TableReservation.slot_id, TableReservation.table_id).all()
-    return render_template('admin/reservations.html',
-                           reservations=res, filter_date=filter_date)
+    d = request.args.get('date', '')
+    return redirect(url_for('admin.tavoli', date=d or None))
 
 
 @bp.route('/reservations/<int:rid>/cancel', methods=['POST'])
@@ -592,7 +581,48 @@ def reservation_cancel(rid):
     res.status = 'cancelled'
     db.session.commit()
     flash(f'Prenotazione tavolo {res.table.number} annullata.', 'info')
-    return redirect(url_for('admin.reservations'))
+    return redirect(url_for('admin.tavoli'))
+
+
+# ── Gestione Tavoli unificata ─────────────────────────────────────────────────
+
+@bp.route('/tavoli')
+@require_permission('manage_tables_admin')
+def tavoli():
+    from datetime import datetime as dt
+    tab = request.args.get('tab', 'panoramica')
+
+    raw_date = request.args.get('date', str(date.today()))
+    try:
+        sel_date = dt.strptime(raw_date, '%Y-%m-%d').date()
+    except ValueError:
+        sel_date = date.today()
+        raw_date = str(sel_date)
+
+    prev_day = (sel_date - timedelta(days=1)).isoformat()
+    next_day = (sel_date + timedelta(days=1)).isoformat()
+
+    all_tables = Table.query.order_by(Table.number).all()
+    active_slots = TimeSlot.query.order_by(TimeSlot.time_str).all()
+
+    # Griglia disponibilità per la data selezionata
+    availability = {
+        t.id: {s.id: t.reservation_for(s.id, sel_date) for s in active_slots}
+        for t in all_tables
+    }
+
+    # Lista prenotazioni del giorno
+    day_reservations = (TableReservation.query
+                        .filter_by(reservation_date=sel_date)
+                        .order_by(TableReservation.slot_id, TableReservation.table_id)
+                        .all())
+
+    return render_template('admin/tavoli.html',
+                           tab=tab, sel_date=raw_date, today=str(date.today()),
+                           prev_day=prev_day, next_day=next_day,
+                           all_tables=all_tables, active_slots=active_slots,
+                           availability=availability,
+                           day_reservations=day_reservations)
 
 
 # ── Ingredienti builder ───────────────────────────────────────────────────────
@@ -1398,7 +1428,7 @@ def slot_durata(sid):
     slot.seat_duration_minutes = int(request.form.get('seat_duration_minutes', 0) or 0)
     db.session.commit()
     flash(f'Durata slot {slot.time_str} aggiornata a {slot.seat_duration_minutes} min.', 'success')
-    return redirect(url_for('admin.slots'))
+    return redirect(url_for('admin.tavoli', tab='slot'))
 
 
 # â”€â”€ Check-in tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1411,8 +1441,8 @@ def reservation_checkin(rid):
     res.checkin_at       = _dt.utcnow()
     res.table_alert_sent = False
     db.session.commit()
-    flash(f'Check-in tavolo {res.table.number} â€” {res.user.username}.', 'success')
-    return redirect(url_for('admin.reservations'))
+    flash(f'Check-in tavolo {res.table.number} — {res.user.username}.', 'success')
+    return redirect(url_for('admin.tavoli'))
 
 
 @bp.route('/tavoli/ping-alerts')

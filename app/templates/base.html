@@ -461,7 +461,7 @@
             {% set ep = request.endpoint %}
             {% set in_ordini       = ep in ('admin.orders','admin.cucina') %}
             {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories') %}
-            {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots') %}
+            {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots','admin.tavoli') %}
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_tenant       = ep in ('admin.tenants',) %}
@@ -598,40 +598,12 @@
 
             {# ── TAVOLI & PRENOTAZIONI ── #}
             {% if p('manage_tables_admin') or p('manage_reservations_admin') or p('manage_slots') %}
-            <li class="nav-item has-treeview {{ 'menu-open' if in_tavoli }}">
-              <a href="#" class="nav-link {{ 'active' if in_tavoli }}">
-                <i class="nav-icon fas fa-chair"></i>
-                <p>Tavoli<i class="right fas fa-angle-left"></i></p>
+            <li class="nav-item">
+              <a href="{{ url_for('admin.tavoli') }}"
+                 class="nav-link {{ 'active' if in_tavoli }}">
+                <i class="nav-icon fas fa-chair" style="color:#16a085;"></i>
+                <p>Gestione Tavoli</p>
               </a>
-              <ul class="nav nav-treeview">
-                {% if p('manage_tables_admin') %}
-                <li class="nav-item">
-                  <a href="{{ url_for('admin.tables') }}"
-                     class="nav-link {{ 'active' if ep == 'admin.tables' }}">
-                    <i class="fas fa-chair nav-icon" style="color:#16a085;"></i>
-                    <p>Tavoli</p>
-                  </a>
-                </li>
-                {% endif %}
-                {% if p('manage_reservations_admin') %}
-                <li class="nav-item">
-                  <a href="{{ url_for('admin.reservations') }}"
-                     class="nav-link {{ 'active' if ep == 'admin.reservations' }}">
-                    <i class="fas fa-calendar-check nav-icon" style="color:#2980b9;"></i>
-                    <p>Prenotazioni</p>
-                  </a>
-                </li>
-                {% endif %}
-                {% if p('manage_slots') %}
-                <li class="nav-item">
-                  <a href="{{ url_for('admin.slots') }}"
-                     class="nav-link {{ 'active' if ep == 'admin.slots' }}">
-                    <i class="fas fa-clock nav-icon" style="color:#7f8c8d;"></i>
-                    <p>Slot Orari</p>
-                  </a>
-                </li>
-                {% endif %}
-              </ul>
             </li>
             {% endif %}
 
