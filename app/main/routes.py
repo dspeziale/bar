@@ -624,3 +624,20 @@ def pasto_aziendale_cancella():
         flash('Prenotazione annullata.', 'info')
     return redirect(url_for('main.pasto_aziendale'))
 
+
+# ── Guida utente ─────────────────────────────────────────────────────────────
+
+@bp.route('/guida')
+@login_required
+def guida():
+    is_cassiere = current_user.has_role('cassiere')
+    is_cuoco    = current_user.has_role('cuoco')
+    is_manager  = current_user.has_role('manager') or current_user.is_admin
+    is_cliente  = not (current_user.is_admin or current_user.is_staff)
+    has_corp    = bool(getattr(current_user, 'corporate_membership', None)
+                        and current_user.corporate_membership.is_active)
+    return render_template('main/guida.html',
+                            is_cassiere=is_cassiere, is_cuoco=is_cuoco,
+                            is_manager=is_manager, is_cliente=is_cliente,
+                            has_corp=has_corp)
+

@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Guida{% endblock %}
+{% block page_title %}Guida{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Guida</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  #guida-toc { position: sticky; top: 70px; }
+  #guida-toc .nav-link { padding: .35rem .75rem; border-radius: .25rem; color: var(--QuickLunch-text,#495057); font-size: .9rem; }
+  #guida-toc .nav-link:hover { background: rgba(0,0,0,.05); }
+  #guida-toc .nav-header { font-size: .72rem; font-weight: 700; letter-spacing: .04em; color: #6c757d; text-transform: uppercase; margin: .9rem 0 .25rem .75rem; }
+  #guida-toc .nav-header:first-child { margin-top: 0; }
+  .guida-section { scroll-margin-top: 70px; }
+  .guida-section h2 { font-size: 1.25rem; font-weight: 700; }
+  .guida-step { display:flex; gap:.75rem; margin-bottom:.6rem; align-items:flex-start; }
+  .guida-step .num { flex:0 0 26px; height:26px; border-radius:50%; background:#e94560; color:#fff; font-size:.8rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+</style>
+
+<div class="row">
+  <div class="col-lg-3 d-none d-lg-block">
+    <nav id="guida-toc" class="nav flex-column">
+
+      {% if is_cliente %}
+      <span class="nav-header">Cliente</span>
+      <a class="nav-link" href="#g-iniziare"><i class="fas fa-door-open mr-1"></i>Come iniziare</a>
+      <a class="nav-link" href="#g-ordinare"><i class="fas fa-utensils mr-1"></i>Ordinare</a>
+      <a class="nav-link" href="#g-ordini"><i class="fas fa-receipt mr-1"></i>I miei ordini</a>
+      <a class="nav-link" href="#g-wallet"><i class="fas fa-wallet mr-1"></i>Wallet e punti</a>
+      <a class="nav-link" href="#g-tavoli"><i class="fas fa-chair mr-1"></i>Prenotare un tavolo</a>
+      <a class="nav-link" href="#g-sondaggio"><i class="fas fa-square-poll-vertical mr-1"></i>Vota il menu</a>
+      {% if has_corp %}
+      <a class="nav-link" href="#g-pasto-aziendale"><i class="fas fa-building mr-1"></i>Pasto aziendale</a>
+      {% endif %}
+      <a class="nav-link" href="#g-notifiche"><i class="fas fa-paper-plane mr-1"></i>Notifiche Telegram</a>
+      <a class="nav-link" href="#g-faq"><i class="fas fa-circle-question mr-1"></i>Domande frequenti</a>
+      {% endif %}
+
+      {% if is_cassiere %}
+      <span class="nav-header">Cassa</span>
+      <a class="nav-link" href="#g-cassa"><i class="fas fa-cash-register mr-1"></i>Gestione ordini e cassa</a>
+      {% endif %}
+
+      {% if is_cuoco %}
+      <span class="nav-header">Cucina</span>
+      <a class="nav-link" href="#g-cucina"><i class="fas fa-kitchen-set mr-1"></i>Schermo cucina (KDS)</a>
+      {% endif %}
+
+      {% if is_manager %}
+      <span class="nav-header">Gestione</span>
+      <a class="nav-link" href="#g-prodotti"><i class="fas fa-box mr-1"></i>Prodotti e categorie</a>
+      <a class="nav-link" href="#g-magazzino"><i class="fas fa-warehouse mr-1"></i>Magazzino</a>
+      <a class="nav-link" href="#g-convenzioni"><i class="fas fa-building mr-1"></i>Convenzioni aziendali</a>
+      <a class="nav-link" href="#g-tavoli-admin"><i class="fas fa-chair mr-1"></i>Tavoli, prenotazioni, slot</a>
+      <a class="nav-link" href="#g-utenti"><i class="fas fa-users mr-1"></i>Utenti e ruoli</a>
+      <a class="nav-link" href="#g-comunicazioni"><i class="fas fa-bullhorn mr-1"></i>Sondaggi e impostazioni</a>
+      <a class="nav-link" href="#g-report"><i class="fas fa-chart-bar mr-1"></i>Report</a>
+      {% endif %}
+
+      {% if current_user.is_admin %}
+      <span class="nav-header">Superadmin</span>
+      <a class="nav-link" href="#g-tenant"><i class="fas fa-sitemap mr-1"></i>Tenant</a>
+      <a class="nav-link" href="#g-demo"><i class="fas fa-sync-alt mr-1"></i>Dati demo</a>
+      {% endif %}
+
+    </nav>
+  </div>
+
+  <div class="col-lg-9">
+
+  {% if is_cliente %}
+  <div class="callout callout-info">
+    <i class="fas fa-circle-info mr-1"></i>
+    Questa guida copre tutto quello che puoi fare come cliente: ordinare, prenotare un tavolo, gestire il wallet e altro ancora.
+  </div>
+
+  <section id="g-iniziare" class="guida-section card card-outline card-primary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-door-open mr-2 text-primary"></i>Come iniziare</h2></div>
+    <div class="card-body">
+      <p>Dopo il login arrivi sulla <strong>Home</strong>, dove trovi un riepilogo dei tuoi ordini del giorno e i collegamenti rapidi alle funzioni principali.</p>
+      <p>Il menu a sinistra è il punto di partenza per tutto: <strong>Ordina</strong>, <strong>I Miei Ordini</strong>, <strong>Tavoli</strong>, <strong>Wallet</strong> e <strong>Vota il Menu</strong>.</p>
+      <div class="alert alert-light border">
+        <i class="fas fa-lightbulb mr-1 text-warning"></i>
+        Puoi cambiare tema chiaro/scuro dall'icona in alto a destra nella barra di navigazione.
+      </div>
+    </div>
+  </section>
+
+  <section id="g-ordinare" class="guida-section card card-outline card-success mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-utensils mr-2 text-success"></i>Ordinare</h2></div>
+    <div class="card-body">
+      <p>Ci sono due modi per comporre un ordine:</p>
+      <ul>
+        <li><strong>Menu</strong> (<a href="{{ url_for('main.menu') }}">Ordina → Menu</a>): scegli tra i prodotti già pronti del giorno, organizzati per categoria.</li>
+        <li><strong>Builder</strong> (<a href="{{ url_for('main.builder') }}">Ordina → Builder</a> o <a href="{{ url_for('main.builder_visual') }}">Builder Visual</a>): componi un piatto personalizzato scegliendo gli ingredienti uno a uno (es. un panino con base, proteina e contorno a scelta).</li>
+      </ul>
+      <h3 style="font-size:1.05rem;">Esempio pratico — ordinare un caffè</h3>
+      <div class="guida-step"><div class="num">1</div><div>Vai su <strong>Ordina → Menu</strong> e trova "Caffè" nella categoria Bevande.</div></div>
+      <div class="guida-step"><div class="num">2</div><div>Clicca <strong>Aggiungi</strong>: il prodotto entra nel carrello (icona carrello in alto).</div></div>
+      <div class="guida-step"><div class="num">3</div><div>Apri il <a href="{{ url_for('main.cart') }}">Carrello</a> per rivedere e modificare le quantità.</div></div>
+      <div class="guida-step"><div class="num">4</div><div>Scegli (se richiesto) lo slot orario di ritiro/consegna.</div></div>
+      <div class="guida-step"><div class="num">5</div><div>Conferma l'ordine: il pagamento viene scalato dal tuo wallet, se hai saldo sufficiente.</div></div>
+      <div class="guida-step"><div class="num">6</div><div>Trovi l'ordine in <strong>I Miei Ordini</strong> con lo stato aggiornato in tempo reale.</div></div>
+    </div>
+  </section>
+
+  <section id="g-ordini" class="guida-section card card-outline card-secondary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-receipt mr-2"></i>I miei ordini</h2></div>
+    <div class="card-body">
+      <p>Da <a href="{{ url_for('main.my_orders') }}">I Miei Ordini</a> vedi lo storico completo: data, prodotti, totale e stato (in preparazione, pronto, ritirato, annullato).</p>
+      <p>Finché un ordine non è entrato in lavorazione puoi annullarlo direttamente dalla lista.</p>
+    </div>
+  </section>
+
+  <section id="g-wallet" class="guida-section card card-outline card-warning mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-wallet mr-2 text-warning"></i>Wallet e punti</h2></div>
+    <div class="card-body">
+      <p>Nella pagina <a href="{{ url_for('main.wallet') }}">Wallet</a> trovi il tuo saldo disponibile e i punti fedeltà accumulati con gli ordini.</p>
+      <p><strong>Ricarica del wallet:</strong> al momento la ricarica viene effettuata dal personale di cassa/amministrazione — chiedi al banco per aggiungere credito.</p>
+      <h3 style="font-size:1.05rem;">Esempio — usare i punti</h3>
+      <div class="guida-step"><div class="num">1</div><div>Nella pagina Wallet controlla quanti punti hai (es. 120 punti).</div></div>
+      <div class="guida-step"><div class="num">2</div><div>Se hai raggiunto la soglia minima, compare il pulsante <strong>Riscatta punti</strong>.</div></div>
+      <div class="guida-step"><div class="num">3</div><div>Conferma: i punti vengono convertiti in credito wallet, utilizzabile subito per un nuovo ordine.</div></div>
+    </div>
+  </section>
+
+  <section id="g-tavoli" class="guida-section card card-outline card-info mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Prenotare un tavolo</h2></div>
+    <div class="card-body">
+      <p>Da <a href="{{ url_for('main.tables') }}">Tavoli → Prenota Tavolo</a> scegli data, orario e numero di persone; il sistema mostra solo i tavoli realmente disponibili in quella fascia.</p>
+      <p>In <a href="{{ url_for('main.my_reservations') }}">Tavoli → Le Mie Prenotazioni</a> rivedi o annulli le prenotazioni future.</p>
+    </div>
+  </section>
+
+  <section id="g-sondaggio" class="guida-section card card-outline card-primary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-square-poll-vertical mr-2 text-primary"></i>Vota il menu</h2></div>
+    <div class="card-body">
+      <p>Da <strong>Vota il Menu</strong> partecipi ai sondaggi attivi (es. scelta del piatto del giorno successivo). Un voto per sondaggio attivo.</p>
+    </div>
+  </section>
+
+  {% if has_corp %}
+  <section id="g-pasto-aziendale" class="guida-section card card-outline mb-4" style="border-top-color:#8e44ad;">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-building mr-2" style="color:#8e44ad;"></i>Pasto aziendale</h2></div>
+    <div class="card-body">
+      <p>Se la tua azienda ha una convenzione attiva, in <a href="{{ url_for('main.pasto_aziendale') }}">Pasto Aziendale</a> trovi il piatto fisso del giorno con composizione e allergeni indicati, al prezzo agevolato.</p>
+      <p>Puoi prenotare un posto (con slot orario opzionale) finché ci sono coperti disponibili e annullare la prenotazione finché non è stata segnata come "consumata".</p>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="g-notifiche" class="guida-section card card-outline card-secondary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-paper-plane mr-2"></i>Notifiche Telegram</h2></div>
+    <div class="card-body">
+      <p>Puoi ricevere su Telegram l'avviso quando il tuo ordine è pronto o quando una prenotazione tavolo è confermata.</p>
+      <p>Il collegamento del tuo account Telegram viene attivato dal personale: chiedi al banco per abilitarlo.</p>
+    </div>
+  </section>
+
+  <section id="g-faq" class="guida-section card card-outline card-dark mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-circle-question mr-2"></i>Domande frequenti</h2></div>
+    <div class="card-body">
+      <div class="mb-3"><strong>Non ho credito sufficiente per ordinare, cosa faccio?</strong><br>
+        <span class="text-muted">Chiedi al personale di cassa di ricaricare il tuo wallet.</span></div>
+      <div class="mb-3"><strong>Posso annullare un ordine già confermato?</strong><br>
+        <span class="text-muted">Sì, finché non è entrato in lavorazione, da I Miei Ordini.</span></div>
+      <div class="mb-3"><strong>Come vedo quanti punti fedeltà ho?</strong><br>
+        <span class="text-muted">Nella pagina Wallet, accanto al saldo.</span></div>
+      <div class="mb-0"><strong>Non vedo il Pasto Aziendale nel menu, perché?</strong><br>
+        <span class="text-muted">Compare solo se sei associato a un'azienda con convenzione attiva: chiedi all'amministrazione.</span></div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if is_cassiere %}
+  <section id="g-cassa" class="guida-section card card-outline card-success mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-cash-register mr-2 text-success"></i>Gestione ordini e cassa</h2></div>
+    <div class="card-body">
+      <p>Da <strong>Ordini</strong> vedi tutti gli ordini in arrivo: puoi cambiarne lo stato (in preparazione, pronto, ritirato) e gestire eventuali annullamenti.</p>
+      <p>La ricarica del wallet cliente e il collegamento Telegram si gestiscono dalla scheda utente in <strong>Utenti → Clienti</strong>.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if is_cuoco %}
+  <section id="g-cucina" class="guida-section card card-outline card-danger mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-kitchen-set mr-2 text-danger"></i>Schermo cucina (KDS)</h2></div>
+    <div class="card-body">
+      <p>La pagina <strong>Ordini → Cucina</strong> mostra in tempo reale gli ordini da preparare, raggruppati per slot orario. Segna ogni piatto come pronto quando completato.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if is_manager %}
+  <div class="callout callout-info">
+    <i class="fas fa-circle-info mr-1"></i>
+    Sezione gestionale: copre prodotti, magazzino, convenzioni, tavoli, utenti e report.
+  </div>
+
+  <section id="g-prodotti" class="guida-section card card-outline card-primary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-box mr-2 text-primary"></i>Prodotti e categorie</h2></div>
+    <div class="card-body">
+      <p>In <a href="{{ url_for('admin.products') }}">Prodotti</a> gestisci il catalogo: nome, prezzo, categoria, disponibilità giornaliera (<a href="{{ url_for('admin.stock') }}">Magazzino prodotti</a>).</p>
+      <p>In <a href="{{ url_for('admin.categories') }}">Categorie</a> organizzi i raggruppamenti del menu; in <a href="{{ url_for('admin.ingredients') }}">Ingredienti</a> definisci gli elementi componibili usati dal Builder.</p>
+    </div>
+  </section>
+
+  <section id="g-magazzino" class="guida-section card card-outline card-warning mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-warehouse mr-2 text-warning"></i>Magazzino</h2></div>
+    <div class="card-body">
+      <p>I consumabili (materie prime, scorte) e i fornitori si gestiscono dal menu <strong>Magazzino</strong>; ogni movimento di carico/scarico resta tracciato.</p>
+    </div>
+  </section>
+
+  <section id="g-convenzioni" class="guida-section card card-outline mb-4" style="border-top-color:#8e44ad;">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-building mr-2" style="color:#8e44ad;"></i>Convenzioni aziendali</h2></div>
+    <div class="card-body">
+      <p>Da <a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a> crei e gestisci le aziende convenzionate (prezzo pasto, coperti massimi, dipendenti associati).</p>
+      <p>Per ogni giorno puoi definire il <strong>pasto fisso</strong>: nome, descrizione, <strong>composizione</strong> (alimenti) e gli eventuali <strong>allergeni</strong> presenti — visibili ai dipendenti prima della prenotazione.</p>
+      <p>Dalla stessa pagina segui le prenotazioni e segni i pasti come consumati.</p>
+    </div>
+  </section>
+
+  <section id="g-tavoli-admin" class="guida-section card card-outline card-info mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Tavoli, prenotazioni, slot</h2></div>
+    <div class="card-body">
+      <p><a href="{{ url_for('admin.tables') }}">Tavoli</a>: anagrafica dei tavoli e capienza. <a href="{{ url_for('admin.reservations') }}">Prenotazioni</a>: elenco e gestione check-in. <a href="{{ url_for('admin.slots') }}">Slot</a>: fasce orarie disponibili per ordini e prenotazioni.</p>
+    </div>
+  </section>
+
+  <section id="g-utenti" class="guida-section card card-outline card-secondary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-users mr-2"></i>Utenti e ruoli</h2></div>
+    <div class="card-body">
+      <p><a href="{{ url_for('admin.users') }}">Utenti</a> per il personale, <a href="{{ url_for('admin.clients') }}">Clienti</a> per ricariche wallet e collegamento Telegram, <a href="{{ url_for('admin.roles') }}">Ruoli</a> per i permessi assegnati a ciascun ruolo.</p>
+    </div>
+  </section>
+
+  <section id="g-comunicazioni" class="guida-section card card-outline card-primary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-bullhorn mr-2 text-primary"></i>Sondaggi e impostazioni</h2></div>
+    <div class="card-body">
+      <p><a href="{{ url_for('admin.polls') }}">Sondaggi</a> per creare votazioni sul menu; <a href="{{ url_for('admin.settings') }}">Impostazioni</a> per la configurazione generale (Telegram, email, parametri del locale).</p>
+    </div>
+  </section>
+
+  <section id="g-report" class="guida-section card card-outline card-dark mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chart-bar mr-2"></i>Report</h2></div>
+    <div class="card-body">
+      <p>La pagina <a href="{{ url_for('admin.report') }}">Report</a> riepiloga vendite, prodotti più venduti e andamento incassi nel periodo scelto.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if current_user.is_admin %}
+  <section id="g-tenant" class="guida-section card card-outline card-info mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-sitemap mr-2 text-info"></i>Tenant</h2></div>
+    <div class="card-body">
+      <p>Da <a href="{{ url_for('admin.tenants') }}">Tenant</a> gestisci le diverse attività indipendenti ospitate sulla stessa piattaforma (multi-tenant): ognuna con i propri prodotti, utenti e dati.</p>
+    </div>
+  </section>
+
+  <section id="g-demo" class="guida-section card card-outline card-secondary mb-4">
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-sync-alt mr-2"></i>Dati demo</h2></div>
+    <div class="card-body">
+      <p>Il pulsante <strong>Reset &amp; Carica Demo</strong> nella pagina Tenant elimina prima tutti i dati dei 3 tenant demo e poi li ricrea da zero (clienti, prodotti, ordini di esempio). Non tocca mai i tenant reali.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  </div>
+</div>
+{% endblock %}

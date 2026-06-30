@@ -842,6 +842,17 @@
             </li>
 
           {% endif %}
+
+          {% if current_user.is_authenticated %}
+            <li class="nav-header">SUPPORTO</li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.guida') }}"
+                 class="nav-link {{ 'active' if ep == 'main.guida' }}">
+                <i class="nav-icon fas fa-circle-question"></i>
+                <p>Guida</p>
+              </a>
+            </li>
+          {% endif %}
         </ul>
       </nav>
     </div>
