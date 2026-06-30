@@ -8,7 +8,7 @@ import secrets
 from app import db
 from app.models import (
     User, Tenant, Category, Product, TimeSlot,
-    Role, Permission, AppSetting,
+    Role, Permission, AppSetting, Supplier, ConsumableItem,
 )
 from config import Config
 
@@ -61,6 +61,22 @@ def _prod(name, desc, price, category, qty, tenant_id):
         db.session.add(Product(name=name, description=desc, price=price,
                                category_id=category.id, daily_quantity=qty,
                                is_active=True, tenant_id=tenant_id))
+
+
+def _supplier(name, email, phone, tenant_id):
+    s = Supplier.query.filter_by(name=name, tenant_id=tenant_id).first()
+    if not s:
+        s = Supplier(name=name, email=email, phone=phone, tenant_id=tenant_id)
+        db.session.add(s)
+        db.session.flush()
+    return s
+
+
+def _consumable(name, unit, qty, threshold, supplier, tenant_id):
+    if not ConsumableItem.query.filter_by(name=name, tenant_id=tenant_id).first():
+        db.session.add(ConsumableItem(
+            name=name, unit=unit, quantity=qty, min_threshold=threshold,
+            supplier_id=supplier.id if supplier else None, tenant_id=tenant_id))
 
 
 def _client(first, last, email, phone, bdate, address, tg, tenant_id, wallet=0.0):
@@ -141,6 +157,14 @@ def _seed_bar_centrale(sa_role):
     _prod('Brioche con Nutella',            'Brioche soffice farcita con crema nocciola', 2.00, col, 40, t.id)
     _prod('Yogurt con Granola e Frutta',    'Yogurt greco, granola croccante, frutti di stagione', 3.50, col, 20, t.id)
 
+    # Senza Glutine
+    gf = _cat('Senza Glutine', 'fa-wheat-awn-circle-exclamation', 'success', t.id)
+    _prod('🌾 Panino Senza Glutine Prosciutto e Mozzarella', 'Pane senza glutine certificato AIC, prosciutto cotto DOP, mozzarella', 5.20, gf, 15, t.id)
+    _prod('🌾 Pasta Senza Glutine al Pomodoro',              'Pasta di mais e riso, pomodoro San Marzano, basilico — cottura separata', 5.80, gf, 15, t.id)
+    _prod('🌾 Insalata di Riso Senza Glutine',               'Riso, tonno, mais, pomodorini, olive — 100% gluten free', 5.50, gf, 15, t.id)
+    _prod('🌾 Torta di Mele Senza Glutine',                  'Farina di mandorle e riso, mele, cannella', 3.80, gf, 12, t.id)
+    _prod('🌾 Crackers Senza Glutine',                       'Crackers di mais certificati, confezione monoporzione', 2.00, gf, 25, t.id)
+
     # Clienti
     clienti = [
         ('Marco',     'Rossi',     'marco.rossi@gmail.com',       '+39 333 111 0001', '1985-03-15', 'Via Roma 12, Milano',              '-100111001', t.id, 24.50),
@@ -158,6 +182,19 @@ def _seed_bar_centrale(sa_role):
     ]
     for c in clienti:
         _client(*c)
+
+    # Consumabili di magazzino
+    forn = _supplier('Cartabella Forniture SRL', 'ordini@cartabellaforniture.it', '+39 02 5550 1010', t.id)
+    _consumable('Tovaglioli di carta',              'pz', 480,  200, forn, t.id)
+    _consumable('Bicchieri di carta 200ml',         'pz', 80,   150, forn, t.id)   # sotto soglia
+    _consumable('Posate monouso — forchette',       'pz', 320,  100, forn, t.id)
+    _consumable('Posate monouso — coltelli',        'pz', 310,  100, forn, t.id)
+    _consumable('Piatti di carta',                  'pz', 260,  100, forn, t.id)
+    _consumable('Contenitori da asporto con coperchio', 'pz', 40, 80, forn, t.id)  # sotto soglia
+    _consumable('Sacchetti shopper per asporto',     'pz', 210,  100, forn, t.id)
+    _consumable('Guanti monouso (scatola da 100)',   'pz', 14,   5,   forn, t.id)
+    _consumable('Cannucce biodegradabili',           'pz', 600,  200, forn, t.id)
+    _consumable('Detersivo sgrassatore professionale','lt', 8,   3,   forn, t.id)
 
     return t
 
@@ -221,6 +258,13 @@ def _seed_mensa_tech(sa_role):
     _prod('Caffè Espresso',             '', 1.00, bev, 100, t.id)
     _prod('Tè Freddo Pesca',            '', 1.50, bev, 60,  t.id)
 
+    # Senza Glutine
+    gf = _cat('Senza Glutine', 'fa-wheat-awn-circle-exclamation', 'success', t.id)
+    _prod('🌾 Riso Basmati con Pollo e Verdure',  'Riso basmati, petto di pollo, verdure saltate — 100% gluten free', 6.50, gf, 15, t.id)
+    _prod('🌾 Pasta Senza Glutine al Ragù',        'Pasta di mais, ragù di carne, cottura separata certificata', 6.00, gf, 15, t.id)
+    _prod('🌾 Polenta con Spezzatino',             'Polenta di mais, spezzatino di manzo al sugo', 7.00, gf, 12, t.id)
+    _prod('🌾 Torta di Riso Senza Glutine',        'Farina di riso, mandorle, scorza di limone', 2.80, gf, 12, t.id)
+
     # Clienti
     clienti = [
         ('Andrea',   'Mancini',   'andrea.mancini@aziendatech.it',  '+39 347 222 0001', '1982-05-12', 'Via dell\'Innovazione 1, Roma',    '-100222001', t.id, 30.00),
@@ -238,6 +282,18 @@ def _seed_mensa_tech(sa_role):
     ]
     for c in clienti:
         _client(*c)
+
+    # Consumabili di magazzino (mensa aziendale: volumi alti)
+    forn = _supplier('HoReCa Supply Roma', 'ordini@horecasupply.it', '+39 06 4440 2020', t.id)
+    _consumable('Vassoi mensa riutilizzabili',        'pz', 220,  100, forn, t.id)
+    _consumable('Tovagliette di carta',               'pz', 900,  300, forn, t.id)
+    _consumable('Posate monouso — set completo',      'pz', 150,  300, forn, t.id)  # sotto soglia
+    _consumable('Bicchieri di plastica 300ml',        'pz', 500,  200, forn, t.id)
+    _consumable('Contenitori porta-pasto richiudibili','pz', 90,   150, forn, t.id)  # sotto soglia
+    _consumable('Tovaglioli di carta',                'pz', 700,  250, forn, t.id)
+    _consumable('Guanti monouso (scatola da 100)',    'pz', 20,   8,   forn, t.id)
+    _consumable('Sacchi per rifiuti organici',        'pz', 60,   30,  forn, t.id)
+    _consumable('Detersivo lavastoviglie industriale','lt', 12,   5,   forn, t.id)
 
     return t
 
@@ -306,6 +362,13 @@ def _seed_caffetteria_duomo(sa_role):
     _prod('Acqua di Cocco',                'Acqua di cocco naturale, no zuccheri aggiunti', 3.00, bev, 25, t.id)
     _prod('Kombucha Allo Zenzero',         'Tè fermentato, zenzero, limone, probiotici naturali', 4.00, bev, 20, t.id)
 
+    # Senza Glutine
+    gf = _cat('Senza Glutine', 'fa-wheat-awn-circle-exclamation', 'success', t.id)
+    _prod('🌾 Cornetto Senza Glutine alla Crema', 'Sfogliatura gluten free certificata AIC, crema pasticcera', 2.50, gf, 15, t.id)
+    _prod('🌾 Muffin Senza Glutine al Cioccolato', 'Farina di riso e mais, gocce di cioccolato fondente', 3.00, gf, 15, t.id)
+    _prod('🌾 Tagliere Salumi e Formaggi Senza Glutine', 'Affettati e formaggi, crackers di mais certificati', 9.50, gf, 10, t.id)
+    _prod('🌾 Plumcake Senza Glutine Limone',     'Farina di mandorle, scorza di limone, senza lattosio', 3.20, gf, 12, t.id)
+
     # Clienti
     clienti = [
         ('Alessia',  'Vitale',    'alessia.vitale@gmail.com',       '+39 340 333 0001', '1994-04-11', 'Via Toledo 45, Napoli',            '-100333001', t.id, 20.00),
@@ -324,6 +387,18 @@ def _seed_caffetteria_duomo(sa_role):
     for c in clienti:
         _client(*c)
 
+    # Consumabili di magazzino (caffetteria: volumi alti su caffè/take-away)
+    forn = _supplier('Partenope Monouso SRL', 'info@partenopemonouso.it', '+39 081 6660 3030', t.id)
+    _consumable('Bicchierini caffè da asporto',       'pz', 50,   150, forn, t.id)  # sotto soglia
+    _consumable('Coperchi per bicchierini caffè',     'pz', 60,   150, forn, t.id)  # sotto soglia
+    _consumable('Filtri caffè in carta',              'pz', 1200, 300, forn, t.id)
+    _consumable('Bicchieri smoothie/frullati 400ml',  'pz', 180,  100, forn, t.id)
+    _consumable('Cannucce biodegradabili',            'pz', 500,  200, forn, t.id)
+    _consumable('Tovaglioli di carta',                'pz', 600,  250, forn, t.id)
+    _consumable('Zucchero monoporzione (bustine)',    'pz', 800,  300, forn, t.id)
+    _consumable('Stuzzicadenti decorativi per aperitivi','pz', 250, 150, forn, t.id)
+    _consumable('Sacchetti carta per cornetti',       'pz', 90,   150, forn, t.id)  # sotto soglia
+
     return t
 
 
@@ -332,13 +407,10 @@ def _seed_caffetteria_duomo(sa_role):
 def seed_demo_data():
     """
     Ritorna (ok: bool, message: str).
-    Idempotente: salta i record già esistenti.
+    Idempotente: ogni helper (_tenant/_cat/_prod/_client/_supplier/_consumable)
+    salta i record già esistenti, quindi è sicuro rilanciarla più volte per
+    aggiungere nuovi prodotti/consumabili anche se i tenant esistono già.
     """
-    slugs = ['bar-centrale', 'mensa-tech', 'caffetteria-duomo']
-    existing = Tenant.query.filter(Tenant.slug.in_(slugs)).count()
-    if existing >= 3:
-        return False, 'Dati demo già presenti (tutti e 3 i tenant esistono).'
-
     sa_role = Role.query.filter_by(name='superadmin').first()
 
     t1 = _seed_bar_centrale(sa_role)
@@ -354,8 +426,12 @@ def seed_demo_data():
         Product.query.filter_by(tenant_id=t.id).count()
         for t in [t1, t2, t3]
     )
+    n_consumables = sum(
+        ConsumableItem.query.filter_by(tenant_id=t.id).count()
+        for t in [t1, t2, t3]
+    )
     return True, (
-        f'Demo caricato: 3 tenant, {n_clients} clienti, '
-        f'{n_products} prodotti. '
+        f'Demo caricato/aggiornato: 3 tenant, {n_clients} clienti, '
+        f'{n_products} prodotti (incl. gluten free), {n_consumables} consumabili di magazzino. '
         f'Password admin tenant: demo1234 | Password clienti: cliente123'
     )
