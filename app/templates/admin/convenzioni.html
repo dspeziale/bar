@@ -24,6 +24,10 @@
         {% if not corp.is_active %}<span class="badge badge-secondary ml-2">Inattiva</span>{% endif %}
       </h3>
       <div class="d-flex" style="gap:.3rem;">
+        <a href="{{ url_for('admin.convenzione_presenze', cid=corp.id) }}"
+           class="btn btn-xs btn-outline-info" title="Registro presenze">
+          <i class="fas fa-list-check"></i>
+        </a>
         <a href="{{ url_for('admin.convenzione_edit', cid=corp.id) }}"
            class="btn btn-xs btn-outline-secondary" title="Modifica">
           <i class="fas fa-pencil-alt"></i>

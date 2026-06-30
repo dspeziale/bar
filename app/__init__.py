@@ -138,6 +138,12 @@ def _migrate_tenant_columns():
     # Composizione e allergeni del pasto aziendale del giorno
     _ensure('daily_fixed_meals', 'composition', "TEXT DEFAULT ''")
     _ensure('daily_fixed_meals', 'allergens',   "VARCHAR(512) DEFAULT ''")
+    # Portate strutturate del menu aziendale
+    _ensure('daily_fixed_meals', 'primo',    "VARCHAR(256) DEFAULT ''")
+    _ensure('daily_fixed_meals', 'secondo',  "VARCHAR(256) DEFAULT ''")
+    _ensure('daily_fixed_meals', 'contorno', "VARCHAR(256) DEFAULT ''")
+    _ensure('daily_fixed_meals', 'bevanda',  "VARCHAR(256) DEFAULT ''")
+    _ensure('daily_fixed_meals', 'caffe',    "VARCHAR(128) DEFAULT ''")
 
 
 def _seed_defaults():

@@ -44,10 +44,17 @@
           <p class="text-muted mb-2">{{ meal.description }}</p>
           {% endif %}
 
-          {% if meal.composition %}
+          {% if meal.courses %}
           <div class="mb-2">
             <strong style="font-size:.85rem;"><i class="fas fa-list-ul mr-1 text-muted"></i>Composizione</strong>
-            <div class="text-muted" style="font-size:.88rem;">{{ meal.composition }}</div>
+            <table class="table table-sm mb-0 mt-1" style="font-size:.88rem;">
+              {% for lbl, icon, val in meal.courses %}
+              <tr>
+                <td style="width:6rem;color:#6c757d;padding:.2rem .5rem;">{{ icon }} {{ lbl }}</td>
+                <td style="padding:.2rem .5rem;">{{ val }}</td>
+              </tr>
+              {% endfor %}
+            </table>
           </div>
           {% endif %}
 

@@ -569,6 +569,11 @@ class DailyFixedMeal(db.Model):
     description  = db.Column(db.Text, default='')
     composition  = db.Column(db.Text, default='')
     allergens    = db.Column(db.String(512), default='')
+    primo        = db.Column(db.String(256), default='')
+    secondo      = db.Column(db.String(256), default='')
+    contorno     = db.Column(db.String(256), default='')
+    bevanda      = db.Column(db.String(256), default='')
+    caffe        = db.Column(db.String(128), default='')
     price        = db.Column(db.Float, nullable=False)
     corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
     max_bookings = db.Column(db.Integer, default=60)
@@ -594,6 +599,15 @@ class DailyFixedMeal(db.Model):
     def allergen_list(self):
         keys = [k.strip() for k in (self.allergens or '').split(',') if k.strip()]
         return [(k, *ALLERGEN_LABELS[k]) for k in keys if k in ALLERGEN_LABELS]
+
+    @property
+    def courses(self):
+        labels = [('Primo',   '🥣', self.primo),
+                  ('Secondo', '🍗', self.secondo),
+                  ('Contorno','🥗', self.contorno),
+                  ('Bevanda', '🥤', self.bevanda),
+                  ('Caffè',   '☕', self.caffe)]
+        return [(lbl, icon, val) for lbl, icon, val in labels if val and val.strip()]
 
 
 class CorporateMealBooking(db.Model):

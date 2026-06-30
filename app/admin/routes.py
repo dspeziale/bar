@@ -1,4 +1,4 @@
-﻿from datetime import date
+﻿from datetime import date, timedelta
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
@@ -1262,30 +1262,44 @@ def convenzione_delete(cid):
 @bp.route('/convenzioni/<int:cid>/pasto', methods=['GET', 'POST'])
 @require_permission('manage_products')
 def convenzione_pasto(cid):
-    corp  = CorporateAccount.query.get_or_404(cid)
+    corp = CorporateAccount.query.get_or_404(cid)
     today = date.today()
-    meal  = DailyFixedMeal.query.filter_by(corporate_id=cid, meal_date=today).first()
+
+    # data selezionata (default oggi); GET ?d=YYYY-MM-DD per navigare
+    try:
+        sel_date = date.fromisoformat(request.args.get('d', '')) if request.args.get('d') else today
+    except ValueError:
+        sel_date = today
+    prev_date = sel_date - timedelta(days=1)
+    next_date = sel_date + timedelta(days=1)
+
+    meal = DailyFixedMeal.query.filter_by(corporate_id=cid, meal_date=sel_date).first()
 
     if request.method == 'POST':
         action = request.form.get('action', 'save')
         if action == 'delete' and meal:
             db.session.delete(meal)
             db.session.commit()
-            flash('Pasto del giorno eliminato.', 'info')
+            flash('Pasto eliminato.', 'info')
             return redirect(url_for('admin.convenzione_pasto', cid=cid))
 
         name        = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
-        composition = request.form.get('composition', '').strip()
         allergens   = ','.join(request.form.getlist('allergens'))
+        primo       = request.form.get('primo',   '').strip()
+        secondo     = request.form.get('secondo',  '').strip()
+        contorno    = request.form.get('contorno', '').strip()
+        bevanda     = request.form.get('bevanda',  '').strip()
+        caffe       = request.form.get('caffe',    '').strip()
         price       = float(request.form.get('price', corp.daily_price) or corp.daily_price)
         max_book    = int(request.form.get('max_bookings', corp.max_daily_covers) or corp.max_daily_covers)
 
         if not name:
-            flash('Il nome del pasto Ã¨ obbligatorio.', 'danger')
+            flash('Il nome del pasto è obbligatorio.', 'danger')
             return render_template('admin/convenzione_pasto.html',
-                                   corp=corp, meal=meal, today=today, bookings=[],
-                                   allergens_list=ALLERGENS)
+                                   corp=corp, meal=meal, sel_date=today, today=today,
+                                   prev_date=prev_date, next_date=next_date,
+                                   bookings=[], allergens_list=ALLERGENS)
 
         if meal is None:
             meal = DailyFixedMeal(
@@ -1295,19 +1309,24 @@ def convenzione_pasto(cid):
 
         meal.name         = name
         meal.description  = description
-        meal.composition  = composition
         meal.allergens    = allergens
+        meal.primo        = primo
+        meal.secondo      = secondo
+        meal.contorno     = contorno
+        meal.bevanda      = bevanda
+        meal.caffe        = caffe
         meal.price        = price
         meal.max_bookings = max_book
         meal.is_active    = 'is_active' in request.form
         db.session.commit()
-        flash(f'Pasto "{name}" salvato per oggi.', 'success')
+        flash(f'Pasto "{name}" salvato.', 'success')
         return redirect(url_for('admin.convenzione_pasto', cid=cid))
 
     bookings = CorporateMealBooking.query.filter_by(meal_id=meal.id).all() if meal else []
     return render_template('admin/convenzione_pasto.html',
-                           corp=corp, meal=meal, today=today, bookings=bookings,
-                           allergens_list=ALLERGENS)
+                           corp=corp, meal=meal, sel_date=sel_date, today=today,
+                           prev_date=prev_date, next_date=next_date,
+                           bookings=bookings, allergens_list=ALLERGENS)
 
 
 @bp.route('/convenzioni/<int:cid>/pasto/<int:bid>/consuma', methods=['POST'])
@@ -1316,8 +1335,58 @@ def convenzione_consuma(cid, bid):
     booking = CorporateMealBooking.query.get_or_404(bid)
     booking.status = 'consumed'
     db.session.commit()
+    d = request.args.get('d', '')
     flash(f'Pasto di {booking.user.username} segnato come consumato.', 'success')
-    return redirect(url_for('admin.convenzione_pasto', cid=cid))
+    return redirect(url_for('admin.convenzione_pasto', cid=cid, d=d or None))
+
+
+@bp.route('/convenzioni/<int:cid>/presenze')
+@require_permission('manage_products')
+def convenzione_presenze(cid):
+    from sqlalchemy import extract
+    corp = CorporateAccount.query.get_or_404(cid)
+
+    try:
+        mese_str = request.args.get('mese', '')
+        if mese_str:
+            anno, mese = int(mese_str[:4]), int(mese_str[5:7])
+        else:
+            anno, mese = date.today().year, date.today().month
+    except (ValueError, IndexError):
+        anno, mese = date.today().year, date.today().month
+
+    meals = (DailyFixedMeal.query
+             .filter_by(corporate_id=cid)
+             .filter(extract('year', DailyFixedMeal.meal_date) == anno)
+             .filter(extract('month', DailyFixedMeal.meal_date) == mese)
+             .order_by(DailyFixedMeal.meal_date.desc())
+             .all())
+
+    days = []
+    for m in meals:
+        consumed  = [b for b in m.bookings if b.status == 'consumed']
+        booked    = [b for b in m.bookings if b.status == 'booked']
+        cancelled = [b for b in m.bookings if b.status == 'cancelled']
+        days.append({'meal': m, 'consumed': consumed,
+                     'booked': booked, 'cancelled': cancelled})
+
+    if mese == 1:
+        prev_anno, prev_mese = anno - 1, 12
+    else:
+        prev_anno, prev_mese = anno, mese - 1
+    if mese == 12:
+        next_anno, next_mese = anno + 1, 1
+    else:
+        next_anno, next_mese = anno, mese + 1
+
+    MESI = ['', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+            'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
+
+    return render_template('admin/convenzione_presenze.html',
+                           corp=corp, days=days, anno=anno, mese=mese,
+                           nome_mese=MESI[mese],
+                           prev=f'{prev_anno}-{prev_mese:02d}',
+                           nxt=f'{next_anno}-{next_mese:02d}')
 
 
 # â”€â”€ Slot durata tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
