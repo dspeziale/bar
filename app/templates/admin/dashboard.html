@@ -36,6 +36,43 @@
   </div>
 </div>
 
+<!-- KPI riga 2 -->
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:linear-gradient(135deg,#6c3483,#9b59b6);color:#fff;">
+      <div class="inner">
+        <h3>{{ '%.2f'|format(total_wallet) }}€</h3>
+        <p>Wallet totale clienti</p>
+      </div>
+      <div class="icon"><i class="fas fa-wallet"></i></div>
+      <a href="{{ url_for('admin.users') }}" class="small-box-footer" style="color:rgba(255,255,255,.7);">
+        Gestisci wallet <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-teal">
+      <div class="inner"><h3>{{ res_today }}</h3><p>Prenotazioni Oggi</p></div>
+      <div class="icon"><i class="fas fa-chair"></i></div>
+      <a href="{{ url_for('admin.reservations') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box {{ 'bg-gradient-danger' if consumable_alerts > 0 else 'bg-gradient-secondary' }}">
+      <div class="inner"><h3>{{ consumable_alerts }}</h3><p>Alert magazzino</p></div>
+      <div class="icon"><i class="fas fa-warehouse"></i></div>
+      <a href="{{ url_for('admin.magazzino') }}" class="small-box-footer">Magazzino <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-dark">
+      <div class="inner"><h3>{{ products_count }}</h3><p>Prodotti attivi</p></div>
+      <div class="icon"><i class="fas fa-burger"></i></div>
+      <a href="{{ url_for('admin.products') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   <!-- Ordini oggi per slot -->
   <div class="col-lg-8">

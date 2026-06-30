@@ -69,6 +69,10 @@ def dashboard():
     stock_alerts = [(p, p.available_today())
                     for p in Product.query.filter_by(is_active=True).all()
                     if p.available_today() <= 3]
+    wallet_users = User.query.filter_by(is_admin=False, **_tenant_filter()).all()
+    total_wallet = round(sum(u.wallet_balance for u in wallet_users), 2)
+    consumable_alerts = ConsumableItem.query.filter_by(**_tenant_filter())\
+        .filter(ConsumableItem.alert_active == True).count()
     return render_template('admin/dashboard.html',
                            orders_today=orders_today,
                            pending=[o for o in orders_today if o.status in ('pending', 'confirmed')],
@@ -76,7 +80,9 @@ def dashboard():
                            users_count=users_count,
                            products_count=products_count,
                            res_today=res_today,
-                           stock_alerts=stock_alerts)
+                           stock_alerts=stock_alerts,
+                           total_wallet=total_wallet,
+                           consumable_alerts=consumable_alerts)
 
 
 # ── Prodotti ──────────────────────────────────────────────────────────────────
