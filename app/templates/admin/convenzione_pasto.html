@@ -31,9 +31,32 @@
           </div>
 
           <div class="form-group">
-            <label>Descrizione (allergeni, note)</label>
+            <label>Descrizione (note libere)</label>
             <textarea name="description" class="form-control" rows="2"
-                      placeholder="Contiene: glutine, latticini…">{{ meal.description if meal else '' }}</textarea>
+                      placeholder="Note aggiuntive sul pasto…">{{ meal.description if meal else '' }}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Composizione del pasto</label>
+            <textarea name="composition" class="form-control" rows="3"
+                      placeholder="es. Riso basmati, pollo alla griglia, zucchine grigliate, pane, acqua naturale 0,5L">{{ meal.composition if meal else '' }}</textarea>
+            <small class="form-text text-muted">Elenca gli alimenti che compongono il pasto: i dipendenti lo vedranno prima di prenotare.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Allergeni presenti</label>
+            <div class="row" style="margin:0;">
+              {% set selected_allergens = (meal.allergens.split(',') if meal and meal.allergens else []) %}
+              {% for key, label, icon in allergens_list %}
+              <div class="col-6 col-md-4">
+                <div class="form-check">
+                  <input type="checkbox" name="allergens" value="{{ key }}" class="form-check-input"
+                         id="alg_{{ key }}" {{ 'checked' if key in selected_allergens }}>
+                  <label class="form-check-label" for="alg_{{ key }}">{{ icon }} {{ label }}</label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
           </div>
 
           <div class="form-row">

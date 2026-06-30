@@ -542,12 +542,33 @@ class CorporateMembership(db.Model):
     corporate = db.relationship('CorporateAccount', back_populates='memberships')
 
 
+ALLERGENS = [
+    ('glutine',   'Glutine',                 '🌾'),
+    ('crostacei', 'Crostacei',               '🦐'),
+    ('uova',      'Uova',                    '🥚'),
+    ('pesce',     'Pesce',                   '🐟'),
+    ('arachidi',  'Arachidi',                '🥜'),
+    ('soia',      'Soia',                    '🫘'),
+    ('latte',     'Latte e derivati',        '🥛'),
+    ('frutta_guscio', 'Frutta a guscio',     '🌰'),
+    ('sedano',    'Sedano',                  '🥬'),
+    ('senape',    'Senape',                  '🟡'),
+    ('sesamo',    'Sesamo',                  '⚪'),
+    ('solfiti',   'Anidride solforosa/solfiti', '🍷'),
+    ('lupini',    'Lupini',                  '🫛'),
+    ('molluschi', 'Molluschi',               '🦪'),
+]
+ALLERGEN_LABELS = {key: (label, icon) for key, label, icon in ALLERGENS}
+
+
 class DailyFixedMeal(db.Model):
     __tablename__ = 'daily_fixed_meals'
     id           = db.Column(db.Integer, primary_key=True)
     meal_date    = db.Column(db.Date, nullable=False, default=date.today)
     name         = db.Column(db.String(256), nullable=False)
     description  = db.Column(db.Text, default='')
+    composition  = db.Column(db.Text, default='')
+    allergens    = db.Column(db.String(512), default='')
     price        = db.Column(db.Float, nullable=False)
     corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
     max_bookings = db.Column(db.Integer, default=60)
@@ -568,6 +589,11 @@ class DailyFixedMeal(db.Model):
     @property
     def slots_left(self):
         return max(0, self.max_bookings - self.booking_count)
+
+    @property
+    def allergen_list(self):
+        keys = [k.strip() for k in (self.allergens or '').split(',') if k.strip()]
+        return [(k, *ALLERGEN_LABELS[k]) for k in keys if k in ALLERGEN_LABELS]
 
 
 class CorporateMealBooking(db.Model):

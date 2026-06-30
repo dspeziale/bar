@@ -135,6 +135,10 @@ def _migrate_tenant_columns():
     _ensure('table_reservations', 'checkin_at',       "DATETIME")
     _ensure('table_reservations', 'table_alert_sent', "BOOLEAN DEFAULT FALSE")
 
+    # Composizione e allergeni del pasto aziendale del giorno
+    _ensure('daily_fixed_meals', 'composition', "TEXT DEFAULT ''")
+    _ensure('daily_fixed_meals', 'allergens',   "VARCHAR(512) DEFAULT ''")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

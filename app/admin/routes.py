@@ -11,7 +11,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
                         Tenant, Supplier, ConsumableItem, ConsumableMovement,
                         CorporateAccount, CorporateMembership,
-                        DailyFixedMeal, CorporateMealBooking)
+                        DailyFixedMeal, CorporateMealBooking, ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
                                 telegram_poll_message, email_poll_html, get_setting)
@@ -1276,13 +1276,16 @@ def convenzione_pasto(cid):
 
         name        = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        composition = request.form.get('composition', '').strip()
+        allergens   = ','.join(request.form.getlist('allergens'))
         price       = float(request.form.get('price', corp.daily_price) or corp.daily_price)
         max_book    = int(request.form.get('max_bookings', corp.max_daily_covers) or corp.max_daily_covers)
 
         if not name:
             flash('Il nome del pasto Ã¨ obbligatorio.', 'danger')
             return render_template('admin/convenzione_pasto.html',
-                                   corp=corp, meal=meal, today=today, bookings=[])
+                                   corp=corp, meal=meal, today=today, bookings=[],
+                                   allergens_list=ALLERGENS)
 
         if meal is None:
             meal = DailyFixedMeal(
@@ -1292,6 +1295,8 @@ def convenzione_pasto(cid):
 
         meal.name         = name
         meal.description  = description
+        meal.composition  = composition
+        meal.allergens    = allergens
         meal.price        = price
         meal.max_bookings = max_book
         meal.is_active    = 'is_active' in request.form
@@ -1301,7 +1306,8 @@ def convenzione_pasto(cid):
 
     bookings = CorporateMealBooking.query.filter_by(meal_id=meal.id).all() if meal else []
     return render_template('admin/convenzione_pasto.html',
-                           corp=corp, meal=meal, today=today, bookings=bookings)
+                           corp=corp, meal=meal, today=today, bookings=bookings,
+                           allergens_list=ALLERGENS)
 
 
 @bp.route('/convenzioni/<int:cid>/pasto/<int:bid>/consuma', methods=['POST'])
