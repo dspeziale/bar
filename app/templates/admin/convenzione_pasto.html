@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Pasto del giorno — {{ corp.name }}{% endblock %}
+{% block page_title %}Pasto del giorno — {{ corp.name }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
+<li class="breadcrumb-item active">Pasto del giorno</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  {# ── Form pasto ── #}
+  <div class="col-lg-5">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-utensils mr-2"></i>
+          {{ today.strftime('%A %d %B %Y')|capitalize }}
+        </h3>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="save">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label>Nome del pasto <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ meal.name if meal else '' }}"
+                   placeholder="es. Risotto al ragù + insalata + acqua naturale" required>
+          </div>
+
+          <div class="form-group">
+            <label>Descrizione (allergeni, note)</label>
+            <textarea name="description" class="form-control" rows="2"
+                      placeholder="Contiene: glutine, latticini…">{{ meal.description if meal else '' }}</textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label>Prezzo fatturato (€)</label>
+              <input type="number" name="price" step="0.50" min="0" class="form-control"
+                     value="{{ '%.2f'|format(meal.price if meal else corp.daily_price) }}">
+            </div>
+            <div class="form-group col-6">
+              <label>Prenotazioni max</label>
+              <input type="number" name="max_bookings" min="1" class="form-control"
+                     value="{{ meal.max_bookings if meal else corp.max_daily_covers }}">
+            </div>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" name="is_active" class="form-check-input" id="chk_act"
+                   {{ 'checked' if not meal or meal.is_active }}>
+            <label class="form-check-label" for="chk_act">Pasto attivo (visibile ai dipendenti)</label>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex" style="gap:.4rem;">
+          <button type="submit" class="btn btn-success flex-fill">
+            <i class="fas fa-save mr-1"></i>Salva pasto
+          </button>
+          {% if meal %}
+          <button type="submit" name="action" value="delete" class="btn btn-outline-danger"
+                  onclick="return confirm('Eliminare il pasto di oggi?');">
+            <i class="fas fa-trash"></i>
+          </button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ── Lista prenotazioni ── #}
+  <div class="col-lg-7">
+    <div class="card card-outline card-info">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title"><i class="fas fa-list-check mr-2"></i>Prenotazioni oggi</h3>
+        {% if meal %}
+        <span class="badge badge-info" style="font-size:.9rem;">
+          {{ meal.booking_count }} / {{ meal.max_bookings }}
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if bookings %}
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-dark">
+            <tr><th>Dipendente</th><th>Slot</th><th>Stato</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for b in bookings %}
+            {% set lbl = b.label() %}
+            <tr>
+              <td class="align-middle">
+                <i class="fas fa-user text-muted mr-1"></i>{{ b.user.username }}
+              </td>
+              <td class="align-middle text-muted">
+                {{ b.slot.time_str if b.slot else '—' }}
+              </td>
+              <td class="align-middle">
+                <span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span>
+              </td>
+              <td class="align-middle">
+                {% if b.status == 'booked' %}
+                <form method="POST"
+                      action="{{ url_for('admin.convenzione_consuma', cid=corp.id, bid=b.id) }}">
+                  <button class="btn btn-xs btn-success" title="Segna come consumato">
+                    <i class="fas fa-check"></i> Consumato
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% elif meal %}
+        <div class="text-center py-4 text-muted">
+          <i class="fas fa-clock fa-2x mb-2 d-block"></i>
+          Nessuna prenotazione ancora.
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fas fa-utensils fa-2x mb-2 d-block"></i>
+          Crea il pasto del giorno per abilitare le prenotazioni.
+        </div>
+        {% endif %}
+      </div>
+      {% if meal %}
+      <div class="card-footer text-muted" style="font-size:.85rem;">
+        Totale fatturabile: <strong>{{ '%.2f'|format(meal.booking_count * meal.price) }}€</strong>
+        ({{ meal.booking_count }} × {{ '%.2f'|format(meal.price) }}€)
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

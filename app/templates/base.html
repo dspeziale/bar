@@ -466,6 +466,7 @@
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_tenant       = ep in ('admin.tenants',) %}
             {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
+            {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto') %}
 
             {# ── Dashboard ── #}
             <li class="nav-item">
@@ -570,6 +571,25 @@
                      class="nav-link {{ 'active' if ep in ('admin.fornitori','admin.fornitore_edit') }}">
                     <i class="fas fa-truck nav-icon" style="color:#2980b9;"></i>
                     <p>Fornitori</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            {% endif %}
+
+            {# ── CONVENZIONI AZIENDALI ── #}
+            {% if p('manage_products') %}
+            <li class="nav-item has-treeview {{ 'menu-open' if in_convenzioni }}">
+              <a href="#" class="nav-link {{ 'active' if in_convenzioni }}">
+                <i class="nav-icon fas fa-building"></i>
+                <p>Convenzioni<i class="right fas fa-angle-left"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.convenzioni') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.convenzioni' }}">
+                    <i class="fas fa-building nav-icon" style="color:#8e44ad;"></i>
+                    <p>Aziende</p>
                   </a>
                 </li>
               </ul>
@@ -800,6 +820,17 @@
                 <p>Wallet & Fedeltà</p>
               </a>
             </li>
+
+            {# Pasto Aziendale — visibile solo ai dipendenti convenzionati #}
+            {% if current_user.corporate_membership and current_user.corporate_membership.is_active %}
+            <li class="nav-item">
+              <a href="{{ url_for('main.pasto_aziendale') }}"
+                 class="nav-link {{ 'active' if ep == 'main.pasto_aziendale' }}">
+                <i class="nav-icon fas fa-building" style="color:#8e44ad;"></i>
+                <p>Pasto Aziendale</p>
+              </a>
+            </li>
+            {% endif %}
 
             {# Sondaggio #}
             <li class="nav-item">

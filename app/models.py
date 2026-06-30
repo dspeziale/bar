@@ -103,9 +103,11 @@ class User(UserMixin, db.Model):
 
     tenant = db.relationship('Tenant', foreign_keys=[tenant_id], overlaps='users')
 
-    orders       = db.relationship('Order',            back_populates='user', lazy='dynamic')
-    transactions = db.relationship('Transaction',      back_populates='user', lazy='dynamic')
-    reservations = db.relationship('TableReservation', back_populates='user', lazy='dynamic')
+    orders               = db.relationship('Order',            back_populates='user', lazy='dynamic')
+    transactions         = db.relationship('Transaction',      back_populates='user', lazy='dynamic')
+    reservations         = db.relationship('TableReservation', back_populates='user', lazy='dynamic')
+    corporate_membership = db.relationship('CorporateMembership', back_populates='user',
+                                           uselist=False)
     roles        = db.relationship('Role', secondary=user_roles, lazy='subquery',
                                    backref=db.backref('users', lazy='dynamic'))
 
@@ -247,11 +249,12 @@ class DailyStock(db.Model):
 
 class TimeSlot(db.Model):
     __tablename__ = 'time_slots'
-    id         = db.Column(db.Integer, primary_key=True)
-    time_str   = db.Column(db.String(5), nullable=False)
-    max_orders = db.Column(db.Integer, default=20)
-    is_active  = db.Column(db.Boolean, default=True)
-    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    id                   = db.Column(db.Integer, primary_key=True)
+    time_str             = db.Column(db.String(5), nullable=False)
+    max_orders           = db.Column(db.Integer, default=20)
+    is_active            = db.Column(db.Boolean, default=True)
+    seat_duration_minutes= db.Column(db.Integer, default=0)  # 0 = illimitato
+    tenant_id            = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     orders             = db.relationship('Order', back_populates='slot')
     table_reservations = db.relationship('TableReservation', back_populates='slot')
 
@@ -395,11 +398,22 @@ class TableReservation(db.Model):
     notes            = db.Column(db.Text, default='')
     status           = db.Column(db.String(20), default='confirmed')
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    checkin_at       = db.Column(db.DateTime, nullable=True)
+    table_alert_sent = db.Column(db.Boolean, default=False)
     tenant_id        = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     user = db.relationship('User', back_populates='reservations')
     table = db.relationship('Table', back_populates='reservations')
     slot = db.relationship('TimeSlot', back_populates='table_reservations')
+
+    @property
+    def minutes_remaining(self):
+        """Minuti rimanenti; None se non c'è check-in o durata non impostata."""
+        if not self.checkin_at or not self.slot or not self.slot.seat_duration_minutes:
+            return None
+        from datetime import datetime as _dt
+        elapsed = (_dt.utcnow() - self.checkin_at).total_seconds() / 60
+        return max(0, self.slot.seat_duration_minutes - elapsed)
 
     STATUS_LABELS = {
         'confirmed': ('Confermata', 'success'),
@@ -493,6 +507,90 @@ class ConsumableMovement(db.Model):
     user_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     item       = db.relationship('ConsumableItem', back_populates='movements')
     user       = db.relationship('User')
+
+
+# ── Convenzioni aziendali (pasto fisso) ───────────────────────────────────────
+
+class CorporateAccount(db.Model):
+    __tablename__ = 'corporate_accounts'
+    id               = db.Column(db.Integer, primary_key=True)
+    name             = db.Column(db.String(128), nullable=False)
+    contact_email    = db.Column(db.String(120), default='')
+    daily_price      = db.Column(db.Float, default=7.0)
+    max_daily_covers = db.Column(db.Integer, default=60)
+    notes            = db.Column(db.Text, default='')
+    is_active        = db.Column(db.Boolean, default=True)
+    tenant_id        = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    memberships      = db.relationship('CorporateMembership', back_populates='corporate',
+                                       cascade='all, delete-orphan')
+    daily_meals      = db.relationship('DailyFixedMeal', back_populates='corporate',
+                                       cascade='all, delete-orphan')
+
+    @property
+    def active_members(self):
+        return [m for m in self.memberships if m.is_active]
+
+
+class CorporateMembership(db.Model):
+    __tablename__ = 'corporate_memberships'
+    id           = db.Column(db.Integer, primary_key=True)
+    user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
+    is_active    = db.Column(db.Boolean, default=True)
+    __table_args__ = (db.UniqueConstraint('user_id', 'corporate_id'),)
+    user      = db.relationship('User', back_populates='corporate_membership')
+    corporate = db.relationship('CorporateAccount', back_populates='memberships')
+
+
+class DailyFixedMeal(db.Model):
+    __tablename__ = 'daily_fixed_meals'
+    id           = db.Column(db.Integer, primary_key=True)
+    meal_date    = db.Column(db.Date, nullable=False, default=date.today)
+    name         = db.Column(db.String(256), nullable=False)
+    description  = db.Column(db.Text, default='')
+    price        = db.Column(db.Float, nullable=False)
+    corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
+    max_bookings = db.Column(db.Integer, default=60)
+    is_active    = db.Column(db.Boolean, default=True)
+    tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    corporate    = db.relationship('CorporateAccount', back_populates='daily_meals')
+    bookings     = db.relationship('CorporateMealBooking', back_populates='meal',
+                                   cascade='all, delete-orphan')
+
+    @property
+    def booking_count(self):
+        return sum(1 for b in self.bookings if b.status != 'cancelled')
+
+    @property
+    def is_available(self):
+        return self.is_active and self.booking_count < self.max_bookings
+
+    @property
+    def slots_left(self):
+        return max(0, self.max_bookings - self.booking_count)
+
+
+class CorporateMealBooking(db.Model):
+    __tablename__ = 'corporate_meal_bookings'
+    id           = db.Column(db.Integer, primary_key=True)
+    user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    meal_id      = db.Column(db.Integer, db.ForeignKey('daily_fixed_meals.id'), nullable=False)
+    slot_id      = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=True)
+    status       = db.Column(db.String(20), default='booked')  # booked, consumed, cancelled
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'meal_id', name='uq_corp_booking'),)
+    user = db.relationship('User')
+    meal = db.relationship('DailyFixedMeal', back_populates='bookings')
+    slot = db.relationship('TimeSlot')
+
+    STATUS_LABELS = {
+        'booked':    ('Prenotato',  'info'),
+        'consumed':  ('Consumato',  'success'),
+        'cancelled': ('Annullato',  'danger'),
+    }
+
+    def label(self):
+        return self.STATUS_LABELS.get(self.status, (self.status, 'secondary'))
 
 
 # ── Impostazioni applicazione ──────────────────────────────────────────────────

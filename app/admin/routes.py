@@ -9,7 +9,9 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         IngredientCategory, Ingredient,
                         Table, TableReservation,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
-                        Tenant, Supplier, ConsumableItem, ConsumableMovement)
+                        Tenant, Supplier, ConsumableItem, ConsumableMovement,
+                        CorporateAccount, CorporateMembership,
+                        DailyFixedMeal, CorporateMealBooking)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
                                 telegram_poll_message, email_poll_html, get_setting)
@@ -1180,3 +1182,187 @@ def fornitore_delete(sid):
     db.session.commit()
     flash(f'Fornitore "{name}" eliminato.', 'success')
     return redirect(url_for('admin.fornitori'))
+
+# â”€â”€ Convenzioni aziendali â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@bp.route('/convenzioni')
+@require_permission('manage_products')
+def convenzioni():
+    tf = _tenant_filter()
+    corps = CorporateAccount.query.filter_by(**tf).order_by(CorporateAccount.name).all()
+    today_meals = {
+        m.corporate_id: m
+        for m in DailyFixedMeal.query.filter_by(meal_date=date.today(), **tf).all()
+    }
+    return render_template('admin/convenzioni.html', corps=corps, today_meals=today_meals)
+
+
+@bp.route('/convenzioni/nuovo', methods=['GET', 'POST'])
+@bp.route('/convenzioni/<int:cid>/modifica', methods=['GET', 'POST'])
+@require_permission('manage_products')
+def convenzione_edit(cid=None):
+    tf = _tenant_filter()
+    corp = CorporateAccount.query.get_or_404(cid) if cid else None
+    all_users = User.query.filter_by(is_admin=False, **tf).order_by(User.username).all()
+
+    if request.method == 'POST':
+        name             = request.form.get('name', '').strip()
+        contact_email    = request.form.get('contact_email', '').strip()
+        daily_price      = float(request.form.get('daily_price', 7.0) or 7.0)
+        max_daily_covers = int(request.form.get('max_daily_covers', 60) or 60)
+        notes            = request.form.get('notes', '').strip()
+        member_ids       = set(int(x) for x in request.form.getlist('member_ids') if x)
+
+        if not name:
+            flash('Il nome Ã¨ obbligatorio.', 'danger')
+            return render_template('admin/convenzione_edit.html', corp=corp, all_users=all_users)
+
+        if corp is None:
+            corp = CorporateAccount(
+                tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            db.session.add(corp)
+
+        corp.name             = name
+        corp.contact_email    = contact_email
+        corp.daily_price      = daily_price
+        corp.max_daily_covers = max_daily_covers
+        corp.notes            = notes
+        corp.is_active        = 'is_active' in request.form
+        db.session.flush()
+
+        existing = {m.user_id: m for m in corp.memberships}
+        for uid in member_ids:
+            if uid not in existing:
+                db.session.add(CorporateMembership(user_id=uid, corporate_id=corp.id))
+            else:
+                existing[uid].is_active = True
+        for uid, m in existing.items():
+            if uid not in member_ids:
+                m.is_active = False
+
+        db.session.commit()
+        flash(f'Azienda "{name}" salvata.', 'success')
+        return redirect(url_for('admin.convenzioni'))
+
+    return render_template('admin/convenzione_edit.html', corp=corp, all_users=all_users)
+
+
+@bp.route('/convenzioni/<int:cid>/elimina', methods=['POST'])
+@require_permission('manage_products')
+def convenzione_delete(cid):
+    corp = CorporateAccount.query.get_or_404(cid)
+    name = corp.name
+    db.session.delete(corp)
+    db.session.commit()
+    flash(f'Azienda "{name}" eliminata.', 'success')
+    return redirect(url_for('admin.convenzioni'))
+
+
+@bp.route('/convenzioni/<int:cid>/pasto', methods=['GET', 'POST'])
+@require_permission('manage_products')
+def convenzione_pasto(cid):
+    corp  = CorporateAccount.query.get_or_404(cid)
+    today = date.today()
+    meal  = DailyFixedMeal.query.filter_by(corporate_id=cid, meal_date=today).first()
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        if action == 'delete' and meal:
+            db.session.delete(meal)
+            db.session.commit()
+            flash('Pasto del giorno eliminato.', 'info')
+            return redirect(url_for('admin.convenzione_pasto', cid=cid))
+
+        name        = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        price       = float(request.form.get('price', corp.daily_price) or corp.daily_price)
+        max_book    = int(request.form.get('max_bookings', corp.max_daily_covers) or corp.max_daily_covers)
+
+        if not name:
+            flash('Il nome del pasto Ã¨ obbligatorio.', 'danger')
+            return render_template('admin/convenzione_pasto.html',
+                                   corp=corp, meal=meal, today=today, bookings=[])
+
+        if meal is None:
+            meal = DailyFixedMeal(
+                corporate_id=cid, meal_date=today,
+                tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            db.session.add(meal)
+
+        meal.name         = name
+        meal.description  = description
+        meal.price        = price
+        meal.max_bookings = max_book
+        meal.is_active    = 'is_active' in request.form
+        db.session.commit()
+        flash(f'Pasto "{name}" salvato per oggi.', 'success')
+        return redirect(url_for('admin.convenzione_pasto', cid=cid))
+
+    bookings = CorporateMealBooking.query.filter_by(meal_id=meal.id).all() if meal else []
+    return render_template('admin/convenzione_pasto.html',
+                           corp=corp, meal=meal, today=today, bookings=bookings)
+
+
+@bp.route('/convenzioni/<int:cid>/pasto/<int:bid>/consuma', methods=['POST'])
+@require_permission('manage_products')
+def convenzione_consuma(cid, bid):
+    booking = CorporateMealBooking.query.get_or_404(bid)
+    booking.status = 'consumed'
+    db.session.commit()
+    flash(f'Pasto di {booking.user.username} segnato come consumato.', 'success')
+    return redirect(url_for('admin.convenzione_pasto', cid=cid))
+
+
+# â”€â”€ Slot durata tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@bp.route('/slots/<int:sid>/durata', methods=['POST'])
+@require_permission('manage_slots')
+def slot_durata(sid):
+    slot = TimeSlot.query.get_or_404(sid)
+    slot.seat_duration_minutes = int(request.form.get('seat_duration_minutes', 0) or 0)
+    db.session.commit()
+    flash(f'Durata slot {slot.time_str} aggiornata a {slot.seat_duration_minutes} min.', 'success')
+    return redirect(url_for('admin.slots'))
+
+
+# â”€â”€ Check-in tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@bp.route('/prenotazioni/<int:rid>/checkin', methods=['POST'])
+@require_permission('manage_reservations_admin')
+def reservation_checkin(rid):
+    from datetime import datetime as _dt
+    res = TableReservation.query.get_or_404(rid)
+    res.checkin_at       = _dt.utcnow()
+    res.table_alert_sent = False
+    db.session.commit()
+    flash(f'Check-in tavolo {res.table.number} â€” {res.user.username}.', 'success')
+    return redirect(url_for('admin.reservations'))
+
+
+@bp.route('/tavoli/ping-alerts')
+@staff_required
+def tavoli_ping_alerts():
+    import json
+    from app.notifications import send_telegram
+    WARN_MINUTES = 10
+    alerts = []
+    active = TableReservation.query\
+        .filter(TableReservation.checkin_at.isnot(None))\
+        .filter(TableReservation.status == 'confirmed')\
+        .filter(TableReservation.table_alert_sent == False)\
+        .all()
+    for res in active:
+        mins_left = res.minutes_remaining
+        if mins_left is None:
+            continue
+        if mins_left <= WARN_MINUTES:
+            msg = (f'â° Tavolo <b>{res.table.number}</b> â€” <b>{res.user.username}</b>\n'
+                   f'Tempo rimanente: <b>{int(mins_left)} min</b>. Prego liberare il tavolo.')
+            send_telegram(msg)
+            res.table_alert_sent = True
+            alerts.append({'table': res.table.number, 'user': res.user.username,
+                           'mins_left': round(mins_left, 1)})
+    if alerts:
+        db.session.commit()
+    return json.dumps({'alerts': alerts}), 200, {'Content-Type': 'application/json'}
+

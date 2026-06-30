@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Convenzioni Aziendali{% endblock %}
+{% block page_title %}Convenzioni Aziendali{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Convenzioni</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <a href="{{ url_for('admin.convenzione_edit') }}" class="btn btn-sm btn-success">
+    <i class="fas fa-plus mr-1"></i>Nuova azienda
+  </a>
+  <span class="text-muted" style="font-size:.88rem;">{{ corps|length }} aziend{{ 'a' if corps|length==1 else 'e' }} registrat{{ 'a' if corps|length==1 else 'e' }}</span>
+</div>
+
+<div class="row">
+{% for corp in corps %}
+<div class="col-lg-6 mb-3">
+  <div class="card card-outline {{ 'card-success' if corp.is_active else 'card-secondary' }}">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <h3 class="card-title">
+        <i class="fas fa-building mr-2 text-primary"></i><strong>{{ corp.name }}</strong>
+        {% if not corp.is_active %}<span class="badge badge-secondary ml-2">Inattiva</span>{% endif %}
+      </h3>
+      <div class="d-flex" style="gap:.3rem;">
+        <a href="{{ url_for('admin.convenzione_edit', cid=corp.id) }}"
+           class="btn btn-xs btn-outline-secondary" title="Modifica">
+          <i class="fas fa-pencil-alt"></i>
+        </a>
+        <form method="POST" action="{{ url_for('admin.convenzione_delete', cid=corp.id) }}"
+              onsubmit="return confirm('Eliminare {{ corp.name }}?');" style="display:inline;">
+          <button class="btn btn-xs btn-outline-danger" title="Elimina">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="card-body py-2">
+      <div class="row text-center">
+        <div class="col-4">
+          <div style="font-size:1.5rem;font-weight:700;color:#e94560;">{{ '%.2f'|format(corp.daily_price) }}€</div>
+          <small class="text-muted">prezzo/pasto</small>
+        </div>
+        <div class="col-4">
+          <div style="font-size:1.5rem;font-weight:700;color:#2980b9;">{{ corp.max_daily_covers }}</div>
+          <small class="text-muted">coperti max/giorno</small>
+        </div>
+        <div class="col-4">
+          <div style="font-size:1.5rem;font-weight:700;color:#27ae60;">{{ corp.active_members|length }}</div>
+          <small class="text-muted">dipendenti attivi</small>
+        </div>
+      </div>
+      {% if corp.contact_email %}
+      <div class="mt-2 text-muted" style="font-size:.85rem;">
+        <i class="fas fa-envelope mr-1"></i>{{ corp.contact_email }}
+      </div>
+      {% endif %}
+
+      {# Pasto di oggi #}
+      {% set meal = today_meals.get(corp.id) %}
+      <div class="mt-2 p-2 rounded" style="background:#f8f9fa;">
+        {% if meal %}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <i class="fas fa-utensils text-success mr-1"></i>
+            <strong>{{ meal.name }}</strong>
+            <small class="text-muted ml-1">{{ '%.2f'|format(meal.price) }}€ &mdash; {{ meal.booking_count }}/{{ meal.max_bookings }} prenotazioni</small>
+          </div>
+          <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}" class="btn btn-xs btn-success">
+            <i class="fas fa-eye"></i>
+          </a>
+        </div>
+        {% else %}
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Nessun pasto per oggi</span>
+          <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}" class="btn btn-xs btn-warning">
+            <i class="fas fa-plus mr-1"></i>Crea pasto
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="col-12">
+  <div class="callout callout-info text-center py-5">
+    <i class="fas fa-building fa-3x text-muted mb-3 d-block"></i>
+    <p>Nessuna azienda convenzionata. <a href="{{ url_for('admin.convenzione_edit') }}">Aggiungine una.</a></p>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

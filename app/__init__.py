@@ -107,6 +107,13 @@ def _migrate_tenant_columns():
     # Colonna piastra per ordini builder
     _ensure('custom_order_items', 'grill_requested', "BOOLEAN DEFAULT FALSE")
 
+    # Durata stazionamento tavolo per fascia oraria
+    _ensure('time_slots', 'seat_duration_minutes', "INTEGER DEFAULT 0")
+
+    # Tracciamento check-in e alert tavolo
+    _ensure('table_reservations', 'checkin_at',       "DATETIME")
+    _ensure('table_reservations', 'table_alert_sent', "BOOLEAN DEFAULT FALSE")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

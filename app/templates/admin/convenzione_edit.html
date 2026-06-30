@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifica' if corp else 'Nuova' }} Azienda{% endblock %}
+{% block page_title %}{{ 'Modifica' if corp else 'Nuova' }} Azienda Convenzionata{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
+<li class="breadcrumb-item active">{{ 'Modifica' if corp else 'Nuova' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-building mr-2"></i>
+          {{ 'Modifica: ' + corp.name if corp else 'Nuova azienda convenzionata' }}
+        </h3>
+      </div>
+      <form method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label>Ragione sociale <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ corp.name if corp else '' }}"
+                   placeholder="es. Acme Srl, Uffici Comunali…" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>Prezzo pasto (€) <span class="text-danger">*</span></label>
+              <input type="number" name="daily_price" step="0.50" min="0" class="form-control"
+                     value="{{ '%.2f'|format(corp.daily_price) if corp else '7.00' }}">
+              <small class="form-text text-muted">Fatturato all'azienda per pasto erogato.</small>
+            </div>
+            <div class="form-group col-md-4">
+              <label>Coperti max/giorno</label>
+              <input type="number" name="max_daily_covers" min="1" class="form-control"
+                     value="{{ corp.max_daily_covers if corp else 60 }}">
+            </div>
+            <div class="form-group col-md-4">
+              <label>Email di contatto</label>
+              <input type="email" name="contact_email" class="form-control"
+                     value="{{ corp.contact_email if corp else '' }}"
+                     placeholder="referente@azienda.it">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Note interne</label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="Orari, condizioni contrattuali…">{{ corp.notes if corp else '' }}</textarea>
+          </div>
+
+          <div class="form-check mb-3">
+            <input type="checkbox" name="is_active" class="form-check-input" id="chk_active"
+                   {{ 'checked' if not corp or corp.is_active }}>
+            <label class="form-check-label" for="chk_active">Azienda attiva</label>
+          </div>
+
+          <hr>
+          <h5><i class="fas fa-users mr-2"></i>Dipendenti associati</h5>
+          <small class="text-muted d-block mb-2">
+            Seleziona gli utenti registrati che appartengono a questa azienda e accedono al pasto convenzionato.
+          </small>
+          {% set current_member_ids = (corp.memberships | selectattr('is_active') | map(attribute='user_id') | list) if corp else [] %}
+          <div style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;border-radius:4px;padding:8px;">
+            {% for u in all_users %}
+            <div class="form-check">
+              <input type="checkbox" name="member_ids" value="{{ u.id }}"
+                     class="form-check-input" id="u{{ u.id }}"
+                     {{ 'checked' if u.id in current_member_ids }}>
+              <label class="form-check-label" for="u{{ u.id }}">
+                {{ u.username }}
+                {% if u.email %}<small class="text-muted">({{ u.email }})</small>{% endif %}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <a href="{{ url_for('admin.convenzioni') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left mr-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i>Salva azienda
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

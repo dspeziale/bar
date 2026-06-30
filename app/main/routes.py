@@ -8,7 +8,8 @@ from app.notifications import send_telegram_to_user
 from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
-                        Table, TableReservation, Poll, PollVote, PollChoice)
+                        Table, TableReservation, Poll, PollVote, PollChoice,
+                        DailyFixedMeal, CorporateMealBooking)
 from config import Config
 
 
@@ -535,3 +536,91 @@ def poll_vote(pid):
     db.session.commit()
     flash(f'Voto registrato: {choice.emoji} {choice.text}', 'success')
     return redirect(url_for('main.poll_view', pid=pid))
+
+
+# â”€â”€ Pasto aziendale convenzionato â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@bp.route('/pasto-aziendale')
+@login_required
+def pasto_aziendale():
+    membership = getattr(current_user, 'corporate_membership', None)
+    if not membership or not membership.is_active:
+        flash('Non sei associato a nessuna convenzione aziendale.', 'warning')
+        return redirect(url_for('main.index'))
+
+    corp  = membership.corporate
+    today = date.today()
+    meal  = DailyFixedMeal.query.filter_by(
+        corporate_id=corp.id, meal_date=today, is_active=True).first()
+
+    my_booking = None
+    if meal:
+        my_booking = CorporateMealBooking.query.filter_by(
+            user_id=current_user.id, meal_id=meal.id).first()
+
+    slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
+    return render_template('main/pasto_aziendale.html',
+                           corp=corp, meal=meal, my_booking=my_booking,
+                           slots=slots, today=today)
+
+
+@bp.route('/pasto-aziendale/prenota', methods=['POST'])
+@login_required
+def pasto_aziendale_prenota():
+    membership = getattr(current_user, 'corporate_membership', None)
+    if not membership or not membership.is_active:
+        flash('Non sei associato a nessuna convenzione aziendale.', 'warning')
+        return redirect(url_for('main.index'))
+
+    corp  = membership.corporate
+    today = date.today()
+    meal  = DailyFixedMeal.query.filter_by(
+        corporate_id=corp.id, meal_date=today, is_active=True).first()
+
+    if not meal:
+        flash('Nessun pasto disponibile per oggi.', 'warning')
+        return redirect(url_for('main.pasto_aziendale'))
+
+    if not meal.is_available:
+        flash('Posti esauriti per oggi.', 'danger')
+        return redirect(url_for('main.pasto_aziendale'))
+
+    existing = CorporateMealBooking.query.filter_by(
+        user_id=current_user.id, meal_id=meal.id).first()
+    if existing:
+        flash('Hai giÃ  prenotato il pasto di oggi.', 'info')
+        return redirect(url_for('main.pasto_aziendale'))
+
+    slot_id = request.form.get('slot_id') or None
+    if slot_id:
+        slot_id = int(slot_id)
+
+    booking = CorporateMealBooking(
+        user_id=current_user.id, meal_id=meal.id,
+        slot_id=slot_id, status='booked')
+    db.session.add(booking)
+    db.session.commit()
+
+    send_telegram_to_user(current_user,
+        f'ðŸ½ï¸ Prenotazione confermata!\n'
+        f'<b>{meal.name}</b>\n'
+        f'Azienda: {corp.name} â€” oggi {today.strftime("%d/%m/%Y")}')
+
+    flash(f'Pasto prenotato: {meal.name}', 'success')
+    return redirect(url_for('main.pasto_aziendale'))
+
+
+@bp.route('/pasto-aziendale/cancella', methods=['POST'])
+@login_required
+def pasto_aziendale_cancella():
+    bid = request.form.get('booking_id', type=int)
+    if not bid:
+        return redirect(url_for('main.pasto_aziendale'))
+    booking = CorporateMealBooking.query.filter_by(
+        id=bid, user_id=current_user.id).first()
+    if booking and booking.status == 'booked':
+        booking.status = 'cancelled'
+        db.session.commit()
+        flash('Prenotazione annullata.', 'info')
+    return redirect(url_for('main.pasto_aziendale'))
+
