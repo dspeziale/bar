@@ -148,8 +148,9 @@
             <i class="fas fa-save mr-1"></i>Salva pasto
           </button>
           {% if meal %}
+          {% set del_confirm = 'Eliminare il pasto del ' ~ sel_date.strftime('%d/%m/%Y') ~ '?' %}
           <button type="submit" name="action" value="delete" class="btn btn-outline-danger"
-                  onclick="return confirm('Eliminare il pasto del {{ sel_date.strftime(\'%d/%m/%Y\') }}?');">
+                  onclick="return confirm('{{ del_confirm }}');">
             <i class="fas fa-trash"></i>
           </button>
           {% endif %}
