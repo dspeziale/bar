@@ -152,7 +152,7 @@ def _para_border(p, *, bottom_color=None, bottom_sz='6'):
     pPr.append(pBdr)
 
 
-def _run_font(run, size=11, bold=False, color=None, italic=False, font=FONT):
+def _run_font(run, size=13, bold=False, color=None, italic=False, font=FONT):
     run.font.name  = font
     run.font.size  = Pt(size)
     run.font.bold  = bold
@@ -177,8 +177,8 @@ def _p_spacing(p, before=0, after=6, line=None):
 
 # ── Document helpers ──────────────────────────────────────────────────────────
 
-def body_para(doc, text='', color=None, size=11, bold=False,
-              align=WD_ALIGN_PARAGRAPH.LEFT, after=6, before=0):
+def body_para(doc, text='', color=None, size=14, bold=False,
+              align=WD_ALIGN_PARAGRAPH.LEFT, after=4, before=0):
     p = doc.add_paragraph()
     p.alignment = align
     _p_spacing(p, before=before, after=after)
@@ -190,23 +190,20 @@ def body_para(doc, text='', color=None, size=11, bold=False,
 
 def h1(doc, number, title, icon=''):
     """Heading sezione — grande con bordo inferiore rosso."""
-    spacer = doc.add_paragraph()
-    _p_spacing(spacer, before=0, after=2)
-
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    _p_spacing(p, before=10, after=4)
+    _p_spacing(p, before=8, after=3)
 
     # Label sezione piccolo in rosso
     label = p.add_run(f'SEZIONE {number}   ')
-    _run_font(label, size=8, bold=True, color=RED)
+    _run_font(label, size=9, bold=True, color=RED)
 
     # Icona + titolo
     if icon:
         ic = p.add_run(icon + '  ')
-        _run_font(ic, size=18)
+        _run_font(ic, size=20)
     run = p.add_run(title)
-    _run_font(run, size=19, bold=True, color=NAVY)
+    _run_font(run, size=21, bold=True, color=NAVY)
 
     _para_border(p, bottom_color=HEX_RED, bottom_sz='8')
     return p
@@ -215,29 +212,24 @@ def h1(doc, number, title, icon=''):
 def h2(doc, text):
     """Sottotitolo sezione."""
     p = doc.add_paragraph()
-    _p_spacing(p, before=12, after=4)
+    _p_spacing(p, before=7, after=2)
     run = p.add_run(text)
-    _run_font(run, size=13, bold=True, color=DARK)
+    _run_font(run, size=15, bold=True, color=DARK)
     return p
 
 
 def info_box(doc, text, style='tip', label=None):
-    """Riquadro colorato con bordo sinistro."""
-    BG = {'tip': 'EBF5FB', 'warning': 'FEF0F0', 'success': 'EAFAF1'}
-    BD = {'tip': HEX_NAVY, 'warning': HEX_RED, 'success': '27AE60'}
+    """Riquadro brand-consistent: bordo sinistro rosso, sfondo grigio chiaro."""
     IC = {'tip': '💡', 'warning': '⚠️', 'success': '✅'}
-
-    bg = BG.get(style, 'EBF5FB')
-    bd = BD.get(style, HEX_NAVY)
     ic = IC.get(style, '💡')
 
     tbl = doc.add_table(rows=1, cols=1)
     _no_borders(tbl)
-    _table_width(tbl, 16.5)
+    _table_width(tbl, 18.0)
     cell = tbl.rows[0].cells[0]
-    _cell_shd(cell, bg)
-    _cell_border(cell, top='FFFFFF', bottom='FFFFFF', right='FFFFFF', left=bd)
-    _cell_margins(cell, top=80, bottom=80, left=120, right=80)
+    _cell_shd(cell, 'F5F5F5')
+    _cell_border(cell, top='E8E8E8', bottom='E8E8E8', right='E8E8E8', left=HEX_RED, sz='14')
+    _cell_margins(cell, top=60, bottom=60, left=120, right=80)
 
     p = cell.paragraphs[0]
     _p_spacing(p, before=0, after=0)
@@ -246,13 +238,11 @@ def info_box(doc, text, style='tip', label=None):
     if label:
         prefix_text += f'{label}  '
     prefix = p.add_run(prefix_text)
-    _run_font(prefix, size=10, bold=bool(label),
-              color=RGBColor(*bytes.fromhex(bd)))
+    _run_font(prefix, size=13, bold=bool(label), color=RED)
 
     run = p.add_run(text)
-    _run_font(run, size=10, color=DARK)
+    _run_font(run, size=13, color=DGRAY)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(8)
     return tbl
 
 
@@ -285,7 +275,6 @@ def step_row(doc, num, title, text):
     rb = pt.add_run(text)
     _run_font(rb, size=10, color=GRAY)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(4)
     return tbl
 
 
@@ -293,13 +282,13 @@ def data_table(doc, headers, rows, col_widths=None):
     """Tabella dati con header navy."""
     ncols = len(headers)
     tbl = doc.add_table(rows=1 + len(rows), cols=ncols)
-    _table_width(tbl, 16.5)
+    _table_width(tbl, 18.0)
 
     # header
     hr = tbl.rows[0]
     for i, h in enumerate(headers):
         c = hr.cells[i]
-        _cell_shd(c, HEX_NAVY)
+        _cell_shd(c, HEX_RED)
         _cell_border(c)
         _cell_margins(c, top=60, bottom=60, left=80, right=80)
         p = c.paragraphs[0]
@@ -323,9 +312,8 @@ def data_table(doc, headers, rows, col_widths=None):
             _p_spacing(p, before=0, after=0)
             bold = (ci == 0)
             r = p.add_run(val)
-            _run_font(r, size=10, bold=bold, color=DARK if bold else GRAY)
+            _run_font(r, size=11, bold=bold, color=DARK if bold else GRAY)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(8)
     return tbl
 
 
@@ -333,7 +321,7 @@ def cred_box(doc, title, rows):
     """Box credenziali su sfondo scuro."""
     tbl = doc.add_table(rows=1 + len(rows), cols=2)
     _no_borders(tbl)
-    _table_width(tbl, 16.5)
+    _table_width(tbl, 18.0)
     _set_col_width(tbl, 0, 4.5)
     _set_col_width(tbl, 1, 12.0)
 
@@ -360,9 +348,8 @@ def cred_box(doc, title, rows):
         pv = row.cells[1].paragraphs[0]
         _p_spacing(pv, before=0, after=0)
         vc = RGBColor(0xff, 0xd7, 0x00) if highlight else WHITE
-        _run_font(pv.add_run(val), size=10, bold=highlight, color=vc)
+        _run_font(pv.add_run(val), size=11, bold=highlight, color=vc)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(10)
     return tbl
 
 
@@ -370,7 +357,7 @@ def role_table(doc, roles):
     """Tabella ruoli: badge colorato | permessi."""
     tbl = doc.add_table(rows=len(roles), cols=2)
     _no_borders(tbl)
-    _table_width(tbl, 16.5)
+    _table_width(tbl, 18.0)
     _set_col_width(tbl, 0, 4.0)
     _set_col_width(tbl, 1, 12.5)
 
@@ -394,9 +381,8 @@ def role_table(doc, roles):
         _cell_margins(pc, top=80, bottom=80, left=100, right=80)
         pp = pc.paragraphs[0]
         _p_spacing(pp, before=0, after=0)
-        _run_font(pp.add_run(perms), size=10, color=GRAY)
+        _run_font(pp.add_run(perms), size=11, color=GRAY)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(8)
     return tbl
 
 
@@ -404,7 +390,7 @@ def workflow_table(doc, steps):
     """Flusso orizzontale di step."""
     ncols = len(steps)
     tbl = doc.add_table(rows=1, cols=ncols)
-    _table_width(tbl, 16.5)
+    _table_width(tbl, 18.0)
 
     for i, (icon, title, desc) in enumerate(steps):
         c = tbl.rows[0].cells[i]
@@ -420,7 +406,6 @@ def workflow_table(doc, steps):
         _run_font(p.add_run(title + '\n'), size=10, bold=True, color=WHITE)
         _run_font(p.add_run(desc), size=9, color=RGBColor(0xb0, 0xc4, 0xd8))
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(8)
     return tbl
 
 
@@ -498,8 +483,6 @@ def build_cover(doc):
     cp('Manuale del Proprietario  ·  Versione 2.0  ·  Giugno 2026  ·  © 2024–26 DS Consulting',
        size=9, color=RGBColor(0x40, 0x55, 0x70), after=0)
 
-    _page_break(doc)
-
 
 # ── Sezioni ───────────────────────────────────────────────────────────────────
 
@@ -528,6 +511,8 @@ def build_toc(doc):
         ('15', '🔑',  'Credenziali di accesso'),
         ('A',  '🖥️',  'Pagine principali del sito (mockup)'),
         ('B',  '⚖️',  'Gestione Wallet — Aspetti Fiscali'),
+        ('C',  '💰',  'Modello SaaS — Prezzi e Metriche'),
+        ('D',  '🏗️',  'Layout Fisici — Cucina, Sala, Cassa'),
     ]
 
     tbl = doc.add_table(rows=len(toc_items), cols=2)
@@ -556,8 +541,7 @@ def build_toc(doc):
         _run_font(pt.add_run(icon + '  '), size=10)
         _run_font(pt.add_run(title), size=11, bold=False, color=NAVY)
 
-    doc.add_paragraph().paragraph_format.space_after = Pt(6)
-    _page_break(doc)
+    doc.add_paragraph().paragraph_format.space_after = Pt(4)
 
 
 def s01(doc):
@@ -864,6 +848,128 @@ def s09(doc):
     body_para(doc,
         "I clienti possono registrarsi autonomamente dal link pubblico del locale, "
         "oppure essere inseriti dall'admin da Admin → Persone → Clienti → Registra nuovo cliente.")
+
+    h2(doc, 'Ipotesi di organico per turno')
+    body_para(doc,
+        "Le tabelle seguenti mostrano come distribuire il personale tra le tre aree operative "
+        "— Cassa, Cucina e Sala — in funzione del numero di persone disponibili. "
+        "Le ipotesi sono calibrate su un servizio mensa/bar con 50–150 coperti a turno "
+        "e picco concentrato nelle fasce 12:00–13:30.")
+
+    # ── Tabella riassuntiva ──────────────────────────────────────────────────
+    data_table(doc,
+        ['Organico', '🏪 Cassa', '👨‍🍳 Cucina', '🍽️ Sala', 'Scenario tipico'],
+        [
+            ['4 persone', '1', '2', '1', 'Apertura / turno leggero'],
+            ['5 persone', '1', '2', '2', 'Servizio standard ridotto'],
+            ['6 persone', '1', '3', '2', 'Servizio standard completo'],
+            ['8 persone', '2', '4', '2', 'Picco / evento / lancio menu'],
+        ],
+        col_widths=[3.0, 2.0, 2.5, 2.0, 7.0])
+
+    info_box(doc,
+        "La colonna «Cucina» include sia la preparazione dei piatti caldi sia "
+        "l'assemblaggio dei builder (panino, insalata, poke). "
+        "Con QuickLunch il cuoco vede gli ordini sul tablet KDS senza che la cassa "
+        "debba comunicare nulla verbalmente.",
+        style='tip', label='Come QuickLunch riduce la coordinazione verbale:')
+
+    # ── Dettaglio per scenario ────────────────────────────────────────────────
+    body_para(doc, '', after=4)
+
+    _scenarios = [
+        ('4 persone — Turno minimo', 'E67E22',
+         [('🏪 Cassa  ×1',
+           'Gestisce le ricariche wallet, risponde alle domande al banco e supervisiona '
+           'gli ordini completati. Con QuickLunch la cassa non prende ordini verbali: '
+           'li riceve già confermati dal sistema.'),
+          ('👨‍🍳 Cucina  ×2',
+           '1 addetto ai piatti caldi (primo/secondo), 1 addetto ai builder '
+           '(panini, insalate, poke). Entrambi lavorano sul pannello KDS. '
+           'Il volume ridotto permette a una sola persona di gestire il builder '
+           'in autonomia.'),
+          ('🍽️ Sala  ×1',
+           'Distribuisce i vassoi ai tavoli, gestisce le prenotazioni, '
+           'risponde ai clienti. In caso di picco improvviso supporta la cassa.')]),
+
+        ('5 persone — Turno standard ridotto', '2980B9',
+         [('🏪 Cassa  ×1',
+           'Stessa funzione del turno a 4. Con un addetto in più in sala '
+           'la cassa può dedicarsi alle ricariche e alla gestione wallet '
+           'senza doversi occupare della distribuzione.'),
+          ('👨‍🍳 Cucina  ×2',
+           'Configurazione identica al turno a 4. Adatta se il menu del giorno '
+           'non prevede builder complessi o poke (tipicamente metà settimana).'),
+          ('🍽️ Sala  ×2',
+           '1 addetto alla distribuzione vassoi, 1 addetto ai tavoli e all\'accoglienza. '
+           'La doppia presenza in sala riduce sensibilmente i tempi di attesa '
+           'percepiti dal cliente.')]),
+
+        ('6 persone — Turno standard completo', '27AE60',
+         [('🏪 Cassa  ×1',
+           'Con tre persone in cucina e due in sala, la cassa può '
+           'concentrarsi sulle operazioni amministrative: wallet, '
+           'report del giorno, gestione stock.'),
+          ('👨‍🍳 Cucina  ×3',
+           '1 addetto piatti caldi, 1 addetto panini/insalate, '
+           '1 addetto poke bowl e piatti freddi. '
+           'Ogni builder type ha un responsabile dedicato: la preparazione '
+           'alla piastra (🔥) viene gestita senza rallentare gli altri ordini.'),
+          ('🍽️ Sala  ×2',
+           'Turno completo: un addetto alla distribuzione e uno dedicato '
+           'ai tavoli con prenotazione. Configurazione ottimale per un '
+           'servizio mensa aziendale da 80–120 coperti.')]),
+
+        ('8 persone — Turno pieno / picco', 'E94560',
+         [('🏪 Cassa  ×2',
+           '1 cassiere principale (wallet, ordini speciali, gestione code), '
+           '1 cassiere di supporto (ricariche veloci, accoglienza, '
+           'smistamento clienti verso il self-order se disponibile). '
+           'Utile in presenza di clienti non digitali che ordinano al banco.'),
+          ('👨‍🍳 Cucina  ×4',
+           '1 coordinatore KDS (monitora gli slot, avanza gli stati), '
+           '1 addetto piatti caldi, 1 addetto builder panino/insalata '
+           '(incluse piastre 🔥), 1 addetto poke bowl e dessert. '
+           'Con 4 persone in cucina si può gestire un picco di 150+ coperti '
+           'mantenendo i tempi di preparazione sotto i 10 minuti per slot.'),
+          ('🍽️ Sala  ×2',
+           'Invariato rispetto al turno a 6: la sala non scala linearmente '
+           'con i coperti grazie ai preordini. I clienti ritirano '
+           'autonomamente leggendo il codice ordine sul display.')]),
+    ]
+
+    for title, hdr_color, roles in _scenarios:
+        # Titolo scenario
+        p = doc.add_paragraph()
+        _p_spacing(p, before=10, after=4)
+        _run_font(p.add_run(title), size=11, bold=True,
+                  color=RGBColor(int(hdr_color[0:2], 16),
+                                 int(hdr_color[2:4], 16),
+                                 int(hdr_color[4:6], 16)))
+
+        # Tabella ruoli dello scenario
+        tbl = doc.add_table(rows=len(roles), cols=2)
+        _no_borders(tbl)
+        _table_width(tbl, 16.5)
+        _set_col_width(tbl, 0, 3.5)
+        _set_col_width(tbl, 1, 13.0)
+        for ri, (role_lbl, role_desc) in enumerate(roles):
+            bg = 'FFFFFF' if ri % 2 == 0 else 'F8F9FA'
+            lc = tbl.rows[ri].cells[0]
+            rc = tbl.rows[ri].cells[1]
+            _cell_shd(lc, hdr_color)
+            _cell_shd(rc, bg)
+            _cell_margins(lc, top=60, bottom=60, left=80, right=60)
+            _cell_margins(rc, top=60, bottom=60, left=80, right=60)
+            _cell_border(lc, bottom='FFFFFF', right='FFFFFF')
+            pl = lc.paragraphs[0]
+            _p_spacing(pl, before=0, after=0)
+            _run_font(pl.add_run(role_lbl), size=9, bold=True, color=WHITE)
+            pr_ = rc.paragraphs[0]
+            _p_spacing(pr_, before=0, after=0)
+            _run_font(pr_.add_run(role_desc), size=9, color=DGRAY)
+
+        doc.add_paragraph().paragraph_format.space_after = Pt(6)
 
 
 def s10(doc):
@@ -1762,20 +1868,407 @@ def s15(doc):
         style='success')
 
 
+# ── Appendice C — Modello SaaS ───────────────────────────────────────────────
+
+def s_appendix_saas(doc):
+    h1(doc, 'C', 'Modello SaaS — Prezzi, Commissioni e Metriche', '💰')
+    body_para(doc,
+        "QuickLunch è venduto come Software as a Service (SaaS) con un modello ibrido: "
+        "un canone fisso mensile a copertura dei costi di infrastruttura e una commissione "
+        "variabile dell'1,5% sul valore degli scontrini elaborati (IVA esclusa). "
+        "Più il cliente guadagna, più il fornitore guadagna — allineamento di interessi totale.")
+
+    h2(doc, 'Struttura tariffaria')
+    data_table(doc,
+        ['Voce', 'Importo', 'Frequenza', 'Dettaglio'],
+        [
+            ['Fee di attivazione', '500 €', 'Una tantum',
+             'Setup sede, config menu, formazione staff (2–4 h), migrazione dati'],
+            ['Canone fisso', '50 €/mese', 'Mensile',
+             'Hosting Vercel, DB PostgreSQL, backup, aggiornamenti, supporto email'],
+            ['Commissione transazionale', '1,5 % del transato', 'Mensile',
+             'Sul valore totale degli scontrini elaborati dal sistema, IVA esclusa'],
+        ],
+        col_widths=[3.8, 3.0, 2.5, 8.7])
+
+    h2(doc, 'Ricavo mensile per tipologia di cliente')
+    body_para(doc,
+        "Il ricavo mensile varia con il volume del cliente. La commissione dell'1,5% "
+        "sul transato (GMV) si somma al canone fisso di 50 €. "
+        "Formula: Ricavo mensile = 50 € + (coperti/giorno × scontrino medio ex-IVA × 22 gg × 1,5%)")
+    data_table(doc,
+        ['Tipologia', 'Coperti/giorno', 'Scontrino medio (IVA esclusa)',
+         'GMV mensile', 'Commissione 1,5%', 'Ricavo mensile totale'],
+        [
+            ['Bar piccolo',      '30',  '4,50 €', '2.970 €',  '45 €',  '95 €'],
+            ['Bar medio',        '60',  '6,50 €', '8.580 €',  '129 €', '179 €'],
+            ['Mensa aziendale',  '120', '8,00 €', '21.120 €', '317 €', '367 €'],
+            ['Grande struttura', '200', '10,00 €','44.000 €', '660 €', '710 €'],
+        ],
+        col_widths=[3.2, 2.8, 3.8, 2.8, 2.8, 2.6])
+    info_box(doc,
+        "22 giorni lavorativi/mese come riferimento. "
+        "Il GMV (Gross Merchandise Value) è il valore lordo degli ordini elaborati, "
+        "IVA esclusa, su cui si applica la commissione.",
+        label='Ipotesi di calcolo:')
+
+    h2(doc, 'Metriche SaaS chiave')
+    body_para(doc,
+        "Le metriche di riferimento sono calcolate sul profilo «Bar medio» "
+        "(60 coperti/giorno, 6,50 € scontrino medio ex-IVA) come cliente rappresentativo.")
+    data_table(doc,
+        ['Metrica', 'Valore (bar medio)', 'Calcolo / Note'],
+        [
+            ['MRR (Monthly Recurring Revenue)',
+             '179 €/cliente',
+             '50 € canone + 8.580 € GMV × 1,5% = 50 + 129 = 179 €'],
+            ['ARR (Annual Recurring Revenue)',
+             '2.148 €/cliente/anno',
+             'MRR 179 € × 12 mesi'],
+            ['GMV annuo gestito (bar medio)',
+             '102.960 €/anno',
+             '8.580 € × 12 mesi di transato elaborato'],
+            ['LTV — Lifetime Value (3 anni)',
+             '6.944 €/cliente',
+             '500 (setup) + 36 mesi × 179 € = 6.444 + 500'],
+            ['LTV — Lifetime Value (5 anni)',
+             '11.240 €/cliente',
+             '500 (setup) + 60 mesi × 179 € = 10.740 + 500'],
+            ['CAC (Customer Acquisition Cost)',
+             'obiettivo < 200 €',
+             'Demo + contratto + onboarding: ~3 h lavoro commerciale'],
+            ['LTV / CAC ratio (3 anni)',
+             '35× (eccellente)',
+             '6.944 / 200 = 34,7 — soglia minima accettabile: 3×'],
+            ['Payback period',
+             '~1 mese',
+             'CAC 200 € / MRR 179 € = 1,1 mesi per rientrare'],
+            ['Churn rate target',
+             '< 3 % mensile',
+             'Vita media cliente: 1 / 3% = 33 mesi. Sopra 5%: non sostenibile'],
+            ['Take rate effettiva',
+             '~2,1 % del GMV',
+             '(50 + 129) / 8.580 = 2,1% — include canone fisso'],
+        ],
+        col_widths=[5.5, 3.5, 9.0])
+
+    h2(doc, 'Break-even — quanti clienti per coprire i costi operativi')
+    body_para(doc,
+        "Con MRR medio di 179 €/cliente (bar medio), il break-even si raggiunge "
+        "con pochi clienti attivi grazie alla componente variabile sul transato.")
+    data_table(doc,
+        ['Scenario costi mensili', 'Costi stimati', 'Clienti break-even', 'MRR al break-even'],
+        [
+            ['Minimal (solo infrastruttura)',    '~100 €/mese', '1 cliente',  '179 €'],
+            ['Standard (infrastruttura + 5h)',   '~350 €/mese', '2 clienti',  '358 €'],
+            ['Growth (infrastruttura + 15h)',    '~750 €/mese', '5 clienti',  '895 €'],
+            ['Scale (team part-time dedicato)',  '~1.500 €/mese','9 clienti', '1.611 €'],
+        ],
+        col_widths=[5.5, 3.5, 3.0, 6.0])
+    info_box(doc,
+        "Obiettivo realistico anno 1: 8–12 clienti. "
+        "Con 10 bar medi attivi → MRR = 1.790 €, ARR = 21.480 €, GMV gestito ≈ 1 M€/anno. "
+        "Il break-even operativo si raggiunge già al 5° cliente (scenario Growth).",
+        label='Target anno 1:')
+
+    h2(doc, 'ROI per il bar cliente')
+    body_para(doc,
+        "Il costo mensile per il bar è 50 € + 1,5% del transato. "
+        "Per un bar medio con 8.580 € GMV mensile, il costo totale è 179 €/mese. "
+        "Ecco i benefici concreti che giustificano abbondantemente questa spesa:")
+    data_table(doc,
+        ['Beneficio', 'Stima mensile', 'Come si calcola'],
+        [
+            ['Risparmio tempo gestione ordini',
+             '+200 – 400 €/mese',
+             '1–2 h/giorno × 22 gg × 10 €/h → cassa/operatore liberato'],
+            ['Riduzione errori ordine',
+             '+30 – 80 €/mese',
+             '1–2 ordini errati/giorno × 2–5 € costo rifacimento'],
+            ['Aumento scontrino medio (fidelizzazione)',
+             '+50 – 200 €/mese',
+             '+5–10% grazie a punti fedeltà, preordini e suggerimenti'],
+            ['Riduzione sprechi (preordini anticipati)',
+             '+30 – 100 €/mese',
+             'Menu pianificato su dati reali → -10% cibo non venduto'],
+            ['Totale beneficio stimato',
+             '310 – 780 €/mese',
+             'ROI per il bar: da 1,7× a 4,4× il costo del servizio (179 €)'],
+        ],
+        col_widths=[5.0, 3.5, 9.5])
+    info_box(doc,
+        "Script commerciale: «Con QuickLunch risparmia almeno 1 ora al giorno "
+        "di gestione. Sono 200 € al mese di valore del tuo tempo. "
+        "Il sistema costa 179 € al mese ma ne genera oltre 500 di beneficio misurabile.»",
+        label='Argomento di vendita:')
+
+    h2(doc, 'Proiezione ricavi — scenari di crescita')
+    body_para(doc,
+        "Ipotesi: mix di clienti (60% bar medi a 179 €/mese, 30% bar piccoli a 95 €, "
+        "10% grandi strutture a 367 €/mese). MRR medio ponderato: ~179 €/cliente.")
+    data_table(doc,
+        ['Periodo', 'Clienti', 'MRR totale', 'ARR', 'GMV gestito/anno', 'Entrate cumul. (setup incluso)'],
+        [
+            ['Mese 3',   '3',  '537 €',   '6.444 €',    '309.000 €',  '3.111 €'],
+            ['Mese 6',   '6',  '1.074 €', '12.888 €',   '618.000 €',  '9.444 €'],
+            ['Mese 12',  '10', '1.790 €', '21.480 €',   '1.030.000 €','16.800 €'],
+            ['Anno 2',   '16', '2.864 €', '34.368 €',   '1.648.000 €','54.000 €'],
+            ['Anno 3',   '22', '3.938 €', '47.256 €',   '2.265.000 €','104.000 €'],
+        ],
+        col_widths=[2.2, 1.8, 2.5, 2.5, 4.5, 4.5])
+    info_box(doc,
+        "Il GMV gestito cresce proporzionalmente: con 22 clienti al 3° anno, "
+        "QuickLunch elabora oltre 2,2 M€ di transazioni annue. "
+        "La commissione dell'1,5% genera da sola ~34.000 € ARR, "
+        "a cui si aggiungono i canoni fissi (~13.200 €) per un totale di ~47.000 € ARR.",
+        label='Valore del transato:')
+
+
+# ── Appendice D — Layout Fisici ───────────────────────────────────────────────
+
+def _layout_zone(cell, label, bg, fg=None, size=10, bold=True):
+    """Riempie una cella con colore di zona e testo."""
+    _cell_shd(cell, bg)
+    _cell_margins(cell, top=60, bottom=60, left=50, right=50)
+    _cell_vAlign(cell, 'center')
+    p = cell.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _p_spacing(p, before=0, after=0)
+    _run_font(p.add_run(label), size=size, bold=bold,
+              color=fg or RGBColor(0xff, 0xff, 0xff))
+
+
+def _layout_title(doc, title, subtitle):
+    p = doc.add_paragraph()
+    _p_spacing(p, before=6, after=1)
+    _run_font(p.add_run(title), size=12, bold=True, color=NAVY)
+    _run_font(p.add_run('  —  ' + subtitle), size=10, color=GRAY)
+
+
+def s_appendix_layouts(doc):
+    h1(doc, 'D', 'Layout Fisici — Cucina, Sala, Cassa', '🏗️')
+    body_para(doc,
+        "Le planimetrie seguenti rappresentano tre configurazioni tipo per l'allestimento "
+        "fisico di un locale che adotta QuickLunch. Ogni layout indica la posizione "
+        "ottimale dei tablet KDS, della cassa, del bancone di distribuzione e delle zone di "
+        "preparazione. I colori identificano le zone funzionali:")
+    data_table(doc,
+        ['Colore', 'Zona', 'Funzione'],
+        [
+            ['🟥 Rosso scuro',   'Cassa',      'Registratore di cassa, tablet gestione wallet, ricariche'],
+            ['🟧 Arancio',       'Cucina',      'Preparazione piatti: caldo, freddo, builder, poke'],
+            ['🟩 Verde',         'Sala',        'Tavoli clienti, zona ritiro vassoi, self-service bevande'],
+            ['🟦 Blu scuro',     'Bancone',     'Distribuzione vassoi, ritiro ordini prenotati, display ordini'],
+            ['⬜ Grigio chiaro', 'Ingresso/Corridoio', 'Flusso clienti, attesa, accesso'],
+        ],
+        col_widths=[3.0, 3.0, 12.0])
+
+    # ── LAYOUT A ──────────────────────────────────────────────────────────────
+    _layout_title(doc, 'Layout A — Bar compatto', '4 persone · 40–60 coperti · superficie ~80 m²')
+    body_para(doc,
+        "Ideale per un bar aziendale piccolo o una caffetteria con servizio pranzo. "
+        "La cucina è unica e aperta, il builder è gestito dallo stesso addetto. "
+        "Un solo tablet KDS è sufficiente. La cassa si trova vicino all'ingresso.")
+
+    # Griglia planimetrica Layout A: 5 righe × 4 colonne
+    tA = doc.add_table(rows=5, cols=4)
+    _no_borders(tA)
+    _table_width(tA, 18.0)
+    for r in tA.rows:
+        for c in r.cells:
+            _cell_border(c, top='FFFFFF', bottom='FFFFFF', left='FFFFFF', right='FFFFFF', sz='4')
+
+    # Riga 0: INGRESSO (merge 4 celle)
+    ing = tA.rows[0].cells[0].merge(tA.rows[0].cells[3])
+    _layout_zone(ing, '🚪  INGRESSO / FLUSSO CLIENTI', 'CCCCCC',
+                 fg=RGBColor(0x33, 0x33, 0x33), size=10)
+
+    # Riga 1: CASSA | BANCONE RITIRO (1+3)
+    _layout_zone(tA.rows[1].cells[0], '🏪  CASSA\n(Cassiere)', 'C0392B', size=10)
+    banc_a = tA.rows[1].cells[1].merge(tA.rows[1].cells[3])
+    _layout_zone(banc_a, '📋  BANCONE DISTRIBUZIONE / RITIRO ORDINI\n(display: ordine pronto → cliente ritira)', '1F618D', size=10)
+
+    # Riga 2: CUCINA piatti caldi (2) + BUILDER (2)
+    cuc1 = tA.rows[2].cells[0].merge(tA.rows[2].cells[1])
+    _layout_zone(cuc1, '🍳  CUCINA PIATTI CALDI\n(Cuoco 1 · KDS tablet)', 'E67E22', size=10)
+    cuc2 = tA.rows[2].cells[2].merge(tA.rows[2].cells[3])
+    _layout_zone(cuc2, '🥪  BUILDER + POKE\n(Cuoco 2 · piastra 🔥)', 'D35400', size=10)
+
+    # Riga 3: magazzino/dispensa (1) + spazio (3)
+    _layout_zone(tA.rows[3].cells[0], '📦\nDispensa', '7F8C8D', size=9)
+    sp_a = tA.rows[3].cells[1].merge(tA.rows[3].cells[3])
+    _layout_zone(sp_a, '', 'F0F0F0', fg=RGBColor(0x99, 0x99, 0x99))
+
+    # Riga 4: SALA (merge 4)
+    sala_a = tA.rows[4].cells[0].merge(tA.rows[4].cells[3])
+    _layout_zone(sala_a,
+        '🍽️  SALA — 8–10 TAVOLI (40–60 coperti)\n'
+        'Addetto sala 1: distribuzione vassoi e risposta clienti',
+        '1E8449', size=10)
+
+    body_para(doc, '')
+    info_box(doc,
+        "Con 4 persone il KDS unico in cucina è visibile a entrambi i cuochi. "
+        "Il tablet deve essere posizionato al centro del bancone di lavoro, "
+        "a circa 80 cm di altezza, orientato in paesaggio.",
+        label='Posizionamento tablet KDS:')
+
+    # ── LAYOUT B ──────────────────────────────────────────────────────────────
+    _layout_title(doc, 'Layout B — Mensa standard', '6 persone · 80–120 coperti · superficie ~150 m²')
+    body_para(doc,
+        "Configurazione tipica per mensa aziendale o bar di medie dimensioni. "
+        "La cucina è divisa in due zone distinte (caldo / freddo-builder). "
+        "Due tablet KDS: uno per i piatti caldi, uno per il builder e poke. "
+        "La cassa gestisce anche le ricariche wallet al mattino.")
+
+    tB = doc.add_table(rows=6, cols=6)
+    _no_borders(tB)
+    _table_width(tB, 18.0)
+    for r in tB.rows:
+        for c in r.cells:
+            _cell_border(c, top='FFFFFF', bottom='FFFFFF', left='FFFFFF', right='FFFFFF', sz='4')
+
+    # Riga 0: INGRESSO
+    ing_b = tB.rows[0].cells[0].merge(tB.rows[0].cells[5])
+    _layout_zone(ing_b, '🚪  INGRESSO — flusso cliente: cassa → bancone → sala', 'BBBBBB',
+                 fg=RGBColor(0x22, 0x22, 0x22), size=10)
+
+    # Riga 1: CASSA (2) | BANCONE DISTRIBUZIONE (4)
+    cassa_b = tB.rows[1].cells[0].merge(tB.rows[1].cells[1])
+    _layout_zone(cassa_b, '🏪  CASSA\n(Cassiere + ricariche)', 'C0392B', size=10)
+    banc_b = tB.rows[1].cells[2].merge(tB.rows[1].cells[5])
+    _layout_zone(banc_b,
+        '📋  BANCONE DISTRIBUZIONE — 4 m\n'
+        '(Addetto sala 1: consegna vassoi · Display ordini pronti)',
+        '1F618D', size=10)
+
+    # Riga 2: CUCINA CALDO (3) | CUCINA BUILDER (3)
+    cc_b = tB.rows[2].cells[0].merge(tB.rows[2].cells[2])
+    _layout_zone(cc_b, '🍳  CUCINA PIATTI CALDI\nCuoco 1 + Cuoco 2 · KDS tablet 1', 'E67E22', size=10)
+    cb_b = tB.rows[2].cells[3].merge(tB.rows[2].cells[5])
+    _layout_zone(cb_b, '🥪🍱  BUILDER + POKE BOWL\nCuoco 3 · piastra 🔥 · KDS tablet 2', 'D35400', size=10)
+
+    # Riga 3: passavivande + lavaggio (2) + dispensa (2) + uscita cucina (2)
+    _layout_zone(tB.rows[3].cells[0].merge(tB.rows[3].cells[1]),
+                 '🚿  Lavaggio', '7F8C8D', size=9)
+    _layout_zone(tB.rows[3].cells[2].merge(tB.rows[3].cells[3]),
+                 '📦  Dispensa / Frigo', '7F8C8D', size=9)
+    _layout_zone(tB.rows[3].cells[4].merge(tB.rows[3].cells[5]),
+                 '↔️  Passavivande', 'A0A0A0', size=9)
+
+    # Riga 4: corridoio
+    corr_b = tB.rows[4].cells[0].merge(tB.rows[4].cells[5])
+    _layout_zone(corr_b, 'corridoio di servizio', 'E8E8E8', fg=RGBColor(0x99, 0x99, 0x99), size=8, bold=False)
+
+    # Riga 5: SALA
+    sala_b = tB.rows[5].cells[0].merge(tB.rows[5].cells[5])
+    _layout_zone(sala_b,
+        '🍽️  SALA — 12–15 TAVOLI (80–120 coperti)\n'
+        'Addetto sala 1: distribuzione · Addetto sala 2: tavoli e accoglienza',
+        '1E8449', size=10)
+
+    body_para(doc, '')
+    info_box(doc,
+        "Il KDS tablet 1 (piatti caldi) deve essere visibile a entrambi i cuochi del caldo. "
+        "Il KDS tablet 2 (builder) va montato sul bancone del builder a portata di mano. "
+        "Consigliato: supporto a parete con inclinazione 30°.",
+        label='Posizionamento KDS — Layout B:')
+
+    # ── LAYOUT C ──────────────────────────────────────────────────────────────
+    _layout_title(doc, 'Layout C — Mensa grande / picco', '8 persone · 150+ coperti · superficie ~250 m²')
+    body_para(doc,
+        "Configurazione per picchi di servizio, eventi aziendali o mense con più linee. "
+        "Due casse separate per ridurre le code, quattro zone cucina indipendenti, "
+        "due tablet KDS, sala divisa in zone A e B per gestire il flusso.")
+
+    tC = doc.add_table(rows=7, cols=8)
+    _no_borders(tC)
+    _table_width(tC, 18.0)
+    for r in tC.rows:
+        for c in r.cells:
+            _cell_border(c, top='FFFFFF', bottom='FFFFFF', left='FFFFFF', right='FFFFFF', sz='4')
+
+    # Riga 0: INGRESSO
+    ing_c = tC.rows[0].cells[0].merge(tC.rows[0].cells[7])
+    _layout_zone(ing_c, '🚪  INGRESSO PRINCIPALE — doppio flusso (cassa 1 / cassa 2)', 'AAAAAA',
+                 fg=RGBColor(0x22, 0x22, 0x22), size=10)
+
+    # Riga 1: CASSA 1 (2) | CASSA 2 (2) | BANCONE DISTRIBUZIONE (4)
+    _layout_zone(tC.rows[1].cells[0].merge(tC.rows[1].cells[1]),
+                 '🏪  CASSA 1\n(Cassiere principale)', 'C0392B', size=9)
+    _layout_zone(tC.rows[1].cells[2].merge(tC.rows[1].cells[3]),
+                 '🏪  CASSA 2\n(Ricariche wallet / supporto)', '922B21', size=9)
+    _layout_zone(tC.rows[1].cells[4].merge(tC.rows[1].cells[7]),
+                 '📋  BANCONE DISTRIBUZIONE — 6 m\n(Display ordini · Ritiro vassoi · Self-service bevande)',
+                 '1F618D', size=9)
+
+    # Riga 2: 4 zone cucina
+    _layout_zone(tC.rows[2].cells[0].merge(tC.rows[2].cells[1]),
+                 '🍳  CUCINA CALDO\nCoordinatore + Cuoco 1\nKDS tablet 1', 'E67E22', size=9)
+    _layout_zone(tC.rows[2].cells[2].merge(tC.rows[2].cells[3]),
+                 '🥘  CUCINA FREDDA\nCuoco 2\n(antipasti, insalate)', 'CA6F1E', size=9)
+    _layout_zone(tC.rows[2].cells[4].merge(tC.rows[2].cells[5]),
+                 '🥪  BUILDER\nCuoco 3 · piastra 🔥\nKDS tablet 2', 'D35400', size=9)
+    _layout_zone(tC.rows[2].cells[6].merge(tC.rows[2].cells[7]),
+                 '🍱  POKE & DESSERT\nCuoco 4', 'BA4A00', size=9)
+
+    # Riga 3: retro cucina
+    _layout_zone(tC.rows[3].cells[0].merge(tC.rows[3].cells[1]), '🚿  Lavaggio', '7F8C8D', size=9)
+    _layout_zone(tC.rows[3].cells[2].merge(tC.rows[3].cells[3]), '📦  Dispensa', '7F8C8D', size=9)
+    _layout_zone(tC.rows[3].cells[4].merge(tC.rows[3].cells[5]), '🧊  Cella frigo', '7F8C8D', size=9)
+    _layout_zone(tC.rows[3].cells[6].merge(tC.rows[3].cells[7]), '↔️  Uscita servizio', 'A0A0A0', size=9)
+
+    # Riga 4: corridoio
+    _layout_zone(tC.rows[4].cells[0].merge(tC.rows[4].cells[7]),
+                 'corridoio di servizio', 'E8E8E8', fg=RGBColor(0x99, 0x99, 0x99), size=8, bold=False)
+
+    # Riga 5: SALA A (4) | SALA B (4)
+    _layout_zone(tC.rows[5].cells[0].merge(tC.rows[5].cells[3]),
+                 '🍽️  SALA A — 12 tavoli\nAddetto sala 1: distribuzione', '1E8449', size=9)
+    _layout_zone(tC.rows[5].cells[4].merge(tC.rows[5].cells[7]),
+                 '🍽️  SALA B — 8 tavoli\nAddetto sala 2: accoglienza e tavoli', '196F3D', size=9)
+
+    # Riga 6: self-service
+    _layout_zone(tC.rows[6].cells[0].merge(tC.rows[6].cells[7]),
+                 '☕  ZONA SELF-SERVICE BEVANDE — acqua · caffè · bibite · distributore',
+                 '2E86C1', size=9)
+
+    body_para(doc, '')
+    info_box(doc,
+        "Con 8 persone il coordinatore KDS non cucina: monitora i tablet, "
+        "avanza gli stati degli ordini e coordina i tempi tra le 4 zone. "
+        "È la figura chiave per mantenere i tempi sotto i 10 minuti per slot "
+        "anche con 150+ coperti.",
+        label='Ruolo coordinatore KDS (Layout C):')
+
+    h2(doc, 'Checklist allestimento tecnologico')
+    data_table(doc,
+        ['Elemento', 'Layout A', 'Layout B', 'Layout C', 'Note'],
+        [
+            ['Tablet KDS cucina',       '1',  '2',  '2',  'Consigliato: 10" min., schermo opaco anti-riflesso'],
+            ['Tablet cassa/admin',      '1',  '1',  '2',  'Accesso admin, gestione wallet, report'],
+            ['Schermo display sala',    '0',  '1',  '1',  'Monitor o TV 32" con ordini pronti visibili ai clienti'],
+            ['Router WiFi cucina',      '1',  '1',  '2',  'Rete separata da quella clienti, segnale stabile'],
+            ['Stampante scontrini',     '1',  '1',  '2',  'Termica, collegata al tablet cassa'],
+            ['Supporti tablet a parete','0',  '2',  '4',  'Altezza 80 cm, inclinazione 30°, protezione IP54'],
+        ],
+        col_widths=[5.0, 2.0, 2.0, 2.0, 7.0])
+
+
 # ── Impostazioni documento ────────────────────────────────────────────────────
 
 def set_document_defaults(doc):
-    # Margini pagina 2.2 cm su tutti i lati
+    # Margini ridotti per più testo per pagina
     for section in doc.sections:
-        section.top_margin    = Cm(2.2)
-        section.bottom_margin = Cm(2.2)
-        section.left_margin   = Cm(2.5)
-        section.right_margin  = Cm(2.5)
+        section.top_margin    = Cm(1.5)
+        section.bottom_margin = Cm(1.5)
+        section.left_margin   = Cm(1.5)
+        section.right_margin  = Cm(1.5)
 
-    # Stile di default: PT Sans Narrow 11pt
+    # Stile di default: PT Sans Narrow 14pt
     style = doc.styles['Normal']
     style.font.name = FONT
-    style.font.size = Pt(11)
+    style.font.size = Pt(14)
 
     # Header con nome documento
     for section in doc.sections:
@@ -1827,12 +2320,11 @@ def main():
 
     sections = [s01, s02, s03, s04, s05, s06, s07,
                 s08, s09, s10, s11, s12, s13, s14, s15,
-                s_appendix, s_appendix_wallet]
+                s_appendix, s_appendix_wallet,
+                s_appendix_saas, s_appendix_layouts]
 
-    for i, fn in enumerate(sections):
+    for fn in sections:
         fn(doc)
-        if i < len(sections) - 1:
-            _page_break(doc)
 
     # Footer finale
     p = doc.add_paragraph()

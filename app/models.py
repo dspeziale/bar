@@ -438,6 +438,63 @@ class Transaction(db.Model):
         return self.TYPE_ICONS.get(self.ttype, ('fa-circle', 'secondary', self.ttype))
 
 
+# ── Magazzino materiali di consumo ────────────────────────────────────────────
+
+class Supplier(db.Model):
+    __tablename__ = 'suppliers'
+    id        = db.Column(db.Integer, primary_key=True)
+    name      = db.Column(db.String(128), nullable=False)
+    email     = db.Column(db.String(120), default='')
+    phone     = db.Column(db.String(30),  default='')
+    notes     = db.Column(db.Text,        default='')
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    items     = db.relationship('ConsumableItem', back_populates='supplier')
+
+
+class ConsumableItem(db.Model):
+    __tablename__ = 'consumable_items'
+    id              = db.Column(db.Integer, primary_key=True)
+    name            = db.Column(db.String(128), nullable=False)
+    unit            = db.Column(db.String(20),  default='pz')
+    quantity        = db.Column(db.Float,        default=0.0)
+    min_threshold   = db.Column(db.Float,        default=0.0)
+    supplier_id     = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=True)
+    alert_active    = db.Column(db.Boolean, default=False)
+    last_alert_at   = db.Column(db.DateTime, nullable=True)
+    tenant_id       = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    supplier        = db.relationship('Supplier', back_populates='items')
+    movements       = db.relationship('ConsumableMovement', back_populates='item',
+                                      cascade='all, delete-orphan',
+                                      order_by='ConsumableMovement.created_at.desc()')
+
+    @property
+    def is_below_threshold(self):
+        return self.min_threshold > 0 and self.quantity <= self.min_threshold
+
+    @property
+    def stock_status(self):
+        if self.min_threshold <= 0:
+            return 'ok'
+        ratio = self.quantity / self.min_threshold if self.min_threshold else 1
+        if ratio <= 1.0:
+            return 'critical'
+        if ratio <= 1.5:
+            return 'warning'
+        return 'ok'
+
+
+class ConsumableMovement(db.Model):
+    __tablename__ = 'consumable_movements'
+    id         = db.Column(db.Integer, primary_key=True)
+    item_id    = db.Column(db.Integer, db.ForeignKey('consumable_items.id'), nullable=False)
+    delta      = db.Column(db.Float,       nullable=False)
+    notes      = db.Column(db.String(256), default='')
+    created_at = db.Column(db.DateTime,    default=datetime.utcnow)
+    user_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    item       = db.relationship('ConsumableItem', back_populates='movements')
+    user       = db.relationship('User')
+
+
 # ── Impostazioni applicazione ──────────────────────────────────────────────────
 
 class AppSetting(db.Model):

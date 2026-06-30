@@ -118,6 +118,49 @@ def send_email(to_addr, subject, html_body, text_body=None):
         return False, str(exc)
 
 
+def send_supplier_low_stock_alert(item):
+    """Invia email al fornitore quando la giacenza scende sotto la soglia minima."""
+    if not item.supplier or not item.supplier.email:
+        return False, 'Fornitore senza email configurata'
+    subject = f'[QuickLunch] ⚠️ Riordino necessario: {item.name}'
+    html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
+  <div style="background:#e94560;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:20px;">⚠️ Scorte sotto soglia minima</h2>
+  </div>
+  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
+    <p>Gentile <strong>{item.supplier.name}</strong>,</p>
+    <p>il materiale <strong>{item.name}</strong> ha raggiunto la soglia minima di riordino.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+      <tr style="background:#f5f5f5;">
+        <td style="padding:8px 12px;font-weight:bold;border:1px solid #eee;">Materiale</td>
+        <td style="padding:8px 12px;border:1px solid #eee;">{item.name}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-weight:bold;border:1px solid #eee;">Giacenza attuale</td>
+        <td style="padding:8px 12px;border:1px solid #eee;color:#e94560;font-weight:bold;">{item.quantity:.1f} {item.unit}</td>
+      </tr>
+      <tr style="background:#f5f5f5;">
+        <td style="padding:8px 12px;font-weight:bold;border:1px solid #eee;">Soglia minima</td>
+        <td style="padding:8px 12px;border:1px solid #eee;">{item.min_threshold:.1f} {item.unit}</td>
+      </tr>
+    </table>
+    <p>Si prega di procedere con il rifornimento al più presto.</p>
+    <p style="margin-top:24px;color:#aaa;font-size:11px;">
+      Messaggio automatico generato da QuickLunch &mdash; Bar Self-Service
+    </p>
+  </div>
+</div>"""
+    ok, msg = send_email(item.supplier.email, subject, html)
+    if ok:
+        from datetime import datetime as _dt
+        from app import db as _db
+        item.last_alert_at = _dt.utcnow()
+        item.alert_active  = True
+        _db.session.commit()
+    return ok, msg
+
+
 def send_email_to_all_users(subject, html_body):
     """Invia a tutti gli utenti attivi con email."""
     from app.models import User

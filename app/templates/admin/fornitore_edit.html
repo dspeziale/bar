@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifica' if supplier else 'Nuovo' }} Fornitore{% endblock %}
+{% block page_title %}{{ 'Modifica' if supplier else 'Nuovo' }} Fornitore{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.magazzino') }}">Magazzino</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.fornitori') }}">Fornitori</a></li>
+<li class="breadcrumb-item active">{{ 'Modifica' if supplier else 'Nuovo' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-truck mr-2"></i>{{ 'Modifica: ' + supplier.name if supplier else 'Nuovo fornitore' }}
+        </h3>
+      </div>
+      <form method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label>Ragione sociale / Nome <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ supplier.name if supplier else '' }}"
+                   placeholder="es. Forniture Bar Rossi Srl" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email <i class="fas fa-info-circle text-muted"
+              title="A questo indirizzo arriverà l'avviso automatico di riordino"></i></label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ supplier.email if supplier else '' }}"
+                   placeholder="ordini@fornitore.it">
+            <small class="form-text text-muted">
+              Riceverà un'email automatica quando un articolo scende sotto la soglia minima.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>Telefono</label>
+            <input type="text" name="phone" class="form-control"
+                   value="{{ supplier.phone if supplier else '' }}"
+                   placeholder="+39 02 1234567">
+          </div>
+
+          <div class="form-group">
+            <label>Note interne</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Orari, condizioni, riferimenti…">{{ supplier.notes if supplier else '' }}</textarea>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <a href="{{ url_for('admin.fornitori') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left mr-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i>Salva
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

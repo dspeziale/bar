@@ -465,6 +465,7 @@
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_tenant       = ep in ('admin.tenants',) %}
+            {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
 
             {# ── Dashboard ── #}
             <li class="nav-item">
@@ -545,6 +546,32 @@
                   </a>
                 </li>
                 {% endif %}
+              </ul>
+            </li>
+            {% endif %}
+
+            {# ── MAGAZZINO & FORNITORI ── #}
+            {% if p('manage_stock') %}
+            <li class="nav-item has-treeview {{ 'menu-open' if in_magazzino }}">
+              <a href="#" class="nav-link {{ 'active' if in_magazzino }}">
+                <i class="nav-icon fas fa-warehouse"></i>
+                <p>Magazzino<i class="right fas fa-angle-left"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.magazzino') }}"
+                     class="nav-link {{ 'active' if ep in ('admin.magazzino','admin.magazzino_edit') }}">
+                    <i class="fas fa-box nav-icon" style="color:#8e44ad;"></i>
+                    <p>Consumabili</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.fornitori') }}"
+                     class="nav-link {{ 'active' if ep in ('admin.fornitori','admin.fornitore_edit') }}">
+                    <i class="fas fa-truck nav-icon" style="color:#2980b9;"></i>
+                    <p>Fornitori</p>
+                  </a>
+                </li>
               </ul>
             </li>
             {% endif %}

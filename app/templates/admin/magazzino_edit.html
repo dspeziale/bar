@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifica' if item else 'Nuovo' }} Articolo{% endblock %}
+{% block page_title %}{{ 'Modifica' if item else 'Nuovo' }} Articolo di Magazzino{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.magazzino') }}">Magazzino</a></li>
+<li class="breadcrumb-item active">{{ 'Modifica' if item else 'Nuovo' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-box mr-2"></i>{{ 'Modifica: ' + item.name if item else 'Nuovo articolo' }}
+        </h3>
+      </div>
+      <form method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <label>Nome articolo <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ item.name if item else '' }}"
+                   placeholder="es. Forchette monouso, Ciotoline 500ml…" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>Unità di misura</label>
+              <select name="unit" class="form-control">
+                {% for u in ['pz', 'conf', 'kg', 'lt', 'rotolo', 'scatola', 'pacco'] %}
+                <option value="{{ u }}" {{ 'selected' if item and item.unit == u }}>{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label>Giacenza attuale</label>
+              <input type="number" name="quantity" step="0.5" min="0" class="form-control"
+                     value="{{ item.quantity if item else 0 }}">
+            </div>
+            <div class="form-group col-md-4">
+              <label>Soglia minima <i class="fas fa-info-circle text-muted"
+                title="Sotto questa quantità scatta l'avviso e l'email al fornitore"></i></label>
+              <input type="number" name="min_threshold" step="0.5" min="0" class="form-control"
+                     value="{{ item.min_threshold if item else 0 }}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Fornitore</label>
+            <select name="supplier_id" class="form-control">
+              <option value="">— Nessun fornitore —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}"
+                {{ 'selected' if item and item.supplier_id == s.id }}>
+                {{ s.name }}{% if s.email %} ({{ s.email }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">
+              L'email del fornitore riceve un avviso automatico quando la giacenza scende sotto la soglia.
+              <a href="{{ url_for('admin.fornitore_edit') }}">Aggiungi fornitore →</a>
+            </small>
+          </div>
+
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <a href="{{ url_for('admin.magazzino') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left mr-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i>Salva
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

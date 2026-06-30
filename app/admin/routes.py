@@ -9,9 +9,9 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         IngredientCategory, Ingredient,
                         Table, TableReservation,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
-                        Tenant)
+                        Tenant, Supplier, ConsumableItem, ConsumableMovement)
 from app.notifications import (send_telegram, send_telegram_to_user,
-                                send_email_to_all_users,
+                                send_email_to_all_users, send_supplier_low_stock_alert,
                                 telegram_poll_message, email_poll_html, get_setting)
 
 
@@ -1022,3 +1022,155 @@ def tenant_create_admin(tid):
           f'email: {email} | password: {password} '
           f'(copiala adesso, non verrà mostrata di nuovo)', 'success')
     return redirect(url_for('admin.tenants'))
+
+
+# ── Magazzino materiali di consumo ────────────────────────────────────────────
+
+@bp.route('/magazzino')
+@require_permission('manage_stock')
+def magazzino():
+    tf = _tenant_filter()
+    items = ConsumableItem.query.filter_by(**tf).order_by(ConsumableItem.name).all()
+    alerts = [i for i in items if i.is_below_threshold]
+    return render_template('admin/magazzino.html', items=items, alerts=alerts)
+
+
+@bp.route('/magazzino/nuovo', methods=['GET', 'POST'])
+@bp.route('/magazzino/<int:iid>/modifica', methods=['GET', 'POST'])
+@require_permission('manage_stock')
+def magazzino_edit(iid=None):
+    tf = _tenant_filter()
+    item = ConsumableItem.query.get_or_404(iid) if iid else None
+    suppliers = Supplier.query.filter_by(**tf).order_by(Supplier.name).all()
+
+    if request.method == 'POST':
+        name          = request.form.get('name', '').strip()
+        unit          = request.form.get('unit', 'pz').strip()
+        quantity      = float(request.form.get('quantity', 0) or 0)
+        min_threshold = float(request.form.get('min_threshold', 0) or 0)
+        supplier_id   = request.form.get('supplier_id') or None
+        if supplier_id:
+            supplier_id = int(supplier_id)
+
+        if not name:
+            flash('Il nome è obbligatorio.', 'danger')
+            return render_template('admin/magazzino_edit.html', item=item, suppliers=suppliers)
+
+        if item is None:
+            item = ConsumableItem(tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            db.session.add(item)
+
+        item.name          = name
+        item.unit          = unit
+        item.quantity      = quantity
+        item.min_threshold = min_threshold
+        item.supplier_id   = supplier_id
+
+        # reset alert se la giacenza torna sopra soglia
+        if not item.is_below_threshold:
+            item.alert_active = False
+
+        db.session.commit()
+        flash(f'Materiale "{name}" salvato.', 'success')
+        return redirect(url_for('admin.magazzino'))
+
+    return render_template('admin/magazzino_edit.html', item=item, suppliers=suppliers)
+
+
+@bp.route('/magazzino/<int:iid>/movimento', methods=['POST'])
+@require_permission('manage_stock')
+def magazzino_movimento(iid):
+    item  = ConsumableItem.query.get_or_404(iid)
+    delta = float(request.form.get('delta', 0) or 0)
+    notes = request.form.get('notes', '').strip()
+
+    if delta == 0:
+        flash('Inserisci un valore diverso da zero.', 'warning')
+        return redirect(url_for('admin.magazzino'))
+
+    item.quantity = round(item.quantity + delta, 3)
+    mv = ConsumableMovement(item_id=item.id, delta=delta,
+                             notes=notes, user_id=current_user.id)
+    db.session.add(mv)
+
+    # gestione alert soglia
+    if item.is_below_threshold and not item.alert_active:
+        ok, msg = send_supplier_low_stock_alert(item)
+        if ok:
+            flash(f'⚠️ Soglia raggiunta per "{item.name}" — email inviata al fornitore.', 'warning')
+        elif item.supplier and item.supplier.email:
+            flash(f'⚠️ Soglia raggiunta per "{item.name}" — invio email fallito: {msg}', 'danger')
+        else:
+            flash(f'⚠️ Soglia raggiunta per "{item.name}" — nessun fornitore con email configurata.', 'warning')
+        item.alert_active = True
+    elif not item.is_below_threshold:
+        item.alert_active = False
+
+    db.session.commit()
+    return redirect(url_for('admin.magazzino'))
+
+
+@bp.route('/magazzino/<int:iid>/elimina', methods=['POST'])
+@require_permission('manage_stock')
+def magazzino_delete(iid):
+    item = ConsumableItem.query.get_or_404(iid)
+    name = item.name
+    db.session.delete(item)
+    db.session.commit()
+    flash(f'Materiale "{name}" eliminato.', 'success')
+    return redirect(url_for('admin.magazzino'))
+
+
+# ── Fornitori ─────────────────────────────────────────────────────────────────
+
+@bp.route('/fornitori')
+@require_permission('manage_stock')
+def fornitori():
+    tf = _tenant_filter()
+    sups = Supplier.query.filter_by(**tf).order_by(Supplier.name).all()
+    return render_template('admin/fornitori.html', suppliers=sups)
+
+
+@bp.route('/fornitori/nuovo', methods=['GET', 'POST'])
+@bp.route('/fornitori/<int:sid>/modifica', methods=['GET', 'POST'])
+@require_permission('manage_stock')
+def fornitore_edit(sid=None):
+    sup = Supplier.query.get_or_404(sid) if sid else None
+
+    if request.method == 'POST':
+        name  = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+        notes = request.form.get('notes', '').strip()
+
+        if not name:
+            flash('Il nome è obbligatorio.', 'danger')
+            return render_template('admin/fornitore_edit.html', supplier=sup)
+
+        if sup is None:
+            sup = Supplier(tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            db.session.add(sup)
+
+        sup.name  = name
+        sup.email = email
+        sup.phone = phone
+        sup.notes = notes
+        db.session.commit()
+        flash(f'Fornitore "{name}" salvato.', 'success')
+        return redirect(url_for('admin.fornitori'))
+
+    return render_template('admin/fornitore_edit.html', supplier=sup)
+
+
+@bp.route('/fornitori/<int:sid>/elimina', methods=['POST'])
+@require_permission('manage_stock')
+def fornitore_delete(sid):
+    sup = Supplier.query.get_or_404(sid)
+    name = sup.name
+    # scollega gli articoli prima di eliminare
+    for item in sup.items:
+        item.supplier_id = None
+    db.session.delete(sup)
+    db.session.commit()
+    flash(f'Fornitore "{name}" eliminato.', 'success')
+    return redirect(url_for('admin.fornitori'))
