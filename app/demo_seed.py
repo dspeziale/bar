@@ -9,8 +9,14 @@ from app import db
 from app.models import (
     User, Tenant, Category, Product, TimeSlot,
     Role, Permission, AppSetting, Supplier, ConsumableItem,
+    DailyStock, Order, OrderItem, IngredientCategory, Ingredient,
+    CustomOrderItem, CustomOrderItemIngredient, Table, TableReservation,
+    Transaction, ConsumableMovement, CorporateAccount, CorporateMembership,
+    DailyFixedMeal, CorporateMealBooking, PollVote, user_roles,
 )
 from config import Config
+
+DEMO_SLUGS = ['bar-centrale', 'mensa-tech', 'caffetteria-duomo']
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -400,6 +406,78 @@ def _seed_caffetteria_duomo(sa_role):
     _consumable('Sacchetti carta per cornetti',       'pz', 90,   150, forn, t.id)  # sotto soglia
 
     return t
+
+
+# ── Reset ─────────────────────────────────────────────────────────────────────
+
+def reset_demo_data():
+    """
+    Cancella tutti i dati dei 3 tenant demo (DEMO_SLUGS) per poter ripartire
+    da zero prima di un nuovo caricamento. Non tocca mai tenant reali: opera
+    esclusivamente sugli id dei tenant con slug in DEMO_SLUGS.
+    """
+    tenants = Tenant.query.filter(Tenant.slug.in_(DEMO_SLUGS)).all()
+    if not tenants:
+        return True, 'Nessun dato demo presente: nulla da resettare.'
+
+    tenant_ids = [t.id for t in tenants]
+    user_ids = [r[0] for r in db.session.query(User.id).filter(User.tenant_id.in_(tenant_ids)).all()]
+    order_ids = [r[0] for r in db.session.query(Order.id).filter(Order.tenant_id.in_(tenant_ids)).all()]
+    custom_item_ids = [r[0] for r in db.session.query(CustomOrderItem.id).filter(CustomOrderItem.order_id.in_(order_ids)).all()] if order_ids else []
+    product_ids = [r[0] for r in db.session.query(Product.id).filter(Product.tenant_id.in_(tenant_ids)).all()]
+    consumable_ids = [r[0] for r in db.session.query(ConsumableItem.id).filter(ConsumableItem.tenant_id.in_(tenant_ids)).all()]
+    meal_ids = [r[0] for r in db.session.query(DailyFixedMeal.id).filter(DailyFixedMeal.tenant_id.in_(tenant_ids)).all()]
+
+    # magazzino
+    if user_ids:
+        ConsumableMovement.query.filter(ConsumableMovement.user_id.in_(user_ids)).delete(synchronize_session=False)
+    if consumable_ids:
+        ConsumableMovement.query.filter(ConsumableMovement.item_id.in_(consumable_ids)).delete(synchronize_session=False)
+    ConsumableItem.query.filter(ConsumableItem.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    Supplier.query.filter(Supplier.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # pasto aziendale
+    if meal_ids:
+        CorporateMealBooking.query.filter(CorporateMealBooking.meal_id.in_(meal_ids)).delete(synchronize_session=False)
+    DailyFixedMeal.query.filter(DailyFixedMeal.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    if user_ids:
+        CorporateMembership.query.filter(CorporateMembership.user_id.in_(user_ids)).delete(synchronize_session=False)
+    CorporateAccount.query.filter(CorporateAccount.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # sondaggi e transazioni legate agli utenti del tenant
+    if user_ids:
+        PollVote.query.filter(PollVote.user_id.in_(user_ids)).delete(synchronize_session=False)
+        Transaction.query.filter(Transaction.user_id.in_(user_ids)).delete(synchronize_session=False)
+
+    # ordini
+    if custom_item_ids:
+        CustomOrderItemIngredient.query.filter(CustomOrderItemIngredient.custom_item_id.in_(custom_item_ids)).delete(synchronize_session=False)
+    if order_ids:
+        CustomOrderItem.query.filter(CustomOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+        OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+    Order.query.filter(Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # tavoli e prenotazioni
+    TableReservation.query.filter(TableReservation.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    Table.query.filter(Table.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # menu / magazzino prodotti
+    if product_ids:
+        DailyStock.query.filter(DailyStock.product_id.in_(product_ids)).delete(synchronize_session=False)
+    Product.query.filter(Product.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    Ingredient.query.filter(Ingredient.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    IngredientCategory.query.filter(IngredientCategory.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    Category.query.filter(Category.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    TimeSlot.query.filter(TimeSlot.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # utenti e tenant
+    if user_ids:
+        db.session.execute(user_roles.delete().where(user_roles.c.user_id.in_(user_ids)))
+    User.query.filter(User.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    Tenant.query.filter(Tenant.id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    db.session.commit()
+    return True, f'Reset completato: rimossi {len(tenants)} tenant demo e tutti i dati collegati.'
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

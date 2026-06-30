@@ -14,9 +14,9 @@
           </h3>
           <form action="{{ url_for('admin.seed_demo') }}" method="POST" class="mb-0">
             <button type="submit" class="btn btn-sm btn-outline-secondary"
-                    onclick="return confirm('Caricare i dati demo? Verranno creati 3 tenant, 36 clienti e circa 90 prodotti alimentari.')"
-                    title="Popola con dati di demo">
-              <i class="fas fa-database mr-1"></i>Carica Demo
+                    onclick="return confirm('Resettare e ricaricare i dati demo? Verranno PRIMA eliminati i 3 tenant demo esistenti (e tutti i dati collegati), poi ricreati da zero con 36 clienti e circa 90 prodotti alimentari.')"
+                    title="Resetta e ripopola con dati di demo">
+              <i class="fas fa-sync-alt mr-1"></i>Reset &amp; Carica Demo
             </button>
           </form>
         </div>

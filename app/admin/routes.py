@@ -987,7 +987,8 @@ def tenant_delete(tid):
 @bp.route('/seed-demo', methods=['POST'])
 @_superadmin_required
 def seed_demo():
-    from app.demo_seed import seed_demo_data
+    from app.demo_seed import reset_demo_data, seed_demo_data
+    reset_demo_data()
     ok, msg = seed_demo_data()
     flash(msg, 'success' if ok else 'warning')
     return redirect(url_for('admin.tenants'))
