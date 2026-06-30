@@ -68,6 +68,23 @@ def _migrate_tenant_columns():
 
     insp = sa_inspect(db.engine)
     existing_tables = set(insp.get_table_names())
+    is_pg = db.engine.dialect.name == 'postgresql'
+
+    # Mappa tipi SQLite → PostgreSQL per i tipi non compatibili
+    _TYPE_MAP_PG = {
+        'DATETIME': 'TIMESTAMP',
+        'BOOLEAN DEFAULT FALSE': 'BOOLEAN DEFAULT FALSE',
+        'BOOLEAN DEFAULT TRUE':  'BOOLEAN DEFAULT TRUE',
+    }
+
+    def _pg_type(definition):
+        """Traduce definizioni SQLite in equivalenti PostgreSQL."""
+        if not is_pg:
+            return definition
+        for sqlite_t, pg_t in _TYPE_MAP_PG.items():
+            if definition.upper().startswith(sqlite_t):
+                return definition.upper().replace(sqlite_t, pg_t, 1)
+        return definition
 
     def _ensure(table, col, definition='INTEGER'):
         if table not in existing_tables:
@@ -75,13 +92,16 @@ def _migrate_tenant_columns():
         existing_cols = {c['name'] for c in insp.get_columns(table)}
         if col in existing_cols:
             return
+        real_def = _pg_type(definition)
         try:
             with db.engine.connect() as conn:
-                # Niente bracket [] (SQLite-only): sintassi standard per SQLite e PostgreSQL
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {definition}"))
+                conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{col}" {real_def}'))
                 conn.commit()
+            print(f'[migration] added {table}.{col} ({real_def})')
         except Exception as exc:
-            print(f'[migration] {table}.{col}: {exc}')
+            # Colonna già presente in una race condition (accettabile) — tutto il resto viene loggato
+            if 'already exists' not in str(exc).lower() and 'duplicate column' not in str(exc).lower():
+                print(f'[migration] ERROR {table}.{col}: {exc}')
 
     tables = [
         'users', 'categories', 'products', 'orders', 'time_slots',
@@ -110,7 +130,7 @@ def _migrate_tenant_columns():
     # Durata stazionamento tavolo per fascia oraria
     _ensure('time_slots', 'seat_duration_minutes', "INTEGER DEFAULT 0")
 
-    # Tracciamento check-in e alert tavolo
+    # Tracciamento check-in e alert tavolo (DATETIME → TIMESTAMP su PostgreSQL)
     _ensure('table_reservations', 'checkin_at',       "DATETIME")
     _ensure('table_reservations', 'table_alert_sent', "BOOLEAN DEFAULT FALSE")
 
