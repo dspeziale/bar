@@ -1,7 +1,7 @@
 import re
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app import db
+from app import db, oauth
 from app.auth import bp
 from app.models import User
 
@@ -62,6 +62,49 @@ def register():
             flash('Registrazione completata. Benvenuto!', 'success')
             return redirect(url_for('main.index'))
     return render_template('auth/register.html')
+
+
+@bp.route('/google')
+def google_start():
+    callback_url = url_for('auth.google_callback', _external=True)
+    return oauth.google.authorize_redirect(callback_url)
+
+
+@bp.route('/google/callback')
+def google_callback():
+    try:
+        token = oauth.google.authorize_access_token()
+        user_info = token.get('userinfo') or oauth.google.userinfo()
+    except Exception as e:
+        flash(f'Errore OAuth: {e}', 'danger')
+        return redirect(url_for('auth.login'))
+
+    google_id = user_info.get('sub', '')
+    email = (user_info.get('email') or '').lower()
+    avatar = user_info.get('picture', '')
+
+    user = (User.query.filter_by(google_id=google_id).first()
+            or User.query.filter_by(email=email).first())
+
+    if not user:
+        flash("Nessun account trovato per questa email. Contatta l'amministratore.", 'danger')
+        return redirect(url_for('auth.login'))
+
+    if not user.is_active:
+        flash("Account sospeso. Contatta l'amministratore.", 'danger')
+        return redirect(url_for('auth.login'))
+
+    if not user.google_id:
+        user.google_id = google_id
+    if avatar:
+        user.avatar_url = avatar
+    db.session.commit()
+
+    login_user(user, remember=True)
+    next_page = request.args.get('next')
+    if user.is_admin:
+        return redirect(next_page or url_for('admin.dashboard'))
+    return redirect(next_page or url_for('main.index'))
 
 
 @bp.route('/logout')
