@@ -38,6 +38,46 @@ def _active_tenant_id():
     return default_t.id if default_t else None
 
 
+# ── User cascade delete ───────────────────────────────────────────────────────
+
+def _delete_user_cascade(uid):
+    """Elimina un utente e tutti i record collegati rispettando i vincoli FK NOT NULL."""
+    # ordini: prima i sotto-record, poi gli ordini stessi
+    order_ids   = db.session.query(Order.id).filter_by(user_id=uid).subquery()
+    coi_ids     = db.session.query(CustomOrderItem.id).filter(
+                      CustomOrderItem.order_id.in_(order_ids)).subquery()
+
+    CustomOrderItemIngredient.query.filter(
+        CustomOrderItemIngredient.custom_item_id.in_(coi_ids)
+    ).delete(synchronize_session=False)
+
+    CustomOrderItem.query.filter(
+        CustomOrderItem.order_id.in_(order_ids)
+    ).delete(synchronize_session=False)
+
+    OrderItem.query.filter(
+        OrderItem.order_id.in_(order_ids)
+    ).delete(synchronize_session=False)
+
+    # transazioni che referenziano ordini di questo utente: annulla il FK nullable
+    Transaction.query.filter(
+        Transaction.order_id.in_(order_ids)
+    ).update({'order_id': None}, synchronize_session=False)
+
+    Order.query.filter_by(user_id=uid).delete(synchronize_session=False)
+
+    # tutti gli altri record collegati direttamente all'utente
+    Transaction.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    TableReservation.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    PollVote.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    CorporateMealBooking.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    CorporateMembership.query.filter_by(user_id=uid).delete(synchronize_session=False)
+
+    user = db.session.get(User, uid)
+    if user:
+        db.session.delete(user)
+
+
 # ── Decorators ────────────────────────────────────────────────────────────────
 
 def staff_required(f):
@@ -403,7 +443,7 @@ def client_delete(uid):
     if not u.is_client:
         abort(404)
     name = u.full_name
-    db.session.delete(u)
+    _delete_user_cascade(uid)
     db.session.commit()
     flash(f'Cliente "{name}" eliminato.', 'info')
     return redirect(url_for('admin.clients'))

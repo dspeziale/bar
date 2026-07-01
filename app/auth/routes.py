@@ -91,9 +91,11 @@ def google_callback():
         flash(f'Errore OAuth: {e}', 'danger')
         return redirect(url_for('auth.login'))
 
-    google_id = user_info.get('sub', '')
-    email = (user_info.get('email') or '').lower()
-    avatar = user_info.get('picture', '')
+    google_id  = user_info.get('sub', '')
+    email      = (user_info.get('email') or '').lower()
+    avatar     = user_info.get('picture', '')
+    first_name = user_info.get('given_name', '')
+    last_name  = user_info.get('family_name', '')
 
     user = (User.query.filter_by(google_id=google_id).first()
             or User.query.filter_by(email=email).first())
@@ -105,6 +107,10 @@ def google_callback():
             user.google_id = google_id
         if avatar:
             user.avatar_url = avatar
+        if first_name and not user.first_name:
+            user.first_name = first_name
+        if last_name and not user.last_name:
+            user.last_name = last_name
         db.session.commit()
         login_user(user, remember=True)
         next_page = request.args.get('next')
@@ -117,6 +123,8 @@ def google_callback():
             email      = email,
             google_id  = google_id,
             avatar_url = avatar,
+            first_name = first_name,
+            last_name  = last_name,
             is_active  = False,
             is_client  = True,
         )
