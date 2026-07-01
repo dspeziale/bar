@@ -88,29 +88,42 @@ def google_callback():
 
     if user:
         if not user.is_active:
-            flash("Account sospeso. Contatta l'amministratore.", 'danger')
-            return redirect(url_for('auth.login'))
+            return redirect(url_for('auth.pending'))
         if not user.google_id:
             user.google_id = google_id
         if avatar:
             user.avatar_url = avatar
         db.session.commit()
+        login_user(user, remember=True)
+        next_page = request.args.get('next')
+        if user.is_admin:
+            return redirect(next_page or url_for('admin.dashboard'))
+        return redirect(next_page or url_for('main.index'))
     else:
         user = User(
             username   = _make_username(email),
             email      = email,
             google_id  = google_id,
             avatar_url = avatar,
+            is_active  = False,
+            is_client  = True,
         )
         db.session.add(user)
         db.session.commit()
-        flash('Account creato con Google. Benvenuto!', 'success')
+        return redirect(url_for('auth.pending'))
 
-    login_user(user, remember=True)
-    next_page = request.args.get('next')
-    if user.is_admin:
-        return redirect(next_page or url_for('admin.dashboard'))
-    return redirect(next_page or url_for('main.index'))
+
+@bp.route('/join')
+def join():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    join_url = url_for('auth.join', _external=True)
+    return render_template('auth/join.html', join_url=join_url)
+
+
+@bp.route('/pending')
+def pending():
+    return render_template('auth/pending.html')
 
 
 @bp.route('/logout')

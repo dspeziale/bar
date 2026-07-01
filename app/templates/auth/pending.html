@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>In attesa di approvazione | QuickLunch</title>
+  <script>(function(){ var t=localStorage.getItem('QuickLunch-theme')||'light'; document.documentElement.setAttribute('data-QuickLunch-theme',t); })();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { font-family: 'PT Sans Narrow', sans-serif; box-sizing: border-box; }
+    :root {
+      --bg-from: #1a1a2e; --bg-to: #0f3460;
+      --card: #ffffff; --text: #212529;
+      --muted: #6c757d; --accent: #e94560;
+    }
+    [data-QuickLunch-theme="dark"] {
+      --bg-from: #050810; --bg-to: #040b18;
+      --card: #16213e; --text: #e2e8f0; --muted: #7a8fa8;
+    }
+    body {
+      margin: 0; min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      background: var(--card); color: var(--text);
+      border-radius: 12px; padding: 40px 32px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      text-align: center;
+    }
+    .icon-wrap {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, #28a745, #20c997);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; font-size: 2.2rem; color: #fff;
+    }
+    h2 { margin: 0 0 8px; font-size: 1.6rem; font-weight: 700; }
+    p  { margin: 0 0 12px; color: var(--muted); font-size: 1rem; line-height: 1.5; }
+    .steps-list {
+      text-align: left; margin: 20px 0;
+      padding: 16px 18px; border-radius: 8px;
+      background: rgba(40,167,69,.07); border-left: 3px solid #28a745;
+    }
+    .steps-list li { margin-bottom: 6px; font-size: .95rem; color: var(--text); }
+    .steps-list li:last-child { margin-bottom: 0; }
+    .steps-list li i { color: #28a745; width: 18px; }
+    .divider { border: none; border-top: 1px solid rgba(0,0,0,.08); margin: 20px 0; }
+    .back-link {
+      display: inline-block; margin-top: 4px;
+      font-size: .9rem; color: var(--muted); text-decoration: none;
+    }
+    .back-link:hover { color: var(--accent); }
+    footer {
+      margin-top: 20px;
+      font-size: .72rem; color: rgba(255,255,255,.35);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrap"><i class="fas fa-check"></i></div>
+    <h2>Registrazione completata!</h2>
+    <p>Il tuo account è stato creato con successo.<br>
+       Il gestore lo attiverà a breve.</p>
+
+    <div class="steps-list">
+      <ul style="list-style:none;padding:0;margin:0;">
+        <li><i class="fas fa-check-circle"></i> Account Google collegato</li>
+        <li><i class="fas fa-clock" style="color:#ffc107;"></i> In attesa di approvazione del gestore</li>
+        <li><i class="fas fa-circle" style="color:#dee2e6;font-size:.5rem;vertical-align:middle;"></i> Accesso all'app e alle ordinazioni</li>
+      </ul>
+    </div>
+
+    <p style="font-size:.88rem;">
+      Una volta attivato, potrai accedere direttamente con Google senza bisogno di password.
+    </p>
+
+    <hr class="divider">
+    <a href="{{ url_for('auth.join') }}" class="back-link">
+      <i class="fas fa-arrow-left"></i> Torna alla pagina di registrazione
+    </a>
+  </div>
+  <footer>&copy; 2024&ndash;26 DS Consulting &bull; QuickLunch</footer>
+</body>
+</html>

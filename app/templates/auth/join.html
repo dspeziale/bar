@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrati | QuickLunch</title>
+  <script>(function(){ var t=localStorage.getItem('QuickLunch-theme')||'light'; document.documentElement.setAttribute('data-QuickLunch-theme',t); })();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { font-family: 'PT Sans Narrow', sans-serif; box-sizing: border-box; }
+    :root {
+      --bg-from: #1a1a2e; --bg-to: #0f3460;
+      --card: #ffffff; --text: #212529;
+      --muted: #6c757d; --border: #dee2e6;
+      --accent: #e94560;
+    }
+    [data-QuickLunch-theme="dark"] {
+      --bg-from: #050810; --bg-to: #040b18;
+      --card: #16213e; --text: #e2e8f0;
+      --muted: #7a8fa8; --border: #1e3058;
+    }
+
+    /* ── screen layout ── */
+    body {
+      margin: 0; min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      background: var(--card); color: var(--text);
+      border-radius: 12px; padding: 32px 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+    .logo { text-align: center; margin-bottom: 8px; }
+    .logo i { color: var(--accent); font-size: 2.4rem; }
+    .logo h1 { margin: 4px 0 0; font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+    .logo p  { margin: 2px 0 0; color: var(--muted); font-size: .95rem; }
+
+    /* steps */
+    .steps { display: flex; justify-content: center; gap: 0; margin: 20px 0 24px; }
+    .step  { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+    .step:not(:last-child)::after {
+      content: ''; position: absolute; top: 16px; left: 50%; width: 100%;
+      height: 2px; background: var(--border);
+    }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85rem; position: relative; z-index: 1;
+      background: var(--border); color: var(--muted);
+    }
+    .step.done .step-num { background: #28a745; color: #fff; }
+    .step.active .step-num { background: var(--accent); color: #fff; }
+    .step-label { font-size: .75rem; color: var(--muted); margin-top: 4px; text-align: center; }
+    .step.done .step-label, .step.active .step-label { color: var(--text); }
+
+    /* google button */
+    .btn-google {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: .75rem; font-size: 1.05rem; font-weight: 700;
+      background: #fff; color: #3c4043; border: 1px solid #dadce0; border-radius: 6px;
+      text-decoration: none; transition: box-shadow .15s; cursor: pointer;
+    }
+    .btn-google:hover { box-shadow: 0 2px 8px rgba(0,0,0,.2); text-decoration: none; color: #3c4043; }
+    [data-QuickLunch-theme="dark"] .btn-google { background: #2d2d2d; color: #e2e8f0; border-color: #444; }
+
+    .note {
+      margin-top: 20px; padding: 12px 14px;
+      background: rgba(233,69,96,.08); border-left: 3px solid var(--accent);
+      border-radius: 4px; font-size: .88rem; color: var(--muted);
+    }
+    .note strong { color: var(--text); }
+
+    /* print button (visible only on screen) */
+    .print-btn {
+      margin-top: 18px; text-align: center;
+      font-size: .8rem; color: var(--muted); cursor: pointer;
+      text-decoration: underline; background: none; border: none;
+    }
+    footer {
+      margin-top: 20px;
+      font-size: .72rem; color: rgba(255,255,255,.35); text-align: center;
+    }
+
+    /* ── print layout ── */
+    .print-only { display: none; }
+
+    @media print {
+      body {
+        background: #fff !important;
+        display: block; padding: 0; margin: 0;
+      }
+      .card, footer, .print-btn { display: none !important; }
+      .print-only {
+        display: flex !important;
+        flex-direction: column; align-items: center; justify-content: center;
+        min-height: 100vh; padding: 40px;
+        font-family: 'PT Sans Narrow', sans-serif;
+      }
+      .print-logo { font-size: 2rem; font-weight: 700; color: #e94560; margin-bottom: 8px; }
+      .print-title { font-size: 1.6rem; font-weight: 700; color: #212529; margin: 0 0 6px; text-align: center; }
+      .print-sub   { font-size: 1.1rem; color: #6c757d; margin: 0 0 24px; text-align: center; }
+      #qr-print canvas, #qr-print img { width: 260px !important; height: 260px !important; }
+      .print-url   { font-size: .85rem; color: #6c757d; margin-top: 16px; word-break: break-all; text-align: center; }
+      .print-steps {
+        margin-top: 28px; display: flex; gap: 32px;
+        font-size: 1rem; color: #212529;
+      }
+      .print-step { display: flex; align-items: center; gap: 8px; }
+      .print-step-num {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #e94560; color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: .9rem; flex-shrink: 0;
+      }
+      .print-note { margin-top: 24px; font-size: .88rem; color: #6c757d; text-align: center; max-width: 400px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── SCREEN: customer view ── -->
+  <div class="card">
+    <div class="logo">
+      <i class="fas fa-utensils"></i>
+      <h1>QuickLunch</h1>
+      <p>Ordina comodamente dal tuo smartphone</p>
+    </div>
+
+    <!-- steps: 1 done (scanned), 2 active (register), 3 pending (order) -->
+    <div class="steps">
+      <div class="step done">
+        <div class="step-num"><i class="fas fa-check"></i></div>
+        <div class="step-label">Scansiona</div>
+      </div>
+      <div class="step active">
+        <div class="step-num">2</div>
+        <div class="step-label">Registrati</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-label">Ordina</div>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div style="padding:10px 12px;margin-bottom:12px;border-radius:4px;font-size:.9rem;
+                  background:{% if category=='danger' %}#f8d7da{% elif category=='success' %}#d4edda{% else %}#d1ecf1{% endif %};
+                  color:{% if category=='danger' %}#721c24{% elif category=='success' %}#155724{% else %}#0c5460{% endif %};">
+        {{ message }}
+      </div>
+      {% endfor %}
+    {% endwith %}
+
+    <a href="{{ url_for('auth.google_start') }}" class="btn-google">
+      <svg width="22" height="22" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Registrati con Google
+    </a>
+
+    <div class="note">
+      <strong>Come funziona:</strong> dopo la registrazione il gestore attiverà il tuo account.
+      Riceverai accesso all'app per ordinare, prenotare un tavolo e gestire il tuo saldo.
+    </div>
+
+    <button class="print-btn" onclick="window.print()">
+      <i class="fas fa-print"></i> Stampa QR code per il bancone
+    </button>
+  </div>
+
+  <footer>&copy; 2024&ndash;26 DS Consulting &bull; QuickLunch</footer>
+
+  <!-- ── PRINT: counter sheet ── -->
+  <div class="print-only">
+    <div class="print-logo"><i class="fas fa-utensils"></i> QuickLunch</div>
+    <div class="print-title">Registrati per ordinare online</div>
+    <div class="print-sub">Scansiona il QR con il tuo smartphone</div>
+    <div id="qr-print"></div>
+    <div class="print-url">{{ join_url }}</div>
+    <div class="print-steps">
+      <div class="print-step"><div class="print-step-num">1</div> Scansiona</div>
+      <div class="print-step"><div class="print-step-num">2</div> Registrati con Google</div>
+      <div class="print-step"><div class="print-step-num">3</div> Ordina</div>
+    </div>
+    <div class="print-note">
+      Il gestore attiverà il tuo account in pochi minuti.<br>
+      Nessuna password necessaria &mdash; basta il tuo account Google.
+    </div>
+  </div>
+
+  <script>
+    // QR per la stampa
+    new QRCode(document.getElementById('qr-print'), {
+      text: '{{ join_url }}',
+      width: 260, height: 260,
+      colorDark: '#212529', colorLight: '#ffffff',
+    });
+  </script>
+</body>
+</html>

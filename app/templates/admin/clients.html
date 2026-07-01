@@ -81,6 +81,10 @@
     <h3 class="card-title"><i class="fas fa-address-book mr-2"></i>Clienti Registrati</h3>
     <div class="card-tools">
       <span class="badge badge-info">{{ clients|length }} clienti</span>
+      {% set pending_count = clients|selectattr('is_active','equalto',false)|selectattr('google_id')|list|length %}
+      {% if pending_count %}
+        <span class="badge badge-warning ml-1">{{ pending_count }} in attesa</span>
+      {% endif %}
     </div>
   </div>
   <div class="card-body p-0">
@@ -157,9 +161,13 @@
             </button>
           </td>
           <td>
-            <span class="badge badge-{{ 'success' if c.is_active else 'secondary' }}">
-              {{ 'Attivo' if c.is_active else 'Sospeso' }}
-            </span>
+            {% if c.is_active %}
+              <span class="badge badge-success">Attivo</span>
+            {% elif c.google_id %}
+              <span class="badge badge-warning">In attesa</span>
+            {% else %}
+              <span class="badge badge-secondary">Sospeso</span>
+            {% endif %}
           </td>
           <td style="white-space:nowrap;">
             <button class="btn btn-xs btn-primary" data-toggle="modal"
