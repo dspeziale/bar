@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Configurazioni pasto — {{ corp.name }}{% endblock %}
+{% block page_title %}Configurazioni pasto — {{ corp.name }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
+<li class="breadcrumb-item active">Configurazioni</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  {# ── Lista configurazioni ── #}
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title"><i class="fas fa-layer-group mr-2"></i>Configurazioni salvate</h3>
+        <span class="text-muted" style="font-size:.85rem;">
+          {{ configs|length }} configurazion{{ 'e' if configs|length==1 else 'i' }}
+        </span>
+      </div>
+      <div class="card-body p-0">
+        {% if configs %}
+        <div class="list-group list-group-flush">
+          {% for cfg in configs %}
+          <div class="list-group-item px-3 py-2">
+            <div class="d-flex justify-content-between align-items-start">
+              <div style="flex:1;min-width:0;">
+                <strong class="d-block" style="font-size:.97rem;">
+                  <i class="fas fa-utensils text-muted mr-1"></i>{{ cfg.name }}
+                </strong>
+                <div class="mt-1" style="font-size:.83rem;color:#555;">
+                  {% if cfg.primo    %}<span class="mr-2"><span class="badge badge-primary">Primo</span> {{ cfg.primo }}</span>{% endif %}
+                  {% if cfg.secondo  %}<span class="mr-2"><span class="badge badge-success">Secondo</span> {{ cfg.secondo }}</span>{% endif %}
+                  {% if cfg.contorno %}<span class="mr-2"><span class="badge badge-warning">Contorno</span> {{ cfg.contorno }}</span>{% endif %}
+                  {% if cfg.bevanda  %}<span class="mr-2"><span class="badge badge-info">Bevanda</span> {{ cfg.bevanda }}</span>{% endif %}
+                  {% if cfg.caffe    %}<span class="mr-2"><span class="badge badge-secondary">Caffè</span> {{ cfg.caffe }}</span>{% endif %}
+                </div>
+                {% if cfg.allergen_list %}
+                <div class="mt-1">
+                  {% for key, label, icon in cfg.allergen_list %}
+                  <span class="badge badge-warning" style="font-size:.7rem;" title="{{ label }}">{{ icon }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                <div class="mt-1 text-muted" style="font-size:.8rem;">
+                  {% if cfg.price %}Prezzo: <strong>{{ '%.2f'|format(cfg.price) }}€</strong>{% else %}<em>Prezzo dalla convenzione</em>{% endif %}
+                  {% if cfg.max_bookings %} &nbsp;·&nbsp; Max: <strong>{{ cfg.max_bookings }}</strong>{% endif %}
+                  {% if cfg.sort_order %} &nbsp;·&nbsp; Ordine: {{ cfg.sort_order }}{% endif %}
+                </div>
+              </div>
+              <div class="ml-2 d-flex" style="gap:.3rem;flex-shrink:0;">
+                <button class="btn btn-xs btn-outline-primary"
+                        data-toggle="modal" data-target="#editCfg{{ cfg.id }}"
+                        title="Modifica">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <form method="POST"
+                      action="{{ url_for('admin.configurazione_delete', cid=corp.id, cfg_id=cfg.id) }}"
+                      data-confirm="Eliminare la configurazione «{{ cfg.name }}»?">
+                  <button class="btn btn-xs btn-outline-danger" title="Elimina">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {# ── Modal modifica ── #}
+          <div class="modal fade" id="editCfg{{ cfg.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <form method="POST"
+                      action="{{ url_for('admin.configurazione_edit', cid=corp.id, cfg_id=cfg.id) }}">
+                  <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Modifica configurazione</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                  </div>
+                  <div class="modal-body">
+                    {% include 'admin/_cfg_form_fields.html' with context %}
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Salva</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-layer-group fa-2x mb-2 d-block"></i>
+          Nessuna configurazione ancora. Creane una dal form accanto.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}"
+       class="btn btn-sm btn-outline-success">
+      <i class="fas fa-calendar-day mr-1"></i>Vai al pasto di oggi
+    </a>
+  </div>
+
+  {# ── Form nuova configurazione ── #}
+  <div class="col-lg-5">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Nuova configurazione</h3>
+      </div>
+      <form method="POST">
+        <div class="card-body">
+          {% set cfg = none %}
+          {% include 'admin/_cfg_form_fields.html' with context %}
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-success btn-block">
+            <i class="fas fa-save mr-1"></i>Crea configurazione
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

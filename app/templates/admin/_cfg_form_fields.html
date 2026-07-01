@@ -1,0 +1,92 @@
+{# Partial riusato in creazione (cfg=none) e modifica (cfg=<MealConfiguration>) #}
+<div class="form-group">
+  <label>Nome <span class="text-danger">*</span></label>
+  <input type="text" name="name" class="form-control"
+         value="{{ cfg.name if cfg else '' }}"
+         placeholder="es. Menù del lunedì" required>
+</div>
+
+<hr class="my-2">
+<p class="text-muted mb-2" style="font-size:.85rem;"><i class="fas fa-list-ul mr-1"></i>Portate</p>
+
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-primary mr-1">Primo</span></label>
+  <input type="text" name="primo" class="form-control form-control-sm"
+         value="{{ cfg.primo if cfg else '' }}"
+         placeholder="es. Risotto al ragù">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-success mr-1">Secondo</span></label>
+  <input type="text" name="secondo" class="form-control form-control-sm"
+         value="{{ cfg.secondo if cfg else '' }}"
+         placeholder="es. Pollo alla griglia">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-warning mr-1">Contorno</span></label>
+  <input type="text" name="contorno" class="form-control form-control-sm"
+         value="{{ cfg.contorno if cfg else '' }}"
+         placeholder="es. Insalata mista">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-info mr-1">Bevanda</span></label>
+  <input type="text" name="bevanda" class="form-control form-control-sm"
+         value="{{ cfg.bevanda if cfg else '' }}"
+         placeholder="es. Acqua naturale o Coca-Cola 33cl">
+</div>
+<div class="form-group mb-0">
+  <label class="mb-0"><span class="badge badge-secondary mr-1">Caffè</span></label>
+  <input type="text" name="caffe" class="form-control form-control-sm"
+         value="{{ cfg.caffe if cfg else '' }}"
+         placeholder="es. Caffè incluso">
+</div>
+
+<hr class="my-3">
+
+<div class="form-group">
+  <label>Note libere</label>
+  <textarea name="description" class="form-control form-control-sm" rows="2"
+            placeholder="Note aggiuntive…">{{ cfg.description if cfg else '' }}</textarea>
+</div>
+
+<div class="form-group">
+  <label>Allergeni presenti</label>
+  <div class="row" style="margin:0;">
+    {% set selected_allergens = (cfg.allergens.split(',') if cfg and cfg.allergens else []) %}
+    {% for key, label, icon in allergens_list %}
+    <div class="col-6 col-md-4">
+      <div class="form-check">
+        <input type="checkbox" name="allergens" value="{{ key }}" class="form-check-input"
+               id="cfg_alg_{{ cfg.id if cfg else 'new' }}_{{ key }}"
+               {{ 'checked' if key in selected_allergens }}>
+        <label class="form-check-label"
+               for="cfg_alg_{{ cfg.id if cfg else 'new' }}_{{ key }}">{{ icon }} {{ label }}</label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<hr class="my-2">
+
+<div class="form-row">
+  <div class="form-group col-4">
+    <label>Prezzo (€)</label>
+    <input type="number" name="price" step="0.50" min="0" class="form-control form-control-sm"
+           value="{{ '%.2f'|format(cfg.price) if cfg and cfg.price is not none else '' }}"
+           placeholder="Default">
+    <small class="text-muted">Vuoto = prezzo convenzione</small>
+  </div>
+  <div class="form-group col-4">
+    <label>Prenotazioni max</label>
+    <input type="number" name="max_bookings" min="1" class="form-control form-control-sm"
+           value="{{ cfg.max_bookings if cfg and cfg.max_bookings is not none else '' }}"
+           placeholder="Default">
+    <small class="text-muted">Vuoto = max convenzione</small>
+  </div>
+  <div class="form-group col-4">
+    <label>Ordine</label>
+    <input type="number" name="sort_order" min="0" class="form-control form-control-sm"
+           value="{{ cfg.sort_order if cfg else 0 }}">
+    <small class="text-muted">Per ordinare nell'elenco</small>
+  </div>
+</div>

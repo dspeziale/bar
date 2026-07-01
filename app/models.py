@@ -564,10 +564,38 @@ class CorporateAccount(db.Model):
                                        cascade='all, delete-orphan')
     daily_meals      = db.relationship('DailyFixedMeal', back_populates='corporate',
                                        cascade='all, delete-orphan')
+    configurations   = db.relationship('MealConfiguration', back_populates='corporate',
+                                       cascade='all, delete-orphan',
+                                       order_by='MealConfiguration.sort_order, MealConfiguration.name')
 
     @property
     def active_members(self):
         return [m for m in self.memberships if m.is_active]
+
+
+class MealConfiguration(db.Model):
+    """Template riutilizzabile per il pasto del giorno di una convenzione."""
+    __tablename__ = 'meal_configurations'
+    id           = db.Column(db.Integer, primary_key=True)
+    corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
+    name         = db.Column(db.String(128), nullable=False)
+    primo        = db.Column(db.String(256), default='')
+    secondo      = db.Column(db.String(256), default='')
+    contorno     = db.Column(db.String(256), default='')
+    bevanda      = db.Column(db.String(256), default='')
+    caffe        = db.Column(db.String(128), default='')
+    description  = db.Column(db.Text, default='')
+    allergens    = db.Column(db.String(512), default='')
+    price        = db.Column(db.Float, nullable=True)       # None → usa daily_price della convenzione
+    max_bookings = db.Column(db.Integer, nullable=True)     # None → usa max_daily_covers della convenzione
+    sort_order   = db.Column(db.Integer, default=0)
+    tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    corporate    = db.relationship('CorporateAccount', back_populates='configurations')
+
+    @property
+    def allergen_list(self):
+        keys = [k.strip() for k in (self.allergens or '').split(',') if k.strip()]
+        return [(k, *ALLERGEN_LABELS[k]) for k in keys if k in ALLERGEN_LABELS]
 
 
 class CorporateMembership(db.Model):

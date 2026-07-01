@@ -11,7 +11,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
                         Tenant, Supplier, ConsumableItem, ConsumableMovement,
                         CorporateAccount, CorporateMembership,
-                        DailyFixedMeal, CorporateMealBooking,
+                        DailyFixedMeal, CorporateMealBooking, MealConfiguration,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
@@ -1498,10 +1498,27 @@ def convenzione_pasto(cid):
         return redirect(url_for('admin.convenzione_pasto', cid=cid))
 
     bookings = CorporateMealBooking.query.filter_by(meal_id=meal.id).all() if meal else []
+    import json as _json
+    configs_json = _json.dumps({
+        cfg.id: {
+            'name':         cfg.name,
+            'primo':        cfg.primo        or '',
+            'secondo':      cfg.secondo      or '',
+            'contorno':     cfg.contorno     or '',
+            'bevanda':      cfg.bevanda      or '',
+            'caffe':        cfg.caffe        or '',
+            'description':  cfg.description  or '',
+            'allergens':    [a.strip() for a in (cfg.allergens or '').split(',') if a.strip()],
+            'price':        cfg.price,
+            'max_bookings': cfg.max_bookings,
+        }
+        for cfg in corp.configurations
+    })
     return render_template('admin/convenzione_pasto.html',
                            corp=corp, meal=meal, sel_date=sel_date, today=today,
                            prev_date=prev_date, next_date=next_date,
-                           bookings=bookings, allergens_list=ALLERGENS)
+                           bookings=bookings, allergens_list=ALLERGENS,
+                           configs_json=configs_json)
 
 
 @bp.route('/convenzioni/<int:cid>/pasto/<int:bid>/consuma', methods=['POST'])
@@ -1513,6 +1530,98 @@ def convenzione_consuma(cid, bid):
     d = request.args.get('d', '')
     flash(f'Pasto di {booking.user.username} segnato come consumato.', 'success')
     return redirect(url_for('admin.convenzione_pasto', cid=cid, d=d or None))
+
+
+# ── Configurazioni pasto ──────────────────────────────────────────────────────
+
+@bp.route('/convenzioni/<int:cid>/configurazioni', methods=['GET', 'POST'])
+@require_permission('manage_products')
+def convenzione_configurazioni(cid):
+    corp = CorporateAccount.query.get_or_404(cid)
+    if request.method == 'POST':
+        name    = request.form.get('name', '').strip()
+        if not name:
+            flash('Il nome è obbligatorio.', 'danger')
+            return redirect(url_for('admin.convenzione_configurazioni', cid=cid))
+        cfg = MealConfiguration(
+            corporate_id = cid,
+            name         = name,
+            primo        = request.form.get('primo',   '').strip(),
+            secondo      = request.form.get('secondo',  '').strip(),
+            contorno     = request.form.get('contorno', '').strip(),
+            bevanda      = request.form.get('bevanda',  '').strip(),
+            caffe        = request.form.get('caffe',    '').strip(),
+            description  = request.form.get('description', '').strip(),
+            allergens    = ','.join(request.form.getlist('allergens')),
+            price        = float(p) if (p := request.form.get('price', '').strip()) else None,
+            max_bookings = int(m) if (m := request.form.get('max_bookings', '').strip()) else None,
+            sort_order   = int(request.form.get('sort_order', 0) or 0),
+            tenant_id    = None if current_user.is_admin else current_user.tenant_id,
+        )
+        db.session.add(cfg)
+        db.session.commit()
+        flash(f'Configurazione "{name}" creata.', 'success')
+        return redirect(url_for('admin.convenzione_configurazioni', cid=cid))
+
+    configs = MealConfiguration.query.filter_by(corporate_id=cid)\
+        .order_by(MealConfiguration.sort_order, MealConfiguration.name).all()
+    return render_template('admin/convenzione_configurazioni.html',
+                           corp=corp, configs=configs, allergens_list=ALLERGENS)
+
+
+@bp.route('/convenzioni/<int:cid>/configurazioni/<int:cfg_id>/edit', methods=['POST'])
+@require_permission('manage_products')
+def configurazione_edit(cid, cfg_id):
+    cfg = MealConfiguration.query.get_or_404(cfg_id)
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Il nome è obbligatorio.', 'danger')
+        return redirect(url_for('admin.convenzione_configurazioni', cid=cid))
+    cfg.name         = name
+    cfg.primo        = request.form.get('primo',   '').strip()
+    cfg.secondo      = request.form.get('secondo',  '').strip()
+    cfg.contorno     = request.form.get('contorno', '').strip()
+    cfg.bevanda      = request.form.get('bevanda',  '').strip()
+    cfg.caffe        = request.form.get('caffe',    '').strip()
+    cfg.description  = request.form.get('description', '').strip()
+    cfg.allergens    = ','.join(request.form.getlist('allergens'))
+    p = request.form.get('price', '').strip()
+    cfg.price        = float(p) if p else None
+    m = request.form.get('max_bookings', '').strip()
+    cfg.max_bookings = int(m) if m else None
+    cfg.sort_order   = int(request.form.get('sort_order', 0) or 0)
+    db.session.commit()
+    flash(f'Configurazione "{cfg.name}" aggiornata.', 'success')
+    return redirect(url_for('admin.convenzione_configurazioni', cid=cid))
+
+
+@bp.route('/convenzioni/<int:cid>/configurazioni/<int:cfg_id>/delete', methods=['POST'])
+@require_permission('manage_products')
+def configurazione_delete(cid, cfg_id):
+    cfg = MealConfiguration.query.get_or_404(cfg_id)
+    name = cfg.name
+    db.session.delete(cfg)
+    db.session.commit()
+    flash(f'Configurazione "{name}" eliminata.', 'info')
+    return redirect(url_for('admin.convenzione_configurazioni', cid=cid))
+
+
+@bp.route('/convenzioni/<int:cid>/configurazioni/<int:cfg_id>/json')
+@require_permission('manage_products')
+def configurazione_json(cid, cfg_id):
+    cfg = MealConfiguration.query.get_or_404(cfg_id)
+    return jsonify({
+        'name':         cfg.name,
+        'primo':        cfg.primo        or '',
+        'secondo':      cfg.secondo      or '',
+        'contorno':     cfg.contorno     or '',
+        'bevanda':      cfg.bevanda      or '',
+        'caffe':        cfg.caffe        or '',
+        'description':  cfg.description  or '',
+        'allergens':    [a.strip() for a in (cfg.allergens or '').split(',') if a.strip()],
+        'price':        cfg.price,
+        'max_bookings': cfg.max_bookings,
+    })
 
 
 # ── Manutenzione ──────────────────────────────────────────────────────────────
