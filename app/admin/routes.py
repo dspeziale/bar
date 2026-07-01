@@ -127,6 +127,25 @@ def dashboard():
     total_wallet = round(sum(u.wallet_balance for u in wallet_users), 2)
     consumable_alerts = ConsumableItem.query.filter_by(**_tenant_filter())\
         .filter(ConsumableItem.alert_active == True).count()
+    today_meal_booking    = None
+    meal_booking_reminder = False
+    membership = getattr(current_user, 'corporate_membership', None)
+    if membership and membership.is_active:
+        today_meals_corp = DailyFixedMeal.query.filter_by(
+            corporate_id=membership.corporate_id,
+            meal_date=today,
+            is_active=True,
+        ).all()
+        if today_meals_corp:
+            meal_ids = [m.id for m in today_meals_corp]
+            today_meal_booking = CorporateMealBooking.query.filter(
+                CorporateMealBooking.user_id == current_user.id,
+                CorporateMealBooking.meal_id.in_(meal_ids),
+                CorporateMealBooking.status != 'cancelled',
+            ).first()
+            if not today_meal_booking:
+                meal_booking_reminder = True
+
     return render_template('admin/dashboard.html',
                            orders_today=orders_today,
                            pending=[o for o in orders_today if o.status in ('pending', 'confirmed')],
@@ -136,7 +155,9 @@ def dashboard():
                            res_today=res_today,
                            stock_alerts=stock_alerts,
                            total_wallet=total_wallet,
-                           consumable_alerts=consumable_alerts)
+                           consumable_alerts=consumable_alerts,
+                           today_meal_booking=today_meal_booking,
+                           meal_booking_reminder=meal_booking_reminder)
 
 
 # ── Prodotti ──────────────────────────────────────────────────────────────────

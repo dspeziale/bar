@@ -1,5 +1,5 @@
 ﻿import secrets
-from datetime import date
+from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from app import db
@@ -667,9 +667,19 @@ def pasto_aziendale():
         ).first()
 
     slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
+
+    can_cancel = True
+    if my_booking and my_booking.slot:
+        try:
+            slot_time = datetime.strptime(my_booking.slot.time_str, '%H:%M').time()
+            slot_dt   = datetime.combine(date.today(), slot_time)
+            can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=30)
+        except Exception:
+            can_cancel = True
+
     return render_template('main/pasto_aziendale.html',
                            corp=corp, meals=meals, my_booking=my_booking,
-                           slots=slots, today=today)
+                           slots=slots, today=today, can_cancel=can_cancel)
 
 
 @bp.route('/pasto-aziendale/prenota', methods=['POST'])
@@ -751,9 +761,20 @@ def pasto_aziendale_cancella():
     booking = CorporateMealBooking.query.filter_by(
         id=bid, user_id=current_user.id).first()
     if booking and booking.status == 'booked':
-        booking.status = 'cancelled'
-        db.session.commit()
-        flash('Prenotazione annullata.', 'info')
+        can_cancel = True
+        if booking.slot:
+            try:
+                slot_time = datetime.strptime(booking.slot.time_str, '%H:%M').time()
+                slot_dt   = datetime.combine(date.today(), slot_time)
+                can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=30)
+            except Exception:
+                can_cancel = True
+        if can_cancel:
+            booking.status = 'cancelled'
+            db.session.commit()
+            flash('Prenotazione annullata.', 'info')
+        else:
+            flash('Non è più possibile annullare: mancano meno di 30 minuti alla consegna.', 'warning')
     return redirect(url_for('main.pasto_aziendale'))
 
 
