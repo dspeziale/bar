@@ -17,7 +17,7 @@ from app.models import (
 )
 from config import Config
 
-DEMO_SLUGS = ['bar-centrale', 'mensa-tech', 'caffetteria-duomo']
+DEMO_SLUGS = ['mensa-tech', 'caffetteria-duomo']  # bar-centrale usa il tenant 'default'
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,8 +138,9 @@ def _client(first, last, email, phone, bdate, address, tg, tenant_id, wallet=0.0
 # ── Dati tenant 1: Bar Centrale ───────────────────────────────────────────────
 
 def _seed_bar_centrale(sa_role):
-    t = _tenant('Bar Centrale', 'bar-centrale', '#e94560')
-    _tenant_admin(t, sa_role)
+    # Usa il tenant 'default' invece di creare un tenant separato,
+    # così il super admin vede i dati demo nella sua vista standard.
+    t = _tenant('QuickLunch Bar', 'default', '#e94560')
     _slots(t.id)
     _tables(t.id)
     _bands(t.id)
@@ -445,27 +446,44 @@ def _seed_caffetteria_duomo(sa_role):
 
 # ── Reset ─────────────────────────────────────────────────────────────────────
 
-def reset_demo_data():
+def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
+    """Cancella i dati di una lista di tenant_ids in ordine FK-safe.
+    Se delete_tenants=False, non elimina i tenant (usato per 'default').
+    Se clients_only=True, elimina solo clienti (non admin) dagli utenti.
     """
-    Cancella tutti i dati dei 3 tenant demo (DEMO_SLUGS) per poter ripartire
-    da zero prima di un nuovo caricamento. Non tocca mai tenant reali: opera
-    esclusivamente sugli id dei tenant con slug in DEMO_SLUGS.
-    """
-    tenants = Tenant.query.filter(Tenant.slug.in_(DEMO_SLUGS)).all()
-    if not tenants:
-        return True, 'Nessun dato demo presente: nulla da resettare.'
+    if not tenant_ids:
+        return
 
-    tenant_ids = [t.id for t in tenants]
-    user_ids = [r[0] for r in db.session.query(User.id).filter(User.tenant_id.in_(tenant_ids)).all()]
-    order_ids = [r[0] for r in db.session.query(Order.id).filter(Order.tenant_id.in_(tenant_ids)).all()]
-    custom_item_ids = [r[0] for r in db.session.query(CustomOrderItem.id).filter(CustomOrderItem.order_id.in_(order_ids)).all()] if order_ids else []
-    product_ids = [r[0] for r in db.session.query(Product.id).filter(Product.tenant_id.in_(tenant_ids)).all()]
-    consumable_ids = [r[0] for r in db.session.query(ConsumableItem.id).filter(ConsumableItem.tenant_id.in_(tenant_ids)).all()]
-    meal_ids = [r[0] for r in db.session.query(DailyFixedMeal.id).filter(DailyFixedMeal.tenant_id.in_(tenant_ids)).all()]
+    is_pg = db.engine.url.drivername.startswith('postgresql')
+
+    if clients_only:
+        user_ids = [r[0] for r in db.session.query(User.id).filter(
+            User.is_client == True, User.tenant_id.in_(tenant_ids)).all()]
+    else:
+        user_ids = [r[0] for r in db.session.query(User.id).filter(
+            User.tenant_id.in_(tenant_ids)).all()]
+
+    order_ids = [r[0] for r in db.session.query(Order.id).filter(
+        Order.tenant_id.in_(tenant_ids)).all()]
+    custom_item_ids = ([r[0] for r in db.session.query(CustomOrderItem.id).filter(
+        CustomOrderItem.order_id.in_(order_ids)).all()] if order_ids else [])
+    product_ids = [r[0] for r in db.session.query(Product.id).filter(
+        Product.tenant_id.in_(tenant_ids)).all()]
+    consumable_ids = [r[0] for r in db.session.query(ConsumableItem.id).filter(
+        ConsumableItem.tenant_id.in_(tenant_ids)).all()]
+    meal_ids = [r[0] for r in db.session.query(DailyFixedMeal.id).filter(
+        DailyFixedMeal.tenant_id.in_(tenant_ids)).all()]
 
     # magazzino
     if user_ids:
-        ConsumableMovement.query.filter(ConsumableMovement.user_id.in_(user_ids)).delete(synchronize_session=False)
+        if is_pg:
+            db.session.execute(
+                db.text('UPDATE consumable_movements SET user_id = NULL WHERE user_id = ANY(:ids)'),
+                {'ids': user_ids})
+        else:
+            db.session.execute(db.text(
+                'UPDATE consumable_movements SET user_id = NULL WHERE user_id IN ({})'.format(
+                    ','.join(str(i) for i in user_ids))))
     if consumable_ids:
         ConsumableMovement.query.filter(ConsumableMovement.item_id.in_(consumable_ids)).delete(synchronize_session=False)
     ConsumableItem.query.filter(ConsumableItem.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
@@ -479,27 +497,24 @@ def reset_demo_data():
         CorporateMembership.query.filter(CorporateMembership.user_id.in_(user_ids)).delete(synchronize_session=False)
     CorporateAccount.query.filter(CorporateAccount.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # sondaggi e transazioni legate agli utenti del tenant
+    # sondaggi e transazioni
     if user_ids:
         PollVote.query.filter(PollVote.user_id.in_(user_ids)).delete(synchronize_session=False)
         Transaction.query.filter(Transaction.user_id.in_(user_ids)).delete(synchronize_session=False)
 
     # ordini
     if custom_item_ids:
-        CustomOrderItemIngredient.query.filter(CustomOrderItemIngredient.custom_item_id.in_(custom_item_ids)).delete(synchronize_session=False)
+        CustomOrderItemIngredient.query.filter(
+            CustomOrderItemIngredient.custom_item_id.in_(custom_item_ids)).delete(synchronize_session=False)
     if order_ids:
-        # null FK su transactions.order_id prima di eliminare gli ordini (previene FK violation)
-        is_pg = db.engine.url.drivername.startswith('postgresql')
         if is_pg:
             db.session.execute(
                 db.text('UPDATE transactions SET order_id = NULL WHERE order_id = ANY(:ids)'),
-                {'ids': order_ids},
-            )
+                {'ids': order_ids})
         else:
-            db.session.execute(
-                db.text('UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(
-                    ','.join(str(i) for i in order_ids)))
-            )
+            db.session.execute(db.text(
+                'UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(
+                    ','.join(str(i) for i in order_ids))))
         CustomOrderItem.query.filter(CustomOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
         OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
     Order.query.filter(Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
@@ -509,7 +524,7 @@ def reset_demo_data():
     TableTimeBand.query.filter(TableTimeBand.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
     Table.query.filter(Table.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # menu / magazzino prodotti
+    # catalogo
     if product_ids:
         DailyStock.query.filter(DailyStock.product_id.in_(product_ids)).delete(synchronize_session=False)
     Product.query.filter(Product.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
@@ -518,14 +533,37 @@ def reset_demo_data():
     Category.query.filter(Category.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
     TimeSlot.query.filter(TimeSlot.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # utenti e tenant
+    # utenti
     if user_ids:
         db.session.execute(user_roles.delete().where(user_roles.c.user_id.in_(user_ids)))
-    User.query.filter(User.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
-    Tenant.query.filter(Tenant.id.in_(tenant_ids)).delete(synchronize_session=False)
+        User.query.filter(User.id.in_(user_ids)).delete(synchronize_session=False)
+
+    if delete_tenants:
+        Tenant.query.filter(Tenant.id.in_(tenant_ids)).delete(synchronize_session=False)
+
+
+def reset_demo_data():
+    """
+    Cancella i dati demo:
+    - Tenant 'default': svuota catalogo e clienti (il tenant rimane).
+    - mensa-tech, caffetteria-duomo: eliminati completamente.
+    """
+    default_t = Tenant.query.filter_by(slug='default').first()
+    extra_tenants = Tenant.query.filter(Tenant.slug.in_(DEMO_SLUGS)).all()
+
+    if not default_t and not extra_tenants:
+        return True, 'Nessun dato demo presente: nulla da resettare.'
+
+    # Svuota il tenant default (solo clienti + catalogo, non l'admin né il tenant)
+    if default_t:
+        _delete_tenant_data([default_t.id], delete_tenants=False, clients_only=True)
+
+    # Elimina completamente i tenant demo extra
+    if extra_tenants:
+        _delete_tenant_data([t.id for t in extra_tenants], delete_tenants=True, clients_only=False)
 
     db.session.commit()
-    return True, f'Reset completato: rimossi {len(tenants)} tenant demo e tutti i dati collegati.'
+    return True, f'Reset completato: tenant default svuotato, {len(extra_tenants)} tenant demo rimossi.'
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
