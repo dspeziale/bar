@@ -469,9 +469,8 @@ def tables():
         res_date = date.today()
         res_date_str = str(res_date)
 
-    tid = _effective_tenant_id()
-    all_tables = Table.query.filter_by(is_active=True, tenant_id=tid).order_by(Table.number).all()
-    bands = TableTimeBand.query.filter_by(tenant_id=tid).order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
+    all_tables = Table.query.filter_by(is_active=True).order_by(Table.number).all()
+    bands = TableTimeBand.query.order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
 
     # Prenotazioni attive del giorno indicizzate per (table_id, session_start)
     day_res = (TableReservation.query
