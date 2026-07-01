@@ -499,6 +499,26 @@ def category_new():
     return redirect(url_for('admin.categories'))
 
 
+@bp.route('/categories/<int:cid>/edit', methods=['POST'])
+@require_permission('manage_categories')
+def category_edit(cid):
+    cat = Category.query.get_or_404(cid)
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Nome obbligatorio.', 'danger')
+        return redirect(url_for('admin.categories'))
+    existing = Category.query.filter_by(name=name, tenant_id=cat.tenant_id).first()
+    if existing and existing.id != cid:
+        flash(f'Esiste già una categoria con il nome "{name}".', 'warning')
+        return redirect(url_for('admin.categories'))
+    cat.name  = name
+    cat.icon  = request.form.get('icon', cat.icon)
+    cat.color = request.form.get('color', cat.color)
+    db.session.commit()
+    flash(f'Categoria "{name}" aggiornata.', 'success')
+    return redirect(url_for('admin.categories'))
+
+
 @bp.route('/categories/<int:cid>/delete', methods=['POST'])
 @require_permission('manage_categories')
 def category_delete(cid):
