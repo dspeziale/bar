@@ -107,7 +107,8 @@ def products():
     tid = _active_tenant_id()
     return render_template('admin/products.html',
                            products=Product.query.filter_by(tenant_id=tid).order_by(Product.category_id, Product.name).all(),
-                           categories=Category.query.filter_by(tenant_id=tid).order_by(Category.name).all())
+                           categories=Category.query.filter_by(tenant_id=tid).order_by(Category.name).all(),
+                           allergens=ALLERGENS)
 
 
 @bp.route('/products/new', methods=['POST'])
@@ -118,11 +119,13 @@ def product_new():
     category_id = request.form.get('category_id', type=int)
     daily_quantity = request.form.get('daily_quantity', type=int, default=20)
     description = request.form.get('description', '').strip()
+    allergens = ','.join(request.form.getlist('allergens'))
     if not name or not price or price <= 0 or not category_id:
         flash('Compila tutti i campi obbligatori.', 'danger')
         return redirect(url_for('admin.products'))
     db.session.add(Product(name=name, description=description, price=price,
-                           category_id=category_id, daily_quantity=daily_quantity))
+                           category_id=category_id, daily_quantity=daily_quantity,
+                           allergens=allergens))
     db.session.commit()
     flash(f'Prodotto "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.products'))
@@ -132,12 +135,13 @@ def product_new():
 @require_permission('manage_products')
 def product_edit(pid):
     p = db.get_or_404(Product, pid)
-    p.name = request.form.get('name', p.name).strip()
-    p.description = request.form.get('description', p.description).strip()
-    p.price = request.form.get('price', type=float) or p.price
-    p.category_id = request.form.get('category_id', type=int) or p.category_id
+    p.name         = request.form.get('name', p.name).strip()
+    p.description  = request.form.get('description', p.description).strip()
+    p.price        = request.form.get('price', type=float) or p.price
+    p.category_id  = request.form.get('category_id', type=int) or p.category_id
     p.daily_quantity = request.form.get('daily_quantity', type=int) or p.daily_quantity
-    p.is_active = 'is_active' in request.form
+    p.is_active    = 'is_active' in request.form
+    p.allergens    = ','.join(request.form.getlist('allergens'))
     db.session.commit()
     flash(f'Prodotto "{p.name}" aggiornato.', 'success')
     return redirect(url_for('admin.products'))

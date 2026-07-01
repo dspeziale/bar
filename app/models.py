@@ -213,11 +213,17 @@ class Product(db.Model):
     category_id    = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     daily_quantity = db.Column(db.Integer, default=20)
     is_active      = db.Column(db.Boolean, default=True)
+    allergens      = db.Column(db.String(512), default='')
     tenant_id      = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     category = db.relationship('Category', back_populates='products')
     order_items = db.relationship('OrderItem', back_populates='product')
     daily_stocks = db.relationship('DailyStock', back_populates='product')
+
+    @property
+    def allergen_list(self):
+        keys = [k.strip() for k in (self.allergens or '').split(',') if k.strip()]
+        return [(k, *ALLERGEN_LABELS[k]) for k in keys if k in ALLERGEN_LABELS]
 
     def available_today(self):
         stock = DailyStock.query.filter_by(product_id=self.id, stock_date=date.today()).first()
