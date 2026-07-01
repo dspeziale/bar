@@ -127,6 +127,10 @@ def dashboard():
     total_wallet = round(sum(u.wallet_balance for u in wallet_users), 2)
     consumable_alerts = ConsumableItem.query.filter_by(**_tenant_filter())\
         .filter(ConsumableItem.alert_active == True).count()
+    # Panoramica pasti aziendali — tutte le opzioni di oggi
+    corp_meals_today = DailyFixedMeal.query.filter_by(meal_date=today)\
+        .order_by(DailyFixedMeal.corporate_id, DailyFixedMeal.name).all()
+
     today_meal_booking    = None
     meal_booking_reminder = False
     membership = getattr(current_user, 'corporate_membership', None)
@@ -157,7 +161,8 @@ def dashboard():
                            total_wallet=total_wallet,
                            consumable_alerts=consumable_alerts,
                            today_meal_booking=today_meal_booking,
-                           meal_booking_reminder=meal_booking_reminder)
+                           meal_booking_reminder=meal_booking_reminder,
+                           corp_meals_today=corp_meals_today)
 
 
 # ── Prodotti ──────────────────────────────────────────────────────────────────
