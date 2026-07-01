@@ -19,12 +19,15 @@
   .tbl-number { font-size:1.4rem; font-weight:700; line-height:1; }
   .tbl-seats  { font-size:.74rem; color:var(--QuickLunch-text-muted); }
   .tbl-status { font-size:.72rem; font-weight:600; margin-top:.2rem; }
-  .band-section { margin-bottom:1.2rem; }
-  .band-header { background:linear-gradient(90deg,#17a2b8,#0f3460); color:#fff;
-                 border-radius:.5rem .5rem 0 0; padding:.6rem 1rem;
-                 font-weight:700; font-size:.95rem; }
+  .band-section { margin-bottom:1rem; }
+  .band-toggle { background:linear-gradient(90deg,#17a2b8,#0f3460); color:#fff;
+                 border-radius:.5rem; padding:.6rem 1rem; font-weight:700; font-size:.95rem;
+                 display:flex; align-items:center; justify-content:space-between;
+                 cursor:pointer; border:none; width:100%; text-align:left; }
+  .band-toggle .chevron { transition:transform .2s; }
+  .band-toggle[aria-expanded="false"] .chevron { transform:rotate(-90deg); }
   .band-body { border:1px solid #dee2e6; border-radius:0 0 .5rem .5rem;
-               padding:.85rem; }
+               padding:.85rem; margin-top:-4px; }
   .slot-section { margin-bottom:.9rem; }
   .slot-heading { font-size:.8rem; font-weight:700; color:#495057; text-transform:uppercase;
                   letter-spacing:.05em; margin-bottom:.45rem; }
@@ -94,14 +97,20 @@
     {% for band in bands %}
     {% set slots = band.computed_slots() %}
     <div class="band-section">
-      <div class="band-header">
-        <i class="fas fa-hourglass-half mr-2"></i>
-        {{ band.start_time }} – {{ band.end_time }}
-        <span style="opacity:.75;font-weight:400;font-size:.82rem;margin-left:.4rem;">
-          ({{ band.duration_minutes }} min)
+      <button class="band-toggle" type="button"
+              data-toggle="collapse" data-target="#band{{ band.id }}"
+              aria-expanded="true" aria-controls="band{{ band.id }}">
+        <span>
+          <i class="fas fa-hourglass-half mr-2"></i>
+          {{ band.start_time }} – {{ band.end_time }}
+          <span style="opacity:.75;font-weight:400;font-size:.82rem;margin-left:.4rem;">
+            ({{ band.duration_minutes }} min)
+          </span>
         </span>
-      </div>
-      <div class="band-body">
+        <i class="fas fa-chevron-down chevron"></i>
+      </button>
+      <div class="collapse show" id="band{{ band.id }}">
+        <div class="band-body">
           {% if slots %}
           {% for slot_time in slots %}
           <div class="slot-section">
