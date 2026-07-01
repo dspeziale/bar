@@ -296,7 +296,31 @@ def order_status(oid):
     db.session.commit()
     flash(f'Ordine #{order.id} → {new_status}', 'success')
     order_ref = order.order_code or f'#{order.id}'
-    if new_status == 'ready':
+    if new_status == 'preparing':
+        has_grill = any(ci.grill_requested for ci in order.custom_items)
+        if has_grill:
+            send_telegram(
+                f'🔥 <b>PANINO SULLA PIASTRA</b>\n'
+                f'Ordine <b>{order_ref}</b> — {order.user.full_name}\n'
+                + '\n'.join(
+                    f'  • {ci.label}'
+                    for ci in order.custom_items if ci.grill_requested
+                )
+            )
+        else:
+            send_telegram(
+                f'👨‍🍳 Ordine <b>{order_ref}</b> in preparazione\n'
+                f'👤 {order.user.full_name}'
+            )
+        send_telegram_to_user(
+            order.user,
+            f'👨‍🍳 Il tuo ordine <b>{order_ref}</b> è <b>in preparazione</b>!\n'
+            f'Ti avvisiamo quando è pronto.'
+        )
+    elif new_status == 'ready':
+        send_telegram(
+            f'🔔 Ordine <b>{order_ref}</b> PRONTO — {order.user.full_name}'
+        )
         send_telegram_to_user(
             order.user,
             f'🔔 Il tuo ordine <b>{order_ref}</b> è <b>PRONTO</b> per il ritiro!\n'
@@ -674,6 +698,12 @@ def reservation_cancel(rid):
     res.status = 'cancelled'
     db.session.commit()
     flash(f'Prenotazione tavolo {res.table.number} annullata.', 'info')
+    send_telegram_to_user(
+        res.user,
+        f'❌ La tua prenotazione del tavolo <b>{res.table.number}</b> '
+        f'per le <b>{res.session_start}</b> del '
+        f'{res.reservation_date.strftime("%d/%m/%Y")} è stata annullata dall\'amministratore.'
+    )
     return redirect(url_for('admin.tavoli'))
 
 
@@ -1800,6 +1830,13 @@ def reservation_checkin(rid):
     res.table_alert_sent = False
     db.session.commit()
     flash(f'Check-in tavolo {res.table.number} — {res.user.username}.', 'success')
+    send_telegram(
+        f'🟢 <b>Tavolo {res.table.number} OCCUPATO</b>\n'
+        f'👤 {res.user.full_name}\n'
+        f'🕐 Dalle <b>{res.session_start}</b> — '
+        f'{res.reservation_date.strftime("%d/%m/%Y")}'
+        + (f'\n👥 {res.party_size} persone' if getattr(res, 'party_size', None) else '')
+    )
     return redirect(url_for('admin.tavoli'))
 
 

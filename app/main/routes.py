@@ -4,7 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
-from app.notifications import send_telegram_to_user
+from app.notifications import send_telegram, send_telegram_to_user
 from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
@@ -205,11 +205,28 @@ def place_order():
     session.pop('cart', None)
     session.pop('custom_cart', None)
     flash(f'Ordine {order.order_code} confermato! Ritira alle {slot.time_str}.', 'success')
+
+    # notifica utente
     send_telegram_to_user(
         current_user,
         f'✅ Ordine <b>{order.order_code}</b> confermato!\n'
         f'Ritiro alle <b>{slot.time_str}</b>. Totale: <b>{total:.2f}€</b>'
     )
+
+    # notifica admin / cucina
+    lines = [f'🛒 <b>Nuovo ordine</b> — {order.order_code}',
+             f'👤 {current_user.full_name}  •  ritiro: <b>{slot.time_str}</b>',
+             f'💶 Totale: <b>{total:.2f}€</b>', '']
+    for item in order.items:
+        lines.append(f'  • {item.quantity}× {item.product.name}')
+    for ci in order.custom_items:
+        grill_tag = ' 🔥 <b>PIASTRA</b>' if ci.grill_requested else ''
+        lines.append(f'  • {ci.label}{grill_tag}')
+    has_grill = any(ci.grill_requested for ci in order.custom_items)
+    if has_grill:
+        lines.insert(0, '🔥 <b>PANINO SULLA PIASTRA!</b>')
+    send_telegram('\n'.join(lines))
+
     return redirect(url_for('main.my_orders'))
 
 
@@ -494,6 +511,23 @@ def table_book():
     db.session.add(res)
     db.session.commit()
     flash(f'Tavolo {table.number} prenotato per le {session_start}!', 'success')
+
+    date_label = res_date.strftime('%d/%m/%Y')
+    # notifica utente
+    send_telegram_to_user(
+        current_user,
+        f'🪑 Prenotazione confermata!\n'
+        f'Tavolo <b>{table.number}</b> ({table.seats} posti) — '
+        f'<b>{session_start}</b> del {date_label}'
+    )
+    # notifica admin
+    send_telegram(
+        f'🪑 <b>Nuova prenotazione tavolo</b>\n'
+        f'👤 {current_user.full_name}\n'
+        f'🪑 Tavolo <b>{table.number}</b> — <b>{session_start}</b> — {date_label}\n'
+        f'👥 {party_size} person{"a" if party_size == 1 else "e"}'
+        + (f'\n📝 {notes}' if notes else '')
+    )
     return redirect(url_for('main.my_reservations'))
 
 
@@ -519,6 +553,12 @@ def cancel_reservation(rid):
     res.status = 'cancelled'
     db.session.commit()
     flash(f'Prenotazione tavolo {res.table.number} annullata.', 'info')
+    send_telegram(
+        f'❌ <b>Prenotazione annullata</b> (dall\'utente)\n'
+        f'👤 {current_user.full_name}\n'
+        f'🪑 Tavolo <b>{res.table.number}</b> — <b>{res.session_start}</b> — '
+        f'{res.reservation_date.strftime("%d/%m/%Y")}'
+    )
     return redirect(url_for('main.my_reservations'))
 
 

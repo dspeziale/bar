@@ -4,7 +4,7 @@ from flask_login import login_user, current_user
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
-from app.notifications import get_setting
+from app.notifications import get_setting, send_telegram
 
 
 def _apply_registration_bonus(user):
@@ -79,6 +79,10 @@ def register(slug):
             db.session.add(user)
             db.session.commit()
             _apply_registration_bonus(user)
+            send_telegram(
+                f'🆕 <b>Nuovo utente registrato</b> — {tenant.name}\n'
+                f'📧 {email}'
+            )
             login_user(user, remember=True)
             flash(f'Benvenuto in {tenant.name}!', 'success')
             return redirect(url_for('main.index'))
@@ -165,6 +169,10 @@ def google_callback():
         db.session.add(user)
         db.session.commit()
         _apply_registration_bonus(user)
+        send_telegram(
+            f'🆕 <b>Nuovo utente Google</b> — {tenant.name}\n'
+            f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
+        )
         flash('Account creato con Google. Benvenuto!', 'success')
 
     if not user.is_active:
