@@ -1440,6 +1440,7 @@ def maintenance():
         op = request.form.get('operation', '')
 
         if op == 'clear_orders':
+            db.session.execute(db.text('UPDATE transactions SET order_id = NULL WHERE order_id IS NOT NULL'))
             CustomOrderItemIngredient.query.delete(synchronize_session=False)
             CustomOrderItem.query.delete(synchronize_session=False)
             OrderItem.query.delete(synchronize_session=False)
@@ -1478,10 +1479,16 @@ def maintenance():
         elif op == 'clear_clients':
             client_ids = [u.id for u in User.query.filter_by(is_client=True).all()]
             if client_ids:
-                Transaction.query.filter(Transaction.user_id.in_(client_ids)).delete(synchronize_session=False)
-                TableReservation.query.filter(TableReservation.user_id.in_(client_ids)).delete(synchronize_session=False)
                 order_ids = [o.id for o in Order.query.filter(Order.user_id.in_(client_ids)).all()]
                 if order_ids:
+                    db.session.execute(
+                        db.text('UPDATE transactions SET order_id = NULL WHERE order_id = ANY(:ids)'),
+                        {'ids': order_ids}
+                    ) if db.engine.url.drivername.startswith('postgresql') else \
+                    db.session.execute(
+                        db.text('UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(
+                            ','.join(str(i) for i in order_ids)))
+                    )
                     CustomOrderItemIngredient.query.filter(
                         CustomOrderItemIngredient.custom_item_id.in_(
                             db.session.query(CustomOrderItem.id).filter(CustomOrderItem.order_id.in_(order_ids))
@@ -1491,11 +1498,14 @@ def maintenance():
                     OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
                     CorporateMealBooking.query.filter(CorporateMealBooking.order_id.in_(order_ids)).delete(synchronize_session=False)
                     Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+                TableReservation.query.filter(TableReservation.user_id.in_(client_ids)).delete(synchronize_session=False)
+                Transaction.query.filter(Transaction.user_id.in_(client_ids)).delete(synchronize_session=False)
                 User.query.filter_by(is_client=True).delete(synchronize_session=False)
             db.session.commit()
             flash('Tutti i clienti e i loro dati eliminati.', 'success')
 
         elif op == 'reset_all':
+            db.session.execute(db.text('UPDATE transactions SET order_id = NULL WHERE order_id IS NOT NULL'))
             CustomOrderItemIngredient.query.delete(synchronize_session=False)
             CustomOrderItem.query.delete(synchronize_session=False)
             OrderItem.query.delete(synchronize_session=False)
