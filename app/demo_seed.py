@@ -319,13 +319,23 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
 
 
 def reset_demo_data():
-    """Svuota catalogo e clienti del tenant 'default' (il tenant rimane)."""
+    """
+    - Elimina completamente tutti i tenant diversi da 'default'.
+    - Svuota catalogo e clienti del tenant 'default' (il tenant rimane).
+    """
     default_t = Tenant.query.filter_by(slug='default').first()
-    if not default_t:
-        return True, 'Nessun dato demo presente: nulla da resettare.'
-    _delete_tenant_data([default_t.id], delete_tenants=False, clients_only=True)
+
+    # Elimina tutti i tenant extra (quelli creati dal vecchio seed multi-tenant)
+    extra = Tenant.query.filter(Tenant.slug != 'default').all()
+    if extra:
+        _delete_tenant_data([t.id for t in extra], delete_tenants=True, clients_only=False)
+
+    if default_t:
+        _delete_tenant_data([default_t.id], delete_tenants=False, clients_only=True)
+
     db.session.commit()
-    return True, 'Reset completato: tenant default svuotato.'
+    removed = len(extra)
+    return True, f'Reset completato: {removed} tenant extra rimossi, tenant default svuotato.'
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
