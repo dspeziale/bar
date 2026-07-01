@@ -166,12 +166,19 @@ def place_order():
         flash('Il carrello è vuoto.', 'warning')
         return redirect(url_for('main.menu'))
 
-    slot_id = request.form.get('slot_id', type=int)
-    notes = request.form.get('notes', '').strip()
-    slot = db.session.get(TimeSlot, slot_id)
-    if not slot or not slot.is_active or slot.is_full():
-        flash('Slot di ritiro non disponibile. Scegline un altro.', 'danger')
-        return redirect(url_for('main.cart'))
+    slot_raw = request.form.get('slot_id', '')
+    notes    = request.form.get('notes', '').strip()
+    banco    = (slot_raw == 'banco')
+
+    if banco:
+        slot_id = None
+        slot    = None
+    else:
+        slot_id = int(slot_raw) if slot_raw.isdigit() else None
+        slot    = db.session.get(TimeSlot, slot_id) if slot_id else None
+        if not slot or not slot.is_active or slot.is_full():
+            flash('Slot di ritiro non disponibile. Scegline un altro.', 'danger')
+            return redirect(url_for('main.cart'))
 
     # Valida prodotti regolari
     regular_items = []
@@ -223,9 +230,11 @@ def place_order():
                 price_extra=ing.get('price_extra', 0.0)
             ))
 
+    slot_tag   = 'BANCO' if banco else slot.time_str.replace(':', '')
+    slot_label = 'adesso al banco' if banco else f'alle {slot.time_str}'
     order.order_code = (
         f"QuickLunch-{order.order_date.strftime('%y%m%d')}"
-        f"-{slot.time_str.replace(':', '')}"
+        f"-{slot_tag}"
         f"-{order.id:04d}"
     )
     order.compute_total()
@@ -237,18 +246,18 @@ def place_order():
     db.session.commit()
     session.pop('cart', None)
     session.pop('custom_cart', None)
-    flash(f'Ordine {order.order_code} confermato! Ritira alle {slot.time_str}.', 'success')
+    flash(f'Ordine {order.order_code} confermato! Ritiro {slot_label}.', 'success')
 
     # notifica utente
     send_telegram_to_user(
         current_user,
         f'✅ Ordine <b>{order.order_code}</b> confermato!\n'
-        f'Ritiro alle <b>{slot.time_str}</b>. Totale: <b>{total:.2f}€</b>'
+        f'Ritiro {slot_label}. Totale: <b>{total:.2f}€</b>'
     )
 
     # notifica admin / cucina
     lines = [f'🛒 <b>Nuovo ordine</b> — {order.order_code}',
-             f'👤 {current_user.full_name}  •  ritiro: <b>{slot.time_str}</b>',
+             f'👤 {current_user.full_name}  •  ritiro: <b>{slot_label}</b>',
              f'💶 Totale: <b>{total:.2f}€</b>', '']
     for item in order.items:
         lines.append(f'  • {item.quantity}× {item.product.name}')

@@ -137,10 +137,21 @@
         <form method="POST" action="{{ url_for('main.place_order') }}">
           <div class="form-group">
             <label><i class="fas fa-clock mr-1"></i><strong>Orario di ritiro</strong></label>
+
+            <div class="custom-control custom-radio mb-2">
+              <input type="radio" id="slot_banco" name="slot_id" value="banco"
+                     class="custom-control-input" onchange="toggleSlots(this)">
+              <label class="custom-control-label font-weight-bold text-primary" for="slot_banco">
+                <i class="fas fa-store mr-1"></i>Adesso al banco
+                <span class="badge badge-primary ml-1" style="font-size:.65rem;">Subito</span>
+              </label>
+            </div>
+
+            <div id="slot-list">
             {% for slot in slots %}
             <div class="custom-control custom-radio mb-1">
               <input type="radio" id="slot_{{ slot.id }}" name="slot_id" value="{{ slot.id }}"
-                     class="custom-control-input"
+                     class="custom-control-input" onchange="toggleSlots(this)"
                      {% if slot.is_full() %}disabled{% endif %}
                      {% if loop.first and not slot.is_full() %}checked{% endif %}>
               <label class="custom-control-label {% if slot.is_full() %}text-muted{% endif %}"
@@ -156,6 +167,7 @@
               </label>
             </div>
             {% endfor %}
+            </div>
           </div>
           <div class="form-group">
             <label><i class="fas fa-comment mr-1"></i>Note</label>
@@ -190,4 +202,12 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleSlots(radio) {
+  document.getElementById('slot-list').style.opacity = (radio.value === 'banco') ? '.4' : '1';
+}
+</script>
 {% endblock %}
