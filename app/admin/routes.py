@@ -11,7 +11,9 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Permission, Role, AppSetting, Poll, PollChoice, PollVote,
                         Tenant, Supplier, ConsumableItem, ConsumableMovement,
                         CorporateAccount, CorporateMembership,
-                        DailyFixedMeal, CorporateMealBooking, ALLERGENS)
+                        DailyFixedMeal, CorporateMealBooking,
+                        Transaction, CustomOrderItem, CustomOrderItemIngredient,
+                        ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
                                 telegram_poll_message, email_poll_html, get_setting)
@@ -1424,6 +1426,132 @@ def convenzione_consuma(cid, bid):
     d = request.args.get('d', '')
     flash(f'Pasto di {booking.user.username} segnato come consumato.', 'success')
     return redirect(url_for('admin.convenzione_pasto', cid=cid, d=d or None))
+
+
+# ── Manutenzione ──────────────────────────────────────────────────────────────
+
+@bp.route('/maintenance', methods=['GET', 'POST'])
+@login_required
+def maintenance():
+    if not current_user.is_admin:
+        abort(403)
+
+    if request.method == 'POST':
+        op = request.form.get('operation', '')
+
+        if op == 'clear_orders':
+            CustomOrderItemIngredient.query.delete(synchronize_session=False)
+            CustomOrderItem.query.delete(synchronize_session=False)
+            OrderItem.query.delete(synchronize_session=False)
+            CorporateMealBooking.query.delete(synchronize_session=False)
+            Order.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Tutti gli ordini eliminati.', 'success')
+
+        elif op == 'clear_reservations':
+            TableReservation.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Tutte le prenotazioni tavoli eliminate.', 'success')
+
+        elif op == 'clear_transactions':
+            Transaction.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Tutte le transazioni eliminate.', 'success')
+
+        elif op == 'clear_polls':
+            PollVote.query.delete(synchronize_session=False)
+            PollChoice.query.delete(synchronize_session=False)
+            Poll.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Tutti i sondaggi eliminati.', 'success')
+
+        elif op == 'clear_stock':
+            DailyStock.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Stock giornaliero eliminato.', 'success')
+
+        elif op == 'clear_movements':
+            ConsumableMovement.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Movimenti magazzino eliminati.', 'success')
+
+        elif op == 'clear_clients':
+            client_ids = [u.id for u in User.query.filter_by(is_client=True).all()]
+            if client_ids:
+                Transaction.query.filter(Transaction.user_id.in_(client_ids)).delete(synchronize_session=False)
+                TableReservation.query.filter(TableReservation.user_id.in_(client_ids)).delete(synchronize_session=False)
+                order_ids = [o.id for o in Order.query.filter(Order.user_id.in_(client_ids)).all()]
+                if order_ids:
+                    CustomOrderItemIngredient.query.filter(
+                        CustomOrderItemIngredient.custom_item_id.in_(
+                            db.session.query(CustomOrderItem.id).filter(CustomOrderItem.order_id.in_(order_ids))
+                        )
+                    ).delete(synchronize_session=False)
+                    CustomOrderItem.query.filter(CustomOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+                    OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+                    CorporateMealBooking.query.filter(CorporateMealBooking.order_id.in_(order_ids)).delete(synchronize_session=False)
+                    Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+                User.query.filter_by(is_client=True).delete(synchronize_session=False)
+            db.session.commit()
+            flash('Tutti i clienti e i loro dati eliminati.', 'success')
+
+        elif op == 'reset_all':
+            CustomOrderItemIngredient.query.delete(synchronize_session=False)
+            CustomOrderItem.query.delete(synchronize_session=False)
+            OrderItem.query.delete(synchronize_session=False)
+            CorporateMealBooking.query.delete(synchronize_session=False)
+            Order.query.delete(synchronize_session=False)
+            TableReservation.query.delete(synchronize_session=False)
+            Transaction.query.delete(synchronize_session=False)
+            PollVote.query.delete(synchronize_session=False)
+            PollChoice.query.delete(synchronize_session=False)
+            Poll.query.delete(synchronize_session=False)
+            DailyStock.query.delete(synchronize_session=False)
+            ConsumableMovement.query.delete(synchronize_session=False)
+            User.query.filter_by(is_client=True).delete(synchronize_session=False)
+            db.session.commit()
+            flash('Reset completo eseguito.', 'success')
+
+        elif op == 'reset_admin':
+            import re as _re
+            email    = request.form.get('admin_email', '').strip().lower()
+            password = request.form.get('admin_password', '').strip()
+            username = request.form.get('admin_username', 'admin').strip()
+            if not email or '@' not in email or len(password) < 6:
+                flash('Email valida e password (min 6 caratteri) obbligatorie.', 'danger')
+            else:
+                user = User.query.filter_by(email=email).first()
+                if user:
+                    user.is_admin  = True
+                    user.is_active = True
+                    user.set_password(password)
+                    db.session.commit()
+                    flash(f'Admin "{email}" aggiornato.', 'success')
+                else:
+                    base  = _re.sub(r'[^a-z0-9]', '.', username.lower()).strip('.') or 'admin'
+                    uname, n = base[:30], 1
+                    while User.query.filter_by(username=uname).first():
+                        uname = f'{base[:28]}{n}'; n += 1
+                    new_admin = User(username=uname, email=email,
+                                     is_admin=True, is_active=True)
+                    new_admin.set_password(password)
+                    db.session.add(new_admin)
+                    db.session.commit()
+                    flash(f'Admin "{email}" creato con username "{uname}".', 'success')
+
+        return redirect(url_for('admin.maintenance'))
+
+    stats = {
+        'orders':       Order.query.count(),
+        'reservations': TableReservation.query.count(),
+        'transactions': Transaction.query.count(),
+        'polls':        Poll.query.count(),
+        'stock':        DailyStock.query.count(),
+        'movements':    ConsumableMovement.query.count(),
+        'clients':      User.query.filter_by(is_client=True).count(),
+        'admins':       User.query.filter_by(is_admin=True).all(),
+    }
+    return render_template('admin/maintenance.html', stats=stats)
 
 
 @bp.route('/convenzioni/<int:cid>/presenze')

@@ -685,6 +685,13 @@
                 <p>Tenant</p>
               </a>
             </li>
+            <li class="nav-item">
+              <a href="{{ url_for('admin.maintenance') }}"
+                 class="nav-link {{ 'active' if ep == 'admin.maintenance' }}">
+                <i class="nav-icon fas fa-tools" style="color:#e74c3c;"></i>
+                <p>Manutenzione</p>
+              </a>
+            </li>
             {% endif %}
 
             {# ── REPORT ── #}
