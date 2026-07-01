@@ -42,7 +42,7 @@
         <td>
           {% if r.status == 'confirmed' and r.reservation_date >= today %}
           <form method="POST" action="{{ url_for('main.cancel_reservation', rid=r.id) }}"
-                onsubmit="return confirm('Annullare la prenotazione del tavolo {{ r.table.number }}?')">
+                data-confirm="Annullare la prenotazione del tavolo {{ r.table.number }}?">
             <button class="btn btn-sm btn-outline-danger">
               <i class="fas fa-times mr-1"></i>Annulla
             </button>

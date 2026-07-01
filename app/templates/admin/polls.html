@@ -44,7 +44,7 @@
           </form>
           <!-- Notifica Email -->
           <form method="POST" action="{{ url_for('admin.poll_notify_email', pid=p.id) }}"
-                onsubmit="return confirm('Inviare email a tutti gli utenti?')">
+                data-confirm="Inviare email a tutti gli utenti?">
             <button class="btn btn-xs btn-danger" title="Invia link via email">
               <i class="fas fa-envelope mr-1"></i>Email
             </button>
@@ -58,7 +58,7 @@
           </form>
           <!-- Elimina -->
           <form method="POST" action="{{ url_for('admin.poll_delete', pid=p.id) }}"
-                onsubmit="return confirm('Eliminare il sondaggio e tutti i voti?')">
+                data-confirm="Eliminare il sondaggio e tutti i voti?">
             <button class="btn btn-xs btn-outline-danger">
               <i class="fas fa-trash"></i>
             </button>

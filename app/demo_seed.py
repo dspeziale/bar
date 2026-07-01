@@ -488,6 +488,18 @@ def reset_demo_data():
     if custom_item_ids:
         CustomOrderItemIngredient.query.filter(CustomOrderItemIngredient.custom_item_id.in_(custom_item_ids)).delete(synchronize_session=False)
     if order_ids:
+        # null FK su transactions.order_id prima di eliminare gli ordini (previene FK violation)
+        is_pg = db.engine.url.drivername.startswith('postgresql')
+        if is_pg:
+            db.session.execute(
+                db.text('UPDATE transactions SET order_id = NULL WHERE order_id = ANY(:ids)'),
+                {'ids': order_ids},
+            )
+        else:
+            db.session.execute(
+                db.text('UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(
+                    ','.join(str(i) for i in order_ids)))
+            )
         CustomOrderItem.query.filter(CustomOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
         OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
     Order.query.filter(Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)

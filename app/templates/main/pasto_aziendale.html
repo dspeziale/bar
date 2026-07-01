@@ -82,7 +82,7 @@
 
             {% if my_booking.status == 'booked' %}
             <form method="POST" action="{{ url_for('main.pasto_aziendale_cancella') }}"
-                  onsubmit="return confirm('Annullare la prenotazione?');">
+                  data-confirm="Annullare la prenotazione?">
               <input type="hidden" name="booking_id" value="{{ my_booking.id }}">
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="fas fa-times mr-1"></i>Annulla prenotazione

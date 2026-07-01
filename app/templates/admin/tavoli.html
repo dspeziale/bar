@@ -262,7 +262,7 @@
             <form method="POST"
                   action="{{ url_for('admin.reservation_cancel', rid=r.id) }}"
                   style="display:inline;"
-                  onsubmit="return confirm('{{ cancel_msg }}')">
+                  data-confirm="{{ cancel_msg }}">
               <button class="btn btn-xs btn-outline-danger" title="Annulla">
                 <i class="fas fa-times"></i>
               </button>
@@ -318,7 +318,7 @@
               {% set del_confirm = 'Eliminare definitivamente il Tavolo ' ~ t.number ~ '?' %}
               <form method="POST" action="{{ url_for('admin.table_delete', tid=t.id) }}"
                     style="display:inline;"
-                    onsubmit="return confirm('{{ del_confirm }}')">
+                    data-confirm="{{ del_confirm }}">
                 <button class="btn btn-xs btn-outline-danger" title="Elimina">
                   <i class="fas fa-trash"></i>
                 </button>
@@ -455,7 +455,7 @@
               <form method="POST"
                     action="{{ url_for('admin.band_delete', bid=band.id) }}"
                     style="display:inline;"
-                    onsubmit="return confirm('{{ del_band_confirm }}')">
+                    data-confirm="{{ del_band_confirm }}">
                 <button class="btn btn-xs btn-outline-danger"
                         {{ 'disabled title=Impossibile: ha prenotazioni collegate' if band.reservations }}>
                   <i class="fas fa-trash"></i>

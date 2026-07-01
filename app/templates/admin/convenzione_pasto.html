@@ -150,7 +150,7 @@
           {% if meal %}
           {% set del_confirm = 'Eliminare il pasto del ' ~ sel_date.strftime('%d/%m/%Y') ~ '?' %}
           <button type="submit" name="action" value="delete" class="btn btn-outline-danger"
-                  onclick="return confirm('{{ del_confirm }}');">
+                  data-confirm-click="{{ del_confirm }}">
             <i class="fas fa-trash"></i>
           </button>
           {% endif %}

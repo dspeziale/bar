@@ -52,7 +52,7 @@
         <td>
           {% if o.status in ('pending','confirmed') %}
           <form method="POST" action="{{ url_for('main.cancel_order', order_id=o.id) }}"
-                onsubmit="return confirm('Annullare ordine #{{ o.id }}? Riceverai un rimborso.')">
+                data-confirm="Annullare ordine #{{ o.id }}? Riceverai un rimborso.">
             <button class="btn btn-sm btn-outline-danger">
               <i class="fas fa-times"></i>
             </button>

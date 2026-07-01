@@ -111,7 +111,7 @@
             {% endif %}
             {% if o.status not in ('completed','cancelled') %}
             <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}"
-                  onsubmit="return confirm('Annullare ordine #{{ o.id }}? Sarà rimborsato.')">
+                  data-confirm="Annullare ordine #{{ o.id }}? Sarà rimborsato.">
               <input type="hidden" name="status" value="cancelled">
               <button class="btn btn-xs btn-danger" title="Annulla"><i class="fas fa-times"></i></button>
             </form>

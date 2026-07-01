@@ -17,6 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
   <style>
     /* ═══════════════════════════════════════════════════════════════════
@@ -849,14 +850,14 @@
     </div>
     <div class="content">
       <div class="container-fluid">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show">
-            {{ message }}
-            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-          </div>
-          {% endfor %}
-        {% endwith %}
+        {# flash messages consumed here, shown as SweetAlert2 toasts by ql-swal.js below #}
+        <div id="ql-flashes" style="display:none">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+            <span data-cat="{{ cat }}" data-msg="{{ msg|e }}"></span>
+            {% endfor %}
+          {% endwith %}
+        </div>
         {% block content %}{% endblock %}
       </div>
     </div>
@@ -871,6 +872,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
 function bsrApplyTheme(t) {
   document.documentElement.setAttribute('data-QuickLunch-theme', t);
@@ -909,6 +911,86 @@ document.querySelectorAll('#QuickLunch-sidebar-nav .nav-item.has-treeview > .nav
     this.closest('.nav-item.has-treeview').classList.toggle('menu-open');
   });
 });
+</script>
+{% block scripts %}{% endblock %}
+<script>
+/* ── QuickLunch SweetAlert2 global helpers ─────────────────────────────── */
+(function () {
+  var isDark = document.documentElement.getAttribute('data-QuickLunch-theme') === 'dark';
+
+  /* shared Swal defaults */
+  var base = {
+    customClass: { popup: 'ql-swal-popup' },
+    background: isDark ? '#16213e' : '#fff',
+    color:      isDark ? '#e2e8f0' : '#212529',
+    confirmButtonColor: '#e94560',
+    cancelButtonColor:  '#6c757d',
+    reverseButtons: true,
+  };
+
+  /* 1. Flash messages as toasts */
+  document.querySelectorAll('#ql-flashes [data-cat]').forEach(function (el) {
+    var cat = el.dataset.cat;
+    var msg = el.dataset.msg;
+    var iconMap = { success:'success', danger:'error', warning:'warning', info:'info', primary:'info' };
+    Swal.fire(Object.assign({}, base, {
+      toast: true, position: 'top-end',
+      showConfirmButton: false,
+      timer: 4500, timerProgressBar: true,
+      icon: iconMap[cat] || 'info',
+      title: msg,
+    }));
+  });
+
+  /* 2. Forms with data-confirm or data-confirm-delete */
+  document.querySelectorAll('form[data-confirm], form[data-confirm-delete]').forEach(function (form) {
+    form.addEventListener('submit', function handler(e) {
+      e.preventDefault();
+      var msg     = form.dataset.confirm || form.dataset.confirmDelete;
+      var isDel   = !!form.dataset.confirmDelete;
+      Swal.fire(Object.assign({}, base, {
+        title: isDel ? 'Elimina' : 'Conferma',
+        text:  msg,
+        icon:  isDel ? 'warning' : 'question',
+        showCancelButton:    true,
+        confirmButtonText:   isDel ? '<i class="fas fa-trash-alt"></i>&nbsp;Sì, elimina' : '<i class="fas fa-check"></i>&nbsp;Conferma',
+        cancelButtonText:    'Annulla',
+        confirmButtonColor:  isDel ? '#e74c3c' : '#e94560',
+      })).then(function (r) {
+        if (r.isConfirmed) {
+          form.removeEventListener('submit', handler);
+          form.submit();
+        }
+      });
+    });
+  });
+
+  /* 3. Buttons/links with data-confirm-click */
+  document.querySelectorAll('[data-confirm-click]').forEach(function (el) {
+    el.addEventListener('click', function handler(e) {
+      e.preventDefault(); e.stopPropagation();
+      var msg   = el.dataset.confirmClick;
+      var isDel = el.dataset.confirmDelete !== undefined;
+      Swal.fire(Object.assign({}, base, {
+        title: isDel ? 'Elimina' : 'Conferma',
+        text:  msg,
+        icon:  isDel ? 'warning' : 'question',
+        showCancelButton:   true,
+        confirmButtonText:  isDel ? '<i class="fas fa-trash-alt"></i>&nbsp;Sì, elimina' : '<i class="fas fa-check"></i>&nbsp;Conferma',
+        cancelButtonText:   'Annulla',
+        confirmButtonColor: isDel ? '#e74c3c' : '#e94560',
+      })).then(function (r) {
+        if (r.isConfirmed) {
+          el.removeEventListener('click', handler);
+          var form = el.closest('form');
+          if (form) { form.submit(); }
+          else if (el.href && el.href !== '#') { window.location.href = el.href; }
+          else { el.click(); }
+        }
+      });
+    });
+  });
+})();
 </script>
 {% block extra_js %}{% endblock %}
 </body>

@@ -14,7 +14,7 @@
           </h3>
           <form action="{{ url_for('admin.seed_demo') }}" method="POST" class="mb-0">
             <button type="submit" class="btn btn-sm btn-outline-secondary"
-                    onclick="return confirm('Resettare e ricaricare i dati demo? Verranno PRIMA eliminati i 3 tenant demo esistenti (e tutti i dati collegati), poi ricreati da zero con 36 clienti e circa 90 prodotti alimentari.')"
+                    data-confirm-click="Resettare e ricaricare i dati demo? Verranno PRIMA eliminati i 3 tenant demo esistenti (e tutti i dati collegati), poi ricreati da zero con 36 clienti e circa 90 prodotti alimentari."
                     title="Resetta e ripopola con dati di demo">
               <i class="fas fa-sync-alt mr-1"></i>Reset &amp; Carica Demo
             </button>
@@ -58,7 +58,7 @@
                           method="POST" class="d-inline">
                       <button type="submit" class="btn btn-xs btn-outline-warning"
                               title="Crea admin per questo tenant"
-                              onclick="return confirm('Creare l\'admin per {{ t.name }}? La password verrà mostrata una sola volta.')">
+                              data-confirm-click="Creare l\'admin per {{ t.name }}? La password verrà mostrata una sola volta.">
                         <i class="fas fa-user-plus mr-1"></i>Crea admin
                       </button>
                     </form>
@@ -93,7 +93,7 @@
                   {% if not t.is_active %}
                   <form action="{{ url_for('admin.tenant_delete', tid=t.id) }}" method="POST"
                         class="d-inline"
-                        onsubmit="return confirm('Eliminare il tenant {{ t.name }}?')">
+                        data-confirm="Eliminare il tenant {{ t.name }}?">
                     <button type="submit" class="btn btn-xs btn-outline-danger">
                       <i class="fas fa-trash"></i>
                     </button>

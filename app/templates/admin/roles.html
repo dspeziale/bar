@@ -45,7 +45,7 @@
           </button>
           {% if not role.is_system %}
           <form method="POST" action="{{ url_for('admin.role_delete', rid=role.id) }}"
-                onsubmit="return confirm('Eliminare il ruolo «{{ role.label }}»?')">
+                data-confirm="Eliminare il ruolo «{{ role.label }}»?">
             <button class="btn btn-xs btn-outline-danger">
               <i class="fas fa-trash"></i>
             </button>

@@ -63,7 +63,7 @@
             </a>
             <form method="POST" action="{{ url_for('admin.fornitore_delete', sid=s.id) }}"
                   style="display:inline;"
-                  onsubmit="return confirm('Eliminare il fornitore {{ s.name }}? Gli articoli associati rimarranno senza fornitore.');">
+                  data-confirm="Eliminare il fornitore {{ s.name }}? Gli articoli associati rimarranno senza fornitore.">
               <button class="btn btn-xs btn-outline-danger" title="Elimina">
                 <i class="fas fa-trash"></i>
               </button>

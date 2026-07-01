@@ -88,7 +88,7 @@
             <td>
               {% if o.status in ('pending','confirmed') %}
               <form method="POST" action="{{ url_for('main.cancel_order', order_id=o.id) }}"
-                    onsubmit="return confirm('Annullare ordine #{{ o.id }}?')">
+                    data-confirm="Annullare ordine #{{ o.id }}?">
                 <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
               </form>
               {% endif %}
@@ -122,7 +122,7 @@
             <td><i class="fas fa-users mr-1 text-muted"></i>{{ r.party_size }}</td>
             <td>
               <form method="POST" action="{{ url_for('main.cancel_reservation', rid=r.id) }}"
-                    onsubmit="return confirm('Annullare prenotazione tavolo {{ r.table.number }}?')">
+                    data-confirm="Annullare prenotazione tavolo {{ r.table.number }}?">
                 <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
               </form>
             </td>

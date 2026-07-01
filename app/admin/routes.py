@@ -95,8 +95,8 @@ def dashboard():
 @require_permission('manage_products')
 def products():
     return render_template('admin/products.html',
-                           products=Product.query.order_by(Product.category_id, Product.name).all(),
-                           categories=Category.query.order_by(Category.name).all())
+                           products=Product.query.filter_by(**_tenant_filter()).order_by(Product.category_id, Product.name).all(),
+                           categories=Category.query.filter_by(**_tenant_filter()).order_by(Category.name).all())
 
 
 @bp.route('/products/new', methods=['POST'])
@@ -463,8 +463,9 @@ def user_roles_assign(uid):
 @bp.route('/categories')
 @require_permission('manage_categories')
 def categories():
-    return render_template('admin/categories.html',
-                           categories=Category.query.order_by(Category.name).all())
+    cats = Category.query.filter_by(**_tenant_filter()).order_by(Category.name).all()
+    tenant_map = {t.id: t for t in Tenant.query.all()} if current_user.is_admin else {}
+    return render_template('admin/categories.html', categories=cats, tenant_map=tenant_map)
 
 
 @bp.route('/categories/new', methods=['POST'])
@@ -474,12 +475,14 @@ def category_new():
     if not name:
         flash('Nome obbligatorio.', 'danger')
         return redirect(url_for('admin.categories'))
-    if Category.query.filter_by(name=name).first():
+    tid = current_user.tenant_id
+    if Category.query.filter_by(name=name, tenant_id=tid).first():
         flash('Categoria già esistente.', 'warning')
         return redirect(url_for('admin.categories'))
     db.session.add(Category(name=name,
                             icon=request.form.get('icon', 'fa-utensils'),
-                            color=request.form.get('color', 'secondary')))
+                            color=request.form.get('color', 'secondary'),
+                            tenant_id=tid))
     db.session.commit()
     flash(f'Categoria "{name}" creata.', 'success')
     return redirect(url_for('admin.categories'))
