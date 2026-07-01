@@ -1,70 +1,66 @@
 {% extends "base.html" %}
-{% block title %}Pasto del giorno — {{ corp.name }}{% endblock %}
-{% block page_title %}Pasto del giorno — {{ corp.name }}{% endblock %}
+{% block title %}Opzioni pasto — {{ corp.name }}{% endblock %}
+{% block page_title %}Opzioni pasto — {{ corp.name }}{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
 <li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
-<li class="breadcrumb-item active">Pasto del giorno</li>
+<li class="breadcrumb-item active">Opzioni pasto</li>
 {% endblock %}
 
 {% block content %}
-{# ── Dati configurazioni per JS ── #}
-<script>
-var MEAL_CONFIGS = {{ configs_json|safe }};
-</script>
+<script>var MEAL_CONFIGS = {{ configs_json|safe }};</script>
 
 {# ── Navigazione date ── #}
 <div class="d-flex align-items-center justify-content-between mb-3">
   <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id, d=prev_date.isoformat()) }}"
      class="btn btn-sm btn-outline-secondary">
-    <i class="fas fa-chevron-left mr-1"></i>{{ prev_date.strftime('%d/%m/%Y') }}
+    <i class="fas fa-chevron-left mr-1"></i>{{ prev_date.strftime('%d/%m') }}
   </a>
   <div class="text-center">
     <strong style="font-size:1.1rem;">{{ sel_date.strftime('%A %d %B %Y')|capitalize }}</strong>
-    {% if sel_date == today %}
-    <span class="badge badge-success ml-1">Oggi</span>
-    {% endif %}
+    {% if sel_date == today %}<span class="badge badge-success ml-1">Oggi</span>{% endif %}
   </div>
   <div class="d-flex" style="gap:.4rem;">
     {% if sel_date < today %}
     <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id, d=next_date.isoformat()) }}"
        class="btn btn-sm btn-outline-secondary">
-      {{ next_date.strftime('%d/%m/%Y') }}<i class="fas fa-chevron-right ml-1"></i>
+      {{ next_date.strftime('%d/%m') }}<i class="fas fa-chevron-right ml-1"></i>
     </a>
     {% endif %}
     {% if sel_date != today %}
     <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}"
-       class="btn btn-sm btn-outline-primary">Vai a oggi</a>
+       class="btn btn-sm btn-outline-primary">Oggi</a>
     {% endif %}
     <a href="{{ url_for('admin.convenzione_presenze', cid=corp.id) }}"
-       class="btn btn-sm btn-outline-info">
-      <i class="fas fa-list-check mr-1"></i>Presenze mensili
+       class="btn btn-sm btn-outline-info" title="Presenze mensili">
+      <i class="fas fa-list-check"></i>
     </a>
     <a href="{{ url_for('admin.convenzione_configurazioni', cid=corp.id) }}"
-       class="btn btn-sm btn-outline-secondary">
-      <i class="fas fa-layer-group mr-1"></i>Configurazioni
+       class="btn btn-sm btn-outline-secondary" title="Gestisci configurazioni">
+      <i class="fas fa-layer-group"></i>
     </a>
   </div>
 </div>
 
 <div class="row">
 
-  {# ── Form pasto ── #}
+  {# ── Form aggiunta nuova opzione ── #}
   <div class="col-lg-5">
     <div class="card card-outline card-success">
       <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-utensils mr-2"></i>Menu del giorno
-        </h3>
+        <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Aggiungi opzione</h3>
       </div>
-      <form method="POST" id="mealForm">
-        <input type="hidden" name="action" value="save">
+      <form method="POST" id="addForm">
+        <input type="hidden" name="action" value="add">
+        {% if sel_date != today %}
+        <input type="hidden" name="d" value="{{ sel_date.isoformat() }}">
+        {% endif %}
         <div class="card-body">
 
           {% if configs_json != '{}' %}
           <div class="form-group mb-3">
-            <label class="mb-1" style="font-size:.85rem;color:#888;">
-              <i class="fas fa-layer-group mr-1"></i>Carica una configurazione
+            <label class="mb-1 text-muted" style="font-size:.85rem;">
+              <i class="fas fa-layer-group mr-1"></i>Carica da configurazione
             </label>
             <div class="input-group input-group-sm">
               <select id="cfgSelect" class="form-control">
@@ -75,7 +71,7 @@ var MEAL_CONFIGS = {{ configs_json|safe }};
               </select>
               <div class="input-group-append">
                 <button type="button" class="btn btn-outline-secondary" id="btnLoadCfg">
-                  <i class="fas fa-download mr-1"></i>Carica
+                  <i class="fas fa-download"></i>
                 </button>
               </div>
             </div>
@@ -83,195 +79,176 @@ var MEAL_CONFIGS = {{ configs_json|safe }};
           <hr class="mt-1 mb-3">
           {% endif %}
 
-          <div class="form-group">
-            <label>Nome del pasto <span class="text-danger">*</span></label>
-            <input type="text" name="name" class="form-control"
-                   value="{{ meal.name if meal else '' }}"
-                   placeholder="es. Menù del giovedì" required>
-          </div>
-
-          <hr class="my-2">
-          <p class="text-muted mb-2" style="font-size:.85rem;"><i class="fas fa-list-ul mr-1"></i>Portate del menù</p>
-
-          <div class="form-group mb-2">
-            <label class="mb-0"><span class="badge badge-primary mr-1">Primo</span></label>
-            <input type="text" name="primo" class="form-control form-control-sm"
-                   value="{{ meal.primo if meal else '' }}"
-                   placeholder="es. Risotto al ragù">
-          </div>
-
-          <div class="form-group mb-2">
-            <label class="mb-0"><span class="badge badge-success mr-1">Secondo</span></label>
-            <input type="text" name="secondo" class="form-control form-control-sm"
-                   value="{{ meal.secondo if meal else '' }}"
-                   placeholder="es. Pollo alla griglia">
-          </div>
-
-          <div class="form-group mb-2">
-            <label class="mb-0"><span class="badge badge-warning mr-1">Contorno</span></label>
-            <input type="text" name="contorno" class="form-control form-control-sm"
-                   value="{{ meal.contorno if meal else '' }}"
-                   placeholder="es. Insalata mista">
-          </div>
-
-          <div class="form-group mb-2">
-            <label class="mb-0"><span class="badge badge-info mr-1">Bevanda</span></label>
-            <input type="text" name="bevanda" class="form-control form-control-sm"
-                   value="{{ meal.bevanda if meal else '' }}"
-                   placeholder="es. Acqua naturale o Coca-Cola 33cl">
-          </div>
-
-          <div class="form-group mb-0">
-            <label class="mb-0"><span class="badge badge-secondary mr-1">Caffè</span></label>
-            <input type="text" name="caffe" class="form-control form-control-sm"
-                   value="{{ meal.caffe if meal else '' }}"
-                   placeholder="es. Caffè incluso">
-          </div>
-
-          <hr class="my-3">
-
-          <div class="form-group">
-            <label>Note libere</label>
-            <textarea name="description" class="form-control form-control-sm" rows="2"
-                      placeholder="Note aggiuntive…">{{ meal.description if meal else '' }}</textarea>
-          </div>
-
-          <div class="form-group">
-            <label>Allergeni presenti</label>
-            <div class="row" style="margin:0;">
-              {% set selected_allergens = (meal.allergens.split(',') if meal and meal.allergens else []) %}
-              {% for key, label, icon in allergens_list %}
-              <div class="col-6 col-md-4">
-                <div class="form-check">
-                  <input type="checkbox" name="allergens" value="{{ key }}" class="form-check-input"
-                         id="alg_{{ key }}" {{ 'checked' if key in selected_allergens }}>
-                  <label class="form-check-label" for="alg_{{ key }}">{{ icon }} {{ label }}</label>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-
-          <hr class="my-2">
-
-          <div class="form-row">
-            <div class="form-group col-6">
-              <label>Prezzo fatturato (€)</label>
-              <input type="number" name="price" step="0.50" min="0" class="form-control form-control-sm"
-                     value="{{ '%.2f'|format(meal.price if meal else corp.daily_price) }}">
-            </div>
-            <div class="form-group col-6">
-              <label>Prenotazioni max</label>
-              <input type="number" name="max_bookings" min="1" class="form-control form-control-sm"
-                     value="{{ meal.max_bookings if meal else corp.max_daily_covers }}">
-            </div>
-          </div>
-
-          <div class="form-check">
-            <input type="checkbox" name="is_active" class="form-check-input" id="chk_act"
-                   {{ 'checked' if not meal or meal.is_active }}>
-            <label class="form-check-label" for="chk_act">Pasto attivo (visibile ai dipendenti)</label>
-          </div>
+          {% set meal = none %}
+          {% include 'admin/_meal_form_fields.html' with context %}
 
         </div>
-        <div class="card-footer d-flex" style="gap:.4rem;">
-          <button type="submit" class="btn btn-success flex-fill">
-            <i class="fas fa-save mr-1"></i>Salva pasto
+        <div class="card-footer">
+          <button type="submit" class="btn btn-success btn-block">
+            <i class="fas fa-plus mr-1"></i>Aggiungi opzione
           </button>
-          {% if meal %}
-          {% set del_confirm = 'Eliminare il pasto del ' ~ sel_date.strftime('%d/%m/%Y') ~ '?' %}
-          <button type="submit" name="action" value="delete" class="btn btn-outline-danger"
-                  data-confirm-click="{{ del_confirm }}">
-            <i class="fas fa-trash"></i>
-          </button>
-          {% endif %}
         </div>
       </form>
     </div>
   </div>
 
-  {# ── Lista prenotazioni ── #}
+  {# ── Opzioni del giorno ── #}
   <div class="col-lg-7">
-    <div class="card card-outline card-info">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="card-title"><i class="fas fa-list-check mr-2"></i>Prenotazioni — {{ sel_date.strftime('%d/%m/%Y') }}</h3>
-        {% if meal %}
-        <span class="badge badge-info" style="font-size:.9rem;">
-          {{ meal.booking_count }} / {{ meal.max_bookings }}
+
+    {% if not meals %}
+    <div class="callout callout-warning text-center py-4">
+      <i class="fas fa-utensils fa-2x text-muted mb-2 d-block"></i>
+      <p class="mb-0">Nessuna opzione configurata per questo giorno.<br>
+        <small class="text-muted">Aggiungi le opzioni dal form accanto.</small></p>
+    </div>
+
+    {% else %}
+    {% for meal in meals %}
+    {% set bks = bookings_by_meal.get(meal.id, []) %}
+    {% set n_booked = bks|selectattr('status', 'ne', 'cancelled')|list|length %}
+
+    <div class="card card-outline {{ 'card-success' if meal.is_active else 'card-secondary' }} mb-3">
+      <div class="card-header d-flex align-items-center" style="gap:.4rem;">
+        <div style="flex:1;min-width:0;">
+          <strong>{{ meal.name }}</strong>
+          {% if not meal.is_active %}
+          <span class="badge badge-secondary ml-1">Inattiva</span>
+          {% endif %}
+        </div>
+        <span class="badge {{ 'badge-success' if n_booked < meal.max_bookings else 'badge-danger' }}"
+              style="font-size:.85rem;white-space:nowrap;">
+          {{ n_booked }} / {{ meal.max_bookings }}
         </span>
-        {% endif %}
+        <button class="btn btn-xs btn-outline-primary"
+                data-toggle="modal" data-target="#editMeal{{ meal.id }}" title="Modifica">
+          <i class="fas fa-edit"></i>
+        </button>
+        <form method="POST" style="display:inline;">
+          <input type="hidden" name="action"  value="toggle">
+          <input type="hidden" name="meal_id" value="{{ meal.id }}">
+          {% if sel_date != today %}
+          <input type="hidden" name="d" value="{{ sel_date.isoformat() }}">
+          {% endif %}
+          <button class="btn btn-xs {{ 'btn-outline-warning' if meal.is_active else 'btn-outline-success' }}"
+                  title="{{ 'Disattiva' if meal.is_active else 'Attiva' }}">
+            <i class="fas {{ 'fa-eye-slash' if meal.is_active else 'fa-eye' }}"></i>
+          </button>
+        </form>
+        <form method="POST" style="display:inline;"
+              data-confirm="Eliminare l'opzione «{{ meal.name }}»?">
+          <input type="hidden" name="action"  value="delete">
+          <input type="hidden" name="meal_id" value="{{ meal.id }}">
+          {% if sel_date != today %}
+          <input type="hidden" name="d" value="{{ sel_date.isoformat() }}">
+          {% endif %}
+          <button class="btn btn-xs btn-outline-danger" title="Elimina">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
       </div>
-      <div class="card-body p-0">
-        {% if bookings %}
-        <table class="table table-sm table-hover mb-0">
-          <thead class="thead-dark">
-            <tr><th>Dipendente</th><th>Porzioni</th><th>Slot</th><th>Stato</th><th></th></tr>
-          </thead>
+
+      <div class="card-body py-2">
+        {# Portate #}
+        {% if meal.courses %}
+        <table class="table table-sm mb-2" style="font-size:.83rem;">
+          {% for lbl, icon, val in meal.courses %}
+          <tr>
+            <td style="width:5.5rem;color:#888;padding:.15rem .5rem;">{{ icon }} {{ lbl }}</td>
+            <td style="padding:.15rem .5rem;">{{ val }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% endif %}
+        {# Allergeni #}
+        {% if meal.allergen_list %}
+        <div class="mb-1">
+          {% for key, label, icon in meal.allergen_list %}
+          <span class="badge badge-warning" style="font-size:.7rem;" title="{{ label }}">{{ icon }} {{ label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="text-muted" style="font-size:.8rem;">
+          Prezzo: <strong>{{ '%.2f'|format(meal.price) }}€</strong>
+        </div>
+      </div>
+
+      {# Prenotazioni #}
+      {% if bks %}
+      <div class="card-footer p-0">
+        <table class="table table-sm mb-0" style="font-size:.82rem;">
           <tbody>
-            {% for b in bookings %}
+            {% set ns = namespace(consumed=0, booked=0) %}
+            {% for b in bks %}
+              {% if b.status == 'consumed' %}{% set ns.consumed = ns.consumed + (b.quantity or 1) %}{% endif %}
+              {% if b.status == 'booked'   %}{% set ns.booked   = ns.booked   + (b.quantity or 1) %}{% endif %}
+            {% endfor %}
+            {% for b in bks %}
+            {% if b.status != 'cancelled' %}
             {% set lbl = b.label() %}
             <tr>
-              <td class="align-middle">
-                <i class="fas fa-user text-muted mr-1"></i>{{ b.user.username }}
-              </td>
-              <td class="align-middle text-center">
-                <span class="badge badge-secondary" style="font-size:.9rem;">× {{ b.quantity or 1 }}</span>
-              </td>
-              <td class="align-middle text-muted">
-                {{ b.slot.time_str if b.slot else '—' }}
-              </td>
-              <td class="align-middle">
-                <span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span>
-              </td>
-              <td class="align-middle">
+              <td class="pl-3">{{ b.user.full_name }}</td>
+              <td class="text-center">× {{ b.quantity or 1 }}</td>
+              <td>{{ b.slot.time_str if b.slot else '—' }}</td>
+              <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
+              <td>
                 {% if b.status == 'booked' %}
                 <form method="POST"
-                      action="{{ url_for('admin.convenzione_consuma', cid=corp.id, bid=b.id, d=sel_date.isoformat() if sel_date != today else '') }}">
-                  <button class="btn btn-xs btn-success" title="Segna come consumato">
-                    <i class="fas fa-check"></i> Consumato
+                      action="{{ url_for('admin.convenzione_consuma', cid=corp.id, bid=b.id,
+                                        d=sel_date.isoformat() if sel_date != today else '') }}">
+                  <button class="btn btn-xs btn-success">
+                    <i class="fas fa-check"></i>
                   </button>
                 </form>
                 {% endif %}
               </td>
             </tr>
+            {% endif %}
             {% endfor %}
           </tbody>
+          <tfoot class="thead-light">
+            <tr>
+              <td colspan="5" class="px-3 py-1" style="font-size:.8rem;">
+                <span class="badge badge-success mr-1">{{ ns.consumed }} consumate</span>
+                <span class="badge badge-info mr-1">{{ ns.booked }} in attesa</span>
+                <strong>Fatturabile: {{ '%.2f'|format((ns.consumed + ns.booked) * meal.price) }}€</strong>
+              </td>
+            </tr>
+          </tfoot>
         </table>
-
-        {# Riepilogo presenze — somma le quantità #}
-        {% set ns = namespace(consumed=0, booked=0) %}
-        {% for b in bookings %}
-          {% if b.status == 'consumed' %}{% set ns.consumed = ns.consumed + (b.quantity or 1) %}{% endif %}
-          {% if b.status == 'booked'   %}{% set ns.booked   = ns.booked   + (b.quantity or 1) %}{% endif %}
-        {% endfor %}
-        {% if meal %}
-        <div class="px-3 py-2 border-top" style="font-size:.85rem;">
-          <span class="badge badge-success mr-2">{{ ns.consumed }} porzioni consumate</span>
-          <span class="badge badge-info mr-2">{{ ns.booked }} in attesa</span>
-          <strong class="ml-2">Totale fatturabile: {{ '%.2f'|format(ns.consumed * meal.price) }}€</strong>
-        </div>
-        {% endif %}
-
-        {% elif meal %}
-        <div class="text-center py-4 text-muted">
-          <i class="fas fa-clock fa-2x mb-2 d-block"></i>
-          Nessuna prenotazione ancora.
-        </div>
-        {% else %}
-        <div class="text-center py-4 text-muted">
-          <i class="fas fa-utensils fa-2x mb-2 d-block"></i>
-          Nessun pasto definito per questa data.
-        </div>
-        {% endif %}
-      </div>
-      {% if meal and meal.price %}
-      <div class="card-footer text-muted" style="font-size:.85rem;">
-        Prezzo unitario: <strong>{{ '%.2f'|format(meal.price) }}€</strong>
       </div>
       {% endif %}
     </div>
-  </div>
 
+    {# ── Modal modifica ── #}
+    <div class="modal fade" id="editMeal{{ meal.id }}" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form method="POST">
+            <input type="hidden" name="action"  value="edit">
+            <input type="hidden" name="meal_id" value="{{ meal.id }}">
+            {% if sel_date != today %}
+            <input type="hidden" name="d" value="{{ sel_date.isoformat() }}">
+            {% endif %}
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Modifica — {{ meal.name }}</h5>
+              <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+              {% include 'admin/_meal_form_fields.html' with context %}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Salva</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+    {% endif %}
+
+  </div>
 </div>
 {% endblock %}
 
@@ -280,41 +257,29 @@ var MEAL_CONFIGS = {{ configs_json|safe }};
 (function () {
   var btn = document.getElementById('btnLoadCfg');
   if (!btn) return;
-
   btn.addEventListener('click', function () {
-    var sel = document.getElementById('cfgSelect');
-    var id  = parseInt(sel.value, 10);
-    if (!id) return;
-
-    var cfg = MEAL_CONFIGS[id];
-    if (!cfg) return;
-
-    var form = document.getElementById('mealForm');
-    function setVal(name, val) {
+    var id = parseInt(document.getElementById('cfgSelect').value, 10);
+    if (!id || !MEAL_CONFIGS[id]) return;
+    var cfg  = MEAL_CONFIGS[id];
+    var form = document.getElementById('addForm');
+    function set(name, val) {
       var el = form.querySelector('[name="' + name + '"]');
       if (el) el.value = val || '';
     }
-
-    setVal('name',        cfg.name);
-    setVal('primo',       cfg.primo);
-    setVal('secondo',     cfg.secondo);
-    setVal('contorno',    cfg.contorno);
-    setVal('bevanda',     cfg.bevanda);
-    setVal('caffe',       cfg.caffe);
-    setVal('description', cfg.description);
-    if (cfg.price        !== null) setVal('price',        cfg.price.toFixed(2));
-    if (cfg.max_bookings !== null) setVal('max_bookings', cfg.max_bookings);
-
+    set('name', cfg.name); set('primo', cfg.primo); set('secondo', cfg.secondo);
+    set('contorno', cfg.contorno); set('bevanda', cfg.bevanda); set('caffe', cfg.caffe);
+    set('description', cfg.description);
+    if (cfg.price        !== null) set('price',        cfg.price.toFixed(2));
+    if (cfg.max_bookings !== null) set('max_bookings', cfg.max_bookings);
     form.querySelectorAll('[name="allergens"]').forEach(function (cb) {
       cb.checked = cfg.allergens.indexOf(cb.value) !== -1;
     });
-
-    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Caricato';
+    btn.innerHTML = '<i class="fas fa-check"></i>';
     btn.classList.replace('btn-outline-secondary', 'btn-success');
     setTimeout(function () {
-      btn.innerHTML = '<i class="fas fa-download mr-1"></i>Carica';
+      btn.innerHTML = '<i class="fas fa-download"></i>';
       btn.classList.replace('btn-success', 'btn-outline-secondary');
-    }, 2000);
+    }, 1800);
   });
 })();
 </script>

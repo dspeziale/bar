@@ -1,0 +1,90 @@
+{# Partial per add (meal=none) e edit (meal=<DailyFixedMeal>) del pasto giornaliero #}
+<div class="form-group">
+  <label>Nome opzione <span class="text-danger">*</span></label>
+  <input type="text" name="name" class="form-control"
+         value="{{ meal.name if meal else '' }}"
+         placeholder="es. Menu classico" required>
+</div>
+
+<hr class="my-2">
+<p class="text-muted mb-2" style="font-size:.85rem;"><i class="fas fa-list-ul mr-1"></i>Portate</p>
+
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-primary mr-1">Primo</span></label>
+  <input type="text" name="primo" class="form-control form-control-sm"
+         value="{{ meal.primo if meal else '' }}" placeholder="es. Risotto al ragù">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-success mr-1">Secondo</span></label>
+  <input type="text" name="secondo" class="form-control form-control-sm"
+         value="{{ meal.secondo if meal else '' }}" placeholder="es. Pollo alla griglia">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-warning mr-1">Contorno</span></label>
+  <input type="text" name="contorno" class="form-control form-control-sm"
+         value="{{ meal.contorno if meal else '' }}" placeholder="es. Insalata mista">
+</div>
+<div class="form-group mb-2">
+  <label class="mb-0"><span class="badge badge-info mr-1">Bevanda</span></label>
+  <input type="text" name="bevanda" class="form-control form-control-sm"
+         value="{{ meal.bevanda if meal else '' }}" placeholder="es. Acqua naturale">
+</div>
+<div class="form-group mb-0">
+  <label class="mb-0"><span class="badge badge-secondary mr-1">Caffè</span></label>
+  <input type="text" name="caffe" class="form-control form-control-sm"
+         value="{{ meal.caffe if meal else '' }}" placeholder="es. Caffè incluso">
+</div>
+
+<hr class="my-3">
+
+<div class="form-group">
+  <label>Note libere</label>
+  <textarea name="description" class="form-control form-control-sm" rows="2"
+            placeholder="Note aggiuntive…">{{ meal.description if meal else '' }}</textarea>
+</div>
+
+<div class="form-group">
+  <label>Allergeni</label>
+  <div class="row" style="margin:0;">
+    {% set sel_alg = (meal.allergens.split(',') if meal and meal.allergens else []) %}
+    {% for key, label, icon in allergens_list %}
+    <div class="col-6 col-md-4">
+      <div class="form-check">
+        <input type="checkbox" name="allergens" value="{{ key }}" class="form-check-input"
+               id="malg_{{ meal.id if meal else 'new' }}_{{ key }}"
+               {{ 'checked' if key in sel_alg }}>
+        <label class="form-check-label"
+               for="malg_{{ meal.id if meal else 'new' }}_{{ key }}">{{ icon }} {{ label }}</label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<hr class="my-2">
+
+<div class="form-row">
+  <div class="form-group col-6">
+    <label>Prezzo (€)</label>
+    <input type="number" name="price" step="0.50" min="0" class="form-control form-control-sm"
+           value="{{ '%.2f'|format(meal.price) if meal else '' }}"
+           placeholder="{{ '%.2f'|format(corp.daily_price) }}">
+    <small class="text-muted">Vuoto = prezzo convenzione</small>
+  </div>
+  <div class="form-group col-6">
+    <label>Prenotazioni max</label>
+    <input type="number" name="max_bookings" min="1" class="form-control form-control-sm"
+           value="{{ meal.max_bookings if meal else '' }}"
+           placeholder="{{ corp.max_daily_covers }}">
+    <small class="text-muted">Vuoto = max convenzione</small>
+  </div>
+</div>
+
+<div class="form-check">
+  <input type="checkbox" name="is_active" class="form-check-input"
+         id="mact_{{ meal.id if meal else 'new' }}"
+         {{ 'checked' if not meal or meal.is_active }}>
+  <label class="form-check-label" for="mact_{{ meal.id if meal else 'new' }}">
+    Opzione attiva (visibile ai dipendenti)
+  </label>
+</div>

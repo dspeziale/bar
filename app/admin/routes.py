@@ -1366,10 +1366,10 @@ def fornitore_delete(sid):
 def convenzioni():
     tf = _tenant_filter()
     corps = CorporateAccount.query.filter_by(**tf).order_by(CorporateAccount.name).all()
-    today_meals = {
-        m.corporate_id: m
-        for m in DailyFixedMeal.query.filter_by(meal_date=date.today(), **tf).all()
-    }
+    from collections import defaultdict as _dd
+    today_meals: dict = _dd(list)
+    for m in DailyFixedMeal.query.filter_by(meal_date=date.today(), **tf).all():
+        today_meals[m.corporate_id].append(m)
     return render_template('admin/convenzioni.html', corps=corps, today_meals=today_meals)
 
 
@@ -1440,64 +1440,77 @@ def convenzione_pasto(cid):
     corp = CorporateAccount.query.get_or_404(cid)
     today = date.today()
 
-    # data selezionata (default oggi); GET ?d=YYYY-MM-DD per navigare
     try:
-        sel_date = date.fromisoformat(request.args.get('d', '')) if request.args.get('d') else today
+        _d_raw = request.args.get('d') or request.form.get('d') or ''
+        sel_date = date.fromisoformat(_d_raw) if _d_raw else today
     except ValueError:
         sel_date = today
     prev_date = sel_date - timedelta(days=1)
     next_date = sel_date + timedelta(days=1)
 
-    meal = DailyFixedMeal.query.filter_by(corporate_id=cid, meal_date=sel_date).first()
+    def _d_param():
+        return sel_date.isoformat() if sel_date != today else None
 
     if request.method == 'POST':
-        action = request.form.get('action', 'save')
-        if action == 'delete' and meal:
+        action  = request.form.get('action', 'add')
+        meal_id = request.form.get('meal_id', type=int)
+
+        # ── Elimina opzione ────────────────────────────────────────────────────
+        if action == 'delete' and meal_id:
+            meal = DailyFixedMeal.query.get_or_404(meal_id)
             db.session.delete(meal)
             db.session.commit()
-            flash('Pasto eliminato.', 'info')
-            return redirect(url_for('admin.convenzione_pasto', cid=cid))
+            flash('Opzione eliminata.', 'info')
+            return redirect(url_for('admin.convenzione_pasto', cid=cid, d=_d_param()))
 
-        name        = request.form.get('name', '').strip()
-        description = request.form.get('description', '').strip()
-        allergens   = ','.join(request.form.getlist('allergens'))
-        primo       = request.form.get('primo',   '').strip()
-        secondo     = request.form.get('secondo',  '').strip()
-        contorno    = request.form.get('contorno', '').strip()
-        bevanda     = request.form.get('bevanda',  '').strip()
-        caffe       = request.form.get('caffe',    '').strip()
-        price       = float(request.form.get('price', corp.daily_price) or corp.daily_price)
-        max_book    = int(request.form.get('max_bookings', corp.max_daily_covers) or corp.max_daily_covers)
+        # ── Attiva/disattiva opzione ───────────────────────────────────────────
+        if action == 'toggle' and meal_id:
+            meal = DailyFixedMeal.query.get_or_404(meal_id)
+            meal.is_active = not meal.is_active
+            db.session.commit()
+            stato = 'attivata' if meal.is_active else 'disattivata'
+            flash(f'Opzione "{meal.name}" {stato}.', 'success')
+            return redirect(url_for('admin.convenzione_pasto', cid=cid, d=_d_param()))
 
+        # ── Aggiunge / modifica opzione ───────────────────────────────────────
+        name = request.form.get('name', '').strip()
         if not name:
-            flash('Il nome del pasto è obbligatorio.', 'danger')
-            return render_template('admin/convenzione_pasto.html',
-                                   corp=corp, meal=meal, sel_date=today, today=today,
-                                   prev_date=prev_date, next_date=next_date,
-                                   bookings=[], allergens_list=ALLERGENS)
+            flash('Il nome è obbligatorio.', 'danger')
+            return redirect(url_for('admin.convenzione_pasto', cid=cid, d=_d_param()))
 
-        if meal is None:
+        price    = request.form.get('price', '').strip()
+        max_book = request.form.get('max_bookings', '').strip()
+
+        if action == 'edit' and meal_id:
+            meal = DailyFixedMeal.query.get_or_404(meal_id)
+        else:
             meal = DailyFixedMeal(
-                corporate_id=cid, meal_date=today,
+                corporate_id=cid, meal_date=sel_date,
                 tenant_id=current_user.tenant_id if not current_user.is_admin else None)
             db.session.add(meal)
 
         meal.name         = name
-        meal.description  = description
-        meal.allergens    = allergens
-        meal.primo        = primo
-        meal.secondo      = secondo
-        meal.contorno     = contorno
-        meal.bevanda      = bevanda
-        meal.caffe        = caffe
-        meal.price        = price
-        meal.max_bookings = max_book
+        meal.description  = request.form.get('description', '').strip()
+        meal.allergens    = ','.join(request.form.getlist('allergens'))
+        meal.primo        = request.form.get('primo',    '').strip()
+        meal.secondo      = request.form.get('secondo',   '').strip()
+        meal.contorno     = request.form.get('contorno',  '').strip()
+        meal.bevanda      = request.form.get('bevanda',   '').strip()
+        meal.caffe        = request.form.get('caffe',     '').strip()
+        meal.price        = float(price)    if price    else corp.daily_price
+        meal.max_bookings = int(max_book)   if max_book else corp.max_daily_covers
         meal.is_active    = 'is_active' in request.form
         db.session.commit()
-        flash(f'Pasto "{name}" salvato.', 'success')
-        return redirect(url_for('admin.convenzione_pasto', cid=cid))
+        flash(f'Opzione "{name}" salvata.', 'success')
+        return redirect(url_for('admin.convenzione_pasto', cid=cid, d=_d_param()))
 
-    bookings = CorporateMealBooking.query.filter_by(meal_id=meal.id).all() if meal else []
+    meals = DailyFixedMeal.query.filter_by(corporate_id=cid, meal_date=sel_date)\
+        .order_by(DailyFixedMeal.name).all()
+    bookings_by_meal = {
+        m.id: CorporateMealBooking.query.filter_by(meal_id=m.id).all()
+        for m in meals
+    }
+
     import json as _json
     configs_json = _json.dumps({
         cfg.id: {
@@ -1515,9 +1528,9 @@ def convenzione_pasto(cid):
         for cfg in corp.configurations
     })
     return render_template('admin/convenzione_pasto.html',
-                           corp=corp, meal=meal, sel_date=sel_date, today=today,
+                           corp=corp, meals=meals, sel_date=sel_date, today=today,
                            prev_date=prev_date, next_date=next_date,
-                           bookings=bookings, allergens_list=ALLERGENS,
+                           bookings_by_meal=bookings_by_meal, allergens_list=ALLERGENS,
                            configs_json=configs_json)
 
 

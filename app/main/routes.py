@@ -629,17 +629,23 @@ def pasto_aziendale():
 
     corp  = membership.corporate
     today = date.today()
-    meal  = DailyFixedMeal.query.filter_by(
-        corporate_id=corp.id, meal_date=today, is_active=True).first()
+    meals = DailyFixedMeal.query.filter_by(
+        corporate_id=corp.id, meal_date=today, is_active=True
+    ).order_by(DailyFixedMeal.name).all()
 
+    # prenotazione attiva dell'utente per oggi (su qualsiasi opzione)
     my_booking = None
-    if meal:
-        my_booking = CorporateMealBooking.query.filter_by(
-            user_id=current_user.id, meal_id=meal.id).first()
+    if meals:
+        meal_ids = [m.id for m in meals]
+        my_booking = CorporateMealBooking.query.filter(
+            CorporateMealBooking.user_id == current_user.id,
+            CorporateMealBooking.meal_id.in_(meal_ids),
+            CorporateMealBooking.status != 'cancelled',
+        ).first()
 
     slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
     return render_template('main/pasto_aziendale.html',
-                           corp=corp, meal=meal, my_booking=my_booking,
+                           corp=corp, meals=meals, my_booking=my_booking,
                            slots=slots, today=today)
 
 
@@ -651,13 +657,13 @@ def pasto_aziendale_prenota():
         flash('Non sei associato a nessuna convenzione aziendale.', 'warning')
         return redirect(url_for('main.index'))
 
-    corp  = membership.corporate
-    today = date.today()
-    meal  = DailyFixedMeal.query.filter_by(
-        corporate_id=corp.id, meal_date=today, is_active=True).first()
+    corp    = membership.corporate
+    today   = date.today()
+    meal_id = request.form.get('meal_id', type=int)
+    meal    = DailyFixedMeal.query.get_or_404(meal_id)
 
-    if not meal:
-        flash('Nessun pasto disponibile per oggi.', 'warning')
+    if meal.corporate_id != corp.id or meal.meal_date != today or not meal.is_active:
+        flash('Opzione non disponibile.', 'danger')
         return redirect(url_for('main.pasto_aziendale'))
 
     quantity = max(1, request.form.get('quantity', 1, type=int))
@@ -665,21 +671,37 @@ def pasto_aziendale_prenota():
     if slot_id:
         slot_id = int(slot_id)
 
+    # verifica unicit\u00e0: una sola opzione prenotata per giorno
+    today_meal_ids = [
+        m.id for m in DailyFixedMeal.query.filter_by(
+            corporate_id=corp.id, meal_date=today).all()
+    ]
+    conflict = CorporateMealBooking.query.filter(
+        CorporateMealBooking.user_id == current_user.id,
+        CorporateMealBooking.meal_id.in_(today_meal_ids),
+        CorporateMealBooking.meal_id != meal_id,
+        CorporateMealBooking.status != 'cancelled',
+    ).first()
+    if conflict:
+        flash(f'Hai gi\u00e0 prenotato "{conflict.meal.name}" oggi. '
+              'Annulla quella prenotazione prima di sceglierne un\'altra.', 'warning')
+        return redirect(url_for('main.pasto_aziendale'))
+
     existing = CorporateMealBooking.query.filter_by(
         user_id=current_user.id, meal_id=meal.id).first()
 
     if existing:
         available = meal.slots_left + (existing.quantity or 1)
         if quantity > available:
-            flash(f'Posti insufficienti. Puoi prenotare al massimo {available} porzioni.', 'danger')
+            flash(f'Posti insufficienti. Massimo {available} porzioni.', 'danger')
             return redirect(url_for('main.pasto_aziendale'))
         existing.quantity = quantity
         existing.slot_id  = slot_id
         if existing.status == 'cancelled':
             existing.status = 'booked'
         db.session.commit()
-        msg = '\U0001f37d\ufe0f Prenotazione aggiornata: ' + str(quantity) + ' porzioni'
-        send_telegram_to_user(current_user, msg)
+        send_telegram_to_user(current_user,
+            f'\ud83c\udf7d\ufe0f Prenotazione aggiornata: {quantity} porzioni di <b>{meal.name}</b>')
         flash(f'Prenotazione aggiornata: {quantity} porzioni di "{meal.name}".', 'success')
     else:
         if not meal.is_available or quantity > meal.slots_left:
@@ -690,8 +712,8 @@ def pasto_aziendale_prenota():
             slot_id=slot_id, quantity=quantity, status='booked')
         db.session.add(booking)
         db.session.commit()
-        msg = '\U0001f37d\ufe0f Prenotazione confermata: ' + str(quantity) + f' porzioni di {meal.name}'
-        send_telegram_to_user(current_user, msg)
+        send_telegram_to_user(current_user,
+            f'\ud83c\udf7d\ufe0f Prenotazione confermata: {quantity} porzioni di <b>{meal.name}</b>')
         flash(f'Pasto prenotato: {quantity} porzioni di "{meal.name}".', 'success')
 
     return redirect(url_for('main.pasto_aziendale'))
