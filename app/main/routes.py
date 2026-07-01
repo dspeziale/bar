@@ -28,10 +28,28 @@ def index():
     ).filter(TableReservation.status != 'cancelled').all()
     recent_tx = Transaction.query.filter_by(user_id=current_user.id)\
         .order_by(Transaction.created_at.desc()).limit(5).all()
+
+    # pasto aziendale di oggi (se l'utente ha una convenzione attiva)
+    today_meal_booking = None
+    membership = getattr(current_user, 'corporate_membership', None)
+    if membership and membership.is_active:
+        today_meal_ids = [
+            m.id for m in DailyFixedMeal.query.filter_by(
+                corporate_id=membership.corporate_id, meal_date=date.today()
+            ).all()
+        ]
+        if today_meal_ids:
+            today_meal_booking = CorporateMealBooking.query.filter(
+                CorporateMealBooking.user_id == current_user.id,
+                CorporateMealBooking.meal_id.in_(today_meal_ids),
+                CorporateMealBooking.status != 'cancelled',
+            ).first()
+
     return render_template('main/dashboard.html',
                            today_orders=today_orders,
                            today_reservations=today_reservations,
                            recent_tx=recent_tx,
+                           today_meal_booking=today_meal_booking,
                            loyalty_threshold=Config.LOYALTY_REWARD_POINTS,
                            reward_amount=Config.LOYALTY_REWARD_AMOUNT)
 
