@@ -148,5 +148,44 @@
     </div>
   </div>
 
+  <!-- ── Bonus registrazione ── -->
+  <div class="col-lg-6">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-gift mr-2 text-success"></i>Bonus Benvenuto
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.settings_save') }}">
+          <!-- preserve other fields -->
+          <input type="hidden" name="telegram_bot_token" value="{{ cfg.telegram_bot_token }}">
+          <input type="hidden" name="telegram_chat_id"   value="{{ cfg.telegram_chat_id }}">
+          <input type="hidden" name="gmail_user"         value="{{ cfg.gmail_user }}">
+          <input type="hidden" name="gmail_app_password" value="{{ cfg.gmail_app_password }}">
+          <div class="form-group">
+            <label>Importo accreditato alla registrazione (€)</label>
+            <div class="input-group">
+              <div class="input-group-prepend">
+                <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+              </div>
+              <input type="number" name="registration_bonus" class="form-control"
+                     value="{{ cfg.registration_bonus or '' }}"
+                     min="0" step="0.50" placeholder="0.00">
+            </div>
+            <small class="form-text text-muted">
+              Se maggiore di zero, viene accreditato automaticamente sul wallet del nuovo utente
+              al termine della registrazione (email/password e Google OAuth).
+              Lasciare vuoto o a 0 per disabilitare.
+            </small>
+          </div>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save mr-1"></i>Salva
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

@@ -887,7 +887,8 @@ def role_delete(rid):
 @bp.route('/settings')
 @require_permission('manage_settings')
 def settings():
-    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password']
+    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password',
+            'registration_bonus']
     cfg  = {k: get_setting(k) for k in keys}
     return render_template('admin/settings.html', cfg=cfg)
 
@@ -895,7 +896,8 @@ def settings():
 @bp.route('/settings/save', methods=['POST'])
 @require_permission('manage_settings')
 def settings_save():
-    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password']
+    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password',
+            'registration_bonus']
     for k in keys:
         val = request.form.get(k, '').strip()
         s   = AppSetting.query.filter_by(key=k).first()

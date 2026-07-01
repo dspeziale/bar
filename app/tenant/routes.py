@@ -4,6 +4,18 @@ from flask_login import login_user, current_user
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
+from app.notifications import get_setting
+
+
+def _apply_registration_bonus(user):
+    """Accredita il bonus di benvenuto se configurato nelle impostazioni."""
+    try:
+        val = float(get_setting('registration_bonus') or 0)
+    except (ValueError, TypeError):
+        val = 0.0
+    if val > 0:
+        user.credit_wallet(val, 'Bonus benvenuto')
+        db.session.commit()
 
 
 def _get_tenant_or_404(slug):
@@ -66,6 +78,7 @@ def register(slug):
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            _apply_registration_bonus(user)
             login_user(user, remember=True)
             flash(f'Benvenuto in {tenant.name}!', 'success')
             return redirect(url_for('main.index'))
@@ -143,6 +156,7 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
+        _apply_registration_bonus(user)
         flash('Account creato con Google. Benvenuto!', 'success')
 
     if not user.is_active:
