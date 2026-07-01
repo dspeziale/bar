@@ -1512,28 +1512,81 @@ def maintenance():
             db.session.commit()
             flash('Tutti i clienti e i loro dati eliminati.', 'success')
 
+        elif op == 'clear_catalog':
+            # cancella prodotti e categorie (assume ordini già svuotati o li svuota)
+            db.session.execute(db.text('UPDATE transactions SET order_id = NULL WHERE order_id IS NOT NULL'))
+            CustomOrderItemIngredient.query.delete(synchronize_session=False)
+            CustomOrderItem.query.delete(synchronize_session=False)
+            OrderItem.query.delete(synchronize_session=False)
+            CorporateMealBooking.query.delete(synchronize_session=False)
+            Order.query.delete(synchronize_session=False)
+            DailyStock.query.delete(synchronize_session=False)
+            PollChoice.query.delete(synchronize_session=False)
+            Poll.query.delete(synchronize_session=False)
+            Product.query.delete(synchronize_session=False)
+            Category.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Prodotti e categorie eliminati.', 'success')
+
+        elif op == 'clear_ingredients':
+            CustomOrderItemIngredient.query.delete(synchronize_session=False)
+            CustomOrderItem.query.delete(synchronize_session=False)
+            Ingredient.query.delete(synchronize_session=False)
+            IngredientCategory.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Ingredienti eliminati.', 'success')
+
+        elif op == 'clear_consumables':
+            ConsumableMovement.query.delete(synchronize_session=False)
+            ConsumableItem.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Consumabili e movimenti eliminati.', 'success')
+
+        elif op == 'clear_suppliers':
+            ConsumableMovement.query.delete(synchronize_session=False)
+            ConsumableItem.query.delete(synchronize_session=False)
+            Supplier.query.delete(synchronize_session=False)
+            db.session.commit()
+            flash('Fornitori, consumabili e movimenti eliminati.', 'success')
+
         elif op == 'reset_all':
             # step 1: null nullable FKs
             db.session.execute(db.text('UPDATE transactions SET order_id = NULL WHERE order_id IS NOT NULL'))
             db.session.execute(db.text('UPDATE consumable_movements SET user_id = NULL WHERE user_id IS NOT NULL'))
-            # step 2: leaf tables (no children)
+            # step 2: leaf / child tables
             PollVote.query.delete(synchronize_session=False)
             CorporateMealBooking.query.delete(synchronize_session=False)
             CorporateMembership.query.delete(synchronize_session=False)
             CustomOrderItemIngredient.query.delete(synchronize_session=False)
             CustomOrderItem.query.delete(synchronize_session=False)
             OrderItem.query.delete(synchronize_session=False)
-            # step 3: parent tables
+            # step 3: transaction / reservation tables
             Order.query.delete(synchronize_session=False)
             TableReservation.query.delete(synchronize_session=False)
             Transaction.query.delete(synchronize_session=False)
+            # step 4: catalog / content tables
+            DailyStock.query.delete(synchronize_session=False)
             PollChoice.query.delete(synchronize_session=False)
             Poll.query.delete(synchronize_session=False)
-            DailyStock.query.delete(synchronize_session=False)
+            Product.query.delete(synchronize_session=False)
+            Category.query.delete(synchronize_session=False)
+            Ingredient.query.delete(synchronize_session=False)
+            IngredientCategory.query.delete(synchronize_session=False)
+            # step 5: magazzino
             ConsumableMovement.query.delete(synchronize_session=False)
+            ConsumableItem.query.delete(synchronize_session=False)
+            Supplier.query.delete(synchronize_session=False)
+            # step 6: users
             User.query.filter_by(is_client=True).delete(synchronize_session=False)
             db.session.commit()
             flash('Reset completo eseguito.', 'success')
+
+        elif op == 'run_demo_seed':
+            from app.demo_seed import reset_demo_data, seed_demo_data
+            reset_demo_data()
+            ok, msg = seed_demo_data()
+            flash(f'Seed demo: {msg}', 'success' if ok else 'warning')
+            return redirect(url_for('admin.maintenance'))
 
         elif op == 'reset_admin':
             import re as _re
@@ -1572,6 +1625,11 @@ def maintenance():
         'stock':        DailyStock.query.count(),
         'movements':    ConsumableMovement.query.count(),
         'clients':      User.query.filter_by(is_client=True).count(),
+        'products':     Product.query.count(),
+        'categories':   Category.query.count(),
+        'ingredients':  Ingredient.query.count(),
+        'consumables':  ConsumableItem.query.count(),
+        'suppliers':    Supplier.query.count(),
         'admins':       User.query.filter_by(is_admin=True).all(),
     }
     return render_template('admin/maintenance.html', stats=stats)

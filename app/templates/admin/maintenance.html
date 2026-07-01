@@ -56,13 +56,17 @@
             <tbody>
 
               {% set rows = [
-                ('clear_orders',       'fas fa-shopping-cart', 'Ordini',                   stats.orders,       'Elimina ordini, voci e prenotazioni pasto aziendale'),
-                ('clear_reservations', 'fas fa-chair',         'Prenotazioni tavoli',       stats.reservations, 'Elimina tutte le prenotazioni tavolo'),
-                ('clear_transactions', 'fas fa-wallet',        'Transazioni wallet',        stats.transactions, 'Elimina tutti i movimenti di wallet'),
-                ('clear_polls',        'fas fa-poll',          'Sondaggi',                  stats.polls,        'Elimina sondaggi, scelte e voti'),
-                ('clear_stock',        'fas fa-boxes',         'Stock giornaliero',         stats.stock,        'Azzera le quantità giornaliere dei prodotti'),
-                ('clear_movements',    'fas fa-dolly',         'Movimenti magazzino',       stats.movements,    'Elimina i movimenti di carico/scarico magazzino'),
-                ('clear_clients',      'fas fa-users',         'Clienti (+ loro dati)',     stats.clients,      'Elimina clienti con ordini, prenotazioni e transazioni correlate'),
+                ('clear_orders',       'fas fa-shopping-cart', 'Ordini',                              stats.orders,       'Elimina ordini, voci e prenotazioni pasto aziendale'),
+                ('clear_reservations', 'fas fa-chair',         'Prenotazioni tavoli',                 stats.reservations, 'Elimina tutte le prenotazioni tavolo'),
+                ('clear_transactions', 'fas fa-wallet',        'Transazioni wallet',                  stats.transactions, 'Elimina tutti i movimenti di wallet'),
+                ('clear_polls',        'fas fa-poll',          'Sondaggi',                            stats.polls,        'Elimina sondaggi, scelte e voti'),
+                ('clear_stock',        'fas fa-boxes',         'Stock giornaliero',                   stats.stock,        'Azzera le quantità giornaliere dei prodotti'),
+                ('clear_catalog',      'fas fa-utensils',      'Prodotti & Categorie (+ ordini)',     stats.products,     'Elimina prodotti, categorie, stock e tutti gli ordini collegati'),
+                ('clear_ingredients',  'fas fa-seedling',      'Ingredienti',                         stats.ingredients,  'Elimina ingredienti e categorie ingredienti'),
+                ('clear_movements',    'fas fa-dolly',         'Movimenti magazzino',                 stats.movements,    'Elimina i movimenti di carico/scarico magazzino'),
+                ('clear_consumables',  'fas fa-box-open',      'Consumabili',                         stats.consumables,  'Elimina articoli consumabili e i loro movimenti'),
+                ('clear_suppliers',    'fas fa-truck',         'Fornitori (+ consumabili)',            stats.suppliers,    'Elimina fornitori, consumabili e movimenti'),
+                ('clear_clients',      'fas fa-users',         'Clienti (+ loro dati)',               stats.clients,      'Elimina clienti con ordini, prenotazioni e transazioni correlate'),
               ] %}
 
               {% for op, icon, label, count, desc in rows %}
@@ -93,10 +97,17 @@
         </div>
         <div class="card-footer">
           <form method="POST"
-                onsubmit="return confirm('RESET COMPLETO: verranno eliminati ordini, prenotazioni, transazioni, sondaggi, stock, movimenti e tutti i clienti.\n\nConfermi?')">
+                onsubmit="return confirm('RESET COMPLETO: verranno eliminati ordini, prenotazioni, transazioni, sondaggi, stock, prodotti, categorie, ingredienti, consumabili, fornitori e tutti i clienti.\n\nConfermi?')">
             <input type="hidden" name="operation" value="reset_all">
-            <button type="submit" class="btn btn-danger btn-block">
-              <i class="fas fa-bomb mr-1"></i> RESET COMPLETO (tutto tranne prodotti e impostazioni)
+            <button type="submit" class="btn btn-danger btn-block mb-2">
+              <i class="fas fa-bomb mr-1"></i> RESET COMPLETO (tutto tranne impostazioni e admin)
+            </button>
+          </form>
+          <form method="POST"
+                onsubmit="return confirm('Eseguire il seed demo?\nVerranno ricreati tenant, prodotti, categorie, tavoli, fasce orarie, utenti di test e slot ordini.')">
+            <input type="hidden" name="operation" value="run_demo_seed">
+            <button type="submit" class="btn btn-success btn-block">
+              <i class="fas fa-seedling mr-1"></i> Esegui seed demo (ricrea dati di esempio)
             </button>
           </form>
         </div>
