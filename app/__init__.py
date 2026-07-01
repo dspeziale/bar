@@ -148,6 +148,9 @@ def _migrate_tenant_columns():
     _ensure('daily_fixed_meals', 'bevanda',  "VARCHAR(256) DEFAULT ''")
     _ensure('daily_fixed_meals', 'caffe',    "VARCHAR(128) DEFAULT ''")
 
+    # Porzioni prenotazione pasto aziendale
+    _ensure('corporate_meal_bookings', 'quantity', 'INTEGER DEFAULT 1 NOT NULL')
+
     # Fasce orarie tavoli (nuova tabella) — creata da create_all se non esiste
     # Colonne aggiuntive su table_reservations per il nuovo sistema a fasce
     _ensure('table_reservations', 'band_id',       "INTEGER")
