@@ -1,6 +1,6 @@
 ﻿from datetime import date, timedelta
 from functools import wraps
-from flask import render_template, redirect, url_for, flash, request, abort
+from flask import render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_required, current_user
 from app import db
 from app.admin import bp
@@ -149,6 +149,53 @@ def products():
                            products=Product.query.filter_by(tenant_id=tid).order_by(Product.category_id, Product.name).all(),
                            categories=Category.query.filter_by(tenant_id=tid).order_by(Category.name).all(),
                            allergens=ALLERGENS)
+
+
+@bp.route('/products/dt')
+@require_permission('manage_products')
+def products_dt():
+    tid    = _active_tenant_id()
+    draw   = request.args.get('draw', 1, type=int)
+    start  = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search = (request.args.get('search[value]') or '').strip()
+    col    = request.args.get('order[0][column]', 0, type=int)
+    dirn   = request.args.get('order[0][dir]', 'asc')
+
+    q = Product.query.join(Category).filter(Product.tenant_id == tid)
+    total = q.count()
+
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(
+            Product.name.ilike(like),
+            Product.description.ilike(like),
+            Category.name.ilike(like),
+        ))
+    filtered = q.count()
+
+    col_map = {0: Product.name, 1: Category.name, 2: Product.price,
+               3: Product.daily_quantity, 5: Product.is_active}
+    order_expr = col_map.get(col, Product.name)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+
+    data = []
+    for p in q.offset(start).limit(length).all():
+        data.append({
+            'id':             p.id,
+            'name':           p.name,
+            'description':    p.description or '',
+            'category_id':    p.category_id,
+            'category_name':  p.category.name,
+            'category_color': p.category.color,
+            'category_icon':  p.category.icon,
+            'price':          p.price,
+            'daily_quantity': p.daily_quantity,
+            'allergens':      p.allergens or '',
+            'allergen_list':  [[k, l, i] for k, l, i in p.allergen_list],
+            'is_active':      p.is_active,
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
 @bp.route('/products/new', methods=['POST'])
@@ -1143,72 +1190,6 @@ def _superadmin_required(f):
     return login_required(decorated)
 
 
-@bp.route('/tenants')
-@_superadmin_required
-def tenants():
-    all_tenants = Tenant.query.order_by(Tenant.name).all()
-    # Per ogni tenant trova l'admin (is_admin=False, ruolo superadmin)
-    sa_role = Role.query.filter_by(name='superadmin').first()
-    tenant_admins = {}
-    if sa_role:
-        admins = User.query.filter(
-            User.is_admin == False,
-            User.roles.contains(sa_role)
-        ).all()
-        for u in admins:
-            if u.tenant_id and u.tenant_id not in tenant_admins:
-                tenant_admins[u.tenant_id] = u
-    return render_template('admin/tenants.html', tenants=all_tenants,
-                           tenant_admins=tenant_admins)
-
-
-@bp.route('/tenants/new', methods=['POST'])
-@_superadmin_required
-def tenant_new():
-    name          = request.form.get('name', '').strip()
-    slug          = request.form.get('slug', '').strip().lower().replace(' ', '-')
-    primary_color = request.form.get('primary_color', '#e94560').strip()
-    logo_url      = request.form.get('logo_url', '').strip()
-    if not name or not slug:
-        flash('Nome e slug sono obbligatori.', 'danger')
-        return redirect(url_for('admin.tenants'))
-    if Tenant.query.filter_by(slug=slug).first():
-        flash(f'Slug "{slug}" già in uso.', 'danger')
-        return redirect(url_for('admin.tenants'))
-    t = Tenant(name=name, slug=slug, primary_color=primary_color, logo_url=logo_url)
-    db.session.add(t)
-    db.session.commit()
-    flash(f'Tenant "{name}" creato.', 'success')
-    return redirect(url_for('admin.tenants'))
-
-
-@bp.route('/tenants/<int:tid>/edit', methods=['POST'])
-@_superadmin_required
-def tenant_edit(tid):
-    t             = db.get_or_404(Tenant, tid)
-    t.name          = request.form.get('name', t.name).strip()
-    t.primary_color = request.form.get('primary_color', t.primary_color).strip()
-    t.logo_url      = request.form.get('logo_url', t.logo_url).strip()
-    t.is_active     = request.form.get('is_active') == '1'
-    db.session.commit()
-    flash(f'Tenant "{t.name}" aggiornato.', 'success')
-    return redirect(url_for('admin.tenants'))
-
-
-@bp.route('/tenants/<int:tid>/delete', methods=['POST'])
-@_superadmin_required
-def tenant_delete(tid):
-    t = db.get_or_404(Tenant, tid)
-    users_count = User.query.filter_by(tenant_id=tid).count()
-    if users_count:
-        flash(f'Impossibile eliminare: ci sono {users_count} utenti associati.', 'danger')
-        return redirect(url_for('admin.tenants'))
-    db.session.delete(t)
-    db.session.commit()
-    flash('Tenant eliminato.', 'success')
-    return redirect(url_for('admin.tenants'))
-
-
 @bp.route('/seed-demo', methods=['POST'])
 @_superadmin_required
 def seed_demo():
@@ -1216,46 +1197,7 @@ def seed_demo():
     reset_demo_data()
     ok, msg = seed_demo_data()
     flash(msg, 'success' if ok else 'warning')
-    return redirect(url_for('admin.tenants'))
-
-
-@bp.route('/tenants/<int:tid>/create-admin', methods=['POST'])
-@_superadmin_required
-def tenant_create_admin(tid):
-    import secrets
-    t = db.get_or_404(Tenant, tid)
-
-    # Controlla che non esista già un admin per questo tenant
-    existing = User.query.filter_by(tenant_id=tid, is_admin=False)\
-        .join(User.roles).filter(Role.name == 'superadmin').first()
-    if existing:
-        flash(f'Il tenant "{t.name}" ha già un admin: {existing.email}', 'warning')
-        return redirect(url_for('admin.tenants'))
-
-    email    = f'admin@{t.slug}.local'
-    username = f'admin.{t.slug}'
-
-    # Evita collisioni di username/email su DB condiviso
-    if User.query.filter_by(email=email).first():
-        flash(f'Email {email} già in uso. Rinomina il tenant o crea l\'admin manualmente.', 'danger')
-        return redirect(url_for('admin.tenants'))
-
-    password = secrets.token_urlsafe(12)
-    sa_role  = Role.query.filter_by(name='superadmin').first()
-
-    u = User(username=username, email=email,
-             is_admin=False, tenant_id=tid,
-             wallet_balance=0.0, loyalty_points=0)
-    u.set_password(password)
-    if sa_role:
-        u.roles = [sa_role]
-    db.session.add(u)
-    db.session.commit()
-
-    flash(f'Admin tenant "{t.name}" creato — '
-          f'email: {email} | password: {password} '
-          f'(copiala adesso, non verrà mostrata di nuovo)', 'success')
-    return redirect(url_for('admin.tenants'))
+    return redirect(url_for('admin.dashboard'))
 
 
 # ── Magazzino materiali di consumo ────────────────────────────────────────────

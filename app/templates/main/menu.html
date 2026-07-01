@@ -19,6 +19,14 @@
 {% endblock %}
 
 {% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('main.cart') }}" class="btn btn-success btn-block">
+      <i class="fas fa-shopping-cart mr-2"></i>Vai al Carrello / Checkout
+    </a>
+  </div>
+</div>
+
 <div class="row">
   <div class="col-12 mb-3">
     <!-- Filtro categorie -->

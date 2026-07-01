@@ -8,6 +8,10 @@
 
 {% from 'admin/_allergen_widget.html' import allergen_checkboxes with context %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+{% endblock %}
+
 {% block content %}
 <div class="row">
   <div class="col-lg-8">
@@ -16,127 +20,18 @@
         <h3 class="card-title"><i class="fas fa-burger mr-2"></i>Prodotti</h3>
       </div>
       <div class="card-body p-0">
-        <table class="table table-striped table-hover mb-0">
+        <table id="productsTable" class="table table-striped table-hover mb-0" style="width:100%">
           <thead class="thead-dark">
-            <tr><th>Prodotto</th><th>Categoria</th><th>Prezzo</th><th>Qtà/giorno</th><th>Allergeni</th><th>Stato</th><th></th></tr>
+            <tr>
+              <th>Prodotto</th>
+              <th>Categoria</th>
+              <th>Prezzo</th>
+              <th>Qtà/giorno</th>
+              <th>Allergeni</th>
+              <th>Stato</th>
+              <th></th>
+            </tr>
           </thead>
-          <tbody>
-          {% for p in products %}
-          {% set active_keys = p.allergens.split(',') if p.allergens else [] %}
-          <tr class="{{ '' if p.is_active else 'text-muted' }}">
-            <td>
-              <strong>{{ p.name }}</strong>
-              {% if p.description %}<br><small class="text-muted">{{ p.description[:60] }}</small>{% endif %}
-            </td>
-            <td>
-              <span class="badge badge-{{ p.category.color }}">
-                <i class="fas {{ p.category.icon }} mr-1"></i>{{ p.category.name }}
-              </span>
-            </td>
-            <td><strong>{{ '%.2f'|format(p.price) }}€</strong></td>
-            <td>{{ p.daily_quantity }}</td>
-            <td>
-              {% for key, label, icon in p.allergen_list %}
-                <span title="{{ label }}" style="font-size:1.1rem;">{{ icon }}</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endfor %}
-            </td>
-            <td>
-              <span class="badge badge-{{ 'success' if p.is_active else 'secondary' }}">
-                {{ 'Attivo' if p.is_active else 'Inattivo' }}
-              </span>
-            </td>
-            <td style="white-space:nowrap;">
-              <button class="btn btn-xs btn-info" data-toggle="modal" data-target="#editModal{{ p.id }}"
-                      title="Modifica">
-                <i class="fas fa-pen"></i>
-              </button>
-              <form method="POST" action="{{ url_for('admin.product_toggle', pid=p.id) }}" style="display:inline;">
-                <button class="btn btn-xs btn-{{ 'warning' if p.is_active else 'success' }}"
-                        title="{{ 'Disattiva' if p.is_active else 'Attiva' }}">
-                  <i class="fas fa-{{ 'eye-slash' if p.is_active else 'eye' }}"></i>
-                </button>
-              </form>
-              <form method="POST" action="{{ url_for('admin.product_delete', pid=p.id) }}" style="display:inline;"
-                    data-confirm="Eliminare definitivamente il prodotto {{ p.name }}?">
-                <button class="btn btn-xs btn-outline-danger" title="Elimina">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </form>
-            </td>
-          </tr>
-
-          <!-- Edit modal -->
-          <div class="modal fade" id="editModal{{ p.id }}" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-              <div class="modal-content">
-                <form method="POST" action="{{ url_for('admin.product_edit', pid=p.id) }}">
-                  <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Modifica: {{ p.name }}</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-                  </div>
-                  <div class="modal-body">
-                    <div class="row">
-                      <div class="col-md-8">
-                        <div class="form-group">
-                          <label>Nome</label>
-                          <input type="text" name="name" class="form-control" value="{{ p.name }}" required>
-                        </div>
-                      </div>
-                      <div class="col-md-4">
-                        <div class="form-group">
-                          <label>Categoria</label>
-                          <select name="category_id" class="form-control">
-                            {% for cat in categories %}
-                            <option value="{{ cat.id }}" {{ 'selected' if cat.id == p.category_id }}>{{ cat.name }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="form-group">
-                      <label>Descrizione</label>
-                      <textarea name="description" class="form-control" rows="2">{{ p.description }}</textarea>
-                    </div>
-                    <div class="row">
-                      <div class="col-6">
-                        <div class="form-group">
-                          <label>Prezzo (€)</label>
-                          <input type="number" name="price" class="form-control" value="{{ p.price }}"
-                                 step="0.10" min="0.10" required>
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <div class="form-group">
-                          <label>Qtà giornaliera</label>
-                          <input type="number" name="daily_quantity" class="form-control"
-                                 value="{{ p.daily_quantity }}" min="0" required>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="form-group">
-                      <label><i class="fas fa-exclamation-triangle text-warning mr-1"></i>Allergeni</label>
-                      {{ allergen_checkboxes(active_keys) }}
-                    </div>
-
-                    <div class="form-check mt-2">
-                      <input type="checkbox" name="is_active" id="active{{ p.id }}" class="form-check-input"
-                             {{ 'checked' if p.is_active }}>
-                      <label class="form-check-label" for="active{{ p.id }}">Prodotto attivo</label>
-                    </div>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-info"><i class="fas fa-save mr-1"></i>Salva modifiche</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-          </tbody>
         </table>
       </div>
     </div>
@@ -194,4 +89,193 @@
     </div>
   </div>
 </div>
+
+<!-- Modale condivisa di modifica -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" id="editForm" action="#">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Modifica prodotto</h5>
+          <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-8">
+              <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="name" id="editName" class="form-control" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>Categoria</label>
+                <select name="category_id" id="editCategory" class="form-control">
+                  {% for cat in categories %}
+                  <option value="{{ cat.id }}">{{ cat.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descrizione</label>
+            <textarea name="description" id="editDescription" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-6">
+              <div class="form-group">
+                <label>Prezzo (€)</label>
+                <input type="number" name="price" id="editPrice" class="form-control"
+                       step="0.10" min="0.10" required>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-group">
+                <label>Qtà giornaliera</label>
+                <input type="number" name="daily_quantity" id="editQuantity" class="form-control" min="0" required>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-exclamation-triangle text-warning mr-1"></i>Allergeni</label>
+            {{ allergen_checkboxes([]) }}
+          </div>
+          <div class="form-check mt-2">
+            <input type="checkbox" name="is_active" id="editActive" class="form-check-input">
+            <label class="form-check-label" for="editActive">Prodotto attivo</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-info"><i class="fas fa-save mr-1"></i>Salva modifiche</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script>
+var BASE = '{{ url_for("admin.products") }}';
+function productUrl(pid, action) { return BASE + '/' + pid + '/' + action; }
+
+var table = $('#productsTable').DataTable({
+  serverSide: true,
+  processing: true,
+  ajax: BASE + '/dt',
+  language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json' },
+  pageLength: 25,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, 'asc']],
+  columns: [
+    {
+      data: null,
+      render: function(d) {
+        var name = $('<span>').text(d.name).html();
+        var html = '<strong>' + name + '</strong>';
+        if (d.description) {
+          html += '<br><small class="text-muted">' + $('<span>').text(d.description.substring(0, 60)).html() + '</small>';
+        }
+        return html;
+      }
+    },
+    {
+      data: null,
+      render: function(d) {
+        return '<span class="badge badge-' + d.category_color + '"><i class="fas ' + d.category_icon + ' mr-1"></i>' +
+               $('<span>').text(d.category_name).html() + '</span>';
+      }
+    },
+    {
+      data: 'price',
+      render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; }
+    },
+    { data: 'daily_quantity' },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        if (!d.allergens) return '<span class="text-muted">—</span>';
+        return d.allergen_list.map(function(a) {
+          return '<span title="' + a[1] + '" style="font-size:1.1rem;">' + a[2] + '</span>';
+        }).join('');
+      }
+    },
+    {
+      data: 'is_active',
+      render: function(d) {
+        return '<span class="badge badge-' + (d ? 'success' : 'secondary') + '">' + (d ? 'Attivo' : 'Inattivo') + '</span>';
+      }
+    },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        var pid = d.id;
+        var toggleClass = d.is_active ? 'warning' : 'success';
+        var toggleIcon  = d.is_active ? 'eye-slash' : 'eye';
+        var toggleTitle = d.is_active ? 'Disattiva' : 'Attiva';
+        return '<button class="btn btn-xs btn-info btn-edit-prod" data-id="' + pid + '" title="Modifica"><i class="fas fa-pen"></i></button> ' +
+               '<button class="btn btn-xs btn-' + toggleClass + ' btn-toggle-prod" data-id="' + pid + '" title="' + toggleTitle + '"><i class="fas fa-' + toggleIcon + '"></i></button> ' +
+               '<button class="btn btn-xs btn-outline-danger btn-delete-prod" data-id="' + pid + '" data-name="' + $('<span>').text(d.name).html() + '" title="Elimina"><i class="fas fa-trash"></i></button>';
+      }
+    }
+  ],
+  dom: '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>',
+  stateSave: true
+});
+
+// Modifica: popola modale dai dati della riga
+$(document).on('click', '.btn-edit-prod', function() {
+  var d = table.row($(this).closest('tr')).data();
+  $('#editForm').attr('action', productUrl(d.id, 'edit'));
+  $('#editName').val(d.name);
+  $('#editDescription').val(d.description);
+  $('#editPrice').val(d.price);
+  $('#editQuantity').val(d.daily_quantity);
+  $('#editCategory').val(d.category_id);
+  $('#editActive').prop('checked', d.is_active);
+  // allergen checkboxes
+  $('#editModal input[name="allergens"]').prop('checked', false);
+  if (d.allergens) {
+    d.allergens.split(',').forEach(function(k) {
+      $('#editModal input[name="allergens"][value="' + k + '"]').prop('checked', true);
+    });
+  }
+  $('#editModal').modal('show');
+});
+
+// Toggle attivo/inattivo
+$(document).on('click', '.btn-toggle-prod', function() {
+  var pid = $(this).data('id');
+  var f = $('<form method="POST">').attr('action', productUrl(pid, 'toggle'));
+  $('body').append(f);
+  f.submit();
+});
+
+// Elimina con conferma SweetAlert2
+$(document).on('click', '.btn-delete-prod', function() {
+  var pid  = $(this).data('id');
+  var name = $(this).data('name');
+  Swal.fire({
+    title: 'Eliminare "' + name + '"?',
+    text: 'L\'operazione non è reversibile.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e3342f',
+    confirmButtonText: 'Elimina',
+    cancelButtonText: 'Annulla'
+  }).then(function(r) {
+    if (r.isConfirmed) {
+      var f = $('<form method="POST">').attr('action', productUrl(pid, 'delete'));
+      $('body').append(f);
+      f.submit();
+    }
+  });
+});
+</script>
 {% endblock %}

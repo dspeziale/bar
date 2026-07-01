@@ -465,7 +465,6 @@
             {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots','admin.tavoli') %}
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
-            {% set in_tenant       = ep in ('admin.tenants',) %}
             {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
             {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto') %}
 
@@ -677,15 +676,7 @@
             </li>
             {% endif %}
 
-            {# ── TENANT (solo superadmin) ── #}
             {% if current_user.is_admin %}
-            <li class="nav-item">
-              <a href="{{ url_for('admin.tenants') }}"
-                 class="nav-link {{ 'active' if in_tenant }}">
-                <i class="nav-icon fas fa-building" style="color:#3498db;"></i>
-                <p>Tenant</p>
-              </a>
-            </li>
             <li class="nav-item">
               <a href="{{ url_for('admin.maintenance') }}"
                  class="nav-link {{ 'active' if ep == 'admin.maintenance' }}">

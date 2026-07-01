@@ -41,10 +41,11 @@ def index():
 @bp.route('/menu')
 @login_required
 def menu():
-    categories = Category.query.all()
-    products = Product.query.filter_by(is_active=True).order_by(
+    tid = current_user.tenant_id
+    categories = Category.query.filter_by(tenant_id=tid).order_by(Category.sort_order, Category.name).all()
+    products = Product.query.filter_by(is_active=True, tenant_id=tid).order_by(
         Product.category_id, Product.name).all()
-    slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
+    slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
     cart = session.get('cart', {})
     return render_template('main/menu.html', categories=categories,
                            products=products, slots=slots, cart=cart)
@@ -113,7 +114,8 @@ def cart():
     for ci in custom_cart:
         total += ci['total_price']
 
-    slots = TimeSlot.query.filter_by(is_active=True).order_by(TimeSlot.time_str).all()
+    tid = current_user.tenant_id
+    slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
     return render_template('main/cart.html', items=items,
                            custom_cart=custom_cart,
                            total=round(total, 2),
@@ -307,8 +309,10 @@ def builder():
     if builder_type not in ('panino', 'insalata', 'poke'):
         builder_type = 'panino'
 
+    tid = current_user.tenant_id
     categories = IngredientCategory.query.filter(
-        IngredientCategory.builder_type.in_([builder_type, 'both'])
+        IngredientCategory.builder_type.in_([builder_type, 'both']),
+        IngredientCategory.tenant_id == tid,
     ).order_by(IngredientCategory.sort_order).all()
 
     base_price = Config.BUILDER_PRICES[builder_type]
@@ -328,8 +332,10 @@ def builder_add():
         return redirect(url_for('main.builder'))
 
     # Raccoglie ingredienti selezionati (field name: ing_<id>)
+    tid = current_user.tenant_id
     categories = IngredientCategory.query.filter(
-        IngredientCategory.builder_type.in_([builder_type, 'both'])
+        IngredientCategory.builder_type.in_([builder_type, 'both']),
+        IngredientCategory.tenant_id == tid,
     ).order_by(IngredientCategory.sort_order).all()
 
     selected_ids = []
@@ -432,8 +438,9 @@ def tables():
         res_date = date.today()
         res_date_str = str(res_date)
 
-    all_tables = Table.query.filter_by(is_active=True).order_by(Table.number).all()
-    bands = TableTimeBand.query.order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
+    tid = current_user.tenant_id
+    all_tables = Table.query.filter_by(is_active=True, tenant_id=tid).order_by(Table.number).all()
+    bands = TableTimeBand.query.filter_by(tenant_id=tid).order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
 
     # Prenotazioni attive del giorno indicizzate per (table_id, session_start)
     day_res = (TableReservation.query
