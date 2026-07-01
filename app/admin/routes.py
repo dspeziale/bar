@@ -539,6 +539,20 @@ def user_toggle(uid):
     return redirect(url_for('admin.users'))
 
 
+@bp.route('/users/<int:uid>/delete', methods=['POST'])
+@require_permission('manage_users')
+def user_delete(uid):
+    user = db.get_or_404(User, uid)
+    if user.is_admin:
+        flash('Non puoi eliminare un amministratore.', 'danger')
+        return redirect(url_for('admin.users'))
+    name = user.username
+    _delete_user_cascade(uid)
+    db.session.commit()
+    flash(f'Utente "{name}" eliminato.', 'info')
+    return redirect(url_for('admin.users'))
+
+
 @bp.route('/users/<int:uid>/roles', methods=['POST'])
 @require_permission('manage_users')
 def user_roles_assign(uid):
