@@ -9,8 +9,16 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
-                        DailyFixedMeal, CorporateMealBooking)
+                        DailyFixedMeal, CorporateMealBooking, Tenant)
 from config import Config
+
+
+def _effective_tenant_id():
+    """Superadmin ha tenant_id=None → usa il tenant 'default' per le query utente."""
+    if current_user.tenant_id:
+        return current_user.tenant_id
+    default_t = Tenant.query.filter_by(slug='default').first()
+    return default_t.id if default_t else None
 
 
 # ── Home ──────────────────────────────────────────────────────────────────────
@@ -64,7 +72,7 @@ def index():
 @bp.route('/menu')
 @login_required
 def menu():
-    tid = current_user.tenant_id
+    tid = _effective_tenant_id()
     categories = Category.query.filter_by(tenant_id=tid).order_by(Category.sort_order, Category.name).all()
     products = Product.query.filter_by(is_active=True, tenant_id=tid).order_by(
         Product.category_id, Product.name).all()
@@ -137,7 +145,7 @@ def cart():
     for ci in custom_cart:
         total += ci['total_price']
 
-    tid = current_user.tenant_id
+    tid = _effective_tenant_id()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
     return render_template('main/cart.html', items=items,
                            custom_cart=custom_cart,
@@ -332,7 +340,7 @@ def builder():
     if builder_type not in ('panino', 'insalata', 'poke'):
         builder_type = 'panino'
 
-    tid = current_user.tenant_id
+    tid = _effective_tenant_id()
     categories = IngredientCategory.query.filter(
         IngredientCategory.builder_type.in_([builder_type, 'both']),
         IngredientCategory.tenant_id == tid,
@@ -355,7 +363,7 @@ def builder_add():
         return redirect(url_for('main.builder'))
 
     # Raccoglie ingredienti selezionati (field name: ing_<id>)
-    tid = current_user.tenant_id
+    tid = _effective_tenant_id()
     categories = IngredientCategory.query.filter(
         IngredientCategory.builder_type.in_([builder_type, 'both']),
         IngredientCategory.tenant_id == tid,
@@ -461,7 +469,7 @@ def tables():
         res_date = date.today()
         res_date_str = str(res_date)
 
-    tid = current_user.tenant_id
+    tid = _effective_tenant_id()
     all_tables = Table.query.filter_by(is_active=True, tenant_id=tid).order_by(Table.number).all()
     bands = TableTimeBand.query.filter_by(tenant_id=tid).order_by(TableTimeBand.sort_order, TableTimeBand.start_time).all()
 
