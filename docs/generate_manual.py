@@ -626,9 +626,11 @@ def s03(doc):
         ('Inserisci i prodotti',
          'Vai su Admin → Prodotti. Per ogni voce inserisci nome, descrizione, prezzo e '
          'quantità giornaliera disponibile. Puoi attivare e disattivare ogni prodotto in qualsiasi momento.'),
-        ('Configura gli slot orari',
-         'Vai su Admin → Slot orari. Gli slot determinano quando i clienti possono ritirare '
-         '(es. 12:00 – 12:15 – 12:30…). Imposta la capienza massima per fascia oraria.'),
+        ('Configura gli slot ordini e i tavoli',
+         'Vai su Admin → Tavoli. '
+         'Nel tab "Slot ordini" imposta le fasce di ritiro del cibo (es. 12:00, 12:15…) con la capienza massima. '
+         'Nel tab "Tavoli" aggiungi i tavoli fisici. '
+         'Nel tab "Fasce orarie" crea i blocchi di prenotazione (es. 11:25–12:30 con 30 min a seduta).'),
         ('Aggiungi il personale',
          'Vai su Admin → Persone → Personale. Crea un account per ogni dipendente e assegna '
          'il ruolo corretto (cassiere, cuoco, manager). Ognuno vedrà solo le sezioni di sua competenza.'),
@@ -801,23 +803,62 @@ def s07(doc):
 def s08(doc):
     h1(doc, 8, 'Tavoli e prenotazioni', '🪑')
     body_para(doc,
-        "Il modulo tavoli permette ai clienti di prenotare un posto a sedere scegliendo "
-        "data, fascia oraria e numero di coperti. L'admin vede in tempo reale la "
-        "disponibilità di ogni tavolo per ogni slot.")
+        "Il modulo tavoli gestisce due sistemi distinti, entrambi accessibili da "
+        "Admin → Tavoli (pagina unica con quattro tab):")
 
-    h2(doc, 'Configurare i tavoli — Admin → Tavoli')
-    body_para(doc,
-        "Per ogni tavolo imposta: numero identificativo, posti disponibili e zona "
-        "(es. Finestra, Centro, Bancone). Puoi aggiungere o disattivare tavoli in qualsiasi momento.")
-
-    h2(doc, 'Gestire le prenotazioni — Admin → Prenotazioni')
-    body_para(doc,
-        "La vista disponibilità mostra una griglia tavoli × slot. Le celle libere sono verdi, "
-        "quelle occupate mostrano il nome del cliente. Da Admin → Prenotazioni puoi vedere "
-        "l'elenco completo e annullare una prenotazione se necessario.")
     info_box(doc,
-        "La prenotazione tavolo è indipendente dall'ordine pasto. Un cliente può prenotare "
-        "un posto senza ordinare online (e viceversa).",
+        "Slot ordini e fasce orarie tavoli sono sistemi INDIPENDENTI. "
+        "Gli slot regolano il ritiro del cibo ordinato; le fasce orarie regolano "
+        "la prenotazione di un posto a sedere. Si configurano separatamente.",
+        style='warning', label='Importante:')
+
+    h2(doc, 'Tab Tavoli — anagrafica dei posti a sedere')
+    body_para(doc,
+        "Ogni tavolo ha un numero identificativo, il numero di posti e una zona "
+        "(es. Finestra, Centro, Terrazzo). Puoi aggiungere, modificare o eliminare "
+        "tavoli in qualsiasi momento. Un tavolo eliminato non è recuperabile: "
+        "disattivalo se vuoi nasconderlo temporaneamente.")
+
+    h2(doc, 'Tab Fasce orarie — prenotazione tavoli')
+    body_para(doc,
+        "Le fasce orarie definiscono i blocchi di tempo in cui i clienti possono "
+        "sedersi a un tavolo. Ogni fascia ha:")
+    data_table(doc,
+        ['Campo', 'Descrizione', 'Esempio'],
+        [
+            ['Inizio fascia',      'Orario di apertura del blocco',              '11:25'],
+            ['Fine fascia',        'Orario di chiusura del blocco',              '12:30'],
+            ['Durata seduta (min)','Tempo massimo che ogni gruppo occupa il tavolo', '30 min'],
+        ],
+        col_widths=[4.5, 9.5, 3.5])
+    body_para(doc,
+        "Il sistema calcola automaticamente le sessioni disponibili: "
+        "una fascia 11:25–12:30 con 30 minuti genera le sessioni 11:25, 11:55 e 12:25 "
+        "(si ferma quando aggiungere un'altra sessione sforerebbe la fine della fascia). "
+        "I clienti scelgono l'orario di inizio della loro sessione quando prenotano.")
+    info_box(doc,
+        "Esempio con tre fasce: «11:25–12:30 / 30 min» → 3 sessioni; "
+        "«12:30–13:30 / 20 min» → 3 sessioni; «13:30–15:00 / 25 min» → 3 sessioni. "
+        "In totale 9 turni di pranzo su ogni tavolo.",
+        style='tip', label='Esempio pratico:')
+
+    h2(doc, 'Tab Panoramica — disponibilità in tempo reale')
+    body_para(doc,
+        "La panoramica mostra la disponibilità giornaliera per data (navigazione prev/next). "
+        "Per ogni fascia appare una riga per ogni sessione calcolata; "
+        "su ogni riga ci sono i chip dei tavoli: verde (libero) o rosso con il nome del cliente. "
+        "Da questa vista puoi registrare il check-in o annullare una prenotazione.")
+
+    h2(doc, 'Tab Slot ordini — ritiro del cibo')
+    body_para(doc,
+        "Gli slot ordini sono completamente separati dalle fasce orarie dei tavoli. "
+        "Definiscono le finestre orarie in cui i clienti possono fare un ordine cibo "
+        "(es. 11:45, 12:00, 12:15…). Per ogni slot imposta la capienza massima di ordini "
+        "contemporanei in modo da non sovraccaricare la cucina. "
+        "Attiva o disattiva uno slot per aprire o chiudere quella finestra di ritiro.")
+    info_box(doc,
+        "La prenotazione tavolo è indipendente dall'ordine pasto. "
+        "Un cliente può prenotare un posto senza ordinare online (e viceversa).",
         style='tip')
 
 

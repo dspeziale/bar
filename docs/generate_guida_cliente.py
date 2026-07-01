@@ -474,34 +474,45 @@ def s5_wallet(doc):
 def s6_tavoli(doc):
     h1(doc, '6', 'Prenotare un tavolo', '🪑', accent=HEX_PURPL)
 
-    h2(doc, '6.1  Vedere la disponibilità')
-    step_row(doc, 1, 'Vai in "Tavoli"', 'Dal menu laterale')
+    body_para(doc,
+        'La prenotazione di un tavolo funziona per FASCE ORARIE: ogni fascia è un blocco di tempo '
+        '(es. 11:25–12:30) suddiviso in sessioni della stessa durata (es. 30 min). '
+        'Prenoti un tavolo per una sessione specifica.')
+    spacer(doc, 6)
+
+    h2(doc, '6.1  Scegliere il giorno')
+    step_row(doc, 1, 'Vai in "Tavoli" dal menu laterale', 'Si apre la pagina di prenotazione tavoli')
     spacer(doc, 4)
-    step_row(doc, 2, 'Guarda la tabella', 'Righe = tavoli, colonne = slot orari. Una cella verde/libera significa che quel tavolo è prenotabile in quello slot')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Cella occupata', 'Se il tavolo è già prenotato per quello slot, la cella è bloccata e non selezionabile')
+    step_row(doc, 2, 'Usa le frecce ‹ › per scegliere il giorno', 'O inserisci la data nel campo in alto. Di default vedi oggi')
     spacer(doc, 8)
 
-    h2(doc, '6.2  Prenotare')
-    step_row(doc, 1, 'Tocca una cella libera', 'Scegli il tavolo e lo slot orario che preferisci')
+    h2(doc, '6.2  Scegliere la sessione e il tavolo')
+    step_row(doc, 1, 'Leggi le fasce orarie', 'Ogni fascia (es. "11:25 – 12:30 · 30 min a seduta") mostra le sessioni disponibili')
     spacer(doc, 4)
-    step_row(doc, 2, 'Indica il numero di persone', 'Non puoi superare i posti disponibili al tavolo (es. tavolo da 4 posti → massimo 4 persone)')
+    step_row(doc, 2, 'Scegli la sessione di inizio', 'Es. 11:25 oppure 11:55 oppure 12:25 — ogni sessione dura 30 minuti')
     spacer(doc, 4)
-    step_row(doc, 3, 'Aggiungi eventuali note', 'Facoltativo: es. "Seggiolone per bambino" o "Vicino alla finestra"')
+    step_row(doc, 3, 'Guarda i tavoli disponibili', 'Verde = libero (puoi prenotare), rosso = occupato, blu = già tuo')
     spacer(doc, 4)
-    step_row(doc, 4, 'Tocca "Prenota"', 'Ricevi conferma immediata con tavolo e orario assegnati')
+    step_row(doc, 4, 'Tocca un tavolo verde', 'Si apre la scheda di prenotazione con i dettagli della sessione')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Indica il numero di persone', 'Non puoi superare i posti disponibili al tavolo (es. tavolo da 4 → massimo 4)')
+    spacer(doc, 4)
+    step_row(doc, 6, 'Aggiungi eventuali note (facoltativo)', 'Es. "Seggiolone per bambino", "Vicino alla finestra"')
+    spacer(doc, 4)
+    step_row(doc, 7, 'Tocca "Prenota"', 'Conferma immediata: la sessione è riservata per te')
     spacer(doc, 8)
 
     h2(doc, '6.3  Le mie prenotazioni')
     step_row(doc, 1, 'Vai in "Le Mie Prenotazioni"', 'Vedi tutte le prenotazioni fatte, dalla più recente')
     spacer(doc, 4)
-    step_row(doc, 2, 'All\'arrivo al locale', 'Comunica il tuo nome o numero del tavolo alla sala: il personale registra il check-in')
+    step_row(doc, 2, 'All\'arrivo al locale', 'Comunica il tuo nome o il numero tavolo al personale: registreranno il tuo check-in')
     spacer(doc, 4)
-    step_row(doc, 3, 'Per annullare', 'Apri la prenotazione e tocca "Annulla" — il tavolo torna disponibile per altri clienti')
+    step_row(doc, 3, 'Per annullare', 'Tocca "Annulla" nella prenotazione — il tavolo torna disponibile per altri clienti')
     spacer(doc, 8)
 
-    info_box(doc, 'Puoi prenotare un solo tavolo per slot orario: se provi a prenotarne un secondo nello stesso slot, '
-             'il sistema mostra che è già occupato.', style='warning')
+    info_box(doc, 'Non puoi prenotare due tavoli nella stessa sessione oraria. '
+             'Puoi invece prenotare tavoli in sessioni diverse (es. una prenotazione alle 11:25 '
+             'e una alle 12:30 sono ammesse).', style='warning')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

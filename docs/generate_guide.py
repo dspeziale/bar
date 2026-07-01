@@ -694,24 +694,29 @@ def s_admin_tenant(doc):
              'Utile per prodotti stagionali o temporaneamente esauriti.', style='tip')
     spacer(doc, 8)
 
-    h2(doc, '2.3  Fasce orarie (Slot)')
-    body_para(doc, 'Le fasce orarie definiscono quando è possibile ordinare e prenotare tavoli. '
-              'Ogni slot ha un orario e una durata massima di permanenza al tavolo.')
+    h2(doc, '2.3  Gestione Tavoli — due sistemi distinti')
+    body_para(doc, 'Admin → Tavoli è una pagina con quattro tab. '
+              'È fondamentale capire la differenza tra i due sistemi di orari:')
     spacer(doc, 4)
 
     data_table(doc,
-        ['Campo', 'Descrizione', 'Esempio'],
+        ['Sistema', 'Scopo', 'Dove si configura'],
         [
-            ['Orario slot',       'Orario di inizio (es. 12:00)',        '12:00'],
-            ['Capienza massima',  'Max persone prenotabili in quello slot', '30'],
-            ['Durata permanenza', 'Minuti massimi al tavolo (0 = illimitato)', '45'],
-            ['Attivo',            'Se spuntato, i clienti possono prenotare', 'Sì'],
+            ['Slot ordini',    'Orari di ritiro del cibo (es. 12:00, 12:15…). '
+                               'Capienza max ordini per non sovraccaricare la cucina.',  'Tab "Slot ordini"'],
+            ['Fasce orarie',   'Blocchi di tempo per prenotare un tavolo. '
+                               'Ogni fascia ha inizio, fine e durata seduta in minuti.',  'Tab "Fasce orarie"'],
         ],
-        col_widths=[4.0, 7.5, 6.1])
-    spacer(doc, 8)
+        col_widths=[3.5, 10.5, 3.5])
+    spacer(doc, 6)
 
-    info_box(doc, 'La durata di permanenza determina quando viene inviata la notifica Telegram '
-             'al responsabile sala. Con 45 minuti, l\'avviso parte quando restano 10 minuti.',
+    body_para(doc, 'Le fasce orarie generano automaticamente le sessioni prenotabili: '
+              'una fascia 11:25–12:30 con 30 min crea le sessioni 11:25, 11:55 e 12:25. '
+              'I clienti scelgono data + sessione + tavolo disponibile.')
+    spacer(doc, 4)
+
+    info_box(doc, 'La durata di permanenza (campo nella fascia oraria) determina quando viene inviata '
+             'la notifica Telegram al responsabile sala: l\'avviso parte 10 minuti prima della scadenza.',
              style='warning')
     spacer(doc, 8)
 
@@ -1024,26 +1029,39 @@ def s_sala(doc):
                HEX_TEAL)
     spacer(doc, 8)
 
-    h2(doc, '5.1  Visualizzare le prenotazioni del giorno')
-    step_row(doc, 1, 'Vai in Admin → Tavoli → Prenotazioni', 'Vedi tutte le prenotazioni del giorno organizzate per slot orario')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Filtra per slot', 'Usa il filtro in alto per vedere solo le prenotazioni di una fascia oraria')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Controlla lo stato', 'Ogni prenotazione mostra: cliente, tavolo, slot, stato (attesa/check-in/completata)')
+    h2(doc, '5.1  Come funzionano le fasce orarie')
+    body_para(doc, 'Il sistema di prenotazione tavoli è organizzato per FASCE ORARIE, '
+              'non per singoli slot. L\'admin crea fasce come «11:25–12:30 con 30 min a seduta»; '
+              'il sistema calcola automaticamente le sessioni disponibili: 11:25, 11:55, 12:25. '
+              'I clienti prenotano un tavolo a una sessione specifica.')
+    spacer(doc, 6)
+
+    info_box(doc, 'Gli SLOT ORDINI (tab "Slot ordini" in Admin → Tavoli) sono SEPARATI '
+             'dalle fasce orarie tavoli: regolano solo il ritiro del cibo ordinato, '
+             'non la prenotazione dei posti a sedere.',
+             style='warning')
     spacer(doc, 8)
 
-    h2(doc, '5.2  Check-in all\'arrivo del cliente')
+    h2(doc, '5.2  Visualizzare la panoramica del giorno')
+    step_row(doc, 1, 'Vai in Admin → Tavoli → tab Panoramica', 'Vedi tutte le fasce orarie del giorno corrente')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Naviga tra i giorni', 'Usa le frecce ‹ › o il selettore data per vedere un altro giorno')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Leggi i chip colorati', 'Verde = tavolo libero in quella sessione; rosso = occupato con il nome del cliente')
+    spacer(doc, 8)
+
+    h2(doc, '5.3  Check-in all\'arrivo del cliente')
     body_para(doc, 'Quando un cliente con prenotazione arriva fisicamente al locale, '
               'registra il suo check-in per avviare il conteggio del tempo di permanenza.')
     spacer(doc, 4)
 
-    step_row(doc, 1, 'Trova la prenotazione', 'Cerca il cliente per nome nella lista prenotazioni del giorno')
+    step_row(doc, 1, 'Trova la prenotazione in Panoramica o nella lista', 'Cerca il cliente per nome o per orario sessione')
     spacer(doc, 4)
-    step_row(doc, 2, 'Clicca "✔ Check-in"', 'Il sistema registra l\'orario esatto di arrivo del cliente')
+    step_row(doc, 2, 'Clicca il pulsante check-in (icona porta)', 'Il sistema registra l\'orario esatto di arrivo del cliente')
     spacer(doc, 4)
-    step_row(doc, 3, 'Il timer parte', 'Accanto alla prenotazione appare il conteggio: "In sala da X min"')
+    step_row(doc, 3, 'Il timer parte', 'Accanto alla prenotazione appare l\'orario di check-in')
     spacer(doc, 4)
-    step_row(doc, 4, 'Assegna il tavolo fisicamente', 'Accompagna il cliente al tavolo (il sistema non assegna automaticamente un numero di tavolo fisico)')
+    step_row(doc, 4, 'Accompagna il cliente al tavolo prenotato', 'Il numero tavolo è visibile sulla prenotazione')
     spacer(doc, 8)
 
     info_box(doc, 'Il check-in è fondamentale per far funzionare gli avvisi di tempo. '
@@ -1051,16 +1069,16 @@ def s_sala(doc):
              style='warning')
     spacer(doc, 8)
 
-    h2(doc, '5.3  Avvisi di tempo — Notifiche Telegram')
-    body_para(doc, 'Quando un cliente è in sala da più di (durata slot - 10 minuti), '
+    h2(doc, '5.4  Avvisi di tempo — Notifiche Telegram')
+    body_para(doc, 'Quando un cliente è in sala da più di (durata fascia - 10 minuti), '
               'il sistema invia un avviso Telegram al canale sala/admin.')
     spacer(doc, 4)
 
     info_box_color(doc,
-                   'Esempio: Lo slot "12:00" ha durata 45 minuti.\n'
-                   'Al minuto 35 dall\'arrivo del cliente → il sistema invia:\n'
-                   '🪑 AVVISO TAVOLO — Mario Rossi (slot 12:00)\n'
-                   'Tempo rimasto: circa 10 minuti. Prepararsi al cambio tavolo.',
+                   'Esempio: Fascia 11:25–12:30 con 30 min di durata.\n'
+                   'Cliente fa check-in alle 11:25.\n'
+                   'Alle 11:45 (dopo 20 min, cioè 10 min prima della scadenza) → avviso:\n'
+                   '⏰ Tavolo 3 — Mario Rossi. Tempo rimasto: ~10 min.',
                    bg='FEF9E7', border=HEX_ORNG, icon='⏰')
     spacer(doc, 8)
 

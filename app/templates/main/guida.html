@@ -129,8 +129,16 @@
   <section id="g-tavoli" class="guida-section card card-outline card-info mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Prenotare un tavolo</h2></div>
     <div class="card-body">
-      <p>Da <a href="{{ url_for('main.tables') }}">Tavoli → Prenota Tavolo</a> scegli data, orario e numero di persone; il sistema mostra solo i tavoli realmente disponibili in quella fascia.</p>
-      <p>In <a href="{{ url_for('main.my_reservations') }}">Tavoli → Le Mie Prenotazioni</a> rivedi o annulli le prenotazioni future.</p>
+      <p>Vai su <a href="{{ url_for('main.tables') }}"><strong>Tavoli → Prenota Tavolo</strong></a>. La pagina è organizzata per <strong>fasce orarie</strong> e <strong>giorno</strong>:</p>
+      <ol class="mb-3">
+        <li>Usa le frecce ‹ › in alto per scegliere il giorno (o inserisci la data direttamente).</li>
+        <li>Il sistema mostra le fasce orarie disponibili (es. <em>11:25 – 12:30</em>, <em>12:30 – 13:30</em>…). Ogni fascia indica la durata massima della seduta.</li>
+        <li>All'interno di ogni fascia trovi le sessioni calcolate (es. <em>11:25</em>, <em>11:55</em>, <em>12:25</em>…): sono gli orari di inizio a cui puoi sederti.</li>
+        <li>Per ogni sessione vedi i tavoli disponibili: <span style="color:#28a745;font-weight:600;">verde = libero</span>, <span style="color:#dc3545;font-weight:600;">rosso = occupato</span>, <span style="color:#0f3460;font-weight:600;">blu = tuo</span>.</li>
+        <li>Clicca su un tavolo <strong>libero</strong>: si apre il pannello di prenotazione. Indica quante persone siete e aggiungi eventuali note.</li>
+        <li>Conferma: la prenotazione è fissata per quella sessione.</li>
+      </ol>
+      <p class="mb-0">In <a href="{{ url_for('main.my_reservations') }}">Tavoli → Le Mie Prenotazioni</a> rivedi o annulli le prenotazioni future. Non puoi annullare una prenotazione dopo il check-in.</p>
     </div>
   </section>
 
@@ -224,9 +232,59 @@
   </section>
 
   <section id="g-tavoli-admin" class="guida-section card card-outline card-info mb-4">
-    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Tavoli, prenotazioni, slot</h2></div>
+    <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Gestione Tavoli</h2></div>
     <div class="card-body">
-      <p><a href="{{ url_for('admin.tables') }}">Tavoli</a>: anagrafica dei tavoli e capienza. <a href="{{ url_for('admin.reservations') }}">Prenotazioni</a>: elenco e gestione check-in. <a href="{{ url_for('admin.slots') }}">Slot</a>: fasce orarie disponibili per ordini e prenotazioni.</p>
+      <p>Tutto si gestisce da un'unica pagina <a href="{{ url_for('admin.tavoli') }}"><strong>Tavoli</strong></a> con quattro tab:</p>
+
+      <div class="row mt-2">
+        <div class="col-md-6 mb-3">
+          <div class="card card-outline card-info h-100">
+            <div class="card-header py-1"><strong><i class="fas fa-calendar-day mr-1"></i>Panoramica</strong></div>
+            <div class="card-body py-2" style="font-size:.9rem;">
+              Navigazione per data. Mostra le <strong>fasce orarie</strong> del giorno con una riga per ogni sessione calcolata e un chip per ogni tavolo:
+              <span class="badge" style="background:#d4edda;color:#155724;">libero</span>
+              oppure <span class="badge" style="background:#f8d7da;color:#721c24;">nome cliente</span>.
+              Da qui puoi fare check-in o annullare una prenotazione.
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card card-outline card-primary h-100">
+            <div class="card-header py-1"><strong><i class="fas fa-chair mr-1"></i>Tavoli</strong></div>
+            <div class="card-body py-2" style="font-size:.9rem;">
+              Aggiungi, modifica o elimina i tavoli fisici. Per ogni tavolo imposta numero, numero di posti e posizione (es. Finestra, Terrazzo).
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card card-outline card-warning h-100">
+            <div class="card-header py-1"><strong><i class="fas fa-hourglass-half mr-1"></i>Fasce orarie</strong></div>
+            <div class="card-body py-2" style="font-size:.9rem;">
+              Definisci i blocchi orari in cui i clienti possono prenotare un tavolo.
+              Ogni fascia ha un <strong>orario di inizio e fine</strong> e una <strong>durata di seduta</strong> in minuti.
+              Il sistema genera automaticamente le sessioni disponibili:
+              <em>fascia 11:25–12:30 con 30 min → sessioni 11:25, 11:55, 12:25</em>.
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card card-outline card-secondary h-100">
+            <div class="card-header py-1"><strong><i class="fas fa-list-ol mr-1"></i>Slot ordini</strong></div>
+            <div class="card-body py-2" style="font-size:.9rem;">
+              Gli slot ordini sono <em>diversi</em> dalle fasce orarie dei tavoli: regolano <strong>quando i clienti possono fare un ordine cibo</strong> (ritiro al banco).
+              Ogni slot ha un orario (es. 12:00) e una <strong>capienza massima</strong> di ordini contemporanei, per non sovraccaricare la cucina.
+              Attiva/disattiva uno slot per aprire o chiudere quella finestra di ritiro.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-warning mt-1 mb-0" style="font-size:.9rem;">
+        <i class="fas fa-exclamation-triangle mr-1"></i>
+        <strong>Slot ordini ≠ Fasce orarie tavoli.</strong>
+        Gli slot regolano il ritiro del cibo; le fasce orarie regolano la prenotazione dei posti a sedere.
+        Sono due sistemi indipendenti e si configurano separatamente.
+      </div>
     </div>
   </section>
 
