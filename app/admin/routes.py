@@ -1479,15 +1479,19 @@ def maintenance():
         elif op == 'clear_clients':
             client_ids = [u.id for u in User.query.filter_by(is_client=True).all()]
             if client_ids:
+                # null nullable FK: consumable_movements.user_id
+                db.session.execute(
+                    db.text('UPDATE consumable_movements SET user_id = NULL WHERE user_id = ANY(:ids)' if db.engine.url.drivername.startswith('postgresql')
+                            else 'UPDATE consumable_movements SET user_id = NULL WHERE user_id IN ({})'.format(','.join(str(i) for i in client_ids))),
+                    {'ids': client_ids} if db.engine.url.drivername.startswith('postgresql') else {}
+                )
+                # child tables of orders
                 order_ids = [o.id for o in Order.query.filter(Order.user_id.in_(client_ids)).all()]
                 if order_ids:
                     db.session.execute(
-                        db.text('UPDATE transactions SET order_id = NULL WHERE order_id = ANY(:ids)'),
-                        {'ids': order_ids}
-                    ) if db.engine.url.drivername.startswith('postgresql') else \
-                    db.session.execute(
-                        db.text('UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(
-                            ','.join(str(i) for i in order_ids)))
+                        db.text('UPDATE transactions SET order_id = NULL WHERE order_id = ANY(:ids)' if db.engine.url.drivername.startswith('postgresql')
+                                else 'UPDATE transactions SET order_id = NULL WHERE order_id IN ({})'.format(','.join(str(i) for i in order_ids))),
+                        {'ids': order_ids} if db.engine.url.drivername.startswith('postgresql') else {}
                     )
                     CustomOrderItemIngredient.query.filter(
                         CustomOrderItemIngredient.custom_item_id.in_(
@@ -1498,6 +1502,10 @@ def maintenance():
                     OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
                     CorporateMealBooking.query.filter(CorporateMealBooking.order_id.in_(order_ids)).delete(synchronize_session=False)
                     Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+                # other tables directly linked to client users
+                PollVote.query.filter(PollVote.user_id.in_(client_ids)).delete(synchronize_session=False)
+                CorporateMealBooking.query.filter(CorporateMealBooking.user_id.in_(client_ids)).delete(synchronize_session=False)
+                CorporateMembership.query.filter(CorporateMembership.user_id.in_(client_ids)).delete(synchronize_session=False)
                 TableReservation.query.filter(TableReservation.user_id.in_(client_ids)).delete(synchronize_session=False)
                 Transaction.query.filter(Transaction.user_id.in_(client_ids)).delete(synchronize_session=False)
                 User.query.filter_by(is_client=True).delete(synchronize_session=False)
@@ -1505,15 +1513,20 @@ def maintenance():
             flash('Tutti i clienti e i loro dati eliminati.', 'success')
 
         elif op == 'reset_all':
+            # step 1: null nullable FKs
             db.session.execute(db.text('UPDATE transactions SET order_id = NULL WHERE order_id IS NOT NULL'))
+            db.session.execute(db.text('UPDATE consumable_movements SET user_id = NULL WHERE user_id IS NOT NULL'))
+            # step 2: leaf tables (no children)
+            PollVote.query.delete(synchronize_session=False)
+            CorporateMealBooking.query.delete(synchronize_session=False)
+            CorporateMembership.query.delete(synchronize_session=False)
             CustomOrderItemIngredient.query.delete(synchronize_session=False)
             CustomOrderItem.query.delete(synchronize_session=False)
             OrderItem.query.delete(synchronize_session=False)
-            CorporateMealBooking.query.delete(synchronize_session=False)
+            # step 3: parent tables
             Order.query.delete(synchronize_session=False)
             TableReservation.query.delete(synchronize_session=False)
             Transaction.query.delete(synchronize_session=False)
-            PollVote.query.delete(synchronize_session=False)
             PollChoice.query.delete(synchronize_session=False)
             Poll.query.delete(synchronize_session=False)
             DailyStock.query.delete(synchronize_session=False)
