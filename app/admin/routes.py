@@ -143,6 +143,19 @@ def product_edit(pid):
     return redirect(url_for('admin.products'))
 
 
+@bp.route('/products/<int:pid>/delete', methods=['POST'])
+@require_permission('manage_products')
+def product_delete(pid):
+    p = db.get_or_404(Product, pid)
+    DailyStock.query.filter_by(product_id=pid).delete(synchronize_session=False)
+    OrderItem.query.filter_by(product_id=pid).delete(synchronize_session=False)
+    name = p.name
+    db.session.delete(p)
+    db.session.commit()
+    flash(f'Prodotto "{name}" eliminato.', 'success')
+    return redirect(url_for('admin.products'))
+
+
 @bp.route('/products/<int:pid>/toggle', methods=['POST'])
 @require_permission('manage_products')
 def product_toggle(pid):
