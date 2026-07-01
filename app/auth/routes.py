@@ -4,6 +4,17 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db, oauth
 from app.auth import bp
 from app.models import User
+from app.notifications import get_setting
+
+
+def _apply_registration_bonus(user):
+    try:
+        val = float(get_setting('registration_bonus') or 0)
+    except (ValueError, TypeError):
+        val = 0.0
+    if val > 0:
+        user.credit_wallet(val, 'Bonus benvenuto')
+        db.session.commit()
 
 
 def _make_username(email):
@@ -58,6 +69,7 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            _apply_registration_bonus(user)
             login_user(user)
             flash('Registrazione completata. Benvenuto!', 'success')
             return redirect(url_for('main.index'))
@@ -110,6 +122,7 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
+        _apply_registration_bonus(user)
         return redirect(url_for('auth.pending'))
 
 

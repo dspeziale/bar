@@ -38,9 +38,10 @@
               <code>api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
             </small>
           </div>
-          <!-- preserve gmail fields as hidden -->
-          <input type="hidden" name="gmail_user"         value="{{ cfg.gmail_user }}">
-          <input type="hidden" name="gmail_app_password" value="{{ cfg.gmail_app_password }}">
+          <!-- preserve other fields -->
+          <input type="hidden" name="gmail_user"           value="{{ cfg.gmail_user }}">
+          <input type="hidden" name="gmail_app_password"   value="{{ cfg.gmail_app_password }}">
+          <input type="hidden" name="registration_bonus"   value="{{ cfg.registration_bonus }}">
           <button type="submit" class="btn btn-primary mr-2">
             <i class="fas fa-save mr-1"></i>Salva
           </button>
@@ -94,9 +95,10 @@
           </ol>
         </div>
         <form method="POST" action="{{ url_for('admin.settings_save') }}">
-          <!-- preserve telegram fields as hidden -->
+          <!-- preserve other fields -->
           <input type="hidden" name="telegram_bot_token" value="{{ cfg.telegram_bot_token }}">
           <input type="hidden" name="telegram_chat_id"   value="{{ cfg.telegram_chat_id }}">
+          <input type="hidden" name="registration_bonus" value="{{ cfg.registration_bonus }}">
           <div class="form-group">
             <label>Account Gmail mittente</label>
             <input type="email" name="gmail_user" class="form-control"
