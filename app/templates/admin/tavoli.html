@@ -8,20 +8,58 @@
 
 {% block content %}
 <style>
-  .chip-free  { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;
+  /* ── chip tavolo ── */
+  .chip-free  { display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .6rem;
                 border-radius:1rem;background:#d4edda;color:#155724;font-size:.78rem;font-weight:600;
-                cursor:default; }
-  .chip-taken { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;
+                min-width:5.2rem;justify-content:center;cursor:default; }
+  .chip-taken { display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .6rem;
                 border-radius:1rem;background:#f8d7da;color:#721c24;font-size:.78rem;font-weight:600;
-                cursor:default; }
-  .chip-off   { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;
+                min-width:5.2rem;justify-content:center;cursor:default; }
+  .chip-off   { display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .6rem;
                 border-radius:1rem;background:#e9ecef;color:#6c757d;font-size:.78rem;
-                cursor:default; }
-  .slot-row   { display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
-                padding:.45rem .5rem;border-bottom:1px solid #f0f0f0; }
+                min-width:5.2rem;justify-content:center;cursor:default; }
+
+  /* ── righe sessione ── */
+  .slot-row {
+    display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+    padding:.6rem .75rem;
+    border-bottom: 2px solid #dee2e6;
+  }
   .slot-row:last-child { border-bottom:none; }
-  .slot-time  { width:3.5rem;font-weight:700;font-size:.88rem;color:#495057;flex-shrink:0; }
-  .band-card  { margin-bottom:1.25rem; }
+  .slot-row.s-odd  { background:#fff; }
+  .slot-row.s-even { background:#f0f7ff; }
+
+  /* ── cella orario (colonna sinistra) ── */
+  .slot-time-cell {
+    flex-shrink:0; width:8rem;
+    border-right: 3px solid #17a2b8;
+    padding-right:.75rem; margin-right:.25rem;
+  }
+  .slot-time-cell .t-start {
+    display:block; font-weight:800; font-size:.95rem; color:#0f3460; line-height:1.1;
+  }
+  .slot-time-cell .t-end {
+    display:block; font-size:.75rem; color:#6c757d; margin-top:.1rem;
+  }
+
+  /* ── intestazione colonne tavoli ── */
+  .slot-row-head {
+    display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+    padding:.5rem .75rem;
+    background:#16213e; border-radius:0;
+  }
+  .slot-row-head .th-time {
+    flex-shrink:0; width:8rem;
+    border-right: 3px solid #17a2b8;
+    padding-right:.75rem; margin-right:.25rem;
+    font-size:.78rem; font-weight:700; color:#90b8d8; text-transform:uppercase;
+  }
+  .slot-row-head .th-table {
+    min-width:5.2rem; text-align:center;
+    font-size:.78rem; font-weight:700; color:#fff;
+  }
+
+  .band-card { margin-bottom:1.5rem; }
 </style>
 
 {# ── Tabs ── #}
@@ -121,31 +159,44 @@
   </div>
 
   <div class="card-body p-0">
+
     {# Intestazione colonne tavoli #}
-    <div class="slot-row" style="background:#f8f9fa;font-size:.8rem;font-weight:700;color:#495057;">
-      <span class="slot-time">Orario</span>
+    <div class="slot-row-head">
+      <span class="th-time"><i class="fas fa-clock mr-1"></i>Sessione</span>
       {% for t in all_tables %}
-      <span style="min-width:5rem;text-align:center;">T{{ t.number }}&nbsp;({{ t.seats }}p)</span>
+      <span class="th-table">
+        T{{ t.number }}<br>
+        <span style="opacity:.7;font-weight:400;">({{ t.seats }}p)</span>
+      </span>
       {% endfor %}
     </div>
 
     {% if slots %}
     {% for slot_time in slots %}
-    <div class="slot-row">
-      <span class="slot-time">{{ slot_time }}</span>
+    {# calcola fine sessione #}
+    {% set _sh = slot_time[:2] | int %}
+    {% set _sm = slot_time[3:] | int %}
+    {% set _tot = _sh * 60 + _sm + band.duration_minutes %}
+    {% set _eh = _tot // 60 %}
+    {% set _em = _tot % 60 %}
+    {% set end_str = (_eh | string) ~ ':' ~ ('0' if _em < 10 else '') ~ (_em | string) %}
+
+    <div class="slot-row {{ 's-odd' if loop.index is odd else 's-even' }}">
+      <span class="slot-time-cell">
+        <span class="t-start">{{ slot_time }}</span>
+        <span class="t-end">→ {{ end_str }}</span>
+      </span>
       {% for t in all_tables %}
       {% set res = res_index.get((t.id, slot_time)) %}
       {% if res %}
-      <span class="chip-taken" title="{{ res.user.username }} — {{ res.party_size }} p{% if res.notes %} — {{ res.notes }}{% endif %}">
-        <i class="fas fa-user" style="font-size:.7rem;"></i>
-        {{ res.user.username[:9] }}
-        {% if res.checkin_at %}
-        <i class="fas fa-check" style="font-size:.65rem;"></i>
-        {% endif %}
+      <span class="chip-taken"
+            title="{{ res.user.username }} — {{ res.party_size }} pers.{% if res.notes %} — {{ res.notes }}{% endif %}">
+        <i class="fas fa-user" style="font-size:.68rem;"></i>
+        {{ res.user.username[:9] }}{% if res.checkin_at %}&nbsp;<i class="fas fa-check" style="font-size:.6rem;"></i>{% endif %}
       </span>
       {% else %}
       <span class="chip-free">
-        <i class="fas fa-circle" style="font-size:.5rem;"></i>
+        <i class="fas fa-circle" style="font-size:.45rem;"></i>
         Libero
       </span>
       {% endif %}
