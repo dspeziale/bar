@@ -73,7 +73,7 @@ def index():
 @login_required
 def menu():
     tid = _effective_tenant_id()
-    categories = Category.query.filter_by(tenant_id=tid).order_by(Category.sort_order, Category.name).all()
+    categories = Category.query.filter_by(tenant_id=tid).order_by(Category.name).all()
     products = Product.query.filter_by(is_active=True, tenant_id=tid).order_by(
         Product.category_id, Product.name).all()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
