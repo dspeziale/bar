@@ -19,13 +19,23 @@ from app.notifications import (send_telegram, send_telegram_to_user,
                                 telegram_poll_message, email_poll_html, get_setting)
 
 
-# ── Tenant scope helper ───────────────────────────────────────────────────────
+# ── Tenant scope helpers ──────────────────────────────────────────────────────
 
 def _tenant_filter():
     """Per query filter_by: vuoto per il super admin globale, tenant_id per gli altri."""
     if current_user.is_admin:
         return {}
     return {'tenant_id': current_user.tenant_id}
+
+
+def _active_tenant_id():
+    """Ritorna il tenant_id da usare per categorie/prodotti.
+    Super admin (tenant_id=None) → tenant 'default'.
+    """
+    if current_user.tenant_id:
+        return current_user.tenant_id
+    default_t = Tenant.query.filter_by(slug='default').first()
+    return default_t.id if default_t else None
 
 
 # ── Decorators ────────────────────────────────────────────────────────────────
@@ -94,9 +104,10 @@ def dashboard():
 @bp.route('/products')
 @require_permission('manage_products')
 def products():
+    tid = _active_tenant_id()
     return render_template('admin/products.html',
-                           products=Product.query.filter_by(**_tenant_filter()).order_by(Product.category_id, Product.name).all(),
-                           categories=Category.query.filter_by(**_tenant_filter()).order_by(Category.name).all())
+                           products=Product.query.filter_by(tenant_id=tid).order_by(Product.category_id, Product.name).all(),
+                           categories=Category.query.filter_by(tenant_id=tid).order_by(Category.name).all())
 
 
 @bp.route('/products/new', methods=['POST'])
@@ -463,9 +474,9 @@ def user_roles_assign(uid):
 @bp.route('/categories')
 @require_permission('manage_categories')
 def categories():
-    cats = Category.query.filter_by(**_tenant_filter()).order_by(Category.name).all()
-    tenant_map = {t.id: t for t in Tenant.query.all()} if current_user.is_admin else {}
-    return render_template('admin/categories.html', categories=cats, tenant_map=tenant_map)
+    tid = _active_tenant_id()
+    cats = Category.query.filter_by(tenant_id=tid).order_by(Category.name).all()
+    return render_template('admin/categories.html', categories=cats)
 
 
 @bp.route('/categories/new', methods=['POST'])
@@ -475,7 +486,7 @@ def category_new():
     if not name:
         flash('Nome obbligatorio.', 'danger')
         return redirect(url_for('admin.categories'))
-    tid = current_user.tenant_id
+    tid = _active_tenant_id()
     if Category.query.filter_by(name=name, tenant_id=tid).first():
         flash('Categoria già esistente.', 'warning')
         return redirect(url_for('admin.categories'))
