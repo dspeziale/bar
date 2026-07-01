@@ -739,6 +739,41 @@ def slot_capacity(sid):
     return redirect(url_for('admin.tavoli', tab='slot'))
 
 
+@bp.route('/slots/new', methods=['POST'])
+@require_permission('manage_slots')
+def slot_new():
+    time_str = (request.form.get('time_str') or '').strip()
+    max_orders = request.form.get('max_orders', 20, type=int)
+    if not time_str:
+        flash('Orario obbligatorio.', 'danger')
+        return redirect(url_for('admin.tavoli', tab='slot'))
+    import re
+    if not re.match(r'^\d{2}:\d{2}$', time_str):
+        flash('Formato orario non valido (HH:MM).', 'danger')
+        return redirect(url_for('admin.tavoli', tab='slot'))
+    tid = _active_tenant_id()
+    if TimeSlot.query.filter_by(time_str=time_str, tenant_id=tid).first():
+        flash(f'Lo slot {time_str} esiste già.', 'warning')
+        return redirect(url_for('admin.tavoli', tab='slot'))
+    db.session.add(TimeSlot(time_str=time_str, max_orders=max(1, max_orders), tenant_id=tid))
+    db.session.commit()
+    flash(f'Slot {time_str} creato.', 'success')
+    return redirect(url_for('admin.tavoli', tab='slot'))
+
+
+@bp.route('/slots/<int:sid>/delete', methods=['POST'])
+@require_permission('manage_slots')
+def slot_delete(sid):
+    slot = db.get_or_404(TimeSlot, sid)
+    if slot.orders:
+        flash(f'Impossibile eliminare lo slot {slot.time_str}: ha ordini associati.', 'danger')
+        return redirect(url_for('admin.tavoli', tab='slot'))
+    db.session.delete(slot)
+    db.session.commit()
+    flash(f'Slot {slot.time_str} eliminato.', 'info')
+    return redirect(url_for('admin.tavoli', tab='slot'))
+
+
 # ── Tavoli ────────────────────────────────────────────────────────────────────
 
 @bp.route('/tables')
