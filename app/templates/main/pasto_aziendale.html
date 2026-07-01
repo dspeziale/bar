@@ -26,7 +26,7 @@
     {% if meal %}
 
       {# ── Pasto disponibile ── #}
-      <div class="card card-outline {{ 'card-success' if not my_booking else 'card-secondary' }}">
+      <div class="card card-outline {{ 'card-success' if not my_booking else 'card-info' }}">
         <div class="card-header">
           <h3 class="card-title">
             <i class="fas fa-utensils mr-2 text-success"></i>
@@ -69,53 +69,100 @@
           </div>
           {% endif %}
 
-          {% if my_booking %}
-            {# già prenotato #}
-            {% set lbl = my_booking.label() %}
-            <div class="alert alert-{{ lbl[1] }} d-flex align-items-center" style="gap:.75rem;">
-              <i class="fas fa-check-circle fa-lg"></i>
-              <div>
-                <strong>{{ lbl[0] }}</strong> — pasto prenotato
-                {% if my_booking.slot %}per le {{ my_booking.slot.time_str }}{% endif %}
+          {# ── Form prenotazione (sia nuova che aggiornamento) ── #}
+          {% if meal.is_available or my_booking %}
+          <form method="POST" action="{{ url_for('main.pasto_aziendale_prenota') }}">
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label><i class="fas fa-hashtag mr-1 text-primary"></i>Numero di porzioni</label>
+                  <input type="number" name="quantity" class="form-control"
+                         min="1"
+                         max="{{ (meal.slots_left + (my_booking.quantity if my_booking else 0)) }}"
+                         value="{{ my_booking.quantity if my_booking else 1 }}"
+                         required>
+                  <small class="text-muted">
+                    Disponibili: {{ meal.slots_left + (my_booking.quantity if my_booking else 0) }}
+                  </small>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label><i class="fas fa-clock mr-1 text-muted"></i>Slot orario</label>
+                  <select name="slot_id" class="form-control">
+                    <option value="">— Qualsiasi orario —</option>
+                    {% for s in slots %}
+                    <option value="{{ s.id }}"
+                      {{ 'selected' if my_booking and my_booking.slot_id == s.id }}>
+                      {{ s.time_str }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {% if my_booking.status == 'booked' %}
-            <form method="POST" action="{{ url_for('main.pasto_aziendale_cancella') }}"
-                  data-confirm="Annullare la prenotazione?">
-              <input type="hidden" name="booking_id" value="{{ my_booking.id }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="fas fa-times mr-1"></i>Annulla prenotazione
-              </button>
-            </form>
-            {% endif %}
-
-          {% else %}
-            {# prenotazione disponibile #}
-            {% if meal.is_available %}
-            <form method="POST" action="{{ url_for('main.pasto_aziendale_prenota') }}">
-              <div class="form-group">
-                <label>Scegli lo slot orario</label>
-                <select name="slot_id" class="form-control">
-                  <option value="">— Qualsiasi orario —</option>
-                  {% for s in slots %}
-                  <option value="{{ s.id }}">{{ s.time_str }}</option>
-                  {% endfor %}
-                </select>
+            {% if my_booking %}
+              {# Stato attuale #}
+              {% set lbl = my_booking.label() %}
+              <div class="alert alert-{{ lbl[1] }} py-2 mb-3 d-flex align-items-center" style="gap:.75rem;">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                  <strong>{{ lbl[0] }}</strong> —
+                  <strong>{{ my_booking.quantity }} porzioni</strong> prenotate
+                  {% if my_booking.slot %}per le {{ my_booking.slot.time_str }}{% endif %}
+                </div>
               </div>
+              <div class="d-flex" style="gap:.5rem;">
+                <button type="submit" class="btn btn-info flex-grow-1">
+                  <i class="fas fa-sync-alt mr-1"></i>Aggiorna prenotazione
+                </button>
+                {% if my_booking.status == 'booked' %}
+                <button type="button" class="btn btn-outline-danger"
+                        data-toggle="modal" data-target="#cancelModal">
+                  <i class="fas fa-times"></i>
+                </button>
+                {% endif %}
+              </div>
+            {% else %}
               <button type="submit" class="btn btn-success btn-block">
                 <i class="fas fa-check mr-2"></i>Prenota il mio pasto
               </button>
-            </form>
-            {% else %}
-            <div class="alert alert-danger">
-              <i class="fas fa-times-circle mr-2"></i>Posti esauriti per oggi.
-            </div>
             {% endif %}
+          </form>
+
+          {% else %}
+          <div class="alert alert-danger">
+            <i class="fas fa-times-circle mr-2"></i>Posti esauriti per oggi.
+          </div>
           {% endif %}
 
         </div>
       </div>
+
+      {# ── Modal annullamento ── #}
+      {% if my_booking and my_booking.status == 'booked' %}
+      <div class="modal fade" id="cancelModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">Annulla prenotazione</h5>
+              <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+              Annullare le <strong>{{ my_booking.quantity }} porzioni</strong> di oggi?
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">No</button>
+              <form method="POST" action="{{ url_for('main.pasto_aziendale_cancella') }}">
+                <input type="hidden" name="booking_id" value="{{ my_booking.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">Sì, annulla</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
     {% else %}
       <div class="card">

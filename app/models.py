@@ -624,7 +624,7 @@ class DailyFixedMeal(db.Model):
 
     @property
     def booking_count(self):
-        return sum(1 for b in self.bookings if b.status != 'cancelled')
+        return sum((b.quantity or 1) for b in self.bookings if b.status != 'cancelled')
 
     @property
     def is_available(self):
@@ -655,6 +655,7 @@ class CorporateMealBooking(db.Model):
     user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     meal_id      = db.Column(db.Integer, db.ForeignKey('daily_fixed_meals.id'), nullable=False)
     slot_id      = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=True)
+    quantity     = db.Column(db.Integer, default=1, nullable=False, server_default='1')
     status       = db.Column(db.String(20), default='booked')  # booked, consumed, cancelled
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'meal_id', name='uq_corp_booking'),)

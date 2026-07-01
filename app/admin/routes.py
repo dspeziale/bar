@@ -503,6 +503,10 @@ def client_toggle(uid):
         abort(404)
     u.is_active = not u.is_active
     db.session.commit()
+    if u.is_active:
+        send_telegram_to_user(u,
+            f'\U00002705 Il tuo account è stato attivato!\n'
+            f'Puoi ora accedere al servizio.')
     flash(f'Cliente {u.full_name} {"attivato" if u.is_active else "sospeso"}.', 'info')
     return redirect(url_for('admin.clients'))
 
@@ -582,6 +586,10 @@ def user_toggle(uid):
     user = db.get_or_404(User, uid)
     user.is_active = not user.is_active
     db.session.commit()
+    if user.is_active:
+        send_telegram_to_user(user,
+            f'\U00002705 Il tuo account è stato attivato!\n'
+            f'Puoi ora accedere al servizio.')
     flash(f'Utente {user.username} {"attivato" if user.is_active else "sospeso"}.', 'info')
     return redirect(url_for('admin.users'))
 

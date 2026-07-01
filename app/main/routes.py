@@ -660,32 +660,40 @@ def pasto_aziendale_prenota():
         flash('Nessun pasto disponibile per oggi.', 'warning')
         return redirect(url_for('main.pasto_aziendale'))
 
-    if not meal.is_available:
-        flash('Posti esauriti per oggi.', 'danger')
-        return redirect(url_for('main.pasto_aziendale'))
-
-    existing = CorporateMealBooking.query.filter_by(
-        user_id=current_user.id, meal_id=meal.id).first()
-    if existing:
-        flash('Hai giÃ  prenotato il pasto di oggi.', 'info')
-        return redirect(url_for('main.pasto_aziendale'))
-
-    slot_id = request.form.get('slot_id') or None
+    quantity = max(1, request.form.get('quantity', 1, type=int))
+    slot_id  = request.form.get('slot_id') or None
     if slot_id:
         slot_id = int(slot_id)
 
-    booking = CorporateMealBooking(
-        user_id=current_user.id, meal_id=meal.id,
-        slot_id=slot_id, status='booked')
-    db.session.add(booking)
-    db.session.commit()
+    existing = CorporateMealBooking.query.filter_by(
+        user_id=current_user.id, meal_id=meal.id).first()
 
-    send_telegram_to_user(current_user,
-        f'ðŸ½ï¸ Prenotazione confermata!\n'
-        f'<b>{meal.name}</b>\n'
-        f'Azienda: {corp.name} â€” oggi {today.strftime("%d/%m/%Y")}')
+    if existing:
+        available = meal.slots_left + (existing.quantity or 1)
+        if quantity > available:
+            flash(f'Posti insufficienti. Puoi prenotare al massimo {available} porzioni.', 'danger')
+            return redirect(url_for('main.pasto_aziendale'))
+        existing.quantity = quantity
+        existing.slot_id  = slot_id
+        if existing.status == 'cancelled':
+            existing.status = 'booked'
+        db.session.commit()
+        msg = '\U0001f37d\ufe0f Prenotazione aggiornata: ' + str(quantity) + ' porzioni'
+        send_telegram_to_user(current_user, msg)
+        flash(f'Prenotazione aggiornata: {quantity} porzioni di "{meal.name}".', 'success')
+    else:
+        if not meal.is_available or quantity > meal.slots_left:
+            flash(f'Posti insufficienti. Disponibili: {meal.slots_left}.', 'danger')
+            return redirect(url_for('main.pasto_aziendale'))
+        booking = CorporateMealBooking(
+            user_id=current_user.id, meal_id=meal.id,
+            slot_id=slot_id, quantity=quantity, status='booked')
+        db.session.add(booking)
+        db.session.commit()
+        msg = '\U0001f37d\ufe0f Prenotazione confermata: ' + str(quantity) + f' porzioni di {meal.name}'
+        send_telegram_to_user(current_user, msg)
+        flash(f'Pasto prenotato: {quantity} porzioni di "{meal.name}".', 'success')
 
-    flash(f'Pasto prenotato: {meal.name}', 'success')
     return redirect(url_for('main.pasto_aziendale'))
 
 
