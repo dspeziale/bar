@@ -86,19 +86,25 @@ def google_callback():
     user = (User.query.filter_by(google_id=google_id).first()
             or User.query.filter_by(email=email).first())
 
-    if not user:
-        flash("Nessun account trovato per questa email. Contatta l'amministratore.", 'danger')
-        return redirect(url_for('auth.login'))
-
-    if not user.is_active:
-        flash("Account sospeso. Contatta l'amministratore.", 'danger')
-        return redirect(url_for('auth.login'))
-
-    if not user.google_id:
-        user.google_id = google_id
-    if avatar:
-        user.avatar_url = avatar
-    db.session.commit()
+    if user:
+        if not user.is_active:
+            flash("Account sospeso. Contatta l'amministratore.", 'danger')
+            return redirect(url_for('auth.login'))
+        if not user.google_id:
+            user.google_id = google_id
+        if avatar:
+            user.avatar_url = avatar
+        db.session.commit()
+    else:
+        user = User(
+            username   = _make_username(email),
+            email      = email,
+            google_id  = google_id,
+            avatar_url = avatar,
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('Account creato con Google. Benvenuto!', 'success')
 
     login_user(user, remember=True)
     next_page = request.args.get('next')
