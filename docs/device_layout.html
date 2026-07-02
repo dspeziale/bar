@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickLunch — Layout Dispositivi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa; color: #2d3436; }
+
+  header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    color: #fff; padding: 2rem 2.5rem; margin-bottom: 2rem;
+  }
+  header h1 { font-size: 1.8rem; font-weight: 700; }
+  header p  { margin-top: .4rem; opacity: .75; font-size: .95rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+
+  /* ── Sezione floor plan ── */
+  h2 { font-size: 1.2rem; font-weight: 700; color: #0f3460; margin-bottom: 1rem;
+       border-left: 4px solid #e94560; padding-left: .75rem; }
+
+  .floorplan-wrap { background: #fff; border-radius: 16px; padding: 1.5rem;
+                    box-shadow: 0 4px 24px rgba(0,0,0,.07); margin-bottom: 2.5rem; overflow-x: auto; }
+
+  .floorplan {
+    position: relative; width: 860px; height: 560px; margin: 0 auto;
+    background: #eaf0fb; border: 2.5px solid #b2c2d9; border-radius: 12px;
+    font-size: .78rem;
+  }
+
+  /* aree funzionali */
+  .area {
+    position: absolute; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center;
+    font-weight: 600; font-size: .75rem;
+    border: 2px dashed;
+  }
+  .area-cucina  { top: 30px;  left: 30px;  width: 240px; height: 160px;
+                  background: #fff3cd; border-color: #f0a500; color: #7a5000; }
+  .area-banco   { top: 30px;  left: 310px; width: 200px; height: 160px;
+                  background: #d4edda; border-color: #28a745; color: #155724; }
+  .area-sala    { top: 220px; left: 30px;  width: 560px; height: 280px;
+                  background: #e8f4fd; border-color: #17a2b8; color: #0c5460; }
+  .area-ufficio { top: 30px;  left: 550px; width: 270px; height: 200px;
+                  background: #f5e6ff; border-color: #6f42c1; color: #3d0d6e; }
+  .area-label { font-size: .68rem; opacity: .7; margin-top: .2rem; }
+
+  /* tabelle in sala */
+  .table-spot {
+    position: absolute; width: 54px; height: 40px;
+    background: #b2d4f5; border: 1.5px solid #4287d4;
+    border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: .65rem; color: #1a4d8f; font-weight: 700;
+  }
+
+  /* dispositivi */
+  .device {
+    position: absolute; display: flex; flex-direction: column;
+    align-items: center; cursor: default;
+  }
+  .device-icon {
+    width: 48px; height: 48px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; box-shadow: 0 3px 10px rgba(0,0,0,.18);
+    border: 2.5px solid rgba(255,255,255,.8);
+  }
+  .device-label {
+    margin-top: 4px; font-size: .62rem; font-weight: 700;
+    text-align: center; max-width: 70px; line-height: 1.2;
+    background: rgba(255,255,255,.85); border-radius: 4px;
+    padding: 1px 4px;
+  }
+  /* colori dispositivi */
+  .d-tablet  { background: #28a745; }
+  .d-phone   { background: #e94560; }
+  .d-pc      { background: #6f42c1; }
+  .d-display { background: #f0a500; }
+  .d-printer { background: #6c757d; }
+
+  /* frecce flusso pagamento QR */
+  .flow-line {
+    position: absolute; pointer-events: none;
+    stroke: #e94560; fill: none; overflow: visible;
+  }
+
+  /* ── Legenda dispositivi ── */
+  .devices-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem; margin-bottom: 2.5rem;
+  }
+  .device-card {
+    background: #fff; border-radius: 14px; padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    border-left: 5px solid;
+    display: flex; gap: 1rem; align-items: flex-start;
+  }
+  .device-card.tablet  { border-color: #28a745; }
+  .device-card.phone   { border-color: #e94560; }
+  .device-card.pc      { border-color: #6f42c1; }
+  .device-card.display { border-color: #f0a500; }
+  .device-card.printer { border-color: #6c757d; }
+
+  .dc-icon { font-size: 2rem; flex-shrink: 0; margin-top: .1rem; }
+  .dc-name { font-weight: 700; font-size: 1rem; margin-bottom: .3rem; }
+  .dc-pos  { font-size: .78rem; color: #6c757d; margin-bottom: .5rem; font-style: italic; }
+  .dc-desc { font-size: .83rem; line-height: 1.5; }
+  .dc-desc ul { margin: .4rem 0 0 1rem; }
+  .dc-desc li { margin-bottom: .2rem; }
+
+  /* ── Flusso QR ── */
+  .qr-flow {
+    display: flex; flex-wrap: wrap; gap: 0; align-items: center;
+    background: #fff; border-radius: 16px; padding: 1.75rem 1.5rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,.07); margin-bottom: 2.5rem;
+  }
+  .flow-step {
+    flex: 1; min-width: 140px; text-align: center; padding: .75rem .5rem;
+    position: relative;
+  }
+  .flow-step::after {
+    content: '▶'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+    color: #b2c2d9; font-size: 1.2rem; z-index: 1;
+  }
+  .flow-step:last-child::after { display: none; }
+  .flow-step-icon {
+    width: 56px; height: 56px; border-radius: 14px; margin: 0 auto .6rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; color: #fff;
+  }
+  .fs-green  { background: #28a745; }
+  .fs-blue   { background: #17a2b8; }
+  .fs-red    { background: #e94560; }
+  .fs-purple { background: #6f42c1; }
+  .fs-gold   { background: #f0a500; }
+
+  .flow-step-title { font-weight: 700; font-size: .88rem; margin-bottom: .25rem; }
+  .flow-step-desc  { font-size: .75rem; color: #6c757d; line-height: 1.4; }
+  .flow-step-actor { display: inline-block; margin-top: .3rem; font-size: .68rem;
+                     background: #f0f0f0; border-radius: 10px; padding: 1px 7px;
+                     font-weight: 600; color: #444; }
+
+  /* ── Tabella requisiti ── */
+  table { width: 100%; border-collapse: collapse; background: #fff;
+          border-radius: 14px; overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+  th { background: #0f3460; color: #fff; padding: .8rem 1rem;
+       text-align: left; font-size: .85rem; font-weight: 600; }
+  td { padding: .75rem 1rem; font-size: .83rem; border-bottom: 1px solid #eef; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8f9fc; }
+  .badge {
+    display: inline-block; border-radius: 6px; padding: 2px 8px;
+    font-size: .72rem; font-weight: 700; color: #fff;
+  }
+  .badge-yes    { background: #28a745; }
+  .badge-opt    { background: #f0a500; }
+  .badge-no     { background: #dee2e6; color: #555; }
+  .badge-wifi   { background: #17a2b8; }
+
+  footer { text-align: center; font-size: .75rem; color: #aaa; padding: 1.5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 QuickLunch — Layout Dispositivi</h1>
+  <p>Mappa dei dispositivi necessari al funzionamento del sistema e loro posizionamento fisico</p>
+</header>
+
+<div class="container">
+
+  <!-- ══ SEZIONE 1: FLOOR PLAN ══ -->
+  <h2>Pianta del locale</h2>
+  <div class="floorplan-wrap">
+    <div class="floorplan">
+
+      <!-- Aree funzionali -->
+      <div class="area area-cucina">
+        🍳 <strong>CUCINA</strong>
+        <div class="area-label">Preparazione ordini</div>
+      </div>
+      <div class="area area-banco">
+        ☕ <strong>BANCO</strong>
+        <div class="area-label">Cassa rapida QR</div>
+      </div>
+      <div class="area area-sala">
+        🪑 <strong>SALA / TAVOLI</strong>
+        <div class="area-label">Clienti — prenotazioni tavoli</div>
+      </div>
+      <div class="area area-ufficio">
+        🖥️ <strong>UFFICIO / ADMIN</strong>
+        <div class="area-label">Gestione sistema</div>
+      </div>
+
+      <!-- Tavoli in sala -->
+      <div class="table-spot" style="top:250px; left:60px;">T1</div>
+      <div class="table-spot" style="top:250px; left:135px;">T2</div>
+      <div class="table-spot" style="top:250px; left:210px;">T3</div>
+      <div class="table-spot" style="top:320px; left:60px;">T4</div>
+      <div class="table-spot" style="top:320px; left:135px;">T5</div>
+      <div class="table-spot" style="top:320px; left:210px;">T6</div>
+      <div class="table-spot" style="top:390px; left:60px;">T7</div>
+      <div class="table-spot" style="top:390px; left:135px;">T8</div>
+      <div class="table-spot" style="top:390px; left:210px;">T9</div>
+
+      <!-- ① DISPLAY CUCINA -->
+      <div class="device" style="top:55px; left:70px;" title="Display cucina – ordini in tempo reale">
+        <div class="device-icon d-display">🖥️</div>
+        <div class="device-label">Display Cucina</div>
+      </div>
+
+      <!-- ② STAMPANTE CUCINA -->
+      <div class="device" style="top:120px; left:70px;" title="Stampante scontrini cucina">
+        <div class="device-icon d-printer">🖨️</div>
+        <div class="device-label">Stampante</div>
+      </div>
+
+      <!-- ③ TABLET BANCO POS -->
+      <div class="device" style="top:55px; left:340px;" title="Tablet banco – Banco POS QR">
+        <div class="device-icon d-tablet">📱</div>
+        <div class="device-label">Tablet Banco POS</div>
+      </div>
+
+      <!-- ④ SMARTPHONE CLIENTE (in sala) -->
+      <div class="device" style="top:295px; left:340px;" title="Smartphone cliente – ordini, QR pagamento, prenotazioni">
+        <div class="device-icon d-phone">📱</div>
+        <div class="device-label">📲 Smartphone Cliente</div>
+      </div>
+
+      <!-- ⑤ PC ADMIN / UFFICIO -->
+      <div class="device" style="top:70px; left:610px;" title="PC amministratore">
+        <div class="device-icon d-pc">🖥️</div>
+        <div class="device-label">PC Admin</div>
+      </div>
+
+      <!-- ⑥ TABLET STAFF SALA -->
+      <div class="device" style="top:390px; left:480px;" title="Tablet staff in sala – check-in tavoli">
+        <div class="device-icon d-tablet">📱</div>
+        <div class="device-label">Tablet Staff Sala</div>
+      </div>
+
+      <!-- Freccia QR: tablet banco → smartphone cliente -->
+      <svg class="flow-line" style="top:0;left:0;width:860px;height:560px;">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#e94560"/>
+          </marker>
+        </defs>
+        <!-- banco POS → cliente -->
+        <path d="M 390,100 Q 390,310 360,320" stroke="#e94560" stroke-width="2"
+              stroke-dasharray="6,4" marker-end="url(#arr)" fill="none"/>
+        <text x="415" y="205" fill="#e94560" font-size="10" font-weight="700">QR scan</text>
+      </svg>
+
+      <!-- Etichette indice -->
+      <div style="position:absolute;bottom:8px;left:12px;font-size:.62rem;color:#666;">
+        ① Display Cucina &nbsp;② Stampante &nbsp;③ Tablet Banco POS &nbsp;
+        ④ Smartphone Cliente &nbsp;⑤ PC Admin &nbsp;⑥ Tablet Staff
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEZIONE 2: SCHEDE DISPOSITIVI ══ -->
+  <h2>Dispositivi richiesti</h2>
+  <div class="devices-grid">
+
+    <div class="device-card tablet">
+      <div class="dc-icon">📱</div>
+      <div>
+        <div class="dc-name">Tablet Banco POS</div>
+        <div class="dc-pos">📍 Sul bancone, davanti allo staff</div>
+        <div class="dc-desc">
+          Il dispositivo principale del bancone. Lo staff lo usa per la vendita rapida tramite QR.
+          <ul>
+            <li>Seleziona articoli (caffè, brioche, ecc.)</li>
+            <li>Genera il QR di pagamento</li>
+            <li>Visualizza la conferma quando il cliente ha pagato</li>
+          </ul>
+          <strong>Schermo:</strong> 10"+ consigliato · <strong>OS:</strong> Android o iOS
+        </div>
+      </div>
+    </div>
+
+    <div class="device-card phone">
+      <div class="dc-icon">📲</div>
+      <div>
+        <div class="dc-name">Smartphone Cliente</div>
+        <div class="dc-pos">📍 In possesso del cliente (sala / fila)</div>
+        <div class="dc-desc">
+          Il cliente usa il proprio smartphone per tutte le operazioni self-service.
+          <ul>
+            <li>Ordina dal menu digitale</li>
+            <li>Prenota un tavolo</li>
+            <li>Inquadra il QR del banco e conferma il pagamento</li>
+            <li>Consulta saldo wallet e storico</li>
+          </ul>
+          <strong>Requisito:</strong> browser moderno, account QuickLunch
+        </div>
+      </div>
+    </div>
+
+    <div class="device-card display">
+      <div class="dc-icon">🖥️</div>
+      <div>
+        <div class="dc-name">Display Cucina (KDS)</div>
+        <div class="dc-pos">📍 Appeso o posizionato in cucina, visibile ai cuochi</div>
+        <div class="dc-desc">
+          Monitor (anche vecchio) che mostra gli ordini in tempo reale appena arrivano.
+          <ul>
+            <li>Visualizza ordini pendenti con slot orario</li>
+            <li>Permette di marcare ordini come "pronti"</li>
+            <li>Pagina admin: <em>/admin/ordini</em> aperta in full screen</li>
+          </ul>
+          <strong>Schermo:</strong> 15–24" · Qualsiasi browser
+        </div>
+      </div>
+    </div>
+
+    <div class="device-card printer">
+      <div class="dc-icon">🖨️</div>
+      <div>
+        <div class="dc-name">Stampante Scontrini</div>
+        <div class="dc-pos">📍 In cucina o al banco (opzionale)</div>
+        <div class="dc-desc">
+          Stampa il ticket dell'ordine quando viene confermato. Facilita la distribuzione dei piatti.
+          <ul>
+            <li>Modello consigliato: termica ESC/POS (USB o Wi-Fi)</li>
+            <li>Integrazione tramite script locale o browser print</li>
+          </ul>
+          <strong>Nota:</strong> opzionale — il sistema funziona senza
+        </div>
+      </div>
+    </div>
+
+    <div class="device-card pc">
+      <div class="dc-icon">🖥️</div>
+      <div>
+        <div class="dc-name">PC Amministratore</div>
+        <div class="dc-pos">📍 Ufficio del responsabile / back office</div>
+        <div class="dc-desc">
+          Postazione per la gestione completa del sistema.
+          <ul>
+            <li>Configura menu, slot orari, prezzi</li>
+            <li>Gestisce utenti e ricariche wallet</li>
+            <li>Visualizza report e statistiche</li>
+            <li>Configura pasti aziendali e prenotazioni</li>
+          </ul>
+          <strong>Qualsiasi</strong> PC/Mac con browser
+        </div>
+      </div>
+    </div>
+
+    <div class="device-card tablet">
+      <div class="dc-icon">📋</div>
+      <div>
+        <div class="dc-name">Tablet Staff Sala</div>
+        <div class="dc-pos">📍 Portato dallo staff in sala (opzionale)</div>
+        <div class="dc-desc">
+          Lo staff può portare un tablet in sala per gestire check-in tavoli e prenotazioni.
+          <ul>
+            <li>Check-in clienti ai tavoli</li>
+            <li>Visione delle prenotazioni attive</li>
+            <li>Accesso rapido al pannello admin</li>
+          </ul>
+          <strong>Schermo:</strong> 8"+ · Android o iOS
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ SEZIONE 3: FLUSSO QR PAGAMENTO ══ -->
+  <h2>Flusso pagamento QR banco</h2>
+  <div class="qr-flow">
+
+    <div class="flow-step">
+      <div class="flow-step-icon fs-green">🛒</div>
+      <div class="flow-step-title">Selezione articoli</div>
+      <div class="flow-step-desc">Staff tocca gli articoli sul tablet banco (caffè, brioche, ecc.)</div>
+      <span class="flow-step-actor">👤 Staff</span>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-step-icon fs-blue">⬛</div>
+      <div class="flow-step-title">Genera QR</div>
+      <div class="flow-step-desc">Il sistema crea una sessione di pagamento e mostra il QR sul tablet</div>
+      <span class="flow-step-actor">🖥️ Sistema</span>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-step-icon fs-red">📸</div>
+      <div class="flow-step-title">Scansione QR</div>
+      <div class="flow-step-desc">Il cliente punta la fotocamera del proprio telefono verso il QR</div>
+      <span class="flow-step-actor">👥 Cliente</span>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-step-icon fs-purple">✅</div>
+      <div class="flow-step-title">Conferma pagamento</div>
+      <div class="flow-step-desc">Il telefono apre la pagina di riepilogo — il cliente tocca "Paga"</div>
+      <span class="flow-step-actor">👥 Cliente</span>
+    </div>
+
+    <div class="flow-step">
+      <div class="flow-step-icon fs-gold">💰</div>
+      <div class="flow-step-title">Addebito wallet</div>
+      <div class="flow-step-desc">Il wallet viene scalato automaticamente. Il tablet banco mostra "✓ Pagato"</div>
+      <span class="flow-step-actor">🖥️ Sistema</span>
+    </div>
+
+  </div>
+
+  <!-- ══ SEZIONE 4: TABELLA REQUISITI ══ -->
+  <h2>Tabella requisiti tecnici</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Dispositivo</th>
+        <th>Connessione</th>
+        <th>Account richiesto</th>
+        <th>Schermo minimo</th>
+        <th>Necessario</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>📱 Tablet Banco POS</td>
+        <td><span class="badge badge-wifi">Wi-Fi</span></td>
+        <td>Staff / Admin</td>
+        <td>10"</td>
+        <td><span class="badge badge-yes">Sì</span></td>
+      </tr>
+      <tr>
+        <td>📲 Smartphone Cliente</td>
+        <td><span class="badge badge-wifi">Wi-Fi / 4G</span></td>
+        <td>Cliente registrato</td>
+        <td>4.5"</td>
+        <td><span class="badge badge-yes">Sì</span></td>
+      </tr>
+      <tr>
+        <td>🖥️ Display Cucina</td>
+        <td><span class="badge badge-wifi">Wi-Fi</span></td>
+        <td>Staff / Admin</td>
+        <td>15"</td>
+        <td><span class="badge badge-opt">Consigliato</span></td>
+      </tr>
+      <tr>
+        <td>🖨️ Stampante Scontrini</td>
+        <td>USB / <span class="badge badge-wifi">Wi-Fi</span></td>
+        <td>—</td>
+        <td>—</td>
+        <td><span class="badge badge-no">Opzionale</span></td>
+      </tr>
+      <tr>
+        <td>🖥️ PC Amministratore</td>
+        <td><span class="badge badge-wifi">Wi-Fi / LAN</span></td>
+        <td>Admin</td>
+        <td>13"</td>
+        <td><span class="badge badge-yes">Sì</span></td>
+      </tr>
+      <tr>
+        <td>📋 Tablet Staff Sala</td>
+        <td><span class="badge badge-wifi">Wi-Fi</span></td>
+        <td>Staff</td>
+        <td>8"</td>
+        <td><span class="badge badge-no">Opzionale</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:1rem; font-size:.8rem; color:#888; text-align:right;">
+    Requisito minimo di rete: tutti i dispositivi devono raggiungere il server QuickLunch sulla stessa LAN (o via internet se hosted in cloud).
+  </div>
+
+</div>
+
+<footer>QuickLunch — Documento tecnico generato automaticamente &nbsp;|&nbsp; 2026</footer>
+</body>
+</html>
