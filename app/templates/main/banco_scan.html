@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}Scansiona QR Banco{% endblock %}
+{% block page_title %}Paga al Banco{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Paga al Banco</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #scanner-wrap {
+    position: relative; width: 100%; max-width: 400px;
+    margin: 0 auto; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.25);
+    background: #000;
+  }
+  #video {
+    width: 100%; display: block;
+    border-radius: 16px;
+  }
+  #overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  /* mirino centrale */
+  .crosshair {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 200px;
+    border: 3px solid rgba(255,255,255,.0);
+  }
+  .crosshair::before, .crosshair::after,
+  .ch-b::before, .ch-b::after {
+    content: ''; position: absolute;
+    width: 36px; height: 36px;
+    border-color: #28a745; border-style: solid;
+  }
+  .crosshair::before { top: 0; left: 0; border-width: 4px 0 0 4px; border-radius: 4px 0 0 0; }
+  .crosshair::after  { top: 0; right: 0; border-width: 4px 4px 0 0; border-radius: 0 4px 0 0; }
+  .ch-b::before { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-radius: 0 0 0 4px; }
+  .ch-b::after  { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-radius: 0 0 4px 0; }
+
+  #scan-line {
+    position: absolute; left: calc(50% - 100px);
+    width: 200px; height: 3px;
+    background: linear-gradient(90deg, transparent, #28a745, transparent);
+    animation: scanline 2s linear infinite;
+  }
+  @keyframes scanline {
+    0%   { top: calc(50% - 100px); opacity: 1; }
+    90%  { top: calc(50% + 97px);  opacity: 1; }
+    100% { top: calc(50% + 100px); opacity: 0; }
+  }
+
+  #status-bar {
+    text-align: center; padding: .75rem 1rem;
+    font-weight: 600; font-size: .9rem;
+    border-radius: 0 0 12px 12px;
+    transition: background .3s;
+  }
+  #status-bar.waiting  { background: #f8f9fa; color: #6c757d; }
+  #status-bar.found    { background: #d4edda; color: #155724; }
+  #status-bar.error    { background: #f8d7da; color: #721c24; }
+
+  #btn-start {
+    display: block; margin: 1.25rem auto 0;
+    min-width: 200px;
+  }
+  #manual-section { margin-top: 1.5rem; }
+  #camera-error { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-5">
+
+    <div class="card card-outline card-success">
+      <div class="card-header text-center">
+        <h3 class="card-title">
+          <i class="fas fa-qrcode mr-2 text-success"></i>
+          Inquadra il QR del banco
+        </h3>
+      </div>
+      <div class="card-body pb-2">
+
+        <div id="scanner-wrap">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="overlay" style="display:none;"></canvas>
+          <div class="crosshair"><div class="ch-b"></div></div>
+          <div id="scan-line"></div>
+        </div>
+
+        <div id="status-bar" class="waiting">
+          <i class="fas fa-spinner fa-spin mr-1"></i>Punta la fotocamera verso il QR del banco...
+        </div>
+
+        <div id="camera-error" class="alert alert-danger mt-3 mb-0" style="border-radius:10px;">
+          <i class="fas fa-video-slash mr-2"></i>
+          <strong>Fotocamera non disponibile.</strong><br>
+          Usa il campo manuale qui sotto o verifica i permessi del browser.
+        </div>
+
+      </div>
+    </div>
+
+    {# Fallback manuale #}
+    <div id="manual-section" class="card card-outline">
+      <div class="card-header">
+        <h5 class="card-title mb-0" style="font-size:.9rem;">
+          <i class="fas fa-keyboard mr-2 text-muted"></i>Inserisci manualmente il codice
+        </h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size:.82rem;">
+          Se non riesci ad inquadrare il QR, chiedi al personale il codice della sessione.
+        </p>
+        <form id="manual-form" class="input-group">
+          <input type="text" id="manual-token" class="form-control"
+                 placeholder="es. a3f7b2c1d4e5f6a7..." maxlength="64"
+                 style="font-family:monospace;font-size:.85rem;">
+          <div class="input-group-append">
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="text-center mt-2">
+      <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-arrow-left mr-1"></i>Torna alla home
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+var PAY_BASE = '{{ request.host_url|safe }}banco/pay/';
+var video    = document.getElementById('video');
+var canvas   = document.getElementById('overlay');
+var ctx      = null;
+var scanning = true;
+
+function setStatus(msg, cls) {
+  var bar = document.getElementById('status-bar');
+  bar.className = 'status-bar ' + cls;
+  bar.innerHTML = msg;
+}
+
+function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCameraError();
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+  })
+  .then(function(stream) {
+    video.srcObject = stream;
+    video.addEventListener('loadedmetadata', function() {
+      canvas.width  = video.videoWidth  || 400;
+      canvas.height = video.videoHeight || 300;
+      ctx = canvas.getContext('2d');
+      requestAnimationFrame(tick);
+    });
+  })
+  .catch(function(err) {
+    console.warn('Camera error:', err);
+    showCameraError();
+  });
+}
+
+function showCameraError() {
+  document.getElementById('camera-error').style.display = 'block';
+  document.getElementById('scan-line').style.display = 'none';
+  setStatus('<i class="fas fa-video-slash mr-1"></i>Fotocamera non disponibile', 'error');
+}
+
+function tick() {
+  if (!scanning) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var code = jsQR(imgData.data, imgData.width, imgData.height, {
+      inversionAttempts: 'dontInvert'
+    });
+    if (code) {
+      handleQR(code.data);
+      return;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function handleQR(text) {
+  scanning = false;
+  // Accetta sia URL completo che solo token
+  var token = null;
+  if (text.indexOf('/banco/pay/') !== -1) {
+    token = text.split('/banco/pay/').pop().replace(/\/$/, '');
+  } else if (/^[0-9a-f]{16,64}$/.test(text.trim())) {
+    token = text.trim();
+  }
+  if (token) {
+    setStatus('<i class="fas fa-check-circle mr-1"></i>QR rilevato! Reindirizzamento...', 'found');
+    setTimeout(function() {
+      window.location.href = '/banco/pay/' + token;
+    }, 600);
+  } else {
+    setStatus('<i class="fas fa-exclamation-triangle mr-1"></i>QR non valido. Riprova.', 'error');
+    setTimeout(function() { scanning = true; requestAnimationFrame(tick); }, 1500);
+  }
+}
+
+// Avvio fotocamera
+startCamera();
+
+// Form manuale
+document.getElementById('manual-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var val = document.getElementById('manual-token').value.trim();
+  if (!val) return;
+  // Accetta token o URL completo
+  var token = val;
+  if (val.indexOf('/banco/pay/') !== -1) {
+    token = val.split('/banco/pay/').pop().replace(/\/$/, '');
+  }
+  window.location.href = '/banco/pay/' + token;
+});
+</script>
+{% endblock %}

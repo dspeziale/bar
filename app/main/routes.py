@@ -813,6 +813,12 @@ def guida():
 
 # ── Banco QR Pay ──────────────────────────────────────────────────────────────
 
+@bp.route('/banco/scan')
+@login_required
+def banco_scan():
+    return render_template('main/banco_scan.html')
+
+
 @bp.route('/banco/pay/<token>')
 @login_required
 def banco_pay(token):
