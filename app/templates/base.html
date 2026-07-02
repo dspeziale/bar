@@ -477,6 +477,15 @@
               </a>
             </li>
 
+            {# ── BANCO POS ── #}
+            <li class="nav-item">
+              <a href="{{ url_for('admin.banco') }}"
+                 class="nav-link {{ 'active' if ep in ('admin.banco','admin.banco_charge','admin.banco_items','admin.banco_item_new','admin.banco_item_edit','admin.banco_item_delete') }}">
+                <i class="nav-icon fas fa-mug-hot" style="color:#17a2b8;"></i>
+                <p>Banco</p>
+              </a>
+            </li>
+
             {# ── ORDINI ── #}
             {% if p('view_orders') %}
             <li class="nav-item has-treeview {{ 'menu-open' if in_ordini }}">

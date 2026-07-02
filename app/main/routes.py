@@ -9,7 +9,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
-                        DailyFixedMeal, CorporateMealBooking, Tenant)
+                        DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession)
 from config import Config
 
 
@@ -809,4 +809,54 @@ def guida():
                             is_cassiere=is_cassiere, is_cuoco=is_cuoco,
                             is_manager=is_manager, is_cliente=is_cliente,
                             has_corp=has_corp)
+
+
+# ── Banco QR Pay ──────────────────────────────────────────────────────────────
+
+@bp.route('/banco/pay/<token>')
+@login_required
+def banco_pay(token):
+    import json
+    sess = BancoSession.query.filter_by(token=token).first_or_404()
+    if sess.status == 'pending' and datetime.utcnow() > sess.expires_at:
+        sess.status = 'expired'
+        db.session.commit()
+    try:
+        items = json.loads(sess.items_json)
+    except Exception:
+        items = []
+    return render_template('main/banco_pay.html', sess=sess, items=items)
+
+
+@bp.route('/banco/pay/<token>/confirm', methods=['POST'])
+@login_required
+def banco_pay_confirm(token):
+    import json
+    sess = BancoSession.query.filter_by(token=token).first_or_404()
+    if sess.status != 'pending':
+        flash('Questa sessione non è più valida.', 'warning')
+        return redirect(url_for('main.index'))
+    if datetime.utcnow() > sess.expires_at:
+        sess.status = 'expired'
+        db.session.commit()
+        flash('QR scaduto. Chiedi al personale di generarne uno nuovo.', 'danger')
+        return redirect(url_for('main.index'))
+    if current_user.wallet_balance < sess.total:
+        flash(f'Saldo insufficiente ({current_user.wallet_balance:.2f}€). Ricarica il wallet.', 'danger')
+        return redirect(url_for('main.banco_pay', token=token))
+    try:
+        items = json.loads(sess.items_json)
+    except Exception:
+        items = []
+    lines = ', '.join(f"{i['qty']}× {i['name']}" for i in items)
+    current_user.debit_wallet(sess.total, f'Banco: {lines}')
+    # marca ttype come banco
+    last_tx = current_user.transactions[-1] if current_user.transactions else None
+    if last_tx:
+        last_tx.ttype = 'banco'
+    sess.status      = 'paid'
+    sess.customer_id = current_user.id
+    db.session.commit()
+    flash(f'Pagamento di {sess.total:.2f}€ confermato!', 'success')
+    return redirect(url_for('main.index'))
 

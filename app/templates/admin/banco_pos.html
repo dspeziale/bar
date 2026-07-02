@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Banco POS{% endblock %}
+{% block page_title %}Banco — Vendita Rapida{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Banco</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .item-btn { border-radius:14px; padding:1rem .6rem; text-align:center; cursor:pointer;
+              border:2px solid transparent; transition:all .15s; user-select:none; }
+  .item-btn:active { transform:scale(.94); }
+  .item-btn.selected { border-color:#0f3460 !important; box-shadow:0 0 0 3px rgba(15,52,96,.18); }
+  .item-icon { font-size:1.8rem; display:block; margin-bottom:.35rem; }
+  .item-name { font-size:.82rem; font-weight:700; line-height:1.2; }
+  .item-price { font-size:.9rem; color:#e94560; font-weight:800; margin-top:.2rem; }
+  .item-qty { position:absolute; top:.4rem; right:.5rem; font-size:.7rem;
+              background:#0f3460; color:#fff; border-radius:50%;
+              width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+              font-weight:700; opacity:0; transition:opacity .15s; }
+  .item-qty.visible { opacity:1; }
+  .cart-line { font-size:.88rem; }
+  .total-bar { font-size:1.4rem; font-weight:800; color:#28a745; }
+  #qr-code { display:flex; justify-content:center; }
+  #qr-code canvas, #qr-code img { border:6px solid #fff; border-radius:8px;
+                                    box-shadow:0 2px 12px rgba(0,0,0,.18); }
+  #countdown { font-size:1.5rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  #countdown.urgent { color:#dc3545; }
+  #qr-status-msg { font-size:1rem; font-weight:600; min-height:2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<script>
+var BANCO_ITEMS = {{ items_json|safe }};
+var BANCO_SESSION_URL = "{{ url_for('admin.banco_session_new') }}";
+</script>
+
+<div class="row">
+
+  {# ── Griglia articoli ── #}
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title mb-0"><i class="fas fa-mug-hot mr-2"></i>Articoli</h3>
+        <a href="{{ url_for('admin.banco_items') }}" class="btn btn-xs btn-outline-secondary">
+          <i class="fas fa-cog mr-1"></i>Gestisci
+        </a>
+      </div>
+      <div class="card-body">
+        {% if not items %}
+        <div class="text-center text-muted py-4">
+          <i class="fas fa-mug-hot fa-2x mb-2 d-block" style="opacity:.3;"></i>
+          Nessun articolo configurato.
+          <a href="{{ url_for('admin.banco_items') }}">Aggiungine uno.</a>
+        </div>
+        {% else %}
+        <div class="row" style="row-gap:.65rem;">
+          {% for item in items %}
+          <div class="col-4 col-sm-3 col-lg-2 position-relative">
+            <div class="item-btn bg-{{ item.color }} bg-opacity-10 border-{{ item.color }}"
+                 style="background:rgba(var(--color-{{ item.color }},200,200,200),.08) !important;
+                        border-color:var(--color-{{ item.color }},#ccc) !important;"
+                 onclick="toggleItem({{ item.id }})" id="btn-{{ item.id }}">
+              <i class="fas {{ item.icon }} item-icon text-{{ item.color }}"></i>
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-price">{{ '%.2f'|format(item.price) }}€</div>
+            </div>
+            <span class="item-qty" id="qty-{{ item.id }}">0</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Riepilogo + Genera QR ── #}
+  <div class="col-lg-4">
+    <div class="card card-outline card-success sticky-top" style="top:1rem;">
+      <div class="card-header bg-gradient-success text-white">
+        <h3 class="card-title mb-0"><i class="fas fa-qrcode mr-2"></i>Genera QR</h3>
+      </div>
+      <div class="card-body">
+
+        {# Carrello #}
+        <div id="cartSummary" class="mb-2" style="min-height:40px;">
+          <div class="text-muted" style="font-size:.85rem;">
+            <i class="fas fa-info-circle mr-1"></i>Tocca gli articoli per aggiungerli.
+          </div>
+        </div>
+
+        <hr class="my-2">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="font-weight-bold">Totale:</span>
+          <span class="total-bar" id="totalDisplay">0.00€</span>
+        </div>
+
+        <button type="button" class="btn btn-success btn-block btn-lg"
+                id="btnGeneraQR" disabled onclick="generaQR()">
+          <i class="fas fa-qrcode mr-1"></i>Genera QR
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ── Modal QR ── #}
+<div class="modal fade" id="qrModal" tabindex="-1" role="dialog"
+     data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-qrcode mr-2"></i>Pagamento QR</h5>
+      </div>
+      <div class="modal-body text-center">
+        <div id="qr-total-label" class="h4 mb-3 text-success"></div>
+        <div id="qr-code" class="mb-3"></div>
+        <div class="text-muted mb-1" style="font-size:.85rem;">Il cliente inquadra il QR con il telefono</div>
+        <div id="countdown" class="mb-3 text-info">10:00</div>
+        <div id="qr-status-msg" class="mb-2 text-muted">
+          <i class="fas fa-spinner fa-spin mr-1"></i>In attesa di pagamento...
+        </div>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-danger" id="btnCancelSession"
+                onclick="cancelSession()">
+          <i class="fas fa-times mr-1"></i>Annulla sessione
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ── Stato carrello ──────────────────────────────────────────────────────────
+var cart = {};
+
+function toggleItem(id) {
+  var item = BANCO_ITEMS.find(function(i) { return i.id === id; });
+  if (!item) return;
+  if (!cart[id]) cart[id] = {name: item.name, price: item.price, qty: 0};
+  cart[id].qty += 1;
+  updateUI();
+}
+
+function removeItem(id) {
+  if (cart[id]) { cart[id].qty -= 1; if (cart[id].qty <= 0) delete cart[id]; }
+  updateUI();
+}
+
+function updateUI() {
+  var total = 0;
+  var lines = [];
+  Object.keys(cart).forEach(function(id) {
+    var c = cart[id];
+    total += c.price * c.qty;
+    lines.push({id: parseInt(id), name: c.name, price: c.price, qty: c.qty});
+    var qtyEl = document.getElementById('qty-' + id);
+    var btnEl = document.getElementById('btn-' + id);
+    if (qtyEl) { qtyEl.textContent = c.qty; qtyEl.classList.toggle('visible', c.qty > 0); }
+    if (btnEl) btnEl.classList.toggle('selected', c.qty > 0);
+  });
+  BANCO_ITEMS.forEach(function(item) {
+    if (!cart[item.id]) {
+      var q = document.getElementById('qty-' + item.id);
+      var b = document.getElementById('btn-' + item.id);
+      if (q) { q.textContent = '0'; q.classList.remove('visible'); }
+      if (b) b.classList.remove('selected');
+    }
+  });
+
+  total = Math.round(total * 100) / 100;
+  document.getElementById('totalDisplay').textContent = total.toFixed(2) + '€';
+
+  var summary = document.getElementById('cartSummary');
+  if (lines.length === 0) {
+    summary.innerHTML = '<div class="text-muted" style="font-size:.85rem;"><i class="fas fa-info-circle mr-1"></i>Tocca gli articoli per aggiungerli.</div>';
+  } else {
+    var html = lines.map(function(l) {
+      return '<div class="cart-line d-flex justify-content-between align-items-center mb-1">'
+           + '<span><strong>' + l.qty + '×</strong> ' + l.name + '</span>'
+           + '<span class="d-flex align-items-center" style="gap:.3rem;">'
+           + '<strong>' + (l.price * l.qty).toFixed(2) + '€</strong>'
+           + '<button type="button" class="btn btn-xs btn-outline-danger" onclick="removeItem(' + l.id + ')">'
+           + '<i class="fas fa-minus"></i></button>'
+           + '</span></div>';
+    }).join('');
+    summary.innerHTML = html;
+  }
+
+  document.getElementById('btnGeneraQR').disabled = (lines.length === 0);
+}
+
+// ── QR Session ───────────────────────────────────────────────────────────────
+var _pollInterval = null;
+var _countdownInterval = null;
+var _currentToken = null;
+var _expiresIn = 600;
+
+function generaQR() {
+  var lines = [];
+  Object.keys(cart).forEach(function(id) {
+    var c = cart[id];
+    lines.push({id: parseInt(id), name: c.name, price: c.price, qty: c.qty});
+  });
+  if (lines.length === 0) return;
+
+  var fd = new FormData();
+  fd.append('cart_json', JSON.stringify(lines));
+
+  fetch(BANCO_SESSION_URL, {method: 'POST', body: fd})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { alert('Errore: ' + data.error); return; }
+      openQRModal(data.token, data.pay_url, data.total, data.expires_in);
+    })
+    .catch(function(err) { alert('Errore di rete: ' + err); });
+}
+
+function openQRModal(token, payUrl, total, expiresIn) {
+  _currentToken = token;
+  _expiresIn = expiresIn;
+
+  // Mostra totale
+  document.getElementById('qr-total-label').textContent = total.toFixed(2) + '€';
+
+  // Reset status
+  document.getElementById('qr-status-msg').innerHTML =
+    '<i class="fas fa-spinner fa-spin mr-1"></i>In attesa di pagamento...';
+  document.getElementById('qr-status-msg').className = 'mb-2 text-muted';
+  document.getElementById('btnCancelSession').disabled = false;
+
+  // Genera QR code
+  var qrDiv = document.getElementById('qr-code');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, {
+    text: payUrl,
+    width: 220,
+    height: 220,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // Countdown
+  var secs = expiresIn;
+  updateCountdown(secs);
+  _countdownInterval = setInterval(function() {
+    secs -= 1;
+    updateCountdown(secs);
+    if (secs <= 0) {
+      clearInterval(_countdownInterval);
+    }
+  }, 1000);
+
+  // Polling
+  _pollInterval = setInterval(function() { pollStatus(token); }, 2000);
+
+  // Apri modal
+  $('#qrModal').modal('show');
+}
+
+function updateCountdown(secs) {
+  if (secs < 0) secs = 0;
+  var m = Math.floor(secs / 60);
+  var s = secs % 60;
+  var label = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  var el = document.getElementById('countdown');
+  el.textContent = label;
+  el.classList.toggle('urgent', secs <= 60);
+  el.classList.toggle('text-info', secs > 60);
+  el.classList.toggle('text-danger', secs <= 60);
+}
+
+function pollStatus(token) {
+  var statusUrl = BANCO_SESSION_URL + '/' + token + '/status';
+  fetch(statusUrl)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'paid') {
+        stopPolling();
+        var name = data.customer || 'Cliente';
+        document.getElementById('qr-status-msg').innerHTML =
+          '<i class="fas fa-check-circle mr-1 text-success"></i>'
+          + '<span class="text-success">Pagato da <strong>' + name + '</strong></span>';
+        document.getElementById('qr-status-msg').className = 'mb-2';
+        document.getElementById('btnCancelSession').disabled = true;
+        resetCart();
+      } else if (data.status === 'expired') {
+        stopPolling();
+        document.getElementById('qr-status-msg').innerHTML =
+          '<i class="fas fa-clock mr-1 text-danger"></i><span class="text-danger">QR scaduto</span>';
+      } else if (data.status === 'cancelled') {
+        stopPolling();
+        document.getElementById('qr-status-msg').innerHTML =
+          '<i class="fas fa-times-circle mr-1 text-danger"></i><span class="text-danger">Sessione annullata</span>';
+      }
+    })
+    .catch(function() {});
+}
+
+function cancelSession() {
+  if (!_currentToken) return;
+  var cancelUrl = BANCO_SESSION_URL + '/' + _currentToken + '/cancel';
+  var fd = new FormData();
+  fetch(cancelUrl, {method: 'POST', body: fd})
+    .then(function() {
+      stopPolling();
+      $('#qrModal').modal('hide');
+    })
+    .catch(function() { $('#qrModal').modal('hide'); });
+}
+
+function stopPolling() {
+  if (_pollInterval)      { clearInterval(_pollInterval);      _pollInterval = null; }
+  if (_countdownInterval) { clearInterval(_countdownInterval); _countdownInterval = null; }
+}
+
+function resetCart() {
+  cart = {};
+  updateUI();
+}
+
+$('#qrModal').on('hidden.bs.modal', function() {
+  stopPolling();
+  _currentToken = null;
+});
+</script>
+{% endblock %}

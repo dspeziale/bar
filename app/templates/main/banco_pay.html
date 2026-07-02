@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Pagamento Banco{% endblock %}
+{% block page_title %}Pagamento al Banco{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Pagamento</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .pay-wrap { max-width: 480px; margin: 0 auto; }
+  .item-row { display: flex; justify-content: space-between; align-items: center;
+              padding: .45rem 0; border-bottom: 1px solid rgba(0,0,0,.07); }
+  .item-row:last-child { border-bottom: none; }
+  .total-row { font-size: 1.35rem; font-weight: 800; color: #28a745; }
+  .wallet-row { font-size: 1rem; color: #6c757d; }
+  .status-expired, .status-cancelled { color: #dc3545; }
+  .status-paid { color: #28a745; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pay-wrap">
+
+  {% if sess.status == 'pending' %}
+  {# ── Pagamento attivo ── #}
+  <div class="card card-outline card-success mb-3">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-receipt mr-2"></i>Riepilogo ordine</h3>
+    </div>
+    <div class="card-body">
+
+      {# Lista articoli #}
+      {% for item in items %}
+      <div class="item-row">
+        <span><strong>{{ item.qty }}&times;</strong> {{ item.name }}</span>
+        <span class="text-muted">{{ '%.2f'|format(item.price * item.qty) }}€</span>
+      </div>
+      {% endfor %}
+
+      <div class="item-row total-row mt-2">
+        <span>Totale</span>
+        <span>{{ '%.2f'|format(sess.total) }}€</span>
+      </div>
+
+      <hr class="my-3">
+
+      <div class="wallet-row d-flex justify-content-between mb-3">
+        <span><i class="fas fa-wallet mr-1"></i>Il tuo saldo</span>
+        <span class="font-weight-bold {% if current_user.wallet_balance >= sess.total %}text-success{% else %}text-danger{% endif %}">
+          {{ '%.2f'|format(current_user.wallet_balance) }}€
+        </span>
+      </div>
+
+      {% if current_user.wallet_balance < sess.total %}
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle mr-1"></i>
+        Saldo insufficiente. Mancano {{ '%.2f'|format(sess.total - current_user.wallet_balance) }}€.
+        <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica il wallet</a>.
+      </div>
+      {% else %}
+      <form method="POST" action="{{ url_for('main.banco_pay_confirm', token=sess.token) }}">
+        <button type="submit" class="btn btn-success btn-lg btn-block">
+          <i class="fas fa-check-circle mr-2"></i>Paga {{ '%.2f'|format(sess.total) }}€
+        </button>
+      </form>
+      {% endif %}
+
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-block mt-2">
+        Annulla
+      </a>
+    </div>
+  </div>
+
+  {% elif sess.status == 'paid' %}
+  {# ── Già pagata ── #}
+  <div class="card card-outline card-success mb-3">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-check-circle fa-4x text-success mb-3 d-block"></i>
+      <h4 class="status-paid">Pagamento completato</h4>
+      <p class="text-muted">Questo ordine è già stato pagato.</p>
+      <a href="{{ url_for('main.index') }}" class="btn btn-success mt-2">Torna alla home</a>
+    </div>
+  </div>
+
+  {% elif sess.status == 'expired' %}
+  {# ── Scaduta ── #}
+  <div class="card card-outline card-danger mb-3">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-clock fa-4x text-danger mb-3 d-block"></i>
+      <h4 class="status-expired">QR scaduto</h4>
+      <p class="text-muted">Il codice QR non è più valido. Chiedi al personale di generarne uno nuovo.</p>
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary mt-2">Torna alla home</a>
+    </div>
+  </div>
+
+  {% else %}
+  {# ── Annullata o altro ── #}
+  <div class="card card-outline card-danger mb-3">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-times-circle fa-4x text-danger mb-3 d-block"></i>
+      <h4 class="status-cancelled">Sessione annullata</h4>
+      <p class="text-muted">Questa sessione di pagamento è stata annullata.</p>
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary mt-2">Torna alla home</a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

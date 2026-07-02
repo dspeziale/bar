@@ -485,10 +485,44 @@ class Transaction(db.Model):
         'reward':     ('fa-gift',         'warning',   'Premio'),
         'points':     ('fa-star',         'purple',    'Punti'),
         'adjustment': ('fa-pen',          'secondary', 'Rettifica'),
+        'banco':      ('fa-mug-hot',      'info',      'Banco'),
     }
 
     def icon_info(self):
         return self.TYPE_ICONS.get(self.ttype, ('fa-circle', 'secondary', self.ttype))
+
+
+# ── Articoli banco (POS rapido) ───────────────────────────────────────────────
+
+class BancoItem(db.Model):
+    __tablename__ = 'banco_items'
+    id         = db.Column(db.Integer, primary_key=True)
+    name       = db.Column(db.String(64), nullable=False)
+    price      = db.Column(db.Float, nullable=False)
+    icon       = db.Column(db.String(64), default='fa-mug-hot')
+    color      = db.Column(db.String(32), default='info')
+    sort_order = db.Column(db.Integer, default=0)
+    is_active  = db.Column(db.Boolean, default=True)
+    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+
+
+
+# ── Sessioni QR banco ────────────────────────────────────────────────────────
+
+class BancoSession(db.Model):
+    __tablename__ = 'banco_sessions'
+    id          = db.Column(db.Integer, primary_key=True)
+    token       = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    staff_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    items_json  = db.Column(db.Text, default='[]')
+    total       = db.Column(db.Float, nullable=False)
+    status      = db.Column(db.String(20), default='pending')  # pending, paid, expired, cancelled
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at  = db.Column(db.DateTime, nullable=False)
+    tenant_id   = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True)
+    staff    = db.relationship('User', foreign_keys='BancoSession.staff_id')
+    customer = db.relationship('User', foreign_keys='BancoSession.customer_id')
 
 
 # ── Magazzino materiali di consumo ────────────────────────────────────────────

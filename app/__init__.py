@@ -180,6 +180,8 @@ def _migrate_tenant_columns():
             except Exception:
                 pass
 
+    _ensure('banco_sessions', 'tenant_id', 'INTEGER')
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

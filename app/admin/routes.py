@@ -1,4 +1,5 @@
-﻿from datetime import date, timedelta
+﻿import secrets as _secrets
+from datetime import date, timedelta, datetime as _dt
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_required, current_user
@@ -13,6 +14,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         CorporateAccount, CorporateMembership,
                         DailyFixedMeal, CorporateMealBooking, MealConfiguration,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
+                        BancoItem, BancoSession,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
@@ -772,6 +774,132 @@ def slot_delete(sid):
     db.session.commit()
     flash(f'Slot {slot.time_str} eliminato.', 'info')
     return redirect(url_for('admin.tavoli', tab='slot'))
+
+
+# ── Banco POS ─────────────────────────────────────────────────────────────────
+
+@bp.route('/banco')
+@staff_required
+def banco():
+    tid   = _active_tenant_id()
+    items = BancoItem.query.filter_by(is_active=True, tenant_id=tid)\
+                    .order_by(BancoItem.sort_order, BancoItem.name).all()
+    users = User.query.filter_by(is_admin=False, is_staff=False)\
+                      .order_by(User.username).all()
+    import json
+    items_json = json.dumps([
+        {'id': i.id, 'name': i.name, 'price': i.price,
+         'icon': i.icon, 'color': i.color}
+        for i in items
+    ])
+    return render_template('admin/banco_pos.html',
+                           items=items, users=users, items_json=items_json)
+
+
+@bp.route('/banco/session', methods=['POST'])
+@staff_required
+def banco_session_new():
+    import json
+    cart_json = request.form.get('cart_json', '[]')
+    try:
+        cart = json.loads(cart_json)
+    except Exception:
+        cart = []
+    if not cart:
+        return jsonify({'error': 'Nessun articolo'}), 400
+    total = round(sum(i['price'] * i['qty'] for i in cart), 2)
+    token = _secrets.token_hex(16)
+    now   = _dt.utcnow()
+    sess  = BancoSession(
+        token=token, staff_id=current_user.id,
+        items_json=cart_json, total=total,
+        status='pending',
+        created_at=now, expires_at=now + timedelta(minutes=10),
+        tenant_id=_active_tenant_id(),
+    )
+    db.session.add(sess)
+    db.session.commit()
+    pay_url = request.host_url.rstrip('/') + '/banco/pay/' + token
+    return jsonify({'token': token, 'pay_url': pay_url, 'total': total, 'expires_in': 600})
+
+
+@bp.route('/banco/session/<token>/status')
+@staff_required
+def banco_session_status(token):
+    sess = BancoSession.query.filter_by(token=token).first_or_404()
+    if sess.status == 'pending' and _dt.utcnow() > sess.expires_at:
+        sess.status = 'expired'
+        db.session.commit()
+    customer_name = None
+    if sess.customer:
+        customer_name = sess.customer.full_name or sess.customer.username
+    return jsonify({'status': sess.status, 'customer': customer_name})
+
+
+@bp.route('/banco/session/<token>/cancel', methods=['POST'])
+@staff_required
+def banco_session_cancel(token):
+    sess = BancoSession.query.filter_by(token=token).first_or_404()
+    if sess.status == 'pending':
+        sess.status = 'cancelled'
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bp.route('/banco/items')
+@require_permission('manage_products')
+def banco_items():
+    tid   = _active_tenant_id()
+    items = BancoItem.query.filter_by(tenant_id=tid)\
+                    .order_by(BancoItem.sort_order, BancoItem.name).all()
+    return render_template('admin/banco_items.html', items=items)
+
+
+@bp.route('/banco/items/new', methods=['POST'])
+@require_permission('manage_products')
+def banco_item_new():
+    name  = request.form.get('name', '').strip()
+    price = request.form.get('price', type=float)
+    if not name or not price or price <= 0:
+        flash('Nome e prezzo obbligatori.', 'danger')
+        return redirect(url_for('admin.banco_items'))
+    tid = _active_tenant_id()
+    db.session.add(BancoItem(
+        name=name, price=price,
+        icon=request.form.get('icon', 'fa-mug-hot').strip(),
+        color=request.form.get('color', 'info').strip(),
+        sort_order=request.form.get('sort_order', 0, type=int),
+        tenant_id=tid,
+    ))
+    db.session.commit()
+    flash(f'Articolo "{name}" aggiunto.', 'success')
+    return redirect(url_for('admin.banco_items'))
+
+
+@bp.route('/banco/items/<int:iid>/edit', methods=['POST'])
+@require_permission('manage_products')
+def banco_item_edit(iid):
+    item = db.get_or_404(BancoItem, iid)
+    item.name       = request.form.get('name', item.name).strip()
+    item.price      = request.form.get('price', type=float) or item.price
+    item.icon       = request.form.get('icon', item.icon).strip()
+    item.color      = request.form.get('color', item.color).strip()
+    item.sort_order = request.form.get('sort_order', item.sort_order, type=int)
+    item.is_active  = request.form.get('is_active') == '1'
+    db.session.commit()
+    flash(f'Articolo "{item.name}" aggiornato.', 'success')
+    return redirect(url_for('admin.banco_items'))
+
+
+@bp.route('/banco/items/<int:iid>/delete', methods=['POST'])
+@require_permission('manage_products')
+def banco_item_delete(iid):
+    item = db.get_or_404(BancoItem, iid)
+    name = item.name
+    db.session.delete(item)
+    db.session.commit()
+    flash(f'Articolo "{name}" eliminato.', 'info')
+    return redirect(url_for('admin.banco_items'))
 
 
 # ── Tavoli ────────────────────────────────────────────────────────────────────
