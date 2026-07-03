@@ -1,3 +1,12 @@
 App online: https://bar-tau-cyan.vercel.app
 Login: admin@bar.local / admin123
 Git: configurato con dspeziale@gmail.com / Daniele Speziale
+
+
+Postazione	Email	Password	Ruolo
+PC Admin / Backoffice	admin@bar.local	admin123	superadmin
+Tablet Banco POS	banco@bar.local	Banco2024!	cassiere
+Display Cucina KDS	cucina@bar.local	Cucina2024!	cuoco
+Tablet Staff Sala	sala@bar.local	Sala2024!	manager
+Smartphone Cliente 1	cliente1@bar.local	Cliente1!	utente · wallet 30€
+Smartphone Cliente 2	cliente2@bar.local	Cliente2!	utente · wallet 15€
