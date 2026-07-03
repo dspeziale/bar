@@ -668,6 +668,7 @@ def s_admin_tenant(doc):
             ['Prenotazioni oggi',    '🪑', 'Tavoli prenotati per oggi'],
             ['Avvisi magazzino',     '🔴', 'Materiali sotto la soglia minima'],
             ['Prodotti attivi',      '📦', 'Prodotti disponibili nel menu'],
+            ['Pasti Aziendali Oggi', '🏭', 'Card con prenotazioni/posti per ogni opzione, barra avanzamento e il proprio pasto prenotato (se applicabile)'],
         ],
         col_widths=[5.2, 1.5, 10.9])
     spacer(doc, 8)
@@ -718,6 +719,25 @@ def s_admin_tenant(doc):
     info_box(doc, 'La durata di permanenza (campo nella fascia oraria) determina quando viene inviata '
              'la notifica Telegram al responsabile sala: l\'avviso parte 10 minuti prima della scadenza.',
              style='warning')
+    spacer(doc, 8)
+
+    h3(doc, 'Aggiungere e rimuovere slot ordini')
+    body_para(doc, 'Nel tab "Slot Ordini" (Admin → Tavoli) è possibile creare nuovi slot e '
+              'rimuovere quelli non più necessari direttamente dalla stessa pagina.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Apri il tab "Slot Ordini"', 'Admin → Tavoli → tab Slot Ordini')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Compila il form in cima alla pagina', 'Inserisci l\'orario (time picker) e la capacità massima di ordini per quello slot')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Clicca "Aggiungi slot"', 'Lo slot viene creato immediatamente e appare nella lista')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Eliminare uno slot esistente', 'Clicca il pulsante "Elimina" a fianco dello slot desiderato — viene rimosso senza conferma aggiuntiva')
+    spacer(doc, 8)
+
+    info_box(doc, 'Ogni slot ordine ha una capacità massima: una volta raggiunto il numero di ordini '
+             'configurato, lo slot non è più selezionabile dai clienti. Calibra la capacità in base '
+             'al ritmo di preparazione della cucina.', style='tip')
     spacer(doc, 8)
 
     h2(doc, '2.4  Magazzino — Materiali di consumo')
@@ -779,6 +799,30 @@ def s_admin_tenant(doc):
             ['Magazzino',              'Admin → Magazzino',             'Stock attuale e storico movimenti'],
         ],
         col_widths=[4.2, 5.5, 7.9])
+    spacer(doc, 8)
+
+    h2(doc, '2.7  Banco POS — Gestione articoli')
+    body_para(doc, 'Il Banco POS è uno strumento di cassa rapida per pagamenti al bancone tramite QR. '
+              'L\'Admin configura la griglia degli articoli disponibili raggiungibile da '
+              'Admin → Banco → pulsante "Gestisci" (oppure direttamente su /admin/banco/items).')
+    spacer(doc, 6)
+
+    data_table(doc,
+        ['Azione', 'Come fare', 'Nota'],
+        [
+            ['Aggiungere articolo', 'Form inline: inserisci nome, prezzo, icona Font Awesome e colore → "Salva"',
+             'Appare subito nella griglia del Banco'],
+            ['Modificare articolo', 'Clicca sull\'articolo nella lista → si apre modal di modifica → "Salva"',
+             'Modifica immediata senza ricaricare'],
+            ['Rimuovere articolo',  'Pulsante "Elimina" a fianco dell\'articolo',
+             'Eliminazione soft: is_active=false (non persi i dati storici)'],
+        ],
+        col_widths=[3.8, 8.2, 5.6])
+    spacer(doc, 6)
+
+    info_box(doc, 'Scegli icone Font Awesome per rendere la griglia più intuitiva per lo staff: '
+             'ad esempio "fa-coffee" per il caffè, "fa-bread-slice" per la brioche. '
+             'Il colore del pulsante aiuta a distinguere le categorie a colpo d\'occhio.', style='tip')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -916,6 +960,55 @@ def s_cassiere(doc):
 
     info_box(doc, 'In caso di dubbio, usa sempre il tasto "Annulla" invece di forzare una transazione errata. '
              'È sempre possibile riaprire un ordine e correggerlo prima del pagamento finale.', style='warning')
+    spacer(doc, 10)
+
+    # ── BANCO POS — PAGAMENTO QR ──────────────────────────────────────────────
+    h2(doc, '☕  Banco POS — Pagamento QR')
+    body_para(doc, 'Il Banco POS è la modalità di cassa rapida per pagamenti al bancone: '
+              'lo staff compone l\'ordine su una griglia articoli e genera un QR che il cliente '
+              'scansiona con l\'app per pagare istantaneamente. '
+              'Si accede da Admin → Banco (icona tazza nel menu laterale).')
+    spacer(doc, 6)
+
+    info_box_color(doc,
+                   'SCENARIO: Un cliente si avvicina al bancone e chiede un caffè e una brioche. '
+                   'Lo staff tocca gli articoli, genera il QR e il cliente paga con il telefono in pochi secondi.',
+                   bg='EAF7EA', border=HEX_GREEN, icon='☕')
+    spacer(doc, 8)
+
+    h3(doc, 'Composizione dell\'ordine al banco')
+    step_row(doc, 1, 'Accedi al Banco', 'Vai in Admin → Banco. La schermata è divisa: griglia articoli a sinistra, riepilogo + QR a destra.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 2, 'Tocca gli articoli desiderati', 'Ogni tocco aggiunge 1 unità. Il badge sul pulsante mostra la quantità corrente.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 3, 'Rivedi il riepilogo', 'A destra compaiono gli articoli aggiunti con quantità. Usa il pulsante "−" per rimuovere unità.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 4, 'Verifica il totale', 'Il totale si aggiorna in tempo reale ad ogni modifica del carrello.', accent=HEX_GREEN)
+    spacer(doc, 8)
+
+    h3(doc, 'Generazione del QR e incasso')
+    step_row(doc, 5, 'Tocca "Genera QR"', 'Si apre un modal con: totale in grande, QR code e countdown di 10 minuti.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 6, 'Mostra il QR al cliente', 'Il modal mostra "In attesa di pagamento…" mentre aspetta la scansione.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 7, 'Il cliente scansiona e paga', 'Dall\'app cliente → "Paga al Banco", il cliente inquadra il QR e conferma il pagamento.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 8, 'Conferma pagamento ricevuta', 'Il modal mostra "✓ Pagato da [Nome Cliente]". Il carrello si svuota automaticamente per il prossimo cliente.', accent=HEX_GREEN)
+    spacer(doc, 8)
+
+    info_box(doc, 'Il QR scade dopo 10 minuti (countdown visibile nel modal). '
+             'Se il cliente non riesce a scansionare in tempo, tocca "Annulla sessione" e genera un nuovo QR.', style='warning')
+    spacer(doc, 8)
+
+    data_table(doc,
+        ['Situazione', 'Cosa fare'],
+        [
+            ['Cliente non ha l\'app',        'Usa la cassa tradizionale (sezione 3.1) con pagamento contanti o wallet'],
+            ['QR scaduto',                    'Tocca "Annulla sessione" nel modal, poi "Genera QR" di nuovo'],
+            ['Cliente vuole annullare',       'Tocca "Annulla sessione" — il carrello rimane per eventuale nuovo tentativo'],
+            ['Articolo non presente in griglia', 'Aggiungi l\'articolo da Admin → Banco → "Gestisci" (vedi sez. 2.7)'],
+        ],
+        col_widths=[5.0, 12.6])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1233,6 +1326,48 @@ def s_cliente(doc):
              'mostra al cassiere il numero ordine visibile in "I miei ordini". '
              'Il numero ordine permette al cassiere di trovare e correggere il problema in pochi secondi.',
              style='tip')
+    spacer(doc, 10)
+
+    h2(doc, '6.7  Adesso al banco — ordine senza slot')
+    body_para(doc, 'Se sei fisicamente al bancone e vuoi che il tuo ordine venga preparato subito, '
+              'scegli "Adesso al banco" nel carrello invece di uno slot di ritiro.')
+    spacer(doc, 6)
+
+    step_row(doc, 1, 'Aggiungi prodotti al carrello', 'Componi l\'ordine normalmente dal menu')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Vai al carrello', 'Tocca l\'icona carrello o vai in Ordina → Carrello')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Seleziona "Adesso al banco"', 'Prima delle opzioni di slot, trovi un\'opzione radio "Adesso al banco" — selezionala')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Conferma l\'ordine', 'Il tuo ordine viene inviato in cucina immediatamente, senza prenotare uno slot orario')
+    spacer(doc, 6)
+
+    info_box_color(doc,
+                   'Il codice ordine generato con questa modalità include il tag BANCO: '
+                   'QuickLunch-AAMMGG-BANCO-NNNN. Mostralo allo staff per il ritiro.',
+                   bg='EBF5FB', border=HEX_TEAL, icon='ℹ️')
+    spacer(doc, 10)
+
+    h2(doc, '6.8  Paga al Banco — scanner QR')
+    body_para(doc, 'Quando sei al bancone e lo staff ti mostra un QR generato dal Banco POS, '
+              'puoi pagarlo direttamente dall\'app senza contanti e senza usare il wallet.')
+    spacer(doc, 6)
+
+    step_row(doc, 1, 'Vai nella tua Dashboard', 'Dalla home o dal menu laterale')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Tocca "Paga al Banco"', 'Il pulsante si trova nella dashboard principale del cliente')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Autorizza la fotocamera', 'Alla prima apertura il browser chiede il permesso per usare la fotocamera — consenti')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Inquadra il QR dello staff', 'Punta la fotocamera sul QR mostrato dallo staff al bancone')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Rivedi l\'importo e conferma', 'Vedi il totale da pagare e tocca "Conferma pagamento"')
+    spacer(doc, 4)
+    step_row(doc, 6, 'Pagamento completato', 'Lo schermo del banco si aggiorna mostrando "✓ Pagato da [Il tuo nome]"')
+    spacer(doc, 8)
+
+    info_box(doc, 'Il QR generato dallo staff ha una validità di 10 minuti. '
+             'Se scade prima che tu riesca a scansionarlo, chiedi allo staff di generarne uno nuovo.', style='warning')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1367,6 +1502,8 @@ def s_appendice(doc):
             ['Pasto aziendale fisso',    '✅', '✅', '❌', '❌', '❌', '❌', '✅'],
             ['Report e statistiche',     '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
             ['Voto menu (sondaggio)',     '❌', '✅', '❌', '❌', '❌', '✅', '❌'],
+            ['Banco POS (genera QR)',     '✅', '✅', '✅', '❌', '❌', '❌', '❌'],
+            ['Paga al Banco (scan QR)',   '❌', '❌', '❌', '❌', '❌', '✅', '✅'],
         ],
         col_widths=[5.0, 1.8, 1.8, 1.8, 1.8, 1.8, 2.0, 2.6])
     spacer(doc, 10)

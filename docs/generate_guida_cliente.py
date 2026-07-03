@@ -111,17 +111,18 @@ def build_toc_cliente(doc):
     spacer(doc, 4)
 
     toc_items = [
-        ('1', '🚀  Iniziare', 'Registrazione, accesso, panoramica home'),
-        ('2', '🍽️  Ordinare dal menu', 'Sfoglia, carrello, slot di ritiro — esempio: pagare un caffè'),
-        ('3', '🥪  Crea il tuo piatto', 'Builder panino, insalata, poke su misura'),
-        ('4', '📦  I miei ordini', 'Storico, stati, annullamento e rimborso'),
-        ('5', '💳  Wallet e punti fedeltà', 'Saldo, ricarica, storico, riscatto premi'),
-        ('6', '🪑  Prenotare un tavolo', 'Disponibilità, prenotazione, check-in, annullamento'),
-        ('7', '🗳️  Votare i sondaggi', 'Esprimi la tua preferenza sul menu'),
-        ('8', '🏢  Pasto Aziendale', 'Solo dipendenti con convenzione attiva'),
-        ('9', '🔔  Notifiche Telegram', 'Come ricevere conferme e avvisi'),
-        ('10', '❓  Domande frequenti', 'Problemi comuni e soluzioni rapide'),
-        ('11', '🧭  Scheda riassuntiva', 'Tutte le azioni in una tabella'),
+        ('1',  '🚀  Iniziare',              'Registrazione, accesso, panoramica home'),
+        ('2',  '🍽️  Ordinare dal menu',     'Sfoglia, carrello, slot di ritiro — esempio: pagare un caffè'),
+        ('3',  '🥪  Crea il tuo piatto',    'Builder panino, insalata, poke su misura'),
+        ('4',  '📦  I miei ordini',         'Storico, stati, annullamento e rimborso'),
+        ('5',  '💳  Wallet e punti fedeltà','Saldo, ricarica, storico, riscatto premi'),
+        ('6',  '📲  Paga al Banco',         'Pagamento QR istantaneo — inquadra, controlla, paga in un tocco'),
+        ('7',  '🪑  Prenotare un tavolo',   'Disponibilità, prenotazione, check-in, annullamento'),
+        ('8',  '🗳️  Votare i sondaggi',    'Esprimi la tua preferenza sul menu'),
+        ('9',  '🏢  Pasto Aziendale',       'Solo dipendenti con convenzione attiva'),
+        ('10', '🔔  Notifiche Telegram',    'Come ricevere conferme e avvisi'),
+        ('11', '❓  Domande frequenti',     'Problemi comuni e soluzioni rapide'),
+        ('12', '🧭  Scheda riassuntiva',    'Tutte le azioni in una tabella'),
     ]
 
     tbl = doc.add_table(rows=len(toc_items), cols=3)
@@ -263,6 +264,14 @@ def s2_ordinare(doc):
     step_row(doc, 3, 'Rimuovi un prodotto', 'Tocca l\'icona cestino sulla riga che vuoi togliere')
     spacer(doc, 4)
     step_row(doc, 4, 'Controlla il totale', 'In fondo al carrello vedi il totale da pagare e il tuo saldo wallet attuale')
+    spacer(doc, 8)
+
+    h3(doc, '💡  Opzione speciale: "Adesso al banco"')
+    body_para(doc,
+        'Prima della lista degli slot orari trovi una nuova opzione radio "Adesso al banco": '
+        'selezionandola non devi scegliere nessuno slot orario. Il codice ordine generato avrà il formato '
+        'QuickLunch-YYMMDD-BANCO-NNNN. Utile se sei già fisicamente al bancone e vuoi pagare un ordine '
+        'personalizzato subito, senza attendere uno slot prefissato.')
     spacer(doc, 8)
 
     divider(doc)
@@ -468,11 +477,74 @@ def s5_wallet(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 6 — PRENOTARE UN TAVOLO
+# SEZIONE 6 — PAGA AL BANCO (QR)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def s_banco(doc):
+    h1(doc, '6', 'Paga al Banco — Pagamento QR', '📲', accent=HEX_PURPL)
+
+    role_badge(doc, '📲', 'Paga al Banco',
+               'Con "Paga al Banco" puoi pagare dal tuo telefono un conto aperto dallo staff, '
+               'senza dover fare un ordine normale dal menu. Lo staff genera un QR code sul tablet: '
+               'tu lo inquadri, controlli il riepilogo e confermi il pagamento in un tocco. '
+               'Il wallet viene scalato in automatico e il banco riceve conferma istantanea.',
+               HEX_GREEN)
+    spacer(doc, 8)
+
+    workflow_table(doc, [
+        ('📱', 'Dashboard', 'Tocca "Paga al Banco"'),
+        ('📷', 'Fotocamera', 'Si attiva la camera'),
+        ('🔲', 'Inquadra QR', 'QR sul tablet del banco'),
+        ('📋', 'Riepilogo', 'Controlla articoli e totale'),
+        ('✅', 'Paga ora', 'Wallet scalato istantaneamente'),
+    ], accent=HEX_GREEN)
+    spacer(doc, 8)
+
+    h2(doc, '6.1  Come funziona passo per passo')
+    step_row(doc, 1, 'Tocca "Paga al Banco" nella dashboard',
+             'Il pulsante si trova nelle azioni rapide della Home. Tocca per aprire la pagina di scansione')
+    spacer(doc, 4)
+    step_row(doc, 2, 'La fotocamera del telefono si attiva',
+             'Punta il telefono verso il tablet dello staff: la fotocamera è pronta a leggere il QR')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Inquadra il QR code sul tablet del banco',
+             'Lo staff ha generato il QR dal loro pannello. Non appena la fotocamera lo riconosce, si apre automaticamente la pagina di conferma')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Controlla il riepilogo articoli e il totale',
+             'Vedi la lista degli articoli che lo staff ha inserito e il totale da pagare. Verifica che tutto sia corretto prima di procedere')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Tocca "Paga ora"',
+             'Il totale viene scalato automaticamente dal tuo wallet. Il banco riceve conferma istantanea "✓ Pagato da [nome]" sul loro schermo')
+    spacer(doc, 8)
+
+    h2(doc, '6.2  Note importanti')
+    data_table(doc,
+        ['Situazione', 'Come comportarsi'],
+        [
+            ['La fotocamera non funziona',
+             'Usa il fallback: inserisci manualmente il codice sessione che lo staff ti comunica a voce'],
+            ['Sessione QR scaduta',
+             'Il QR code scade dopo 10 minuti se non viene usato. Chiedi allo staff di generarne uno nuovo'],
+            ['Saldo wallet insufficiente',
+             'Il pagamento non va a buon fine. Chiedi al cassiere una ricarica e poi riprova'],
+            ['Conferma per lo staff',
+             'Il banco vede "✓ Pagato da [nome]" in tempo reale: non è necessario mostrare nulla'],
+        ],
+        col_widths=[5.5, 12.1])
+    spacer(doc, 8)
+
+    info_box_color(doc,
+        'Il wallet viene scalato solo dopo che tocchi "Paga ora": finché non confermi, nessun importo viene addebitato. '
+        'Se chiudi la pagina senza confermare, la sessione rimane attiva fino alla scadenza dei 10 minuti.',
+        bg='E9F7EF', border=HEX_GREEN, icon='💡')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SEZIONE 7 — PRENOTARE UN TAVOLO
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s6_tavoli(doc):
-    h1(doc, '6', 'Prenotare un tavolo', '🪑', accent=HEX_PURPL)
+    h1(doc, '7', 'Prenotare un tavolo', '🪑', accent=HEX_PURPL)
 
     body_para(doc,
         'La prenotazione di un tavolo funziona per FASCE ORARIE: ogni fascia è un blocco di tempo '
@@ -480,13 +552,13 @@ def s6_tavoli(doc):
         'Prenoti un tavolo per una sessione specifica.')
     spacer(doc, 6)
 
-    h2(doc, '6.1  Scegliere il giorno')
+    h2(doc, '7.1  Scegliere il giorno')
     step_row(doc, 1, 'Vai in "Tavoli" dal menu laterale', 'Si apre la pagina di prenotazione tavoli')
     spacer(doc, 4)
     step_row(doc, 2, 'Usa le frecce ‹ › per scegliere il giorno', 'O inserisci la data nel campo in alto. Di default vedi oggi')
     spacer(doc, 8)
 
-    h2(doc, '6.2  Scegliere la sessione e il tavolo')
+    h2(doc, '7.2  Scegliere la sessione e il tavolo')
     step_row(doc, 1, 'Leggi le fasce orarie', 'Ogni fascia (es. "11:25 – 12:30 · 30 min a seduta") mostra le sessioni disponibili')
     spacer(doc, 4)
     step_row(doc, 2, 'Scegli la sessione di inizio', 'Es. 11:25 oppure 11:55 oppure 12:25 — ogni sessione dura 30 minuti')
@@ -502,7 +574,7 @@ def s6_tavoli(doc):
     step_row(doc, 7, 'Tocca "Prenota"', 'Conferma immediata: la sessione è riservata per te')
     spacer(doc, 8)
 
-    h2(doc, '6.3  Le mie prenotazioni')
+    h2(doc, '7.3  Le mie prenotazioni')
     step_row(doc, 1, 'Vai in "Le Mie Prenotazioni"', 'Vedi tutte le prenotazioni fatte, dalla più recente')
     spacer(doc, 4)
     step_row(doc, 2, 'All\'arrivo al locale', 'Comunica il tuo nome o il numero tavolo al personale: registreranno il tuo check-in')
@@ -516,11 +588,11 @@ def s6_tavoli(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 7 — VOTARE I SONDAGGI
+# SEZIONE 8 — VOTARE I SONDAGGI
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s7_sondaggi(doc):
-    h1(doc, '7', 'Votare i sondaggi', '🗳️', accent=HEX_PURPL)
+    h1(doc, '8', 'Votare i sondaggi', '🗳️', accent=HEX_PURPL)
 
     body_para(doc, 'Il locale può aprire sondaggi per capire cosa i clienti vorrebbero trovare nel menu. '
               'Votando, aiuti a scegliere i prossimi piatti.')
@@ -545,11 +617,11 @@ def s7_sondaggi(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 8 — PASTO AZIENDALE
+# SEZIONE 9 — PASTO AZIENDALE
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s8_pasto_aziendale(doc):
-    h1(doc, '8', 'Pasto Aziendale', '🏢', accent=HEX_PURPL)
+    h1(doc, '9', 'Pasto Aziendale', '🏢', accent=HEX_PURPL)
 
     role_badge(doc, '🏢', 'Dipendente convenzionato',
                'Se la tua azienda ha una convenzione attiva con il locale, vedrai una voce in più nel menu: '
@@ -558,7 +630,7 @@ def s8_pasto_aziendale(doc):
                HEX_PURPL)
     spacer(doc, 8)
 
-    h2(doc, '8.1  Come funziona')
+    h2(doc, '9.1  Come funziona')
     step_row(doc, 1, 'Vai in "Pasto Aziendale"', 'Visibile solo se sei associato a una convenzione attiva')
     spacer(doc, 4)
     step_row(doc, 2, 'Guarda il menu di oggi', 'Il piatto fisso del giorno, con nome, descrizione e posti rimasti')
@@ -570,11 +642,19 @@ def s8_pasto_aziendale(doc):
     step_row(doc, 5, 'All\'orario di ritiro', 'Vai al locale e ritira il pasto mostrando, se richiesto, il tuo nome')
     spacer(doc, 8)
 
-    h2(doc, '8.2  Annullare la prenotazione')
+    h2(doc, '9.2  Annullare la prenotazione')
     step_row(doc, 1, 'Apri "Pasto Aziendale"', 'Vedi la tua prenotazione attiva per oggi')
     spacer(doc, 4)
-    step_row(doc, 2, 'Tocca "Annulla prenotazione"', 'Il posto torna disponibile per un collega — possibile solo prima del ritiro')
+    step_row(doc, 2, 'Tocca "Annulla prenotazione"',
+             'Possibile solo se mancano PIÙ di 30 minuti all\'orario dello slot scelto. '
+             'Se mancano meno di 30 minuti, il pulsante non è più visibile. '
+             'Il rimborso, quando consentito, avviene in automatico.')
     spacer(doc, 8)
+
+    info_box(doc, 'Deadline annullamento: puoi cancellare la prenotazione fino a 30 minuti prima dell\'orario dello slot. '
+             'Oltre quella soglia il pulsante "Annulla" scompare e il pasto risulta confermato definitivamente.',
+             style='warning')
+    spacer(doc, 6)
 
     info_box(doc, 'Se il messaggio dice "Posti esauriti per oggi" significa che il numero massimo di pasti prenotabili è stato raggiunto: '
              'riprova il giorno successivo o contatta l\'amministratore aziendale.', style='warning')
@@ -587,11 +667,11 @@ def s8_pasto_aziendale(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 9 — NOTIFICHE TELEGRAM
+# SEZIONE 10 — NOTIFICHE TELEGRAM
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s9_notifiche(doc):
-    h1(doc, '9', 'Notifiche Telegram', '🔔', accent=HEX_PURPL)
+    h1(doc, '10', 'Notifiche Telegram', '🔔', accent=HEX_PURPL)
 
     body_para(doc, 'QuickLunch può avvisarti via Telegram quando confermi un ordine, quando lo annulli '
               'o quando prenoti un pasto aziendale — senza bisogno di tenere l\'app aperta.')
@@ -614,11 +694,11 @@ def s9_notifiche(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 10 — DOMANDE FREQUENTI
+# SEZIONE 11 — DOMANDE FREQUENTI
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s10_faq(doc):
-    h1(doc, '10', 'Domande frequenti', '❓', accent=HEX_PURPL)
+    h1(doc, '11', 'Domande frequenti', '❓', accent=HEX_PURPL)
 
     faqs = [
         ('Ho dimenticato la password, cosa faccio?',
@@ -641,6 +721,11 @@ def s10_faq(doc):
          'La tua azienda non ha una convenzione attiva oppure il tuo account non è ancora collegato: parla con il referente aziendale.'),
         ('Un ordine annullato, quando rivedo i soldi sul wallet?',
          'Il rimborso è immediato e automatico: lo trovi subito nello storico transazioni in Wallet & Fedeltà.'),
+        ('Come pago al banco senza fare un ordine normale?',
+         'Usa "Paga al Banco" dalla dashboard (Sezione 6): tocca il pulsante, inquadra il QR code sul tablet dello staff, '
+         'controlla il riepilogo degli articoli e tocca "Paga ora". Il wallet viene scalato in automatico e il banco '
+         'riceve conferma istantanea. Se la fotocamera non funziona, inserisci manualmente il codice sessione '
+         'comunicato dallo staff. Ricorda che il QR scade dopo 10 minuti.'),
     ]
 
     for i, (q, a) in enumerate(faqs):
@@ -651,11 +736,11 @@ def s10_faq(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 11 — SCHEDA RIASSUNTIVA
+# SEZIONE 12 — SCHEDA RIASSUNTIVA
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s11_riassunto(doc):
-    h1(doc, '11', 'Scheda riassuntiva rapida', '🧭', accent=HEX_PURPL)
+    h1(doc, '12', 'Scheda riassuntiva rapida', '🧭', accent=HEX_PURPL)
 
     body_para(doc, 'Tieni questa pagina come riferimento veloce: ogni azione e dove trovarla nel menu laterale.')
     spacer(doc, 6)
@@ -671,11 +756,12 @@ def s11_riassunto(doc):
             ['Annullare un ordine',              'I Miei Ordini → Annulla',                 '4'],
             ['Vedere saldo e punti',             'Wallet & Fedeltà',                        '5'],
             ['Ricaricare il wallet',             'Chiedi al cassiere',                      '5'],
-            ['Riscattare punti fedeltà',         'Wallet & Fedeltà → Riscatta',              '5'],
-            ['Prenotare un tavolo',              'Tavoli',                                  '6'],
-            ['Vedere/annullare prenotazioni',    'Le Mie Prenotazioni',                     '6'],
-            ['Votare un sondaggio',              'Vota il Menu',                            '7'],
-            ['Prenotare il pasto aziendale',     'Pasto Aziendale',                         '8'],
+            ['Riscattare punti fedeltà',         'Wallet & Fedeltà → Riscatta',             '5'],
+            ['Pagare al banco tramite QR',       'Dashboard → Paga al Banco',               '6'],
+            ['Prenotare un tavolo',              'Tavoli',                                  '7'],
+            ['Vedere/annullare prenotazioni',    'Le Mie Prenotazioni',                     '7'],
+            ['Votare un sondaggio',              'Vota il Menu',                            '8'],
+            ['Prenotare il pasto aziendale',     'Pasto Aziendale',                         '9'],
         ],
         col_widths=[6.5, 6.5, 4.6])
     spacer(doc, 10)
@@ -712,6 +798,9 @@ def main():
     _page_break(doc)
 
     s5_wallet(doc)
+    _page_break(doc)
+
+    s_banco(doc)
     _page_break(doc)
 
     s6_tavoli(doc)

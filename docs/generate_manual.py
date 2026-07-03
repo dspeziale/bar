@@ -469,7 +469,8 @@ def build_cover(doc):
 
     # Feature pills come elenco centrato
     features = ['📦 Ordini & Cucina', '💳 Wallet Digitale', '⭐ Fidelizzazione',
-                '🪑 Prenotazione Tavoli', '📊 Report & Statistiche', '📱 Notifiche Telegram']
+                '🪑 Prenotazione Tavoli', '📊 Report & Statistiche', '📱 Notifiche Telegram',
+                '🏧 Banco POS — QR']
     pf = cc.add_paragraph()
     pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _p_spacing(pf, before=0, after=32)
@@ -498,6 +499,7 @@ def build_toc(doc):
         ('2',  '⚡',  'Funzionalità principali'),
         ('3',  '🚀',  'Come iniziare'),
         ('4',  '📋',  'Gestione ordini'),
+        ('4b', '🏧',  'Banco POS — Cassa Rapida QR'),
         ('5',  '🍕',  'Menu e prodotti'),
         ('6',  '🥪',  'Builder: Panino, Insalata & Poke Bowl'),
         ('7',  '💳',  'Wallet digitale e fidelizzazione'),
@@ -602,6 +604,8 @@ def s02(doc):
          'Ogni membro del personale vede solo ciò che gli compete: cassiere, cuoco, manager, admin.'),
         ('🔑', 'Accesso Google',
          'I clienti possono registrarsi e accedere con il loro account Google, senza password.'),
+        ('🏧', 'Banco POS — QR',
+         'Vendita rapida al bancone: griglia articoli configurabile, QR generato in un clic, wallet scalato in < 10 secondi.'),
     ]
     data_table(doc,
         ['', 'Funzione', 'Descrizione'],
@@ -674,6 +678,116 @@ def s04(doc):
         "In Admin → Ordini puoi filtrare per data e per stato (in attesa, confermato, "
         "in preparazione, pronto, completato, annullato). Ogni ordine ha una scheda di "
         "prelievo stampabile con il riepilogo completo.")
+
+    h2(doc, 'Ordine al banco — vendita rapida "Adesso al banco"')
+    body_para(doc,
+        "Per le consumazioni veloci al bancone (caffè, brioche, bevande) usa il Banco POS "
+        "(/admin/banco) anziché il flusso ordini tradizionale. "
+        "Il cliente vede il pulsante «Paga al Banco» nella propria dashboard e scansiona "
+        "il QR generato dal cassiere con la fotocamera del telefono. "
+        "Per il flusso completo vedi la sezione «Banco POS — Cassa Rapida QR».")
+
+    h2(doc, 'Pasto aziendale — annullamento entro 30 minuti')
+    body_para(doc,
+        "I clienti convenzionati possono prenotare il pasto aziendale scegliendo tra le opzioni "
+        "del giorno (primo, secondo, contorno). L'annullamento è consentito solo se mancano "
+        "più di 30 minuti all'orario di ritiro: superata questa soglia il pulsante «Annulla» "
+        "sparisce automaticamente, sia nell'interfaccia cliente che nel controllo lato server.")
+    info_box(doc,
+        "La regola dei 30 minuti tutela la cucina: con meno di mezza ora all'orario di ritiro "
+        "il pasto è già in preparazione e l'annullamento causerebbe spreco.",
+        style='warning', label='Perché 30 minuti:')
+
+
+def s_banco_pos(doc):
+    h1(doc, '4b', 'Banco POS — Cassa Rapida QR', '🏧')
+    body_para(doc,
+        "Il Banco POS è il sistema di vendita rapida al bancone: permette al cassiere "
+        "di incassare consumazioni veloci (caffè, brioche, bevande) senza che il cliente "
+        "debba navigare nel menu o effettuare un preordine. "
+        "Tutto avviene tramite QR code: zero contanti, zero attese, tutto tracciato digitalmente.")
+    info_box(doc,
+        "Dal QR generato alla conferma di pagamento: meno di 10 secondi. "
+        "Il wallet del cliente viene scalato automaticamente e la ricevuta appare nella "
+        "cronologia transazioni del cliente.",
+        style='success', label='Velocità:')
+
+    h2(doc, 'Lato staff — /admin/banco')
+    body_para(doc,
+        "Il cassiere accede a /admin/banco da un tablet dedicato sul bancone. "
+        "L'interfaccia è una griglia touch di articoli configurabili (caffè, cappuccino, brioche, ecc.).")
+    for i, (t, tx) in enumerate([
+        ('Seleziona gli articoli',
+         "Tocca ogni articolo sulla griglia. Ogni tocco aggiunge 1 unità; "
+         "il badge sull'articolo mostra la quantità selezionata."),
+        ('Rivedi il carrello',
+         "Il riepilogo laterale mostra gli articoli selezionati con quantità e subtotale. "
+         "Usa il pulsante «−» per rimuovere una quantità."),
+        ('Genera il QR',
+         "Premi «Genera QR»: il sistema crea una sessione di pagamento valida 10 minuti "
+         "e mostra il QR code in un modal con countdown visibile."),
+        ('Attendi il pagamento',
+         "Il modal rimane aperto in attesa. Quando il cliente completa il pagamento, "
+         "compare «✓ Pagato da [nome]\". Nessun contante, nessun cambio."),
+    ], 1):
+        step_row(doc, i, t, tx)
+
+    h2(doc, 'Lato cliente — smartphone')
+    body_para(doc,
+        "Il cliente usa QuickLunch dal proprio smartphone. "
+        "Non serve scaricare nessuna app: funziona direttamente dal browser.")
+    for i, (t, tx) in enumerate([
+        ('Apri QuickLunch e premi «Paga al Banco»',
+         "Il pulsante è visibile nella dashboard del cliente. "
+         "Si avvia lo scanner QR usando la fotocamera posteriore del telefono."),
+        ('Inquadra il QR mostrato dal cassiere',
+         "Lo scanner legge il codice e apre automaticamente la pagina di conferma del pagamento."),
+        ('Verifica e conferma',
+         "La pagina mostra la lista degli articoli, il totale e il saldo wallet disponibile. "
+         "Il cliente preme «Paga ora» per completare il pagamento."),
+        ('Ricevuta automatica',
+         "Il wallet viene scalato istantaneamente. "
+         "La transazione appare nella cronologia con data, ora e articoli acquistati."),
+    ], 1):
+        step_row(doc, i, t, tx)
+
+    h2(doc, 'Articoli banco — configurazione (/admin/banco/items)')
+    body_para(doc,
+        "Gli articoli del banco si configurano da /admin/banco/items. "
+        "Non serve toccare il codice: aggiungi, modifica o disattiva ogni voce direttamente dalla UI.")
+    data_table(doc,
+        ['Campo', 'Descrizione', 'Esempio'],
+        [
+            ['Nome',   'Etichetta mostrata sulla griglia banco',                        'Caffè Espresso'],
+            ['Prezzo', 'Importo scalato dal wallet del cliente',                        '0.80 €'],
+            ['Icona',  'Emoji visualizzata sulla griglia per riconoscimento rapido',    '☕'],
+            ['Attivo', "Attiva/disattiva l'articolo senza eliminarlo dallo storico",    'Sì / No'],
+        ],
+        col_widths=[3.5, 9.5, 4.5])
+
+    h2(doc, 'Vantaggi per il proprietario')
+    data_table(doc,
+        ['Beneficio', 'Dettaglio'],
+        [
+            ['Zero cash al bancone',
+             'Ogni transazione è digitale, tracciata e abbinata a un cliente reale. '
+             'Nessun rischio di errori di resto o ammanchi di cassa.'],
+            ['Report transazioni banco',
+             'Le vendite banco compaiono nelle statistiche come categoria separata: '
+             'volume giornaliero, settimanale e mensile consultabili in Admin → Report.'],
+            ['Articoli configurabili senza codice',
+             'Aggiungi articoli, modifica i prezzi o disattiva voci stagionali '
+             'direttamente dalla UI in qualsiasi momento.'],
+            ['Velocità < 10 secondi',
+             'Dal QR generato alla conferma: il cassiere non deve inserire nulla manualmente. '
+             'Ideale per i momenti di picco (colazione, pausa caffè).'],
+        ],
+        col_widths=[5.0, 12.5])
+    info_box(doc,
+        "Il Banco POS non sostituisce il sistema ordini tradizionale: i due sistemi coesistono. "
+        "Usa il banco per le consumazioni veloci al bancone; "
+        "usa gli ordini tradizionali per i pasti con slot di ritiro e cucina.",
+        style='tip', label='Banco POS vs Ordini tradizionali:')
 
 
 def s05(doc):
@@ -856,6 +970,15 @@ def s08(doc):
         "(es. 11:45, 12:00, 12:15…). Per ogni slot imposta la capienza massima di ordini "
         "contemporanei in modo da non sovraccaricare la cucina. "
         "Attiva o disattiva uno slot per aprire o chiudere quella finestra di ritiro.")
+    body_para(doc,
+        "Gli slot si gestiscono interamente dalla UI — nessun intervento sul codice:")
+    step_row(doc, 1, 'Aggiungere uno slot',
+             "Usa il form nella tab «Slot Ordini» di /admin/tavoli: seleziona l'orario "
+             "con il time picker, imposta la capienza massima e premi «Aggiungi». "
+             "Lo slot è attivo immediatamente.")
+    step_row(doc, 2, 'Eliminare uno slot',
+             "Premi il pulsante «Elimina» sulla riga dello slot desiderato. "
+             "Gli ordini già prenotati in quello slot non vengono cancellati retroattivamente.")
     info_box(doc,
         "La prenotazione tavolo è indipendente dall'ordine pasto. "
         "Un cliente può prenotare un posto senza ordinare online (e viceversa).",
@@ -1012,6 +1135,13 @@ def s09(doc):
 
         doc.add_paragraph().paragraph_format.space_after = Pt(6)
 
+    info_box(doc,
+        "Il Cassiere gestisce anche il Banco POS (/admin/banco): vendita rapida al bancone "
+        "tramite QR code, senza contanti. Ogni consumazione viene scalata direttamente dal "
+        "wallet del cliente e tracciata nelle statistiche. "
+        "Per i dettagli vedi la sezione «Banco POS — Cassa Rapida QR».",
+        style='tip', label='Ruolo Cassiere — Banco POS:')
+
 
 def s10(doc):
     h1(doc, 10, 'Ruoli e permessi', '🔐')
@@ -1027,7 +1157,7 @@ def s10(doc):
         (HEX_NAVY, HEX_WHITE, '🏢  Manager',
          'Ordini, cucina, prodotti, stock, tavoli, slot, report.'),
         ('E67E22', HEX_WHITE, '💰  Cassiere',
-         'Visualizza e gestisce stato ordini, vede i report.'),
+         'Visualizza e gestisce stato ordini, vede i report. Gestisce il Banco POS (/admin/banco) per vendite rapide QR al bancone.'),
         ('27AE60', HEX_WHITE, '👨‍🍳  Cuoco',
          'Pannello cucina, avanza stato ordini, solo vista cucina.'),
         ('6C757D', HEX_WHITE, '👤  Utente',
@@ -1114,6 +1244,11 @@ def s12(doc):
         "La dashboard (Admin → Dashboard) è il cruscotto quotidiano con i dati del giorno "
         "in corso: incasso odierno, ordini aperti, numero clienti, prodotti attivi, "
         "prenotazioni tavoli e alert prodotti in esaurimento (< 3 pezzi rimasti).")
+    body_para(doc,
+        "Una card dedicata mostra i pasti aziendali prenotati per oggi: per ogni opzione "
+        "del menu aziendale vengono visualizzati il nome, il numero di prenotazioni, "
+        "una barra di avanzamento e i posti residui. "
+        "Se l'admin è anche dipendente convenzionato, la card evidenzia il proprio pasto prenotato.")
 
 
 def s13(doc):
@@ -1180,6 +1315,11 @@ def s14(doc):
         ('Posso esportare i dati per la contabilità?',
          "Al momento non c'è un export diretto in Excel. I dati storici sono consultabili "
          "filtrando per data nella pagina Admin → Ordini."),
+        ('Come funziona il pagamento al banco senza ordine?',
+         "Il cassiere usa il Banco POS (/admin/banco): seleziona gli articoli dalla griglia, "
+         "preme «Genera QR» e mostra il codice al cliente. Il cliente apre QuickLunch, "
+         "preme «Paga al Banco» e scansiona il QR con la fotocamera. "
+         "Il wallet viene scalato automaticamente: tutto avviene in meno di 10 secondi, senza contanti."),
     ]
 
     tbl = doc.add_table(rows=len(faqs), cols=2)
@@ -1868,28 +2008,46 @@ def s15(doc):
     h1(doc, 15, 'Credenziali di accesso', '🔑')
     info_box(doc,
         "Cambia tutte le password predefinite al primo accesso. "
-        "Le credenziali qui sotto sono quelle iniziali di configurazione.",
+        "Le credenziali qui sotto sono quelle dell'ambiente di test e demo.",
         style='warning')
 
-    h2(doc, 'Super Admin — accesso globale')
-    cred_box(doc, 'Super Admin — un solo account, accesso totale', [
-        ('URL',       'https://tuo-dominio.vercel.app/admin', True),
-        ('Email',     'admin@bar.local',                      False),
-        ('Password',  'admin123',                             True),
+    h2(doc, 'Personale — account di test')
+    cred_box(doc, 'Super Admin — accesso globale e totale', [
+        ('URL',      'https://tuo-dominio.vercel.app/admin',                True),
+        ('Email',    'admin@bar.local',                                     False),
+        ('Password', 'admin123',                                            True),
+        ('Ruolo',    'Super Admin — gestione tenant, report, configurazione', False),
     ])
 
-    h2(doc, 'Admin tenant (dati demo)')
-    cred_box(doc, 'Admin per ogni sede — password identica sui tre tenant demo', [
-        ('Bar Centrale',      'admin@bar-centrale.local',      False),
-        ('Mensa AziendaTech', 'admin@mensa-tech.local',        False),
-        ('Caffetteria Duomo', 'admin@caffetteria-duomo.local', False),
-        ('Password comune',   'demo1234',                      True),
+    cred_box(doc, 'Cassiere — Tablet Banco POS', [
+        ('Email',    'banco@bar.local',                                                   False),
+        ('Password', 'Banco2024!',                                                        True),
+        ('Ruolo',    'Cassiere — Banco POS (/admin/banco), gestione ordini, wallet',      False),
     ])
 
-    h2(doc, 'Clienti demo')
-    cred_box(doc, '36 clienti demo con anagrafica completa', [
-        ('Email',    'nome.cognome@gmail.com (vedi lista clienti)', False),
-        ('Password', 'cliente123',                                   True),
+    cred_box(doc, 'Cuoco — Display Cucina KDS', [
+        ('Email',    'cucina@bar.local',                                                  False),
+        ('Password', 'Cucina2024!',                                                       True),
+        ('Ruolo',    'Cuoco — Pannello cucina (/admin/kds), avanzamento stati ordini',    False),
+    ])
+
+    cred_box(doc, 'Manager — Tablet Staff Sala', [
+        ('Email',    'sala@bar.local',                                                    False),
+        ('Password', 'Sala2024!',                                                         True),
+        ('Ruolo',    'Manager — ordini, tavoli, prodotti, stock, report',                 False),
+    ])
+
+    h2(doc, 'Clienti — account di test')
+    cred_box(doc, 'Cliente 1 — wallet 30 €', [
+        ('Email',    'cliente1@bar.local',   False),
+        ('Password', 'Cliente1!',            True),
+        ('Wallet',   '30,00 € disponibili',  False),
+    ])
+
+    cred_box(doc, 'Cliente 2 — wallet 15 €', [
+        ('Email',    'cliente2@bar.local',   False),
+        ('Password', 'Cliente2!',            True),
+        ('Wallet',   '15,00 € disponibili',  False),
     ])
 
     h2(doc, 'Link di registrazione clienti')
@@ -2288,6 +2446,7 @@ def s_appendix_layouts(doc):
         [
             ['Tablet KDS cucina',       '1',  '2',  '2',  'Consigliato: 10" min., schermo opaco anti-riflesso'],
             ['Tablet cassa/admin',      '1',  '1',  '2',  'Accesso admin, gestione wallet, report'],
+            ['Tablet Banco POS',        '1',  '1',  '1',  'Tablet dedicato al bancone per il Cassiere: /admin/banco'],
             ['Schermo display sala',    '0',  '1',  '1',  'Monitor o TV 32" con ordini pronti visibili ai clienti'],
             ['Router WiFi cucina',      '1',  '1',  '2',  'Rete separata da quella clienti, segnale stabile'],
             ['Stampante scontrini',     '1',  '1',  '2',  'Termica, collegata al tablet cassa'],
@@ -2359,7 +2518,7 @@ def main():
     build_cover(doc)
     build_toc(doc)
 
-    sections = [s01, s02, s03, s04, s05, s06, s07,
+    sections = [s01, s02, s03, s04, s_banco_pos, s05, s06, s07,
                 s08, s09, s10, s11, s12, s13, s14, s15,
                 s_appendix, s_appendix_wallet,
                 s_appendix_saas, s_appendix_layouts]
