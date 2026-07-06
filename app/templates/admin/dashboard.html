@@ -29,9 +29,9 @@
   </div>
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-primary">
-      <div class="inner"><h3>{{ users_count }}</h3><p>Utenti Registrati</p></div>
+      <div class="inner"><h3>{{ clients_count }}</h3><p>Clienti attivi</p></div>
       <div class="icon"><i class="fas fa-users"></i></div>
-      <a href="{{ url_for('admin.users') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
+      <a href="{{ url_for('admin.clients') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
 </div>
@@ -66,9 +66,9 @@
   </div>
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-dark">
-      <div class="inner"><h3>{{ products_count }}</h3><p>Prodotti attivi</p></div>
-      <div class="icon"><i class="fas fa-burger"></i></div>
-      <a href="{{ url_for('admin.products') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
+      <div class="inner"><h3>{{ staff_count }}</h3><p>Operatori staff</p></div>
+      <div class="icon"><i class="fas fa-user-tie"></i></div>
+      <a href="{{ url_for('admin.users') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
 </div>
