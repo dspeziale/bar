@@ -2178,6 +2178,123 @@ def convenzione_presenze(cid):
                            nxt=f'{next_anno}-{next_mese:02d}')
 
 
+# ── Report giornaliero pasti aziendali ────────────────────────────────────────
+
+@bp.route('/convenzioni/report')
+@require_permission('manage_products')
+def convenzioni_report():
+    tf = _tenant_filter()
+    try:
+        sel_date = date.fromisoformat(request.args.get('d', ''))
+    except (ValueError, TypeError):
+        sel_date = date.today()
+
+    corps = CorporateAccount.query.filter_by(is_active=True, **tf)\
+        .order_by(CorporateAccount.name).all()
+
+    report = []
+    for corp in corps:
+        meals   = DailyFixedMeal.query.filter_by(corporate_id=corp.id, meal_date=sel_date).all()
+        entries = []
+        for meal in meals:
+            for b in meal.bookings:
+                if b.status != 'cancelled':
+                    entries.append({'booking': b, 'meal': meal, 'user': b.user})
+        entries.sort(key=lambda x: (x['user'].last_name or '', x['user'].first_name or '',
+                                    x['user'].username))
+        report.append({'corp': corp, 'entries': entries})
+
+    prev_date = sel_date - timedelta(days=1)
+    next_date = sel_date + timedelta(days=1)
+    return render_template('admin/convenzioni_report.html',
+                           report=report, sel_date=sel_date, today=date.today(),
+                           prev_date=prev_date, next_date=next_date)
+
+
+@bp.route('/convenzioni/<int:cid>/report-docx')
+@require_permission('manage_products')
+def convenzione_report_docx(cid):
+    from io import BytesIO
+    from flask import send_file
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        _HAS_DOCX = True
+    except ImportError:
+        _HAS_DOCX = False
+
+    corp = CorporateAccount.query.get_or_404(cid)
+    try:
+        sel_date = date.fromisoformat(request.args.get('d', ''))
+    except (ValueError, TypeError):
+        sel_date = date.today()
+
+    meals   = DailyFixedMeal.query.filter_by(corporate_id=corp.id, meal_date=sel_date).all()
+    entries = []
+    for meal in meals:
+        for b in meal.bookings:
+            if b.status != 'cancelled':
+                entries.append((b.user.full_name, meal.name, b.quantity or 1, b.status))
+    entries.sort(key=lambda x: x[0])
+
+    if not _HAS_DOCX:
+        flash('Libreria python-docx non installata. Esegui: pip install python-docx', 'danger')
+        return redirect(url_for('admin.convenzioni_report', d=sel_date.isoformat()))
+
+    doc = Document()
+
+    # ── Intestazione ─────────────────────────────────────────────────────────
+    title = doc.add_heading('Lista Pasti Aziendali', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    sub = doc.add_paragraph()
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = sub.add_run(f'{corp.name}  —  {sel_date.strftime("%d/%m/%Y")}')
+    run.font.size = Pt(13)
+
+    doc.add_paragraph()
+
+    meta = doc.add_paragraph()
+    meta.add_run('Totale prenotazioni: ').bold = True
+    meta.add_run(str(len(entries)))
+
+    doc.add_paragraph()
+
+    # ── Tabella presenze ──────────────────────────────────────────────────────
+    table = doc.add_table(rows=1, cols=4)
+    table.style = 'Table Grid'
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(['Nominativo', 'Pasto', 'Quantità', 'Stato']):
+        hdr_cells[i].text = h
+        run = hdr_cells[i].paragraphs[0].runs[0]
+        run.bold = True
+        run.font.size = Pt(10)
+
+    STATUS_IT = {'consumed': 'Consumato', 'booked': 'Prenotato'}
+    for full_name, meal_name, qty, status in entries:
+        row = table.add_row().cells
+        row[0].text = full_name
+        row[1].text = meal_name
+        row[2].text = str(qty)
+        row[3].text = STATUS_IT.get(status, status)
+        for cell in row:
+            cell.paragraphs[0].runs[0].font.size = Pt(10)
+
+    doc.add_paragraph()
+    note = doc.add_paragraph(
+        f'Documento generato il {_dt.now().strftime("%d/%m/%Y %H:%M")} da QuickLunch Bar Self-Service')
+    note.runs[0].font.size = Pt(8)
+    note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    filename = f'pasti_{corp.name.replace(" ","_")}_{sel_date.isoformat()}.docx'
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+
 # â”€â”€ Slot durata tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @bp.route('/slots/<int:sid>/durata', methods=['POST'])

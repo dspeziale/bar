@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Report Pasti Giornalieri{% endblock %}
+{% block page_title %}Report Pasti Aziendali{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
+<li class="breadcrumb-item active">Report Giornaliero</li>
+{% endblock %}
+
+{% block content %}
+
+{# ── Selettore data ─────────────────────────────────────────────────────────── #}
+<div class="card card-outline card-primary mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <a href="{{ url_for('admin.convenzioni_report', d=prev_date.isoformat()) }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+
+      <form method="GET" action="{{ url_for('admin.convenzioni_report') }}"
+            class="d-flex align-items-center" style="gap:6px;">
+        <input type="date" name="d" class="form-control form-control-sm"
+               value="{{ sel_date.isoformat() }}"
+               onchange="this.form.submit()">
+      </form>
+
+      <a href="{{ url_for('admin.convenzioni_report', d=next_date.isoformat()) }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+
+      {% if sel_date != today %}
+      <a href="{{ url_for('admin.convenzioni_report') }}" class="btn btn-sm btn-outline-primary">
+        Oggi
+      </a>
+      {% endif %}
+
+      <span class="ml-2 font-weight-bold text-primary">
+        <i class="fas fa-calendar-day mr-1"></i>
+        {{ sel_date.strftime('%A %d %B %Y')|capitalize }}
+      </span>
+    </div>
+  </div>
+</div>
+
+{# ── Corpo report ──────────────────────────────────────────────────────────── #}
+{% if not report %}
+  <div class="alert alert-info"><i class="fas fa-info-circle mr-2"></i>Nessuna convenzione attiva.</div>
+{% endif %}
+
+{% for item in report %}
+{% set corp = item.corp %}
+{% set entries = item.entries %}
+<div class="card card-outline card-success mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
+    <h3 class="card-title mb-0">
+      <i class="fas fa-building mr-2 text-success"></i>
+      <strong>{{ corp.name }}</strong>
+      <span class="badge badge-{% if entries %}success{% else %}secondary{% endif %} ml-2">
+        {{ entries|length }} prenotazion{% if entries|length == 1 %}e{% else %}i{% endif %}
+      </span>
+    </h3>
+    {% if entries %}
+    <a href="{{ url_for('admin.convenzione_report_docx', cid=corp.id, d=sel_date.isoformat()) }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-file-word mr-1" style="color:#2B579A;"></i>Scarica DOCX
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="card-body p-0">
+    {% if not entries %}
+      <p class="p-3 mb-0 text-muted">Nessuna prenotazione per questa data.</p>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Nominativo</th>
+            <th>Pasto</th>
+            <th style="width:80px;" class="text-center">Qtà</th>
+            <th style="width:110px;">Stato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          {% set b = e.booking %}
+          {% set u = e.user %}
+          <tr>
+            <td class="text-muted">{{ loop.index }}</td>
+            <td>
+              <strong>{{ u.full_name }}</strong>
+              {% if u.email %}
+              <br><small class="text-muted">{{ u.email }}</small>
+              {% endif %}
+            </td>
+            <td>
+              {{ e.meal.name }}
+              {% if e.meal.primo or e.meal.secondo %}
+              <br>
+              <small class="text-muted">
+                {% if e.meal.primo %}🥣 {{ e.meal.primo }}{% endif %}
+                {% if e.meal.secondo %} &nbsp;🍗 {{ e.meal.secondo }}{% endif %}
+              </small>
+              {% endif %}
+            </td>
+            <td class="text-center">{{ b.quantity or 1 }}</td>
+            <td>
+              {% if b.status == 'consumed' %}
+                <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Consumato</span>
+              {% elif b.status == 'booked' %}
+                <span class="badge badge-info"><i class="fas fa-clock mr-1"></i>Prenotato</span>
+              {% else %}
+                <span class="badge badge-secondary">{{ b.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="thead-light">
+          <tr>
+            <td colspan="3" class="text-right pr-3"><strong>Totale pasti:</strong></td>
+            <td class="text-center">
+              <strong>{{ entries|sum(attribute='booking.quantity') or entries|length }}</strong>
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
