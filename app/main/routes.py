@@ -201,7 +201,8 @@ def place_order():
 
     total = round(total, 2)
 
-    if current_user.wallet_balance < total:
+    _overdraft = current_user.wallet_overdraft or 0.0
+    if current_user.wallet_balance + _overdraft < total:
         flash(f'Saldo wallet insufficiente ({current_user.wallet_balance:.2f}€). '
               f'Servono {total:.2f}€.', 'danger')
         return redirect(url_for('main.wallet'))
@@ -886,7 +887,8 @@ def banco_pay_confirm(token):
         db.session.commit()
         flash('QR scaduto. Chiedi al personale di generarne uno nuovo.', 'danger')
         return redirect(url_for('main.index'))
-    if current_user.wallet_balance < sess.total:
+    _overdraft = current_user.wallet_overdraft or 0.0
+    if current_user.wallet_balance + _overdraft < sess.total:
         flash(f'Saldo insufficiente ({current_user.wallet_balance:.2f}€). Ricarica il wallet.', 'danger')
         return redirect(url_for('main.banco_pay', token=token))
     try:

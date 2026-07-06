@@ -81,8 +81,9 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     is_client = db.Column(db.Boolean, default=False)
-    wallet_balance = db.Column(db.Float, default=0.0)
-    loyalty_points = db.Column(db.Integer, default=0)
+    wallet_balance   = db.Column(db.Float, default=0.0)
+    wallet_overdraft = db.Column(db.Float, default=0.0)  # massimo rosso consentito
+    loyalty_points   = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     google_id  = db.Column(db.String(128), nullable=True, unique=True)

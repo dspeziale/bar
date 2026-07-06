@@ -559,6 +559,12 @@ def client_edit(uid):
             u.birth_date = dt.strptime(birth_raw, '%Y-%m-%d').date()
         except ValueError:
             pass
+    overdraft_raw = request.form.get('wallet_overdraft', '').strip()
+    if overdraft_raw != '':
+        try:
+            u.wallet_overdraft = max(0.0, round(float(overdraft_raw), 2))
+        except ValueError:
+            pass
     pwd = request.form.get('password', '').strip()
     if pwd:
         u.set_password(pwd)

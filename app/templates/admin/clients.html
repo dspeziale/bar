@@ -164,9 +164,16 @@
             {% endif %}
           </td>
           <td data-order="{{ c.wallet_balance }}">
-            <strong class="{{ 'text-success' if c.wallet_balance > 0 else 'text-muted' }}">
+            <strong class="{{ 'text-success' if c.wallet_balance > 0 else ('text-danger' if c.wallet_balance < 0 else 'text-muted') }}">
               {{ '%.2f'|format(c.wallet_balance) }}€
             </strong>
+            {% if c.wallet_overdraft and c.wallet_overdraft > 0 %}
+            <span class="badge badge-warning ml-1"
+                  title="Fido: può andare fino a -{{ '%.2f'|format(c.wallet_overdraft) }}€"
+                  data-toggle="tooltip">
+              fido {{ '%.0f'|format(c.wallet_overdraft) }}€
+            </span>
+            {% endif %}
             <button class="btn btn-xs btn-outline-success ml-1"
                     data-toggle="modal" data-target="#topupModal{{ c.id }}"
                     title="Ricarica wallet">
@@ -344,6 +351,26 @@
                         <input type="text" name="telegram_chat_id" class="form-control"
                                value="{{ c.telegram_chat_id or '' }}"
                                placeholder="-100xxxxxxxx (opzionale)">
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="form-group">
+                        <label>
+                          Fido wallet (€ in rosso consentiti)
+                          <i class="fas fa-info-circle text-muted ml-1"
+                             title="Importo massimo di saldo negativo consentito. 0 = nessun fido."
+                             data-toggle="tooltip"></i>
+                        </label>
+                        <div class="input-group">
+                          <input type="number" name="wallet_overdraft" class="form-control"
+                                 min="0" step="0.50"
+                                 value="{{ '%.2f'|format(c.wallet_overdraft or 0) }}"
+                                 placeholder="0.00">
+                          <div class="input-group-append">
+                            <span class="input-group-text">€</span>
+                          </div>
+                        </div>
+                        <small class="text-muted">Es. 5.00 → può arrivare fino a −5.00€</small>
                       </div>
                     </div>
                     <div class="col-sm-6">

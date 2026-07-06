@@ -364,6 +364,9 @@ def _migrate_tenant_columns():
     # Token di ritiro pasto aziendale
     _ensure('corporate_meal_bookings', 'pickup_token', "VARCHAR(16) DEFAULT ''")
 
+    # Fido wallet (saldo negativo consentito)
+    _ensure('users', 'wallet_overdraft', 'FLOAT DEFAULT 0.0')
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,
