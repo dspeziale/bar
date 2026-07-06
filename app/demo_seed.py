@@ -795,9 +795,15 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
         synchronize_session=False)
 
     # pasto aziendale
+    # Elimina booking per meal_id (meal del tenant) E per user_id (utenti da eliminare).
+    # Il doppio criterio copre il caso di meal con tenant_id=NULL non catturate da meal_ids.
     if meal_ids:
         CorporateMealBooking.query.filter(
             CorporateMealBooking.meal_id.in_(meal_ids)).delete(
+            synchronize_session=False)
+    if user_ids:
+        CorporateMealBooking.query.filter(
+            CorporateMealBooking.user_id.in_(user_ids)).delete(
             synchronize_session=False)
     DailyFixedMeal.query.filter(
         DailyFixedMeal.tenant_id.in_(tenant_ids)).delete(
