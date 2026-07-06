@@ -40,6 +40,13 @@
         <i class="fas fa-calendar-day mr-1"></i>
         {{ sel_date.strftime('%A %d %B %Y')|capitalize }}
       </span>
+
+      <div class="ml-auto">
+        <a href="{{ url_for('admin.convenzioni_abstract_docx') }}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-file-word mr-1" style="color:#2B579A;"></i>Scarica Abstract Sistema
+        </a>
+      </div>
     </div>
   </div>
 </div>

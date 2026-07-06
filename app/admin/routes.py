@@ -2294,6 +2294,256 @@ def convenzione_report_docx(cid):
     return send_file(buf, as_attachment=True, download_name=filename,
                      mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
+@bp.route('/convenzioni/abstract-docx')
+@require_permission('manage_products')
+def convenzioni_abstract_docx():
+    """Genera il documento descrittivo del modulo Pasti Aziendali."""
+    from io import BytesIO
+    from flask import send_file
+    from docx import Document
+    from docx.shared import Pt, Inches, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    BRAND = '#E94560'
+    DARK  = '#1a1a2e'
+    GRAY  = '#666666'
+
+    def _rgb(h):
+        h = h.lstrip('#')
+        return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+    def _heading(doc, text, level=1, color=BRAND):
+        p = doc.add_heading(text, level)
+        for run in p.runs:
+            run.font.color.rgb = _rgb(color)
+        return p
+
+    def _body(doc, text):
+        p = doc.add_paragraph(text)
+        p.paragraph_format.space_after = Pt(5)
+        for run in p.runs:
+            run.font.size = Pt(11)
+        return p
+
+    def _bullet(doc, text, bold_prefix=None):
+        p = doc.add_paragraph(style='List Bullet')
+        if bold_prefix:
+            r = p.add_run(bold_prefix + ' ')
+            r.bold = True
+            r.font.size = Pt(11)
+            r.font.color.rgb = _rgb(BRAND)
+        r2 = p.add_run(text)
+        r2.font.size = Pt(11)
+
+    def _step(doc, num, title, body):
+        p = doc.add_paragraph()
+        r1 = p.add_run(f'{num}. {title}  ')
+        r1.bold = True
+        r1.font.size = Pt(11)
+        r1.font.color.rgb = _rgb(BRAND)
+        r2 = p.add_run(body)
+        r2.font.size = Pt(11)
+        p.paragraph_format.left_indent = Inches(0.15)
+        p.paragraph_format.space_after  = Pt(6)
+
+    def _divider(doc):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after  = Pt(2)
+        pPr  = p._p.get_or_add_pPr()
+        pBdr = OxmlElement('w:pBdr')
+        bot  = OxmlElement('w:bottom')
+        bot.set(qn('w:val'),   'single')
+        bot.set(qn('w:sz'),    '6')
+        bot.set(qn('w:space'), '1')
+        bot.set(qn('w:color'), 'E94560')
+        pBdr.append(bot)
+        pPr.append(pBdr)
+
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin    = Inches(1.0)
+        section.bottom_margin = Inches(1.0)
+        section.left_margin   = Inches(1.2)
+        section.right_margin  = Inches(1.2)
+
+    # ── Copertina ─────────────────────────────────────────────────────────────
+    for _ in range(3):
+        doc.add_paragraph()
+    tp = doc.add_paragraph()
+    tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = tp.add_run('QuickLunch — Bar Self-Service')
+    r.font.size = Pt(26); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
+    sp = doc.add_paragraph()
+    sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = sp.add_run('Modulo Pasti Aziendali')
+    r.font.size = Pt(18); r.font.color.rgb = _rgb(DARK)
+    doc.add_paragraph()
+    dp = doc.add_paragraph()
+    dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = dp.add_run('Documento descrittivo per le aziende convenzionate')
+    r.font.size = Pt(12); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    for _ in range(2):
+        doc.add_paragraph()
+    datp = doc.add_paragraph()
+    datp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = datp.add_run(_dt.now().strftime('%B %Y'))
+    r.font.size = Pt(11); r.font.color.rgb = _rgb(GRAY)
+    doc.add_page_break()
+
+    # ── 1. Introduzione ───────────────────────────────────────────────────────
+    _heading(doc, '1. Introduzione')
+    _divider(doc)
+    _body(doc,
+        "QuickLunch è il sistema digitale di gestione del bar e della mensa self-service. "
+        "Il modulo Pasti Aziendali consente alle aziende convenzionate di offrire ai propri "
+        "dipendenti un servizio di prenotazione pasto strutturato, tracciato e amministrabile "
+        "in tempo reale.")
+    _body(doc,
+        "Ogni azienda dispone di un proprio spazio con configurazioni personalizzate "
+        "(prezzo del pasto, numero massimo di coperti, portate). I dipendenti prenotano "
+        "autonomamente tramite applicazione web da qualsiasi dispositivo, senza installazione.")
+    doc.add_paragraph()
+
+    # ── 2. Attori ─────────────────────────────────────────────────────────────
+    _heading(doc, '2. Attori del sistema')
+    _divider(doc)
+    _heading(doc, 'Amministratore del bar', 2, color=DARK)
+    _bullet(doc, 'Gestisce le convenzioni aziendali (creazione, modifica, disattivazione).')
+    _bullet(doc, 'Pubblica il menu giornaliero per ciascuna azienda (portate, prezzo, massimo coperti).')
+    _bullet(doc, 'Visualizza e scarica il report giornaliero delle presenze in formato Word.')
+    _bullet(doc, 'Segna i pasti come Consumati in tempo reale durante il servizio.')
+    _bullet(doc, 'Consulta lo storico mensile delle presenze per convenzione.')
+    doc.add_paragraph()
+    _heading(doc, 'Dipendente (utente finale)', 2, color=DARK)
+    _bullet(doc, "Si registra nell'applicazione (email + password oppure account Google).")
+    _bullet(doc, "Viene associato alla propria azienda convenzionata dall'amministratore.")
+    _bullet(doc, 'Visualizza il menu del giorno e prenota con pochi clic.')
+    _bullet(doc, "Può annullare la prenotazione in autonomia.")
+    _bullet(doc, 'Riceve facoltativamente notifiche Telegram di conferma e reminder.')
+    doc.add_paragraph()
+
+    # ── 3. Flusso ─────────────────────────────────────────────────────────────
+    _heading(doc, '3. Flusso operativo giornaliero')
+    _divider(doc)
+    _heading(doc, '3.1  Lato amministratore (bar)', 2, color=DARK)
+    _step(doc, 1, 'Pubblicazione menu:',
+          "ogni mattina si inserisce il menu del giorno: nome pasto, portate "
+          "(primo, secondo, contorno, bevanda, caffè), prezzo e coperti massimi. "
+          "È possibile creare più opzioni pasto per la stessa giornata.")
+    _step(doc, 2, 'Monitoraggio prenotazioni:',
+          "durante la mattinata si verifica in tempo reale il numero di prenotazioni "
+          "ricevute e i nominativi dal Report Giornaliero.")
+    _step(doc, 3, 'Servizio pasti:',
+          "al momento della distribuzione, lo staff spunta ogni prenotazione come "
+          "Consumato dall'interfaccia, tracciando le presenze effettive.")
+    _step(doc, 4, 'Report e riconciliazione:',
+          "a fine servizio il report giornaliero è scaricabile in formato Word (.docx) "
+          "per la riconciliazione contabile con l'azienda.")
+    doc.add_paragraph()
+    _heading(doc, '3.2  Lato dipendente', 2, color=DARK)
+    _step(doc, 1, 'Accesso:',
+          "il dipendente apre l'applicazione da browser (PC, tablet, smartphone) "
+          "e accede con le proprie credenziali.")
+    _step(doc, 2, 'Prenotazione:',
+          "dalla sezione Pasto Aziendale visualizza il menu del giorno, seleziona "
+          "l'opzione desiderata, sceglie l'orario di ritiro (se configurato) e conferma.")
+    _step(doc, 3, 'Conferma:',
+          "la prenotazione viene registrata immediatamente con conferma a schermo "
+          "e notifica Telegram opzionale.")
+    _step(doc, 4, 'Annullamento:',
+          "il dipendente può annullare la propria prenotazione finché il pasto "
+          "non è stato segnato come consumato.")
+    doc.add_paragraph()
+
+    # ── 4. Configurazione ─────────────────────────────────────────────────────
+    _heading(doc, '4. Configurazione della convenzione')
+    _divider(doc)
+    _body(doc, 'Ogni azienda viene configurata con i seguenti parametri:')
+    tbl = doc.add_table(rows=1, cols=2)
+    tbl.style = 'Table Grid'
+    h0, h1 = tbl.rows[0].cells
+    h0.text = 'Parametro'
+    h1.text = 'Descrizione'
+    for cell in [h0, h1]:
+        r = cell.paragraphs[0].runs[0]
+        r.bold = True
+        r.font.size = Pt(10)
+    for pname, pdesc in [
+        ('Nome azienda',           "Ragione sociale dell'azienda convenzionata."),
+        ('Email di contatto',      'Referente aziendale per le comunicazioni.'),
+        ('Prezzo giornaliero (€)', 'Prezzo standard del pasto, sovrascrivibile per singola giornata.'),
+        ('Massimo coperti/giorno', 'Numero massimo di prenotazioni accettabili per giornata.'),
+        ('Dipendenti associati',   'Utenti registrati associati alla convenzione.'),
+        ('Template menu',          'Configurazioni riutilizzabili per velocizzare la pubblicazione dei menu ricorrenti.'),
+    ]:
+        row = tbl.add_row().cells
+        rn = row[0].paragraphs[0].add_run(pname)
+        rn.bold = True
+        rn.font.size = Pt(10)
+        rd = row[1].paragraphs[0].add_run(pdesc)
+        rd.font.size = Pt(10)
+    doc.add_paragraph()
+
+    # ── 5. Report ─────────────────────────────────────────────────────────────
+    _heading(doc, '5. Report e documenti disponibili')
+    _divider(doc)
+    _heading(doc, 'Report Giornaliero (pagina web)', 2, color=DARK)
+    _body(doc,
+        "Accessibile da Convenzioni → Report Giornaliero: lista dei dipendenti con "
+        "la relativa prenotazione pasto del giorno. Navigazione tra date con tasti freccia "
+        "o selettore calendario.")
+    _heading(doc, 'Report Giornaliero (DOCX scaricabile)', 2, color=DARK)
+    _body(doc,
+        "Il pulsante Scarica DOCX genera un documento Word con intestazione azienda/data, "
+        "totale prenotazioni e tabella: Nominativo, Pasto, Quantità, Stato.")
+    _heading(doc, 'Storico mensile presenze', 2, color=DARK)
+    _body(doc,
+        "Accessibile da Convenzioni → [Azienda] → Storico Presenze. Mostra mese "
+        "per mese il dettaglio con i contatori di prenotati, consumati e annullati.")
+    doc.add_paragraph()
+
+    # ── 6. Notifiche ──────────────────────────────────────────────────────────
+    _heading(doc, '6. Notifiche automatiche')
+    _divider(doc)
+    _body(doc,
+        "Il sistema può inviare notifiche Telegram direttamente al dipendente (opzionale; "
+        "richiede Telegram Chat ID configurato nel profilo utente):")
+    _bullet(doc, 'Conferma annullamento prenotazione pasto.', 'Annullamento:')
+    _bullet(doc,
+            "Reminder N minuti prima dell'orario di ritiro (configurabile in Impostazioni → Reminder).",
+            'Reminder:')
+    doc.add_paragraph()
+
+    # ── 7. Sicurezza ──────────────────────────────────────────────────────────
+    _heading(doc, '7. Accesso e sicurezza')
+    _divider(doc)
+    _bullet(doc, 'Email + password oppure account Google (OAuth 2.0).', 'Autenticazione:')
+    _bullet(doc, 'Supporto opzionale MFA con Google Authenticator.', 'Doppio fattore:')
+    _bullet(doc, 'Ciascun dipendente vede solo le informazioni della propria azienda.', 'Isolamento:')
+    _bullet(doc, 'Tutte le comunicazioni avvengono su connessione cifrata HTTPS.', 'Trasporto:')
+    doc.add_paragraph()
+
+    # ── Colophon ──────────────────────────────────────────────────────────────
+    doc.add_page_break()
+    cp = doc.add_paragraph()
+    cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = cp.add_run(
+        f'QuickLunch Bar Self-Service  —  Documento generato il {_dt.now().strftime("%d/%m/%Y")}')
+    r.font.size = Pt(9)
+    r.font.italic = True
+    r.font.color.rgb = _rgb(GRAY)
+
+    buf2 = BytesIO()
+    doc.save(buf2)
+    buf2.seek(0)
+    fname = f'QuickLunch_Pasti_Aziendali_Abstract_{_dt.now().strftime("%Y%m")}.docx'
+    return send_file(buf2, as_attachment=True, download_name=fname,
+                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+
 
 # â”€â”€ Slot durata tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

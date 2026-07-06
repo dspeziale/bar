@@ -654,14 +654,19 @@ def _seed_defaults():
         if not Permission.query.filter_by(name=pname).first():
             db.session.add(Permission(name=pname, label=plabel, category=pcat))
 
+    # ── Rimozione utenti demo obsoleti (eseguita una volta sola) ─────────
+    for _demo_email in ('cliente1@bar.local', 'cliente2@bar.local'):
+        _demo_user = User.query.filter_by(email=_demo_email).first()
+        if _demo_user:
+            db.session.delete(_demo_user)
+            db.session.flush()
+
     # ── Account di lavoro (idempotente) ──────────────────────────────────
     _crew = [
         # (email, username, password, role_name, is_client, wallet)
         ('banco@bar.local',   'banco_staff',  'Banco2024!',  'cassiere', False, 0.0),
         ('cucina@bar.local',  'cuoco_mario',  'Cucina2024!', 'cuoco',    False, 0.0),
         ('sala@bar.local',    'staff_sala',   'Sala2024!',   'manager',  False, 0.0),
-        ('cliente1@bar.local','luca_verdi',   'Cliente1!',   'utente',   True,  30.0),
-        ('cliente2@bar.local','anna_rossi',   'Cliente2!',   'utente',   True,  15.0),
     ]
     for email, username, password, role_name, is_client, wallet in _crew:
         if not User.query.filter_by(email=email).first():
