@@ -2553,9 +2553,17 @@ def convenzioni_abstract_docx():
 @bp.route('/convenzioni/presentazione-pdf')
 @require_permission('manage_products')
 def convenzioni_presentazione_pdf():
+    import os
     from io import BytesIO
+    from pathlib import Path
     from flask import send_file
     from fpdf import FPDF
+
+    _IT_MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+                  'luglio','agosto','settembre','ottobre','novembre','dicembre']
+
+    def _it_mese_anno(dt):
+        return f'{_IT_MONTHS[dt.month - 1]} {dt.year}'
 
     BRAND  = (233, 69,  96)
     DARK   = (26,  26,  46)
@@ -2563,6 +2571,7 @@ def convenzioni_presentazione_pdf():
     LGRAY  = (200, 200, 210)
     VLIGHT = (248, 248, 252)
     WHITE  = (255, 255, 255)
+    FONT   = 'PTSansNarrow'
 
     class Brochure(FPDF):
         def header(self):
@@ -2570,10 +2579,10 @@ def convenzioni_presentazione_pdf():
                 return
             self.set_fill_color(*BRAND)
             self.rect(0, 0, 210, 11, 'F')
-            self.set_font('Helvetica', 'B', 8)
+            self.set_font(FONT, 'B', 9)
             self.set_text_color(*WHITE)
             self.set_xy(12, 1.5)
-            self.cell(130, 8, 'QuickLunch  —  Modulo Pasti Aziendali', ln=0)
+            self.cell(130, 8, 'QuickLunch  -  Modulo Pasti Aziendali', ln=0)
             self.set_x(-30)
             self.cell(18, 8, 'quicklunch.app', align='R')
             self.set_text_color(*DARK)
@@ -2583,19 +2592,19 @@ def convenzioni_presentazione_pdf():
             if self.page_no() == 1:
                 return
             self.set_y(-13)
-            self.set_font('Helvetica', '', 7.5)
+            self.set_font(FONT, '', 8.5)
             self.set_text_color(*LGRAY)
             self.set_draw_color(*LGRAY)
             self.line(12, self.get_y(), 198, self.get_y())
             self.ln(1)
             self.cell(0, 6,
-                f'QuickLunch Bar Self-Service  —  Documento riservato  —  Pag. {self.page_no()-1}',
+                f'QuickLunch Bar Self-Service  -  Documento riservato  -  Pag. {self.page_no()-1}',
                 align='C')
 
         def section_title(self, text):
-            self.set_font('Helvetica', 'B', 13)
+            self.set_font(FONT, 'B', 14)
             self.set_text_color(*BRAND)
-            self.cell(0, 8, text, ln=True)
+            self.cell(0, 9, text, ln=True)
             self.set_draw_color(*BRAND)
             self.set_line_width(0.5)
             self.line(self.get_x(), self.get_y(), self.get_x() + 186, self.get_y())
@@ -2603,27 +2612,27 @@ def convenzioni_presentazione_pdf():
             self.set_text_color(*DARK)
 
         def sub_title(self, text):
-            self.set_font('Helvetica', 'B', 10.5)
+            self.set_font(FONT, 'B', 12)
             self.set_text_color(*DARK)
             self.cell(0, 7, text, ln=True)
             self.set_text_color(*DGRAY)
 
         def body(self, text, indent=0):
-            self.set_font('Helvetica', '', 10)
+            self.set_font(FONT, '', 11)
             self.set_text_color(*DGRAY)
             self.set_x(12 + indent)
-            self.multi_cell(186 - indent, 5.5, text)
+            self.multi_cell(186 - indent, 6, text)
             self.ln(1)
             self.set_x(12)
 
         def bullet(self, text, color=BRAND):
-            self.set_font('Helvetica', 'B', 11)
+            self.set_font(FONT, 'B', 12)
             self.set_text_color(*color)
             self.set_x(14)
-            self.cell(6, 6, '•', ln=0)
-            self.set_font('Helvetica', '', 10)
+            self.cell(6, 6, '-', ln=0)
+            self.set_font(FONT, '', 11)
             self.set_text_color(*DGRAY)
-            self.multi_cell(176, 5.5, text)
+            self.multi_cell(176, 6, text)
             self.set_x(12)
 
         def step_box(self, num, title, desc):
@@ -2631,18 +2640,18 @@ def convenzioni_presentazione_pdf():
             y0 = self.get_y()
             self.set_fill_color(*BRAND)
             self.ellipse(x0 + 12, y0, 10, 10, 'F')
-            self.set_font('Helvetica', 'B', 9)
+            self.set_font(FONT, 'B', 10)
             self.set_text_color(*WHITE)
             self.set_xy(x0 + 12, y0 + 0.5)
             self.cell(10, 9, str(num), align='C')
-            self.set_font('Helvetica', 'B', 10)
+            self.set_font(FONT, 'B', 11)
             self.set_text_color(*DARK)
             self.set_xy(x0 + 26, y0 + 0.5)
-            self.cell(160, 5, title)
-            self.set_font('Helvetica', '', 9.5)
+            self.cell(160, 5.5, title)
+            self.set_font(FONT, '', 11)
             self.set_text_color(*DGRAY)
-            self.set_xy(x0 + 26, y0 + 6)
-            self.multi_cell(160, 5, desc)
+            self.set_xy(x0 + 26, y0 + 7)
+            self.multi_cell(160, 5.5, desc)
             self.ln(3)
             self.set_x(12)
 
@@ -2651,18 +2660,21 @@ def convenzioni_presentazione_pdf():
             self.set_draw_color(*LGRAY)
             self.set_line_width(0.3)
             self.rect(x, y, w, h, 'FD')
-            self.set_font('Helvetica', 'B', 18)
+            self.set_font(FONT, 'B', 20)
             self.set_text_color(*BRAND)
             self.set_xy(x, y + 4)
             self.cell(w, 10, value, align='C')
-            self.set_font('Helvetica', '', 8.5)
+            self.set_font(FONT, '', 10)
             self.set_text_color(*DGRAY)
             self.set_xy(x, y + 16)
             self.cell(w, 6, label, align='C')
 
+    _font_dir = Path(os.path.abspath(__file__)).parent.parent / 'static' / 'fonts'
     pdf = Brochure(orientation='P', unit='mm', format='A4')
     pdf.set_margins(12, 14, 12)
     pdf.set_auto_page_break(True, margin=18)
+    pdf.add_font(FONT, '',  str(_font_dir / 'PTSansNarrow-Regular.ttf'))
+    pdf.add_font(FONT, 'B', str(_font_dir / 'PTSansNarrow-Bold.ttf'))
 
     # Copertina
     pdf.add_page()
@@ -2672,22 +2684,22 @@ def convenzioni_presentazione_pdf():
     pdf.rect(0, 0, 8, 297, 'F')
     pdf.rect(20, 110, 170, 1.5, 'F')
 
-    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_font(FONT, 'B', 12)
     pdf.set_text_color(180, 180, 195)
     pdf.set_xy(20, 70)
-    pdf.cell(0, 8, 'QuickLunch  —  Bar Self-Service')
+    pdf.cell(0, 8, 'QuickLunch  -  Bar Self-Service')
 
-    pdf.set_font('Helvetica', 'B', 38)
+    pdf.set_font(FONT, 'B', 40)
     pdf.set_text_color(*WHITE)
     pdf.set_xy(20, 82)
     pdf.cell(0, 18, 'Pasti Aziendali')
 
-    pdf.set_font('Helvetica', '', 15)
+    pdf.set_font(FONT, '', 17)
     pdf.set_text_color(*BRAND)
     pdf.set_xy(20, 102)
     pdf.cell(0, 8, 'Il servizio mensa digitale per la tua azienda')
 
-    pdf.set_font('Helvetica', '', 11)
+    pdf.set_font(FONT, '', 12)
     pdf.set_text_color(170, 170, 190)
     pdf.set_xy(20, 125)
     pdf.multi_cell(160, 7,
@@ -2699,10 +2711,10 @@ def convenzioni_presentazione_pdf():
     pdf.kpi_box('Accesso da mobile',   'App Web',  80, 165)
     pdf.kpi_box('Report giornaliero',  'DOCX',    140, 165)
 
-    pdf.set_font('Helvetica', '', 9)
+    pdf.set_font(FONT, '', 10)
     pdf.set_text_color(100, 100, 120)
     pdf.set_xy(20, 275)
-    pdf.cell(0, 6, _dt.now().strftime('Documento di presentazione  —  %B %Y'))
+    pdf.cell(0, 6, 'Documento di presentazione  -  ' + _it_mese_anno(_dt.now()))
 
     # Il servizio
     pdf.add_page()
@@ -2733,15 +2745,15 @@ def convenzioni_presentazione_pdf():
     pdf.set_fill_color(*VLIGHT)
     pdf.set_draw_color(*LGRAY)
     pdf.set_line_width(0.3)
-    pdf.rect(12, pdf.get_y(), 186, 30, 'FD')
-    pdf.set_font('Helvetica', 'BI', 10.5)
+    pdf.rect(12, pdf.get_y(), 186, 32, 'FD')
+    pdf.set_font(FONT, 'B', 12)
     pdf.set_text_color(*BRAND)
     pdf.set_xy(18, pdf.get_y() + 5)
     pdf.cell(0, 6, '"Meno burocrazia, piu\' tempo per il pranzo."')
-    pdf.set_font('Helvetica', '', 9.5)
+    pdf.set_font(FONT, '', 11)
     pdf.set_text_color(*DGRAY)
-    pdf.set_xy(18, pdf.get_y() + 7)
-    pdf.multi_cell(174, 5,
+    pdf.set_xy(18, pdf.get_y() + 8)
+    pdf.multi_cell(174, 6,
         'Con QuickLunch il dipendente prenota in 10 secondi, il gestore '
         "ha il conteggio esatto in tempo reale e l'azienda riceve il report pronto alla firma.")
 
@@ -2814,21 +2826,21 @@ def convenzioni_presentazione_pdf():
         x0 = 12 if i % 2 == 0 else col2_x
         if i % 2 == 0:
             _saved_y = pdf.get_y()
-        card_h = 24
+        card_h = 26
         pdf.set_fill_color(*VLIGHT)
         pdf.set_draw_color(*LGRAY)
         pdf.set_line_width(0.3)
         pdf.rect(x0, _saved_y, col_w, card_h, 'FD')
         pdf.set_fill_color(*BRAND)
         pdf.rect(x0, _saved_y, 2.5, card_h, 'F')
-        pdf.set_font('Helvetica', 'B', 9.5)
+        pdf.set_font(FONT, 'B', 11)
         pdf.set_text_color(*DARK)
         pdf.set_xy(x0 + 5, _saved_y + 3)
-        pdf.cell(col_w - 7, 5, title)
-        pdf.set_font('Helvetica', '', 8.5)
+        pdf.cell(col_w - 7, 5.5, title)
+        pdf.set_font(FONT, '', 10)
         pdf.set_text_color(*DGRAY)
-        pdf.set_xy(x0 + 5, _saved_y + 9)
-        pdf.multi_cell(col_w - 7, 4.2, desc)
+        pdf.set_xy(x0 + 5, _saved_y + 10)
+        pdf.multi_cell(col_w - 7, 4.5, desc)
         if i % 2 != 0:
             pdf.set_xy(12, _saved_y + card_h + 3)
 
@@ -2864,24 +2876,24 @@ def convenzioni_presentazione_pdf():
     pdf.set_fill_color(*DARK)
     pdf.set_draw_color(*DARK)
     pdf.rect(12, bx_y, 186, 52, 'F')
-    pdf.set_font('Helvetica', 'B', 13)
+    pdf.set_font(FONT, 'B', 14)
     pdf.set_text_color(*WHITE)
     pdf.set_xy(20, bx_y + 8)
     pdf.cell(0, 7, 'Contatti e informazioni')
     pdf.set_draw_color(*BRAND)
     pdf.set_line_width(1)
     pdf.line(20, bx_y + 17, 190, bx_y + 17)
-    pdf.set_font('Helvetica', '', 10.5)
+    pdf.set_font(FONT, '', 12)
     pdf.set_text_color(200, 200, 215)
     pdf.set_xy(20, bx_y + 21)
     pdf.multi_cell(170, 6.5,
         "Per attivare la tua convenzione o richiedere una dimostrazione del sistema, "
         "contatta direttamente il gestore del bar. Il servizio e' attivo e operativo: "
         "la tua azienda puo' essere online in pochi minuti.")
-    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_font(FONT, 'B', 11)
     pdf.set_text_color(*BRAND)
     pdf.set_xy(20, bx_y + 41)
-    pdf.cell(0, 6, 'QuickLunch  —  Bar Self-Service')
+    pdf.cell(0, 6, 'QuickLunch  -  Bar Self-Service')
 
     buf = BytesIO(bytes(pdf.output()))
     buf.seek(0)
