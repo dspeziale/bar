@@ -340,15 +340,18 @@ class IngredientCategory(db.Model):
 
 class Ingredient(db.Model):
     __tablename__ = 'ingredients'
-    id            = db.Column(db.Integer, primary_key=True)
-    name          = db.Column(db.String(128), nullable=False)
-    price_extra   = db.Column(db.Float, default=0.0)
-    category_id   = db.Column(db.Integer, db.ForeignKey('ingredient_categories.id'), nullable=False)
-    is_active     = db.Column(db.Boolean, default=True)
-    is_vegetarian = db.Column(db.Boolean, default=False)
-    allergens     = db.Column(db.String(128), default='')
-    tenant_id     = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    category      = db.relationship('IngredientCategory', back_populates='ingredients')
+    id                = db.Column(db.Integer, primary_key=True)
+    name              = db.Column(db.String(128), nullable=False)
+    price_extra       = db.Column(db.Float, default=0.0)
+    category_id       = db.Column(db.Integer, db.ForeignKey('ingredient_categories.id'), nullable=False)
+    is_active         = db.Column(db.Boolean, default=True)
+    is_vegetarian     = db.Column(db.Boolean, default=False)
+    allergens         = db.Column(db.String(128), default='')
+    tenant_id         = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    # Magazzino (opzionale): grammi per porzione e giacenza attuale in grammi
+    grams_per_serving = db.Column(db.Float, nullable=True)
+    stock_qty         = db.Column(db.Float, nullable=True)
+    category          = db.relationship('IngredientCategory', back_populates='ingredients')
 
 
 class CustomOrderItem(db.Model):
@@ -783,11 +786,12 @@ class PollChoice(db.Model):
 
 class PollVote(db.Model):
     __tablename__ = 'poll_votes'
-    id        = db.Column(db.Integer, primary_key=True)
-    poll_id   = db.Column(db.Integer, db.ForeignKey('polls.id'),     nullable=False)
-    choice_id = db.Column(db.Integer, db.ForeignKey('poll_choices.id'), nullable=False)
-    user_id   = db.Column(db.Integer, db.ForeignKey('users.id'),     nullable=False)
-    voted_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    id                   = db.Column(db.Integer, primary_key=True)
+    poll_id              = db.Column(db.Integer, db.ForeignKey('polls.id'),        nullable=False)
+    choice_id            = db.Column(db.Integer, db.ForeignKey('poll_choices.id'), nullable=False)
+    user_id              = db.Column(db.Integer, db.ForeignKey('users.id'),        nullable=False)
+    voted_at             = db.Column(db.DateTime, default=datetime.utcnow)
+    confirm_reservation  = db.Column(db.Boolean, default=False)
 
     __table_args__ = (
         db.UniqueConstraint('poll_id', 'user_id', name='uq_poll_user'),

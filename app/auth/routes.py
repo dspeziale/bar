@@ -65,18 +65,24 @@ def register():
         if error:
             flash(error, 'danger')
         else:
-            user = User(username=_make_username(email), email=email)
+            first_name = request.form.get('first_name', '').strip()
+            last_name  = request.form.get('last_name', '').strip()
+            user = User(
+                username=_make_username(email),
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                is_client=True,
+                is_active=False,
+            )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            _apply_registration_bonus(user)
             send_telegram(
-                f'🆕 <b>Nuovo utente registrato</b>\n'
-                f'👤 {user.first_name} {user.last_name}'.strip() + f'\n📧 {email}'
+                f'🆕 <b>Nuovo cliente in attesa</b>\n'
+                f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
             )
-            login_user(user)
-            flash('Registrazione completata. Benvenuto!', 'success')
-            return redirect(url_for('main.index'))
+            return redirect(url_for('auth.pending'))
     return render_template('auth/register.html')
 
 

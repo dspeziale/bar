@@ -156,6 +156,22 @@
             {% endfor %}
           </div>
 
+          {# Checkbox conferma prenotazione #}
+          <div class="card bg-light mb-3" style="border-radius:10px;">
+            <div class="card-body py-2 px-3">
+              <div class="custom-control custom-checkbox">
+                <input type="checkbox" class="custom-control-input" id="chk-confirm-res"
+                       name="confirm_reservation">
+                <label class="custom-control-label" for="chk-confirm-res"
+                       style="font-size:.93rem;cursor:pointer;">
+                  <i class="fas fa-chair mr-1 text-info"></i>
+                  Confermo anche la mia prenotazione per il
+                  <strong>{{ poll.poll_date.strftime('%A %d %B %Y') }}</strong>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div class="text-center mt-2">
             <button type="submit" id="vote-btn" class="btn btn-lg btn-primary px-5" disabled>
               <i class="fas fa-vote-yea mr-2"></i>Invia il mio voto

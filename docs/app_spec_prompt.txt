@@ -1,0 +1,193 @@
+# QuickLunch — Master Prompt per AI Coding Assistant
+# Versione compatta (elevator pitch tecnico) per avviare una sessione di coding.
+
+================================================================================
+DESCRIZIONE APP
+================================================================================
+QuickLunch e' un'app web Flask multi-tenant per gestire un bar/mensa aziendale.
+I dipendenti ordinano pasti, prenotano tavoli, usano un wallet prepagato,
+accumulano punti fedelta' e prenotano pasti convenzionati aziendali.
+Lo staff ha un backoffice completo con ordini, KDS cucina, prodotti, stock,
+tavoli, banco POS con QR, magazzino consumabili, report e comunicazioni.
+
+================================================================================
+STACK
+================================================================================
+Backend:   Python Flask 3.x + Flask-SQLAlchemy + Flask-Login + Authlib (Google OAuth)
+DB:        SQLite (sviluppo) / PostgreSQL Neon (produzione, Vercel)
+Frontend:  Bootstrap 4.6 + AdminLTE 3.2 + Font Awesome 6 Free
+Notifiche: Telegram Bot API + Gmail SMTP (credenziali in AppSetting nel DB)
+JS extra:  qrcodejs (QR generation), jsQR (QR scanner), SweetAlert2, jQuery
+Font:      PT Sans Narrow (Google Fonts)
+Design:    Accent #e94560, Navy #0f3460, gradient 135deg; tema chiaro/scuro
+
+================================================================================
+ARCHITETTURA
+================================================================================
+4 Blueprint:
+  auth   → /auth           login, register, Google OAuth, logout
+  main   → /               dashboard cliente, menu, ordini, tavoli, wallet
+  admin  → /admin          backoffice staff
+  tenant → /t/<slug>       registrazione per tenant
+
+Multi-tenant:
+  Ogni tabella ha tenant_id nullable FK → tenants
+  Superadmin (admin@bar.local, is_admin=True, tenant_id=None) vede tutto
+  _effective_tenant_id(): tenant_id utente oppure tenant 'default'
+  Risorse globali (Table, TableTimeBand, BancoItem): query senza filtro tenant
+
+Migrazioni: _migrate_tenant_columns() con _ensure(table, col, definition)
+  → ALTER TABLE idempotente, compatibile SQLite e PostgreSQL
+Seed: _seed_defaults() → tenant default, admin, ruoli, categorie, slot, tavoli,
+  ingredienti builder (panino/insalata/poke)
+
+Auth access:
+  @staff_required → is_admin OR is_staff (ha permesso backoffice)
+  @require_permission(perm) → is_admin bypass o check ruoli
+  is_staff property: ha almeno uno tra view_orders, manage_orders,
+    manage_products, manage_categories, manage_ingredients, manage_stock,
+    manage_tables_admin, manage_reservations_admin, manage_slots,
+    manage_users, manage_clients, manage_roles, view_reports
+
+================================================================================
+MODELLI CHIAVE
+================================================================================
+Tenant: id, name, slug UNIQUE, primary_color, is_active
+User:   id, username, email UNIQUE, password_hash, is_admin, is_active,
+        is_client, wallet_balance FLOAT, loyalty_points INT, tenant_id,
+        google_id, avatar_url, first_name, last_name, phone, birth_date,
+        address, telegram_chat_id
+        Metodi: set_password, check_password, credit_wallet, debit_wallet,
+                add_points, redeem_points, has_permission, has_role, is_staff
+Role: id, name UNIQUE, label, color, is_system
+Permission: id, name UNIQUE, label, category
+user_roles M2M, role_permissions M2M
+
+Category: id, name, icon, color, tenant_id
+Product:  id, name, price, category_id, daily_quantity, is_active,
+          allergens, tenant_id
+          Metodo: available_today() = quantity_available - quantity_reserved
+DailyStock: id, product_id, stock_date, quantity_available, quantity_reserved
+            UNIQUE(product_id, stock_date)
+
+TimeSlot: id, time_str 'HH:MM', max_orders, is_active,
+          seat_duration_minutes (0=illimitato), tenant_id
+          Metodo: is_full() → orders_today() >= max_orders
+
+Order:    id, order_code, user_id, slot_id nullable (NULL=banco),
+          order_date, status, total_price, notes, tenant_id
+          Status: pending/confirmed/preparing/ready/completed/cancelled
+OrderItem: order_id, product_id, quantity, unit_price
+CustomOrderItem: order_id, builder_type, label, unit_price, grill_requested
+CustomOrderItemIngredient: custom_item_id, ingredient_name, price_extra
+
+IngredientCategory: name, builder_type (panino/insalata/poke/both),
+                    is_required, max_choices, sort_order, tenant_id
+Ingredient: name, price_extra, category_id, is_active, is_vegetarian,
+            allergens, tenant_id
+
+Table:         id, number, seats, location, is_active, tenant_id
+TableTimeBand: start_time, end_time, duration_minutes, sort_order, tenant_id
+               computed_slots() → lista 'HH:MM' a step di duration_minutes
+TableReservation: user_id, table_id, slot_id nullable, band_id, session_start,
+                  reservation_date, party_size, status, checkin_at,
+                  table_alert_sent, tenant_id
+
+Transaction: user_id, amount, ttype, description, order_id, created_at
+  ttype: topup/payment/refund/reward/points/adjustment/banco
+
+BancoItem:    name, price, icon, color, sort_order, is_active, tenant_id
+BancoSession: token UNIQUE, staff_id, customer_id, items_json TEXT,
+              total, status (pending/paid/expired/cancelled),
+              created_at, expires_at (+10min), tenant_id
+
+CorporateAccount:    name, daily_price, max_daily_covers, contact_email, tenant_id
+CorporateMembership: user_id, corporate_id, is_active; UNIQUE(user_id, corporate_id)
+MealConfiguration:   corporate_id, name, primo, secondo, contorno, bevanda,
+                     caffe, allergens, price nullable, max_bookings nullable
+DailyFixedMeal:  meal_date, name, primo, secondo, contorno, bevanda, caffe,
+                 price, corporate_id, max_bookings, is_active, tenant_id
+CorporateMealBooking: user_id, meal_id, slot_id, quantity, status
+                      (booked/consumed/cancelled); UNIQUE(user_id, meal_id)
+
+Poll:       title, poll_date, is_active
+PollChoice: poll_id, text, emoji
+PollVote:   poll_id, choice_id, user_id; UNIQUE(poll_id, user_id)
+
+AppSetting: key UNIQUE, value, label
+  Chiavi: telegram_bot_token, telegram_chat_id, gmail_user,
+          gmail_app_password, registration_bonus
+
+Supplier:          name, email, phone, notes, tenant_id
+ConsumableItem:    name, unit, quantity, min_threshold, supplier_id,
+                   alert_active, tenant_id
+ConsumableMovement: item_id, delta FLOAT, notes, user_id, created_at
+
+================================================================================
+FUNZIONALITA' PRINCIPALI
+================================================================================
+1. Ordini: carrello in session (cart/custom_cart), slot di ritiro o BANCO,
+   scalatura wallet, 10 pt per euro, rimborso su cancellazione,
+   notifiche Telegram cucina + utente
+
+2. Builder panino/insalata/poke: ingredienti per categoria con max_choices,
+   prezzi extra, opzione griglia, label generata, aggiunta a custom_cart
+
+3. Wallet + Fedelta': wallet_balance FLOAT, credit/debit_wallet,
+   100 pt → +1.00€ (redeem in blocchi), bonus registrazione (AppSetting)
+
+4. Tavoli + Prenotazioni: fasce orarie con computed_slots(),
+   prenotazione per session_start, check-in, alert 10 min prima scadenza
+   via polling /admin/tavoli/ping-alerts, notifiche Telegram
+
+5. Banco POS QR: staff genera sessione (token 32char, 10 min), QR code
+   nel browser (qrcodejs), polling status ogni 2s; cliente scansiona
+   (jsQR), conferma dal wallet → ttype='banco'
+
+6. Pasto Aziendale: membership → DailyFixedMeal del giorno →
+   CorporateMealBooking (una opzione/giorno); cancella se > 30 min dallo slot;
+   template MealConfiguration per auto-fill; report presenze mensile
+
+7. RBAC: ruoli + permessi M2M, is_admin bypass tutto,
+   5 ruoli sistema (superadmin/manager/cassiere/cuoco/utente)
+
+8. Magazzino: ConsumableItem con soglia alert, movimenti delta,
+   email automatica al fornitore quando sotto soglia
+
+================================================================================
+CONFIGURAZIONE
+================================================================================
+Config class in config.py:
+  SECRET_KEY, SQLALCHEMY_DATABASE_URI (auto da env),
+  LOYALTY_POINTS_PER_EURO=10, LOYALTY_REWARD_POINTS=100,
+  LOYALTY_REWARD_AMOUNT=1.0,
+  BUILDER_PRICES={panino:3.50, insalata:3.00, poke:4.00},
+  PICKUP_SLOTS=[11:45..13:30], GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+
+================================================================================
+ACCOUNT DI TEST
+================================================================================
+  admin@bar.local   / admin123    → Super Admin
+  banco@bar.local   / Banco2024!  → Cassiere (Banco POS)
+  cucina@bar.local  / Cucina2024! → Cuoco (KDS)
+  sala@bar.local    / Sala2024!   → Manager
+  cliente1@bar.local/ Cliente1!   → Cliente (wallet 30€)
+  cliente2@bar.local/ Cliente2!   → Cliente (wallet 15€)
+
+================================================================================
+NOTE IMPLEMENTATIVE
+================================================================================
+- db.create_all() + migrazioni manuali idempotenti all'avvio
+- PostgreSQL: pool_size=1, max_overflow=0 (serverless Vercel)
+- Flash messages → SweetAlert2 toast; data-confirm/data-confirm-delete → dialog
+- Sidebar AdminLTE treeview gestita manualmente in JS (non via plugin)
+- base.html ha blocchi: extra_css, scripts, extra_js
+- order_code formato: QuickLunch-YYMMDD-{HHMM|BANCO}-{id:04d}
+- Allergeni: 14 codici (glutine, crostacei, uova, pesce, arachidi, soia,
+  latte, frutta_guscio, sedano, senape, sesamo, solfiti, lupini, molluschi)
+- Google OAuth: nuovi utenti → is_active=False, is_client=True, attesa admin
+- Registrazione standard → is_active=True, bonus da AppSetting
+- _delete_user_cascade(uid): elimina in cascata rispettando FK NOT NULL
+
+Per la specifica completa con tutti i campi ORM e tutte le route:
+vedere docs/app_spec.txt

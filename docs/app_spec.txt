@@ -1,0 +1,1766 @@
+# QuickLunch — Specifica Completa per Rigenerazione App
+# Documento di riferimento per ricostruire l'intera applicazione da zero.
+# Generato il: 2026-07-06
+
+================================================================================
+## 1. PANORAMICA DELL'APPLICAZIONE
+================================================================================
+
+QuickLunch e' un'applicazione web multi-tenant per la gestione di un
+bar/mensa aziendale. Permette ai dipendenti di ordinare pasti, prenotare
+tavoli, gestire un wallet prepagato con punti fedelta' e usufruire di pasti
+convenzionati aziendali. Il personale ha un backoffice completo (ordini,
+prodotti, stock, tavoli, report, magazzino consumabili, comunicazioni).
+
+Casi d'uso principali:
+  - Cliente: si registra, ricarica wallet, sfoglia il menu, aggiunge al
+    carrello, sceglie uno slot di ritiro (o "adesso al banco"), conferma
+    l'ordine scalando il wallet, accumula punti fedelta'.
+  - Builder: cliente compone un panino/insalata/poke personalizzato
+    scegliendo ingredienti per categoria con prezzi extra.
+  - Tavoli: cliente prenota un tavolo per una fascia oraria e uno slot
+    calcolato dinamicamente. Lo staff fa il check-in e traccia il tempo
+    di permanenza.
+  - Banco POS QR: il cassiere seleziona articoli veloci (caffe', acqua...),
+    genera un QR code, il cliente scansiona con il suo smartphone e
+    conferma il pagamento dal wallet.
+  - Pasto aziendale: clienti convenzionati prenotano il pasto fisso del
+    giorno (primo/secondo/contorno/bevanda/caffe') con deadline 30 min.
+  - Sondaggi: admin crea sondaggi (voto menu del giorno), clienti votano.
+  - Report: revenue e ordini per prodotto degli ultimi 30 giorni.
+  - Magazzino: gestione consumabili (carta, bicchieri...) con soglie e
+    alert automatico via email al fornitore.
+
+Deployment: SQLite in sviluppo locale, PostgreSQL su Vercel/Neon in produzione.
+Entry point: run.py (flask run); factory: app/__init__.py create_app().
+
+
+================================================================================
+## 2. STACK TECNOLOGICO
+================================================================================
+
+Backend:
+  - Python 3.11+
+  - Flask 3.x (con Blueprints)
+  - Flask-SQLAlchemy (ORM)
+  - Flask-Login (sessioni autenticate)
+  - Authlib (Google OAuth 2.0 / OpenID Connect)
+  - Werkzeug (password hashing)
+  - python-dotenv (variabili d'ambiente da .env)
+
+Database:
+  - SQLite in sviluppo (file: instance/bar.db)
+  - PostgreSQL in produzione (Neon su Vercel, URL via env DATABASE_URL o
+    POSTGRES_URL; il prefisso "postgres://" viene sostituito con
+    "postgresql://")
+
+Frontend:
+  - Bootstrap 4.6.2 (CDN)
+  - AdminLTE 3.2.0 (CDN) — layout sidebar
+  - Font Awesome 6.5.0 Free (CDN)
+  - SweetAlert2 11 (CDN) — flash messages come toast, conferme
+  - jQuery 3.7.1 (CDN)
+  - qrcodejs (CDN) — generazione QR code nel banco POS
+  - jsQR (CDN) — scanner QR nel browser (getUserMedia)
+  - PT Sans Narrow (Google Fonts)
+
+Template engine: Jinja2 (Flask built-in)
+
+Notifiche:
+  - Telegram Bot API (via requests HTTP, token in AppSetting)
+  - Gmail SMTP (via smtplib, credenziali in AppSetting)
+
+CSS Design System:
+  - Accent:  #e94560 (rosso QuickLunch)
+  - Navy:    #0f3460
+  - Gradient: linear-gradient(135deg, #e94560, #0f3460)
+  - Tema chiaro/scuro via CSS custom properties e
+    data-QuickLunch-theme="dark|light" sul <html>
+  - Toggle tema salvato in localStorage['QuickLunch-theme']
+
+
+================================================================================
+## 3. ARCHITETTURA
+================================================================================
+
+3.1 Application Factory
+  File: app/__init__.py
+  Funzione: create_app(config_object='config.Config')
+  Sequenza:
+    1. Flask(__name__)
+    2. app.config.from_object(config_object)
+    3. db.init_app(app), login_manager.init_app(app), oauth.init_app(app)
+    4. Registra google OAuth client (Authlib)
+    5. Registra Blueprint: auth (/auth), main (/), admin (/admin), tenant (/t)
+    6. Dentro app_context(): db.create_all(), _migrate_tenant_columns(),
+       _seed_defaults()
+    7. CLI command: flask seed-demo
+
+3.2 Blueprints
+  - app/auth/     → url_prefix '/auth'   → login, register, Google OAuth
+  - app/main/     → url_prefix ''        → dashboard cliente, menu, ordini
+  - app/admin/    → url_prefix '/admin'  → backoffice staff
+  - app/tenant/   → url_prefix '/t'      → registrazione tenant-specific
+
+3.3 Multi-tenant
+  - Quasi tutte le tabelle hanno tenant_id = Integer FK → tenants.id nullable
+  - Superadmin (admin@bar.local): is_admin=True, tenant_id=None
+  - Tenant globale: slug='default', id=1 (primo nel DB)
+  - Helper _effective_tenant_id() in main/routes.py:
+      se current_user.tenant_id → lo usa
+      altrimenti → cerca Tenant.query.filter_by(slug='default').first().id
+  - Helper _active_tenant_id() in admin/routes.py: stesso comportamento
+  - Risorse globali (Table, TableTimeBand, BancoItem): tenant_id=None
+    nelle query utente NON si filtra per tenant su questi modelli
+  - _tenant_filter() in admin/routes.py:
+      se is_admin → {} (nessun filtro)
+      altrimenti → {'tenant_id': current_user.tenant_id}
+
+3.4 Schema migration (app/__init__.py)
+  Funzione: _migrate_tenant_columns()
+  Approccio: ALTER TABLE idempotente con _ensure(table, col, definition)
+    - _ensure: controlla se la colonna esiste via sa_inspect
+    - se non esiste: esegue ALTER TABLE ... ADD COLUMN ...
+    - gestisce differenze SQLite/PostgreSQL (DATETIME→TIMESTAMP, BOOLEAN)
+  Tabelle migrate: users, categories, products, orders, time_slots,
+    daily_stocks, ingredient_categories, ingredients, tables,
+    table_reservations, polls, app_settings, custom_order_items,
+    daily_fixed_meals, corporate_meal_bookings, banco_sessions
+  Colonne speciali:
+    - orders.slot_id → reso nullable su PostgreSQL
+    - table_reservations.slot_id → reso nullable su PostgreSQL
+    - users: google_id, avatar_url, is_client, first_name, last_name,
+      phone, birth_date, address, telegram_chat_id
+
+3.5 Decoratori di accesso (admin/routes.py)
+  - @staff_required: is_admin OR is_staff (almeno un permesso backoffice)
+  - @require_permission(perm_name): is_admin bypass o check su ruoli utente
+
+
+================================================================================
+## 4. MODELLI DATI COMPLETI
+================================================================================
+
+File: app/models.py
+
+--- TABELLE DI ASSOCIAZIONE ---
+
+user_roles (association table)
+  user_id  INTEGER FK users.id CASCADE
+  role_id  INTEGER FK roles.id CASCADE
+  PK (user_id, role_id)
+
+role_permissions (association table)
+  role_id       INTEGER FK roles.id CASCADE
+  permission_id INTEGER FK permissions.id CASCADE
+  PK (role_id, permission_id)
+
+--- MODELLO Tenant ---
+Tabella: tenants
+  id            INTEGER  PK autoincrement
+  name          VARCHAR(128) NOT NULL
+  slug          VARCHAR(64)  UNIQUE NOT NULL
+  logo_url      VARCHAR(256) DEFAULT ''
+  primary_color VARCHAR(20)  DEFAULT '#e94560'
+  is_active     BOOLEAN DEFAULT True
+  created_at    DATETIME DEFAULT utcnow
+
+Relazioni:
+  users → User (FK users.tenant_id, lazy=dynamic)
+
+Proprieta':
+  user_count  → self.users.count()
+  register_url → url_for('tenant.register', slug=self.slug)
+
+--- MODELLO Permission ---
+Tabella: permissions
+  id       INTEGER PK
+  name     VARCHAR(64) UNIQUE NOT NULL  (codename)
+  label    VARCHAR(128) NOT NULL
+  category VARCHAR(64) DEFAULT 'generale'
+
+Permessi esistenti:
+  view_orders               (ordini)
+  manage_orders             (ordini)
+  manage_products           (prodotti)
+  manage_categories         (prodotti)
+  manage_ingredients        (prodotti)
+  manage_stock              (prodotti)
+  manage_tables_admin       (tavoli)
+  manage_reservations_admin (tavoli)
+  manage_slots              (sistema)
+  manage_users              (sistema)
+  manage_roles              (sistema)
+  view_reports              (report)
+  manage_settings           (sistema)
+  manage_polls              (comunicazioni)
+  send_notifications        (comunicazioni)
+  manage_clients            (sistema)
+
+--- MODELLO Role ---
+Tabella: roles
+  id        INTEGER PK
+  name      VARCHAR(64) UNIQUE NOT NULL
+  label     VARCHAR(128) NOT NULL
+  color     VARCHAR(20) DEFAULT 'secondary'
+  is_system BOOLEAN DEFAULT False
+
+Relazioni:
+  permissions → Permission M2M tramite role_permissions (lazy=subquery)
+
+Metodi:
+  permission_names() → set di string
+
+Ruoli di sistema (is_system=True):
+  superadmin → tutti i permessi, color='danger'
+  manager    → view_orders, manage_orders, manage_products,
+               manage_categories, manage_ingredients, manage_stock,
+               manage_tables_admin, manage_reservations_admin,
+               manage_slots, view_reports; color='warning'
+  cassiere   → view_orders, manage_orders, view_reports; color='info'
+  cuoco      → view_orders, manage_orders; color='success'
+  utente     → nessun permesso; color='secondary'
+
+--- MODELLO User ---
+Tabella: users
+  id              INTEGER PK
+  username        VARCHAR(64) UNIQUE NOT NULL
+  email           VARCHAR(120) UNIQUE NOT NULL
+  password_hash   VARCHAR(256) nullable
+  is_admin        BOOLEAN DEFAULT False
+  is_active       BOOLEAN DEFAULT True
+  is_client       BOOLEAN DEFAULT False
+  wallet_balance  FLOAT DEFAULT 0.0
+  loyalty_points  INTEGER DEFAULT 0
+  created_at      DATETIME DEFAULT utcnow
+  tenant_id       INTEGER FK tenants.id nullable INDEX
+  google_id       VARCHAR(128) nullable UNIQUE
+  avatar_url      VARCHAR(256) DEFAULT ''
+  first_name      VARCHAR(64) DEFAULT ''
+  last_name       VARCHAR(64) DEFAULT ''
+  phone           VARCHAR(20) DEFAULT ''
+  birth_date      DATE nullable
+  address         TEXT DEFAULT ''
+  telegram_chat_id VARCHAR(64) DEFAULT ''
+
+Relazioni:
+  tenant               → Tenant FK
+  orders               → Order (back_populates='user', lazy=dynamic)
+  transactions         → Transaction (back_populates='user', lazy=dynamic)
+  reservations         → TableReservation (back_populates='user', lazy=dynamic)
+  corporate_membership → CorporateMembership (uselist=False)
+  roles                → Role M2M tramite user_roles (lazy=subquery)
+
+Proprieta':
+  full_name       → first_name + last_name oppure username
+  is_staff        → is_admin OR ha almeno un permesso BACKOFFICE
+  is_superadmin   → alias di is_admin
+  all_permission_names → {'*'} se admin, altrimenti set di permessi dai ruoli
+
+Metodi auth:
+  set_password(password)   → werkzeug generate_password_hash
+  check_password(password) → werkzeug check_password_hash
+
+Metodi RBAC:
+  has_permission(perm_name) → True se admin o se un ruolo ha il permesso
+  has_role(role_name)       → True se l'utente ha il ruolo
+
+Metodi wallet:
+  credit_wallet(amount, description, order_id=None)
+    → wallet_balance += amount
+    → crea Transaction(ttype='topup', amount=+amount)
+  debit_wallet(amount, description, order_id=None)
+    → wallet_balance -= amount
+    → crea Transaction(ttype='payment', amount=-amount)
+  add_points(points)
+    → loyalty_points += points
+    → crea Transaction(ttype='points', amount=0)
+  redeem_points(points, reward_amount)
+    → loyalty_points -= points
+    → wallet_balance += reward_amount
+    → crea Transaction(ttype='reward', amount=reward_amount)
+
+BACKOFFICE permissions set (per is_staff):
+  view_orders, manage_orders, manage_products, manage_categories,
+  manage_ingredients, manage_stock, manage_tables_admin,
+  manage_reservations_admin, manage_slots, manage_users,
+  manage_clients, manage_roles, view_reports
+
+--- MODELLO Category ---
+Tabella: categories
+  id        INTEGER PK
+  name      VARCHAR(64) NOT NULL
+  icon      VARCHAR(64) DEFAULT 'fa-utensils'
+  color     VARCHAR(32) DEFAULT 'secondary'
+  tenant_id INTEGER FK tenants.id nullable INDEX
+
+Relazioni:
+  products → Product (back_populates='category', lazy=dynamic)
+
+--- MODELLO Product ---
+Tabella: products
+  id             INTEGER PK
+  name           VARCHAR(128) NOT NULL
+  description    TEXT DEFAULT ''
+  price          FLOAT NOT NULL
+  category_id    INTEGER FK categories.id NOT NULL
+  daily_quantity INTEGER DEFAULT 20
+  is_active      BOOLEAN DEFAULT True
+  allergens      VARCHAR(512) DEFAULT ''
+  tenant_id      INTEGER FK tenants.id nullable INDEX
+
+Relazioni:
+  category    → Category
+  order_items → OrderItem
+  daily_stocks→ DailyStock
+
+Proprieta':
+  allergen_list → lista di tuple (key, label, emoji) per allergeni presenti
+
+Metodi:
+  available_today()
+    → cerca DailyStock per oggi; se esiste: quantity_available - quantity_reserved
+    → altrimenti: daily_quantity
+  get_or_create_stock()
+    → trova o crea DailyStock per oggi con quantity_available=daily_quantity
+
+Allergeni supportati (ALLERGEN_LABELS dict):
+  glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta_guscio,
+  sedano, senape, sesamo, solfiti, lupini, molluschi
+
+--- MODELLO DailyStock ---
+Tabella: daily_stocks
+  id                 INTEGER PK
+  product_id         INTEGER FK products.id NOT NULL
+  stock_date         DATE NOT NULL DEFAULT today
+  quantity_available INTEGER NOT NULL
+  quantity_reserved  INTEGER DEFAULT 0
+  UNIQUE (product_id, stock_date)
+
+Relazioni:
+  product → Product
+
+--- MODELLO TimeSlot ---
+Tabella: time_slots
+  id                     INTEGER PK
+  time_str               VARCHAR(5) NOT NULL  (formato 'HH:MM')
+  max_orders             INTEGER DEFAULT 20
+  is_active              BOOLEAN DEFAULT True
+  seat_duration_minutes  INTEGER DEFAULT 0   (0=illimitato)
+  tenant_id              INTEGER FK tenants.id nullable INDEX
+
+Relazioni:
+  orders             → Order (back_populates='slot')
+  table_reservations → TableReservation (back_populates='slot')
+
+Metodi:
+  orders_today()
+    → count ordini con slot_id=self.id, order_date=today, status!='cancelled'
+  is_full()
+    → orders_today() >= max_orders
+
+--- MODELLO Order ---
+Tabella: orders
+  id          INTEGER PK
+  order_code  VARCHAR(32) nullable INDEX
+              (formato: QuickLunch-YYMMDD-HHMM-0001 oppure -BANCO-)
+  user_id     INTEGER FK users.id NOT NULL
+  slot_id     INTEGER FK time_slots.id nullable   (NULL = adesso al banco)
+  order_date  DATE NOT NULL DEFAULT today
+  status      VARCHAR(20) DEFAULT 'pending'
+  total_price FLOAT DEFAULT 0.0
+  notes       TEXT DEFAULT ''
+  created_at  DATETIME DEFAULT utcnow
+  tenant_id   INTEGER FK tenants.id nullable INDEX
+
+STATUS_LABELS dict:
+  pending   → ('Ricevuto',       'warning')
+  confirmed → ('Confermato',     'info')
+  preparing → ('In preparazione','primary')
+  ready     → ('Pronto',         'success')
+  completed → ('Consegnato',     'secondary')
+  cancelled → ('Annullato',      'danger')
+
+Relazioni:
+  user         → User
+  slot         → TimeSlot
+  items        → OrderItem (cascade='all, delete-orphan')
+  custom_items → CustomOrderItem (cascade='all, delete-orphan')
+  transactions → Transaction
+
+Metodi:
+  label()         → tuple (label_str, color_str)
+  compute_total() → somma regular items + custom items, aggiorna total_price
+
+--- MODELLO OrderItem ---
+Tabella: order_items
+  id         INTEGER PK
+  order_id   INTEGER FK orders.id NOT NULL
+  product_id INTEGER FK products.id NOT NULL
+  quantity   INTEGER NOT NULL DEFAULT 1
+  unit_price FLOAT NOT NULL
+
+Relazioni:
+  order   → Order
+  product → Product
+
+--- MODELLO IngredientCategory ---
+Tabella: ingredient_categories
+  id           INTEGER PK
+  name         VARCHAR(64) NOT NULL
+  builder_type VARCHAR(10) NOT NULL  ('panino','insalata','poke','both')
+  is_required  BOOLEAN DEFAULT False
+  max_choices  INTEGER DEFAULT 3
+  sort_order   INTEGER DEFAULT 0
+  icon         VARCHAR(32) DEFAULT 'fa-circle'
+  tenant_id    INTEGER FK tenants.id nullable INDEX
+
+Relazioni:
+  ingredients → Ingredient (order_by Ingredient.name)
+
+--- MODELLO Ingredient ---
+Tabella: ingredients
+  id            INTEGER PK
+  name          VARCHAR(128) NOT NULL
+  price_extra   FLOAT DEFAULT 0.0
+  category_id   INTEGER FK ingredient_categories.id NOT NULL
+  is_active     BOOLEAN DEFAULT True
+  is_vegetarian BOOLEAN DEFAULT False
+  allergens     VARCHAR(128) DEFAULT ''
+  tenant_id     INTEGER FK tenants.id nullable INDEX
+
+Relazioni:
+  category → IngredientCategory
+
+--- MODELLO CustomOrderItem ---
+Tabella: custom_order_items
+  id              INTEGER PK
+  order_id        INTEGER FK orders.id NOT NULL
+  builder_type    VARCHAR(10) NOT NULL
+  label           VARCHAR(512) DEFAULT ''
+  unit_price      FLOAT NOT NULL
+  quantity        INTEGER DEFAULT 1
+  grill_requested BOOLEAN DEFAULT False
+
+Relazioni:
+  order       → Order
+  ingredients → CustomOrderItemIngredient (cascade='all, delete-orphan')
+
+--- MODELLO CustomOrderItemIngredient ---
+Tabella: custom_order_item_ingredients
+  id             INTEGER PK
+  custom_item_id INTEGER FK custom_order_items.id NOT NULL
+  ingredient_name VARCHAR(128) NOT NULL
+  price_extra     FLOAT DEFAULT 0.0
+
+--- MODELLO Table ---
+Tabella: tables
+  id        INTEGER PK
+  number    INTEGER NOT NULL
+  seats     INTEGER DEFAULT 4
+  location  VARCHAR(64) DEFAULT ''
+  is_active BOOLEAN DEFAULT True
+  tenant_id INTEGER FK tenants.id nullable INDEX
+  (NOTA: tavoli creati come risorse globali; tenant_id assegnato in seed)
+
+Relazioni:
+  reservations → TableReservation
+
+Metodi:
+  reservation_for(slot_id, res_date)
+    → prima prenotazione attiva per (table_id, slot_id, date)
+  is_available(slot_id, res_date)
+    → reservation_for() is None
+
+--- MODELLO TableTimeBand ---
+Tabella: table_time_bands
+  id               INTEGER PK
+  start_time       VARCHAR(5) NOT NULL  ('HH:MM')
+  end_time         VARCHAR(5) NOT NULL  ('HH:MM')
+  duration_minutes INTEGER NOT NULL DEFAULT 30
+  sort_order       INTEGER DEFAULT 0
+  tenant_id        INTEGER FK tenants.id nullable INDEX
+  (NOTA: risorsa globale, tenant_id=None o del tenant)
+
+Relazioni:
+  reservations → TableReservation
+
+Proprieta':
+  label → '{start_time} - {end_time}  ({duration_minutes} min)'
+
+Metodi:
+  computed_slots() → lista di stringhe 'HH:MM' a partire da start_time,
+                     incrementate di duration_minutes, fino a end_time
+
+--- MODELLO TableReservation ---
+Tabella: table_reservations
+  id               INTEGER PK
+  user_id          INTEGER FK users.id NOT NULL
+  table_id         INTEGER FK tables.id NOT NULL
+  slot_id          INTEGER FK time_slots.id nullable
+  band_id          INTEGER FK table_time_bands.id nullable
+  session_start    VARCHAR(5) DEFAULT ''   ('HH:MM' calcolato dalla fascia)
+  reservation_date DATE NOT NULL DEFAULT today
+  party_size       INTEGER DEFAULT 1
+  notes            TEXT DEFAULT ''
+  status           VARCHAR(20) DEFAULT 'confirmed'
+  created_at       DATETIME DEFAULT utcnow
+  checkin_at       DATETIME nullable
+  table_alert_sent BOOLEAN DEFAULT False
+  tenant_id        INTEGER FK tenants.id nullable INDEX
+
+STATUS_LABELS: confirmed→('Confermata','success'), cancelled→('Annullata','danger')
+
+Proprieta':
+  minutes_remaining → minuti rimanenti dopo check-in (None se no checkin o
+                       durata non impostata sullo slot)
+
+Relazioni:
+  user  → User, table → Table, slot → TimeSlot, band → TableTimeBand
+
+--- MODELLO Transaction ---
+Tabella: transactions
+  id          INTEGER PK
+  user_id     INTEGER FK users.id NOT NULL
+  amount      FLOAT NOT NULL
+  ttype       VARCHAR(20) NOT NULL
+  description VARCHAR(256) DEFAULT ''
+  order_id    INTEGER FK orders.id nullable
+  created_at  DATETIME DEFAULT utcnow
+
+TYPE_ICONS dict:
+  topup      → ('fa-arrow-down',  'success',   'Ricarica')
+  payment    → ('fa-arrow-up',    'danger',    'Pagamento')
+  refund     → ('fa-rotate-left', 'info',      'Rimborso')
+  reward     → ('fa-gift',        'warning',   'Premio')
+  points     → ('fa-star',        'purple',    'Punti')
+  adjustment → ('fa-pen',         'secondary', 'Rettifica')
+  banco      → ('fa-mug-hot',     'info',      'Banco')
+
+Metodi: icon_info() → tuple (icon, color, label)
+
+--- MODELLO BancoItem ---
+Tabella: banco_items
+  id         INTEGER PK
+  name       VARCHAR(64) NOT NULL
+  price      FLOAT NOT NULL
+  icon       VARCHAR(64) DEFAULT 'fa-mug-hot'
+  color      VARCHAR(32) DEFAULT 'info'
+  sort_order INTEGER DEFAULT 0
+  is_active  BOOLEAN DEFAULT True
+  tenant_id  INTEGER FK tenants.id nullable INDEX
+  (risorsa globale/per tenant, creata con tenant_id del tenant corrente)
+
+--- MODELLO BancoSession ---
+Tabella: banco_sessions
+  id          INTEGER PK
+  token       VARCHAR(32) UNIQUE NOT NULL INDEX
+  staff_id    INTEGER FK users.id NOT NULL
+  customer_id INTEGER FK users.id nullable
+  items_json  TEXT DEFAULT '[]'
+  total       FLOAT NOT NULL
+  status      VARCHAR(20) DEFAULT 'pending'
+              (pending | paid | expired | cancelled)
+  created_at  DATETIME DEFAULT utcnow
+  expires_at  DATETIME NOT NULL   (created_at + 10 minuti)
+  tenant_id   INTEGER FK tenants.id nullable
+
+Relazioni:
+  staff    → User (FK staff_id)
+  customer → User (FK customer_id)
+
+--- MODELLI Magazzino ---
+
+Supplier (tabella: suppliers)
+  id        INTEGER PK
+  name      VARCHAR(128) NOT NULL
+  email     VARCHAR(120) DEFAULT ''
+  phone     VARCHAR(30)  DEFAULT ''
+  notes     TEXT DEFAULT ''
+  tenant_id INTEGER FK tenants.id nullable INDEX
+  items → ConsumableItem
+
+ConsumableItem (tabella: consumable_items)
+  id            INTEGER PK
+  name          VARCHAR(128) NOT NULL
+  unit          VARCHAR(20) DEFAULT 'pz'
+  quantity      FLOAT DEFAULT 0.0
+  min_threshold FLOAT DEFAULT 0.0
+  supplier_id   INTEGER FK suppliers.id nullable
+  alert_active  BOOLEAN DEFAULT False
+  last_alert_at DATETIME nullable
+  tenant_id     INTEGER FK tenants.id nullable INDEX
+  supplier → Supplier
+  movements → ConsumableMovement (cascade, order_by created_at.desc())
+
+Proprieta':
+  is_below_threshold → min_threshold>0 AND quantity<=min_threshold
+  stock_status       → 'critical' (<=1.0x soglia) | 'warning' (<=1.5x) | 'ok'
+
+ConsumableMovement (tabella: consumable_movements)
+  id         INTEGER PK
+  item_id    INTEGER FK consumable_items.id NOT NULL
+  delta      FLOAT NOT NULL
+  notes      VARCHAR(256) DEFAULT ''
+  created_at DATETIME DEFAULT utcnow
+  user_id    INTEGER FK users.id nullable
+  item → ConsumableItem, user → User
+
+--- MODELLI Corporate ---
+
+CorporateAccount (tabella: corporate_accounts)
+  id               INTEGER PK
+  name             VARCHAR(128) NOT NULL
+  contact_email    VARCHAR(120) DEFAULT ''
+  daily_price      FLOAT DEFAULT 7.0
+  max_daily_covers INTEGER DEFAULT 60
+  notes            TEXT DEFAULT ''
+  is_active        BOOLEAN DEFAULT True
+  tenant_id        INTEGER FK tenants.id nullable INDEX
+  memberships   → CorporateMembership (cascade='all, delete-orphan')
+  daily_meals   → DailyFixedMeal (cascade='all, delete-orphan')
+  configurations→ MealConfiguration (cascade, order by sort_order, name)
+
+Proprieta':
+  active_members → lista di CorporateMembership attivi
+
+MealConfiguration (tabella: meal_configurations)
+  id           INTEGER PK
+  corporate_id INTEGER FK corporate_accounts.id NOT NULL
+  name         VARCHAR(128) NOT NULL
+  primo        VARCHAR(256) DEFAULT ''
+  secondo      VARCHAR(256) DEFAULT ''
+  contorno     VARCHAR(256) DEFAULT ''
+  bevanda      VARCHAR(256) DEFAULT ''
+  caffe        VARCHAR(128) DEFAULT ''
+  description  TEXT DEFAULT ''
+  allergens    VARCHAR(512) DEFAULT ''
+  price        FLOAT nullable  (None = usa daily_price della convenzione)
+  max_bookings INTEGER nullable (None = usa max_daily_covers)
+  sort_order   INTEGER DEFAULT 0
+  tenant_id    INTEGER FK tenants.id nullable INDEX
+  corporate → CorporateAccount
+
+Template riutilizzabile per creare un DailyFixedMeal dal valore precompilato.
+
+CorporateMembership (tabella: corporate_memberships)
+  id           INTEGER PK
+  user_id      INTEGER FK users.id NOT NULL
+  corporate_id INTEGER FK corporate_accounts.id NOT NULL
+  is_active    BOOLEAN DEFAULT True
+  UNIQUE (user_id, corporate_id)
+  user → User, corporate → CorporateAccount
+
+DailyFixedMeal (tabella: daily_fixed_meals)
+  id           INTEGER PK
+  meal_date    DATE NOT NULL DEFAULT today
+  name         VARCHAR(256) NOT NULL
+  description  TEXT DEFAULT ''
+  composition  TEXT DEFAULT ''
+  allergens    VARCHAR(512) DEFAULT ''
+  primo        VARCHAR(256) DEFAULT ''
+  secondo      VARCHAR(256) DEFAULT ''
+  contorno     VARCHAR(256) DEFAULT ''
+  bevanda      VARCHAR(256) DEFAULT ''
+  caffe        VARCHAR(128) DEFAULT ''
+  price        FLOAT NOT NULL
+  corporate_id INTEGER FK corporate_accounts.id NOT NULL
+  max_bookings INTEGER DEFAULT 60
+  is_active    BOOLEAN DEFAULT True
+  tenant_id    INTEGER FK tenants.id nullable INDEX
+  corporate → CorporateAccount
+  bookings  → CorporateMealBooking (cascade='all, delete-orphan')
+
+Proprieta':
+  booking_count → somma quantity per prenotazioni non cancellate
+  is_available  → is_active AND booking_count < max_bookings
+  slots_left    → max(0, max_bookings - booking_count)
+  allergen_list → lista tuple (key, label, emoji)
+  courses       → lista (label, emoji, valore) per portate non vuote
+
+CorporateMealBooking (tabella: corporate_meal_bookings)
+  id         INTEGER PK
+  user_id    INTEGER FK users.id NOT NULL
+  meal_id    INTEGER FK daily_fixed_meals.id NOT NULL
+  slot_id    INTEGER FK time_slots.id nullable
+  quantity   INTEGER DEFAULT 1 NOT NULL
+  status     VARCHAR(20) DEFAULT 'booked'
+             (booked | consumed | cancelled)
+  created_at DATETIME DEFAULT utcnow
+  UNIQUE (user_id, meal_id) — uq_corp_booking
+  user → User, meal → DailyFixedMeal, slot → TimeSlot
+
+STATUS_LABELS: booked→('Prenotato','info'), consumed→('Consumato','success'),
+               cancelled→('Annullato','danger')
+
+--- AppSetting ---
+Tabella: app_settings
+  id    INTEGER PK
+  key   VARCHAR(64) UNIQUE NOT NULL
+  value TEXT DEFAULT ''
+  label VARCHAR(128) DEFAULT ''
+
+Chiavi usate: telegram_bot_token, telegram_chat_id, gmail_user,
+  gmail_app_password, registration_bonus
+
+--- Sondaggi ---
+
+Poll (tabella: polls)
+  id         INTEGER PK
+  title      VARCHAR(200) NOT NULL
+  poll_date  DATE NOT NULL
+  is_active  BOOLEAN DEFAULT True
+  created_at DATETIME DEFAULT utcnow
+  choices → PollChoice (cascade)
+  votes   → PollVote   (cascade)
+
+Metodi: total_votes() → count, user_vote(user_id) → PollVote or None
+
+PollChoice (tabella: poll_choices)
+  id      INTEGER PK
+  poll_id INTEGER FK polls.id NOT NULL
+  text    VARCHAR(200) NOT NULL
+  emoji   VARCHAR(10) DEFAULT '🍽️'
+  votes → PollVote (cascade)
+  Proprieta': vote_count → len(votes)
+
+PollVote (tabella: poll_votes)
+  id        INTEGER PK
+  poll_id   INTEGER FK polls.id NOT NULL
+  choice_id INTEGER FK poll_choices.id NOT NULL
+  user_id   INTEGER FK users.id NOT NULL
+  voted_at  DATETIME DEFAULT utcnow
+  UNIQUE (poll_id, user_id) — uq_poll_user
+
+
+================================================================================
+## 5. BLUEPRINT AUTH (/auth)
+================================================================================
+
+File: app/auth/routes.py
+
+Helpers:
+  _apply_registration_bonus(user)
+    → legge AppSetting 'registration_bonus', se > 0 fa credit_wallet
+  _make_username(email)
+    → deriva username da parte locale email, deduplicato con contatore
+
+Rotte:
+  GET/POST /auth/login
+    GET:  render 'auth/login.html'
+    POST: valida email+password, user.is_active → login_user(remember=True)
+          admin → redirect admin.dashboard; altro → main.index
+
+  GET/POST /auth/register
+    GET:  render 'auth/register.html'
+    POST: valida email, password (min 6), coincidenza, unicita'
+          crea User(is_client=False, username=_make_username(email))
+          _apply_registration_bonus, send_telegram notifica, login_user
+          → redirect main.index
+
+  GET /auth/google
+    → oauth.google.authorize_redirect(callback_url)
+
+  GET /auth/google/callback
+    → authorize_access_token(), ottieni userinfo
+    Caso utente esistente (match google_id o email):
+      aggiorna google_id, avatar_url, first_name, last_name
+      login_user → redirect admin.dashboard o main.index
+    Caso nuovo utente:
+      crea User(is_active=False, is_client=True, google_id=...)
+      → redirect auth.pending (account in attesa di attivazione)
+
+  GET /auth/join
+    → render 'auth/join.html' con link di invito
+
+  GET /auth/pending
+    → render 'auth/pending.html'
+
+  GET /auth/logout (login_required)
+    → logout_user() → redirect auth.login
+
+
+================================================================================
+## 6. BLUEPRINT MAIN (/) — CLIENTI
+================================================================================
+
+File: app/main/routes.py
+Tutte le route richiedono @login_required
+
+Helper:
+  _effective_tenant_id()
+    Se current_user.tenant_id → lo usa
+    Altrimenti → Tenant.query.filter_by(slug='default').first().id
+
+--- HOME ---
+
+GET /
+  Redirect:
+    - admin/staff → admin.dashboard
+    - cliente: query ordini di oggi, prenotazioni di oggi, ultime 5 transazioni,
+      pasto aziendale (verifica membership, cerca meal di oggi, cerca booking)
+  Template: main/dashboard.html
+  Context: today_orders, today_reservations, recent_tx, today_meal_booking,
+           meal_booking_reminder, loyalty_threshold, reward_amount
+
+--- MENU ---
+
+GET /menu
+  Context: categories(tenant), products(is_active, tenant), slots(is_active, tenant),
+           cart (da session['cart'])
+  Template: main/menu.html
+
+POST /cart/add/<product_id>
+  Aggiunge qty al session['cart'][str(product_id)]
+  Limite: min(attuale+qty, product.available_today())
+  Redirect: main.menu
+
+POST /cart/remove/<product_id>
+  Rimuove da session['cart']
+  Redirect: main.cart
+
+POST /cart/remove-custom/<uid>
+  Rimuove item custom dal session['custom_cart'] per uid
+  Redirect: main.cart
+
+POST /cart/update
+  Aggiorna quantita' per ogni prodotto nel cart
+  Redirect: main.cart
+
+GET /cart
+  Calcola items + custom_cart + totale
+  Context: items, custom_cart, total, slots, wallet
+  Template: main/cart.html
+
+--- ORDINE ---
+
+POST /order/place
+  1. Legge cart e custom_cart dalla sessione
+  2. slot_raw='banco' → banco=True, slot_id=None; altrimenti valida slot
+  3. Valida ogni prodotto (is_active, available_today >= qty)
+  4. Controlla wallet >= total
+  5. Crea Order, flush, crea OrderItem per ogni prodotto, aggiorna DailyStock
+  6. Crea CustomOrderItem + CustomOrderItemIngredient per ogni custom item
+  7. Genera order_code = 'QuickLunch-YYMMDD-{HHMM|BANCO}-{id:04d}'
+  8. compute_total(), debit_wallet, add_points (10 pt per euro)
+  9. Commit, svuota carrello
+  10. send_telegram_to_user (conferma), send_telegram (cucina)
+  Redirect: main.my_orders
+
+GET /orders
+  Ultime 50 ordini dell'utente, ordinate per created_at desc
+  Template: main/my_orders.html
+
+POST /orders/<order_id>/cancel
+  Verifica owner + status in (pending, confirmed)
+  order.status = 'cancelled'
+  credit_wallet (rimborso), loyalty_points -= punti (max 0)
+  Storna DailyStock per ogni item
+  send_telegram_to_user (notifica annullamento)
+  Redirect: main.my_orders
+
+--- WALLET ---
+
+GET /wallet
+  Ultime 50 transazioni utente
+  Template: main/wallet.html
+  Context: transactions, loyalty_threshold, reward_amount
+
+POST /wallet/redeem
+  Controlla loyalty_points >= threshold
+  blocks = points // threshold
+  redeem_points(blocks*threshold, blocks*reward)
+  Redirect: main.wallet
+
+--- BUILDER ---
+
+GET /builder?type={panino|insalata|poke}
+  Carica IngredientCategory per builder_type in [type,'both'], ordinate per sort_order
+  base_price da Config.BUILDER_PRICES
+  Template: main/builder.html
+
+POST /builder/add
+  Raccoglie ing_<id> dai form fields
+  Valida required categories e max_choices
+  Calcola total_price = base_price + sum(price_extra)
+  grill_requested = (panino AND checkbox 'grill_requested'=='1')
+  label = 'Panino/Insalata/Poke personalizzato: ing1, ing2, ...'
+  Appende a session['custom_cart'] con uid=secrets.token_hex(8)
+  Redirect: main.cart
+
+GET /builder-visual?type=...
+  Template: main/builder_visual.html
+  Context: builder_type, categories, base_price
+  (interfaccia alternativa visuale, stessa logica di add)
+
+--- TAVOLI ---
+
+GET /tables?d=YYYY-MM-DD
+  Carica tutti i Table (is_active), tutte le TableTimeBand
+  Prenotazioni del giorno indicizzate per (table_id, session_start)
+  Template: main/tables.html
+  Context: tables, bands, res_index, my_starts, res_date, prev_day, next_day
+
+POST /tables/book
+  Parametri: table_id, band_id, session_start, party_size, notes, res_date
+  Valida: table.is_active, session_start in band.computed_slots(),
+          party_size <= table.seats, nessun conflitto su (table_id, res_date, session_start)
+  Crea TableReservation(band_id, session_start, slot_id=None/0)
+  send_telegram_to_user + send_telegram (admin)
+  Redirect: main.my_reservations
+
+GET /reservations
+  Ultime 30 prenotazioni utente desc
+  Template: main/my_reservations.html
+
+POST /reservations/<rid>/cancel
+  Verifica owner, status != cancelled
+  res.status = 'cancelled', send_telegram
+  Redirect: main.my_reservations
+
+--- SONDAGGI ---
+
+GET /poll → redirect al sondaggio attivo piu' recente o template con poll=None
+GET /poll/<pid> → template con poll, user_vote, total
+POST /poll/<pid>/vote → valida choice, crea PollVote, redirect main.poll_view
+
+--- PASTO AZIENDALE ---
+
+GET /pasto-aziendale
+  Verifica membership.is_active
+  Carica DailyFixedMeal per corporate.id e today
+  Cerca my_booking (status != cancelled, any meal_id di oggi)
+  can_cancel = (slot_dt - now) >= 30min
+  Template: main/pasto_aziendale.html
+
+POST /pasto-aziendale/prenota
+  Valida membership, meal valido per oggi, no altra opzione prenotata
+  Se esistente: aggiorna quantity e slot_id (o riattiva se cancelled)
+  Altrimenti: crea CorporateMealBooking
+  send_telegram_to_user
+
+POST /pasto-aziendale/cancella
+  Verifica can_cancel (30 min)
+  booking.status = 'cancelled'
+
+--- BANCO QR PAY ---
+
+GET /banco/scan
+  Template: main/banco_scan.html (scanner HTML5 con jsQR)
+
+GET /banco/pay/<token>
+  Cerca BancoSession per token
+  Se pending e scaduta → status='expired'
+  Template: main/banco_pay.html con sess e items (da items_json)
+
+POST /banco/pay/<token>/confirm
+  Verifica sess.status=='pending', not expired
+  Verifica wallet >= sess.total
+  debit_wallet(sess.total, 'Banco: ...')
+  Aggiorna ttype dell'ultima transaction a 'banco'
+  sess.status='paid', sess.customer_id=current_user.id
+  Redirect: main.index
+
+--- GUIDA ---
+
+GET /guida
+  Determina ruolo (cassiere, cuoco, manager, cliente, has_corp)
+  Template: main/guida.html con sezioni personalizzate per ruolo
+
+
+================================================================================
+## 7. BLUEPRINT ADMIN (/admin) — STAFF
+================================================================================
+
+File: app/admin/routes.py
+
+Decoratori:
+  @staff_required → is_admin OR is_staff; fallback login
+  @require_permission(perm_name) → is_admin OR has_permission; 403 se no
+  @_superadmin_required → solo is_admin; 403 se no
+
+Helper:
+  _tenant_filter() → {} se admin, {'tenant_id': current_user.tenant_id} altrimenti
+  _active_tenant_id() → tenant_id del current_user o default
+  _delete_user_cascade(uid) → elimina user + ordini + transazioni + prenotazioni
+                               + voti + prenotazioni aziendali + membership
+
+--- DASHBOARD ---
+
+GET /admin/                         [staff_required]
+  KPI: ordini oggi, revenue, utenti, prodotti, prenotazioni tavoli,
+       stock_alerts (disponibile <= 3), total_wallet, consumable_alerts
+  Pasto aziendale staff: cerca membership + booking di oggi
+  corp_meals_today: tutte DailyFixedMeal di oggi
+  Template: admin/dashboard.html
+
+--- PRODOTTI ---
+
+GET  /admin/products                [manage_products]
+  Template: admin/products.html con products(tenant), categories(tenant), allergens
+
+GET  /admin/products/dt             [manage_products]
+  DataTables server-side (draw, start, length, search, order)
+  Join Category, filtro per tenant_id, cerca in name/description/category
+  Risposta JSON: {draw, recordsTotal, recordsFiltered, data[]}
+
+POST /admin/products/new            [manage_products]
+  Crea Product(tenant_id=_active_tenant_id())
+
+POST /admin/products/<pid>/edit     [manage_products]
+  Aggiorna Product
+
+POST /admin/products/<pid>/delete   [manage_products]
+  Elimina DailyStock, OrderItem, poi il prodotto
+
+POST /admin/products/<pid>/toggle   [manage_products]
+  Inverte is_active
+
+--- STOCK ---
+
+GET  /admin/stock                   [manage_stock]
+  Crea DailyStock mancanti per oggi, lista (product, stock)
+  Template: admin/stock.html
+
+POST /admin/stock/<pid>/update      [manage_stock]
+  Aggiorna quantity_available per oggi
+
+--- ORDINI ---
+
+GET  /admin/orders                  [view_orders]
+  Filtro per data e status; lista ordini con slot
+  Template: admin/orders.html
+
+GET  /admin/orders/<oid>/slip       [view_orders]
+  Template admin/order_slip.html (scontrino stampabile)
+
+POST /admin/orders/<oid>/status     [manage_orders]
+  Cambia status ordine (pending/confirmed/preparing/ready/completed/cancelled)
+  Se cancelled → credit_wallet + storna DailyStock
+  Notifiche Telegram (cuoco, pronto, annullato)
+  Redirect: cucina se referrer contiene 'cucina', altrimenti orders
+
+GET  /admin/cucina                  [view_orders]
+  Tre liste: da_fare (confirmed), in_prep (preparing), pronti (ready)
+  Template: admin/cucina.html (KDS)
+
+--- CATEGORIE ---
+
+GET  /admin/categories              [manage_categories]
+POST /admin/categories/new          [manage_categories]
+POST /admin/categories/<cid>/edit   [manage_categories]
+POST /admin/categories/<cid>/delete [manage_categories]
+  (non elimina se ha prodotti)
+
+--- SLOT ORARI ---
+
+GET  /admin/slots                   [manage_slots] → redirect tavoli?tab=slot
+POST /admin/slots/<sid>/toggle      [manage_slots]
+POST /admin/slots/<sid>/capacity    [manage_slots] → aggiorna max_orders
+POST /admin/slots/new               [manage_slots]
+POST /admin/slots/<sid>/delete      [manage_slots] (blocca se ha ordini)
+POST /admin/slots/<sid>/durata      [manage_slots] → aggiorna seat_duration_minutes
+
+--- BANCO POS ---
+
+GET  /admin/banco                   [staff_required]
+  Lista BancoItem attivi, items_json per JS
+  Template: admin/banco_pos.html (griglia + modal QR)
+
+POST /admin/banco/session           [staff_required]
+  Riceve cart_json (lista {name, price, qty, icon, color})
+  Calcola total, crea BancoSession(token=secrets.token_hex(16), expires=+10min)
+  Risposta JSON: {token, pay_url, total, expires_in:600}
+
+GET  /admin/banco/session/<token>/status  [staff_required]
+  Controlla scadenza, risposta JSON: {status, customer}
+
+POST /admin/banco/session/<token>/cancel  [staff_required]
+  sess.status='cancelled'
+
+GET  /admin/banco/items             [manage_products]
+  Template: admin/banco_items.html (CRUD articoli banco)
+
+POST /admin/banco/items/new         [manage_products]
+POST /admin/banco/items/<iid>/edit  [manage_products]
+POST /admin/banco/items/<iid>/delete[manage_products]
+
+--- TAVOLI ---
+
+GET  /admin/tables                  [manage_tables_admin] → redirect tavoli?tab=tavoli
+POST /admin/tables/new              [manage_tables_admin]
+POST /admin/tables/<tid>/edit       [manage_tables_admin]
+POST /admin/tables/<tid>/delete     [manage_tables_admin] (blocca se prenotazioni attive)
+
+GET  /admin/tavoli                  [manage_tables_admin]
+  Tab: panoramica, tavoli, fasce, slot, lista
+  Vista griglia per data selezionata con res_index (table_id, session_start)
+  Template: admin/tavoli.html
+
+POST /admin/tavoli/bande/new        [manage_tables_admin]
+POST /admin/tavoli/bande/<bid>/delete [manage_tables_admin]
+
+--- PRENOTAZIONI TAVOLI ---
+
+GET  /admin/reservations            [manage_reservations_admin] → redirect tavoli
+POST /admin/reservations/<rid>/cancel [manage_reservations_admin]
+  res.status='cancelled', send_telegram_to_user
+POST /admin/prenotazioni/<rid>/checkin [manage_reservations_admin]
+  res.checkin_at = utcnow(), send_telegram
+
+GET  /admin/tavoli/ping-alerts      [staff_required]
+  Controlla prenotazioni con checkin e time <= 10 min
+  Invia alert Telegram, risposta JSON
+
+--- INGREDIENTI BUILDER ---
+
+GET  /admin/ingredients             [manage_ingredients]
+POST /admin/ingredients/new         [manage_ingredients]
+POST /admin/ingredients/<iid>/toggle[manage_ingredients]
+POST /admin/ingredients/<iid>/edit  [manage_ingredients]
+
+--- UTENTI ---
+
+GET  /admin/users                   [manage_users]
+  Lista User(is_admin=False, is_client=False, tenant)
+  Template: admin/users.html
+
+POST /admin/users/new               [manage_users]
+POST /admin/users/<uid>/topup       [manage_users] → credit_wallet
+POST /admin/users/<uid>/toggle      [manage_users] → is_active toggle
+POST /admin/users/<uid>/delete      [manage_users] → _delete_user_cascade
+POST /admin/users/<uid>/roles       [manage_users] → assegna ruoli
+
+--- CLIENTI ---
+
+GET  /admin/clients                 [manage_clients]
+  Lista User(is_client=True, tenant), ordinata per last_name, first_name
+  Template: admin/clients.html
+
+POST /admin/clients/new             [manage_clients]
+  Crea User(is_client=True) con anagrafica completa
+POST /admin/clients/<uid>/edit      [manage_clients]
+POST /admin/clients/<uid>/toggle    [manage_clients]
+POST /admin/clients/<uid>/delete    [manage_clients] → _delete_user_cascade
+POST /admin/clients/<uid>/topup     [manage_clients] → credit_wallet
+
+--- RUOLI & PERMESSI ---
+
+GET  /admin/roles                   [manage_roles]
+  Raggruppa permessi per categoria
+  Template: admin/roles.html
+
+POST /admin/roles/new               [manage_roles]
+POST /admin/roles/<rid>/edit        [manage_roles]
+POST /admin/roles/<rid>/delete      [manage_roles] (blocca is_system)
+
+--- IMPOSTAZIONI ---
+
+GET  /admin/settings                [manage_settings]
+  Legge: telegram_bot_token, telegram_chat_id, gmail_user, gmail_app_password,
+         registration_bonus
+  Template: admin/settings.html
+
+POST /admin/settings/save           [manage_settings]
+POST /admin/settings/test-telegram  [manage_settings]
+POST /admin/settings/test-email     [manage_settings]
+POST /admin/settings/broadcast-telegram [send_notifications]
+POST /admin/settings/broadcast-email   [send_notifications]
+
+--- SONDAGGI ---
+
+GET  /admin/polls                   [manage_polls]
+POST /admin/polls/new               [manage_polls]
+  Crea Poll con scelte da prodotti selezionati + max 7 scelte custom
+POST /admin/polls/<pid>/toggle      [manage_polls]
+POST /admin/polls/<pid>/delete      [manage_polls]
+POST /admin/polls/<pid>/notify-telegram [send_notifications]
+POST /admin/polls/<pid>/notify-email    [send_notifications]
+
+--- REPORT ---
+
+GET  /admin/report                  [view_reports]
+  Ultimi 30 giorni: revenue e ordini per giorno
+  Top 10 prodotti venduti
+  Template: admin/report.html
+
+--- MAGAZZINO ---
+
+GET  /admin/magazzino               [manage_stock]
+GET/POST /admin/magazzino/nuovo     [manage_stock]
+GET/POST /admin/magazzino/<iid>/modifica [manage_stock]
+POST /admin/magazzino/<iid>/movimento   [manage_stock]
+  delta (positivo o negativo), gestisce alert soglia
+  send_supplier_low_stock_alert se sotto soglia
+POST /admin/magazzino/<iid>/elimina [manage_stock]
+
+GET  /admin/fornitori               [manage_stock]
+GET/POST /admin/fornitori/nuovo     [manage_stock]
+GET/POST /admin/fornitori/<sid>/modifica [manage_stock]
+POST /admin/fornitori/<sid>/elimina [manage_stock]
+
+--- CONVENZIONI AZIENDALI ---
+
+GET  /admin/convenzioni             [manage_products]
+  Lista CorporateAccount + DailyFixedMeal di oggi per corporate
+  Template: admin/convenzioni.html
+
+GET/POST /admin/convenzioni/nuovo   [manage_products]
+GET/POST /admin/convenzioni/<cid>/modifica [manage_products]
+  Gestisce anche memberships (lista member_ids)
+POST /admin/convenzioni/<cid>/elimina [manage_products]
+
+GET/POST /admin/convenzioni/<cid>/pasto [manage_products]
+  Gestisce DailyFixedMeal per giorno selezionato (default oggi)
+  Azioni POST: add, edit, delete, toggle
+  Naviga con ?d=YYYY-MM-DD
+  Carica configs_json (MealConfiguration) per auto-fill da template
+
+POST /admin/convenzioni/<cid>/pasto/<bid>/consuma [manage_products]
+  booking.status = 'consumed'
+
+GET  /admin/convenzioni/<cid>/presenze [manage_products]
+  Report presenze per mese selezionato (?mese=YYYY-MM)
+  Raggruppa per giorno: consumed, booked, cancelled
+  Template: admin/convenzione_presenze.html
+
+GET/POST /admin/convenzioni/<cid>/configurazioni [manage_products]
+  CRUD MealConfiguration (template riutilizzabili per pasti)
+POST /admin/convenzioni/<cid>/configurazioni/<cfg_id>/edit   [manage_products]
+POST /admin/convenzioni/<cid>/configurazioni/<cfg_id>/delete [manage_products]
+GET  /admin/convenzioni/<cid>/configurazioni/<cfg_id>/json   [manage_products]
+  → JSON del template (per auto-fill AJAX nella form pasto del giorno)
+
+--- MANUTENZIONE ---
+
+GET/POST /admin/maintenance         [superadmin only]
+  Operazioni di reset selettivo:
+  clear_orders, clear_reservations, clear_transactions, clear_polls,
+  clear_stock, clear_movements, clear_clients, clear_catalog,
+  clear_ingredients, clear_consumables, clear_suppliers, reset_all,
+  run_demo_seed, reset_admin
+
+POST /admin/seed-demo               [superadmin only]
+  Esegue reset_demo_data() + seed_demo_data() (da app/demo_seed.py)
+
+
+================================================================================
+## 8. FUNZIONALITA' COMPLETE
+================================================================================
+
+### 8.1 Sistema Ordini
+
+Flusso:
+  1. Cliente sfoglia il menu (GET /menu) — prodotti filtrati per tenant
+  2. Aggiunge al carrello (POST /cart/add/<pid>) con qty
+     Carrello regolare: session['cart'] = {str(pid): qty}
+     Carrello custom: session['custom_cart'] = [{uid, type, ingredients, ...}]
+  3. Va al carrello (GET /cart) — calcola totale
+  4. Sceglie slot di ritiro (o 'banco') e conferma (POST /order/place)
+  5. Slot di ritiro: valida che non sia is_full()
+     "Adesso al banco": slot_raw='banco' → slot_id=NULL, BANCO nel codice
+  6. Scalda wallet, accumula punti (10 pt per euro)
+  7. Ordine confermato: notifica Telegram all'utente e alla cucina
+
+Stock:
+  product.available_today() = quantity_available - quantity_reserved
+  A conferma ordine: stock.quantity_reserved += qty
+  A cancellazione: stock.quantity_reserved -= qty (max 0)
+
+Codice ordine: QuickLunch-YYMMDD-HHMM-0001 o QuickLunch-YYMMDD-BANCO-0001
+
+Annullamento:
+  Solo se status in (pending, confirmed)
+  Rimborso wallet + storno punti fedelta'
+
+Cambio stato (admin):
+  pending → confirmed → preparing → ready → completed
+  Qualunque → cancelled (con rimborso automatico)
+  Notifiche Telegram a ogni transizione chiave
+
+### 8.2 Wallet e Fedelta'
+
+Saldo: user.wallet_balance (Float, arrotondato a 2 decimali)
+
+Ricarica manuale: solo admin/staff (credit_wallet dall'area admin)
+
+Pagamento ordine: debit_wallet(total, 'Ordine <code>', order_id)
+  → crea Transaction(ttype='payment', amount=-total)
+
+Rimborso: credit_wallet(total, 'Rimborso ordine #...', order_id)
+  → crea Transaction(ttype='topup', amount=+total)
+
+Punti fedelta':
+  Ogni acquisto: 10 pt per euro (LOYALTY_POINTS_PER_EURO=10)
+  Riscatto: ogni 100 pt (LOYALTY_REWARD_POINTS=100) → +1.00€ (LOYALTY_REWARD_AMOUNT=1.0)
+  Calcolo a blocchi: blocks = points // threshold
+  user.redeem_points(blocks*threshold, blocks*reward)
+  → crea Transaction(ttype='reward')
+
+Bonus registrazione: AppSetting 'registration_bonus' (Float)
+  Se > 0: credit_wallet alla registrazione
+
+Banco (pagamento QR): debit_wallet + aggiorna ttype a 'banco'
+
+### 8.3 Tavoli e Prenotazioni
+
+Struttura:
+  Table: numero, posti, posizione (Finestra, Centro, Angolo, Bancone)
+  TableTimeBand: fascia con start_time, end_time, duration_minutes
+    computed_slots() → lista 'HH:MM' a step di duration_minutes tra start e end
+  TableReservation: user + table + band + session_start (HH:MM)
+
+Prenotazione cliente (POST /tables/book):
+  - Valida session_start in band.computed_slots()
+  - Verifica party_size <= table.seats
+  - Verifica no conflitti su (table_id, reservation_date, session_start)
+  - Crea TableReservation(band_id, session_start, slot_id=None/0)
+
+UI mobile: bande collassabili Bootstrap, tutte aperte di default
+
+Check-in (admin): res.checkin_at = utcnow()
+Alert scadenza: endpoint /admin/tavoli/ping-alerts
+  Controlla prenotazioni con checkin e minutes_remaining <= 10
+  Invia Telegram, segna table_alert_sent=True
+
+### 8.4 Banco POS con QR
+
+Flusso completo:
+  Staff (GET /admin/banco):
+    1. Griglia articoli BancoItem (nome, prezzo, icona FA, colore BS)
+    2. Click articolo → incrementa contatore nel JS
+    3. "Genera QR" → POST /admin/banco/session con cart_json
+    4. Risposta JSON: token, pay_url, total, expires_in=600
+    5. Modal con QR code (qrcodejs) che codifica pay_url
+    6. Countdown 10 minuti nel modal
+    7. Polling GET /admin/banco/session/<token>/status ogni 2s
+    8. Quando status='paid': chiude modal, mostra notifica
+
+  Cliente (GET /banco/scan):
+    1. HTML5 scanner con jsQR + getUserMedia
+    2. Decodifica URL dal QR
+    3. Redirect a /banco/pay/<token>
+    4. GET /banco/pay/<token>: mostra riepilogo items, totale, scadenza
+    5. POST /banco/pay/<token>/confirm: scala wallet, chiude sessione
+
+  Scadenza: BancoSession.expires_at = created_at + 10 minuti
+  Controllo scadenza lato server a ogni richiesta
+
+BancoItem: risorsa per tenant, ordinata per sort_order, name
+
+### 8.5 Pasto Aziendale (Corporate Meals)
+
+Struttura gerarchica:
+  CorporateAccount (azienda convenzionata)
+  └── CorporateMembership (collegamento user-azienda, is_active)
+  └── MealConfiguration (template riutilizzabili per pasti)
+  └── DailyFixedMeal (pasto del giorno specifico, max_bookings)
+       └── CorporateMealBooking (prenotazione utente)
+
+Regole:
+  - Un utente puo' prenotare solo UN'opzione per giorno
+  - Cancellazione possibile se slot_dt - now >= 30 minuti
+  - Admin gestisce il pasto tramite /admin/convenzioni/<cid>/pasto
+  - Staff puo' segnare un booking come 'consumed'
+  - Report presenze mensile (/admin/convenzioni/<cid>/presenze)
+  - Template (MealConfiguration) caricabili via AJAX in form pasto
+
+Dashboard admin: card con booking_count per opzione, barre di avanzamento
+Sidebar cliente: voce "Pasto Aziendale" visibile solo se membership.is_active
+
+### 8.6 Ruoli e Permessi
+
+Gerarchia:
+  is_admin=True   → bypass TUTTO, nessun controllo permessi
+  is_staff=True   → ha almeno un permesso BACKOFFICE, accede ad /admin
+  Cliente         → nessun permesso, accede solo a /
+
+Verifica permesso:
+  user.has_permission(perm_name):
+    → True se is_admin
+    → True se almeno un ruolo ha il permesso (role.permissions)
+
+Assegnazione: utente puo' avere piu' ruoli (user_roles M2M)
+
+Ruoli di sistema (is_system=True, non eliminabili):
+  superadmin: tutti i permessi
+  manager:    ordini, prodotti, categorie, ingredienti, stock, tavoli, slot, report
+  cassiere:   ordini (view+manage), report
+  cuoco:      ordini (view+manage)
+  utente:     nessun permesso
+
+### 8.7 Multi-tenant
+
+Ogni record ha tenant_id nullable che punta al suo tenant.
+Il superadmin (tenant_id=None) usa _effective_tenant_id() per trovare
+il tenant 'default' e filtrare correttamente.
+
+Risorse globali (tenant_id=None nelle query utente, create con tenant
+specifico nell'admin):
+  Table, TableTimeBand, BancoItem
+
+Flusso registrazione tenant:
+  /t/<slug>/register → blueprint tenant
+
+
+================================================================================
+## 9. TEMPLATE PRINCIPALI
+================================================================================
+
+Struttura cartella templates/:
+  base.html                     — layout base AdminLTE
+  auth/login.html               — form login + link Google OAuth
+  auth/register.html            — form registrazione
+  auth/join.html                — pagina invito con QR link
+  auth/pending.html             — attesa attivazione account
+
+  main/dashboard.html           — dashboard cliente: KPI wallet/punti,
+    pasto aziendale badge, ordini oggi, prenotazioni oggi, ultime transazioni,
+    azioni rapide (Menu, Builder, Builder Visuale, Tavolo, Paga al Banco)
+
+  main/menu.html                — catalogo prodotti per categoria con filtri,
+    badge disponibilita', pulsante "Aggiungi"
+
+  main/cart.html                — lista cart items + custom items, totale,
+    select slot con info is_full(), opzione "Adesso al banco",
+    campo note, pulsante "Conferma ordine" (verifica wallet)
+
+  main/my_orders.html           — lista ordini con badge status e
+    pulsante cancella (se pending/confirmed)
+
+  main/builder.html             — form ingredienti per categoria (chip selezionabili),
+    chip .ing-chip / .selected, riepilogo prezzi sticky in fondo,
+    opzione griglia per panino
+
+  main/builder_visual.html      — interfaccia visuale alternativa al builder
+
+  main/tables.html              — bande collassabili Bootstrap (tutte aperte),
+    griglia tavoli per fascia e slot, .table-cell free/mine/taken/inactive,
+    navigazione prev/next giorno
+
+  main/my_reservations.html     — lista prenotazioni con stato e cancellazione
+
+  main/wallet.html              — saldo, punti, pulsante riscatta,
+    lista transazioni con icone TYPE_ICONS
+
+  main/pasto_aziendale.html     — card per ogni opzione DailyFixedMeal
+    con portate, allergeni, disponibilita', form prenota (con slot),
+    deadline 30 min per cancellazione
+
+  main/banco_scan.html          — scanner QR HTML5 con jsQR + getUserMedia
+
+  main/banco_pay.html           — riepilogo sessione banco, importo,
+    pulsante "Conferma pagamento" (solo se wallet >= total)
+
+  main/poll.html                — sondaggio attivo con scelte e risultati
+
+  main/guida.html               — guida per ruolo (cassiere/cuoco/manager/cliente)
+
+  admin/dashboard.html          — KPI cards (ordini, revenue, utenti, prodotti,
+    prenotazioni, wallet totale), stock alerts, corporate meals oggi
+    con barre avanzamento, pasto personale staff
+
+  admin/orders.html             — tabella ordini con filtri data/status,
+    cambio stato inline
+
+  admin/cucina.html             — KDS: tre colonne (da fare / in prep / pronti)
+
+  admin/order_slip.html         — scontrino stampabile per ordine
+
+  admin/products.html           — DataTable prodotti con modal new/edit
+
+  admin/categories.html         — CRUD categorie
+
+  admin/ingredients.html        — ingredienti raggruppati per categoria/tipo builder
+
+  admin/stock.html              — stock giornaliero per prodotto
+
+  admin/users.html              — lista utenti staff con assegnazione ruoli
+
+  admin/clients.html            — lista clienti con ricarica wallet e anagrafica
+
+  admin/roles.html              — CRUD ruoli con checkbox permessi per categoria
+
+  admin/tavoli.html             — gestione unificata: panoramica, tavoli, fasce,
+    slot, lista prenotazioni; con check-in inline
+
+  admin/banco_pos.html          — griglia BancoItem + modal QR (qrcodejs),
+    countdown, polling status
+
+  admin/banco_items.html        — CRUD articoli banco
+
+  admin/polls.html              — CRUD sondaggi con notifica Telegram/email
+
+  admin/report.html             — grafici revenue/ordini ultimi 30 gg, top prodotti
+
+  admin/settings.html           — Telegram/Gmail config, broadcast
+
+  admin/magazzino.html          — lista consumabili con alert soglia
+  admin/magazzino_edit.html     — form nuovo/modifica consumabile
+
+  admin/fornitori.html          — lista fornitori
+  admin/fornitore_edit.html     — form nuovo/modifica fornitore
+
+  admin/convenzioni.html        — lista aziende convenzionate + riepilogo pasti oggi
+  admin/convenzione_edit.html   — form azienda + selezione membri
+  admin/convenzione_pasto.html  — gestione pasto del giorno con template auto-fill
+  admin/convenzione_presenze.html— report presenze mensile
+  admin/convenzione_configurazioni.html — CRUD template pasto
+
+  admin/maintenance.html        — operazioni reset (solo superadmin)
+
+base.html — struttura:
+  <head>: PT Sans Narrow, Font Awesome 6.5, AdminLTE 3.2 CSS,
+    SweetAlert2 CSS, CSS custom properties light/dark, blocco extra_css
+  Navbar: hamburger, logo QuickLunch, wallet+punti badge (se cliente),
+    theme toggle, email utente + badge ruolo, logout
+  Sidebar: brand link, user panel, nav per staff (Dashboard, Banco,
+    Ordini, Prodotti, Magazzino, Convenzioni, Tavoli, Persone,
+    Comunicazioni, Manutenzione, Report) o per cliente (Home, Ordina,
+    I miei ordini, Tavoli, Wallet, Pasto Aziendale, Vota il Menu)
+  Content area: content-header (page_title + breadcrumb),
+    div#ql-flashes (flash messages), blocco content
+  Footer: "QuickLunch — Sistema di prenotazione pasti"
+  Scripts: jQuery, Bootstrap, AdminLTE, SweetAlert2
+    ql-swal.js inline: flash→toast, form[data-confirm]→confirm dialog,
+    sidebar treeview manuale
+  blocchi: extra_css, scripts, extra_js
+
+
+================================================================================
+## 10. CONFIGURAZIONE (config.py)
+================================================================================
+
+Class Config:
+  SECRET_KEY
+    = os.environ.get('SECRET_KEY', 'cambiamiinproduzione-32caratteri!')
+
+  SQLALCHEMY_DATABASE_URI
+    = DATABASE_URL o POSTGRES_URL o 'sqlite:///bar.db'
+    Converte 'postgres://' → 'postgresql://'
+
+  SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+  PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
+
+  SQLALCHEMY_ENGINE_OPTIONS = {
+    pool_pre_ping: True,
+    (se postgresql) pool_size: 1, max_overflow: 0  # serverless
+  }
+
+  LOYALTY_POINTS_PER_EURO = 10
+  LOYALTY_REWARD_POINTS   = 100
+  LOYALTY_REWARD_AMOUNT   = 1.0
+
+  BUILDER_PRICES = {
+    'panino':   3.50,
+    'insalata': 3.00,
+    'poke':     4.00,
+  }
+
+  PICKUP_SLOTS = [
+    "11:45", "12:00", "12:15", "12:30",
+    "12:45", "13:00", "13:15", "13:30"
+  ]
+
+  GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
+  GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+  AUTHLIB_INSECURE_TRANSPORT = os.environ.get('AUTHLIB_INSECURE_TRANSPORT','0')
+
+Note:
+  - Il file .env viene caricato via python-dotenv
+  - Il BOM (chr(0xFEFF)) viene rimosso da SECRET_KEY e DATABASE_URL
+  - AUTHLIB_INSECURE_TRANSPORT='1' abilita OAuth su HTTP (sviluppo)
+
+Variabili d'ambiente da configurare in produzione:
+  DATABASE_URL      (PostgreSQL su Neon/Supabase)
+  SECRET_KEY        (stringa casuale >= 32 caratteri)
+  GOOGLE_CLIENT_ID  (da Google Cloud Console)
+  GOOGLE_CLIENT_SECRET
+  TELEGRAM_BOT_TOKEN (configurato in AppSetting, non in config.py)
+  GMAIL_USER         (configurato in AppSetting)
+  GMAIL_APP_PASSWORD (configurato in AppSetting)
+
+
+================================================================================
+## 11. SEED DEFAULT (_seed_defaults in app/__init__.py)
+================================================================================
+
+Eseguito all'avvio dentro app_context(), idempotente.
+
+Passi:
+  1. Crea Tenant 'default' (name='QuickLunch', primary_color='#e94560')
+     Assegna tenant_id=default_tenant.id ai record orfani (tenant_id IS NULL)
+     in: users, categories, products, orders, time_slots, daily_stocks,
+         ingredient_categories, ingredients, tables, table_reservations
+
+  2. Permessi (solo se Permission.query.first() is None):
+     Crea tutti i 12 permessi di sistema
+
+  3. Ruoli (solo se Role.query.first() is None):
+     Crea 5 ruoli di sistema (superadmin, manager, cassiere, cuoco, utente)
+     con permessi assegnati
+
+  4. Super admin (solo se nessun is_admin=True):
+     User(username='admin', email='admin@bar.local', is_admin=True,
+          tenant_id=None, wallet_balance=0.0)
+     password: admin123
+
+  5. Categorie (solo se Category.query.first() is None):
+     Panini (fa-burger, warning), Primo (fa-bowl-food, danger),
+     Insalate (fa-leaf, success), Contorni (fa-carrot, info),
+     Dolci (fa-cake-candles, pink), Bevande (fa-bottle-water, primary)
+
+  6. Slot orari (solo se TimeSlot.query.first() is None):
+     11:45, 12:00, 12:15, 12:30, 12:45, 13:00, 13:15, 13:30
+     (max_orders=20, is_active=True)
+
+  7. Tavoli (solo se Table.query.first() is None):
+     10 tavoli: (1,2,Finestra), (2,2,Finestra), (3,4,Centro), (4,4,Centro),
+     (5,4,Centro), (6,4,Centro), (7,6,Angolo), (8,6,Angolo),
+     (9,2,Bancone), (10,2,Bancone)
+
+  8. Ingredienti builder panino/insalata (solo se IngredientCategory.query.first() is None):
+     Categorie: Pane (required, max 1), Proteina (required, max 2),
+                Verdure (max 5), Salse (max 2), Extra (max 3),
+                Base insalata (required, max 1), Condimento (max 1), Topping (max 2)
+     Ingredienti: vedi dettaglio nel codice per ogni categoria
+
+  9. Ingredienti builder poke (se non esistono categorie builder_type='poke'):
+     Categorie: Base poke (required), Proteina poke (required),
+                Verdure poke, Salsa poke (required), Extra poke
+
+  10. Permessi aggiuntivi (idempotente):
+      manage_settings, manage_polls, send_notifications, manage_clients
+
+  11. AppSetting di default (chiavi vuote):
+      telegram_bot_token, telegram_chat_id, gmail_user, gmail_app_password
+
+
+================================================================================
+## 12. ACCOUNT DI TEST (demo/sviluppo)
+================================================================================
+
+Creati tramite 'flask seed-demo' (app/demo_seed.py) oppure manualmente:
+
+  admin@bar.local / admin123
+    → is_admin=True, tenant_id=None, Super Admin globale
+
+  banco@bar.local / Banco2024!
+    → Ruolo: cassiere (view_orders, manage_orders, view_reports)
+    → Usa il Banco POS
+
+  cucina@bar.local / Cucina2024!
+    → Ruolo: cuoco (view_orders, manage_orders)
+    → Vede solo il KDS cucina
+
+  sala@bar.local / Sala2024!
+    → Ruolo: manager (tutti i permessi operativi)
+    → Gestisce sala e tavoli
+
+  cliente1@bar.local / Cliente1!
+    → is_client=True, wallet_balance=30.0
+    → Utente normale, cliente
+
+  cliente2@bar.local / Cliente2!
+    → is_client=True, wallet_balance=15.0
+    → Utente normale, cliente
+
+NOTA: Questi account potrebbero essere creati dal seed-demo.
+Per il solo admin di default vedere Sezione 11 (sempre creato da _seed_defaults).
+
+
+================================================================================
+## 13. NOTIFICHE (app/notifications.py)
+================================================================================
+
+send_telegram(text)
+  → Legge AppSetting telegram_bot_token e telegram_chat_id
+  → HTTP POST a api.telegram.org/bot<token>/sendMessage
+  → HTML parse_mode
+  → Restituisce (ok: bool, msg: str)
+
+send_telegram_to_user(user, text)
+  → Usa user.telegram_chat_id se configurato
+  → Altrimenti nessuna azione
+
+send_email(to, subject, html_body)
+  → SMTP Gmail con App Password (AppSetting gmail_user, gmail_app_password)
+
+send_email_to_all_users(subject, html)
+  → Invia a tutti gli utenti con telegram_chat_id configurato o email
+
+get_setting(key)
+  → AppSetting.query.filter_by(key=key).first().value or ''
+
+send_supplier_low_stock_alert(item)
+  → Email al supplier.email se configurato
+
+telegram_poll_message(poll, base_url) → testo formattato per Telegram
+email_poll_html(poll, base_url) → HTML per email sondaggio
+
+
+================================================================================
+## 14. BLUEPRINT TENANT (/t)
+================================================================================
+
+File: app/tenant/routes.py
+
+GET/POST /t/<slug>/register
+  Cerca Tenant per slug
+  Registra utente associato al tenant (tenant_id=tenant.id)
+  Stessa logica di auth.register ma con tenant assegnato
+
+Questo blueprint permette URL di invito personalizzati per tenant:
+  Tenant.register_url → url_for('tenant.register', slug=self.slug)
+
+
+================================================================================
+## 15. ENTRY POINT E DEPLOY
+================================================================================
+
+run.py:
+  from app import create_app
+  app = create_app()
+  if __name__ == '__main__':
+      app.run(debug=True)
+
+vercel.json (deployment Vercel):
+  builds: [{"src": "run.py", "use": "@vercel/python"}]
+  routes: [{"src": "/(.*)", "dest": "run.py"}]
+
+requirements.txt (dipendenze chiave):
+  flask, flask-sqlalchemy, flask-login, authlib, werkzeug,
+  python-dotenv, requests, psycopg2-binary (PostgreSQL)
+
+Struttura cartelle:
+  bar/
+    app/
+      __init__.py      → factory
+      models.py        → ORM
+      notifications.py → Telegram + Gmail
+      demo_seed.py     → seed dati demo
+      auth/
+        __init__.py    → Blueprint('auth')
+        routes.py
+      main/
+        __init__.py    → Blueprint('main')
+        routes.py
+      admin/
+        __init__.py    → Blueprint('admin')
+        routes.py
+      tenant/
+        __init__.py    → Blueprint('tenant')
+        routes.py
+      templates/
+        base.html
+        auth/
+        main/
+        admin/
+      static/
+    config.py
+    run.py
+    vercel.json
+    requirements.txt
+    instance/
+      bar.db           → SQLite (sviluppo)

@@ -229,6 +229,14 @@ def place_order():
                 ingredient_name=ing['name'],
                 price_extra=ing.get('price_extra', 0.0)
             ))
+            if ing.get('id'):
+                _ingredient = db.session.get(Ingredient, ing['id'])
+                if (_ingredient and _ingredient.stock_qty is not None
+                        and _ingredient.grams_per_serving):
+                    _ingredient.stock_qty = max(
+                        0.0,
+                        _ingredient.stock_qty - _ingredient.grams_per_serving * coi.quantity
+                    )
 
     slot_tag   = 'BANCO' if banco else slot.time_str.replace(':', '')
     slot_label = 'adesso al banco' if banco else f'alle {slot.time_str}'
@@ -643,16 +651,26 @@ def poll_vote(pid):
     if poll.user_vote(current_user.id):
         flash('Hai già votato in questo sondaggio.', 'warning')
         return redirect(url_for('main.poll_view', pid=pid))
-    choice_id = request.form.get('choice_id', type=int)
-    choice    = PollChoice.query.filter_by(id=choice_id, poll_id=pid).first()
+    choice_id  = request.form.get('choice_id', type=int)
+    choice     = PollChoice.query.filter_by(id=choice_id, poll_id=pid).first()
     if not choice:
         flash('Scelta non valida.', 'danger')
         return redirect(url_for('main.poll_view', pid=pid))
-    db.session.add(PollVote(poll_id=pid,
-                             choice_id=choice_id,
-                             user_id=current_user.id))
+    confirm_res = 'confirm_reservation' in request.form
+    db.session.add(PollVote(poll_id=pid, choice_id=choice_id,
+                            user_id=current_user.id,
+                            confirm_reservation=confirm_res))
+    if confirm_res:
+        res = TableReservation.query.filter_by(
+            user_id=current_user.id,
+            reservation_date=poll.poll_date,
+        ).filter(TableReservation.status != 'cancelled').first()
+        if res:
+            res.status = 'confirmed'
+        flash(f'Voto registrato: {choice.emoji} {choice.text} — prenotazione confermata!', 'success')
+    else:
+        flash(f'Voto registrato: {choice.emoji} {choice.text}', 'success')
     db.session.commit()
-    flash(f'Voto registrato: {choice.emoji} {choice.text}', 'success')
     return redirect(url_for('main.poll_view', pid=pid))
 
 

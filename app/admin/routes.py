@@ -133,6 +133,23 @@ def dashboard():
     corp_meals_today = DailyFixedMeal.query.filter_by(meal_date=today)\
         .order_by(DailyFixedMeal.corporate_id, DailyFixedMeal.name).all()
 
+    # Sondaggio attivo più recente + andamento voti
+    active_poll = Poll.query.filter_by(is_active=True)\
+        .order_by(Poll.poll_date.desc()).first()
+    poll_stats = None
+    if active_poll:
+        total_votes = active_poll.total_votes()
+        poll_stats = {
+            'poll': active_poll,
+            'total': total_votes,
+            'choices': [
+                {'text': c.text, 'emoji': c.emoji,
+                 'count': c.vote_count,
+                 'pct': round(c.vote_count / total_votes * 100, 1) if total_votes else 0}
+                for c in sorted(active_poll.choices, key=lambda x: x.vote_count, reverse=True)
+            ],
+        }
+
     today_meal_booking    = None
     meal_booking_reminder = False
     membership = getattr(current_user, 'corporate_membership', None)
@@ -164,7 +181,8 @@ def dashboard():
                            consumable_alerts=consumable_alerts,
                            today_meal_booking=today_meal_booking,
                            meal_booking_reminder=meal_booking_reminder,
-                           corp_meals_today=corp_meals_today)
+                           corp_meals_today=corp_meals_today,
+                           poll_stats=poll_stats)
 
 
 # ── Prodotti ──────────────────────────────────────────────────────────────────
@@ -450,7 +468,8 @@ def users():
 def clients():
     all_clients = User.query.filter_by(is_client=True,
                                        **_tenant_filter()).order_by(User.last_name, User.first_name).all()
-    return render_template('admin/clients.html', clients=all_clients)
+    corporates  = CorporateAccount.query.filter_by(**_tenant_filter()).order_by(CorporateAccount.name).all()
+    return render_template('admin/clients.html', clients=all_clients, corporates=corporates)
 
 
 @bp.route('/clients/new', methods=['POST'])
@@ -529,13 +548,27 @@ def client_toggle(uid):
     u = db.get_or_404(User, uid)
     if not u.is_client:
         abort(404)
-    u.is_active = not u.is_active
+    activating = not u.is_active
+    u.is_active = activating
+    if activating:
+        corporate_id = request.form.get('corporate_id', '').strip()
+        if corporate_id:
+            try:
+                cid = int(corporate_id)
+                mem = CorporateMembership.query.filter_by(user_id=u.id).first()
+                if mem:
+                    mem.corporate_id = cid
+                    mem.is_active    = True
+                else:
+                    db.session.add(CorporateMembership(user_id=u.id, corporate_id=cid, is_active=True))
+            except (ValueError, TypeError):
+                pass
     db.session.commit()
-    if u.is_active:
+    if activating:
         send_telegram_to_user(u,
-            f'\U00002705 Il tuo account è stato attivato!\n'
-            f'Puoi ora accedere al servizio.')
-    flash(f'Cliente {u.full_name} {"attivato" if u.is_active else "sospeso"}.', 'info')
+            '\U00002705 Il tuo account è stato attivato!\n'
+            'Puoi ora accedere al servizio.')
+    flash(f'Cliente {u.full_name} {"attivato" if activating else "sospeso"}.', 'info')
     return redirect(url_for('admin.clients'))
 
 
@@ -1072,6 +1105,26 @@ def ingredients():
     return render_template('admin/ingredients.html', categories=cats)
 
 
+@bp.route('/ingredients/<int:iid>/stock', methods=['POST'])
+@require_permission('manage_ingredients')
+def ingredient_stock(iid):
+    ing = db.get_or_404(Ingredient, iid)
+    op  = request.form.get('op', 'set')
+    try:
+        qty = float(request.form.get('qty', 0))
+    except (ValueError, TypeError):
+        qty = 0.0
+    if op == 'add':
+        ing.stock_qty = (ing.stock_qty or 0.0) + qty
+    elif op == 'sub':
+        ing.stock_qty = max(0.0, (ing.stock_qty or 0.0) - qty)
+    else:
+        ing.stock_qty = qty if qty >= 0 else None
+    db.session.commit()
+    flash(f'Giacenza "{ing.name}" aggiornata: {ing.stock_qty:.0f}g.', 'success')
+    return redirect(url_for('admin.ingredients'))
+
+
 @bp.route('/ingredients/new', methods=['POST'])
 @require_permission('manage_ingredients')
 def ingredient_new():
@@ -1080,12 +1133,15 @@ def ingredient_new():
     price_extra = request.form.get('price_extra', type=float, default=0.0)
     is_vegetarian = 'is_vegetarian' in request.form
     allergens = request.form.get('allergens', '').strip()
+    gps_raw = request.form.get('grams_per_serving', '').strip()
+    grams_per_serving = float(gps_raw) if gps_raw else None
     if not name or not category_id:
         flash('Nome e categoria obbligatori.', 'danger')
         return redirect(url_for('admin.ingredients'))
     db.session.add(Ingredient(name=name, category_id=category_id,
                               price_extra=price_extra or 0.0,
-                              is_vegetarian=is_vegetarian, allergens=allergens))
+                              is_vegetarian=is_vegetarian, allergens=allergens,
+                              grams_per_serving=grams_per_serving))
     db.session.commit()
     flash(f'Ingrediente "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.ingredients'))
@@ -1105,8 +1161,10 @@ def ingredient_toggle(iid):
 @require_permission('manage_ingredients')
 def ingredient_edit(iid):
     ing = db.get_or_404(Ingredient, iid)
-    ing.name = request.form.get('name', ing.name).strip()
+    ing.name        = request.form.get('name', ing.name).strip()
     ing.price_extra = request.form.get('price_extra', type=float, default=ing.price_extra) or 0.0
+    gps_raw = request.form.get('grams_per_serving', '').strip()
+    ing.grams_per_serving = float(gps_raw) if gps_raw else None
     ing.is_vegetarian = 'is_vegetarian' in request.form
     ing.allergens = request.form.get('allergens', '').strip()
     db.session.commit()

@@ -26,17 +26,53 @@
       <div class="card-body p-0">
         <table class="table table-sm table-hover mb-0">
           <thead class="thead-light">
-            <tr><th>Ingrediente</th><th>Extra €</th><th>Veg</th><th>Allergeni</th><th>Stato</th><th></th></tr>
+            <tr>
+              <th>Ingrediente</th>
+              <th>Extra €</th>
+              <th>Veg</th>
+              <th>Allergeni</th>
+              <th>g/porzione</th>
+              <th>Giacenza</th>
+              <th>Stato</th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
           {% for ing in cat.ingredients %}
+          {% set low_stock = ing.stock_qty is not none and ing.grams_per_serving and ing.stock_qty < ing.grams_per_serving * 10 %}
           <tr class="{{ '' if ing.is_active else 'text-muted' }}">
             <td><strong>{{ ing.name }}</strong></td>
             <td>{% if ing.price_extra > 0 %}<span class="badge badge-warning">+{{ '%.2f'|format(ing.price_extra) }}€</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
             <td>{% if ing.is_vegetarian %}<span class="badge badge-success">🌿</span>{% endif %}</td>
             <td><small class="text-muted">{{ ing.allergens or '–' }}</small></td>
-            <td><span class="badge badge-{{ 'success' if ing.is_active else 'secondary' }}">{{ 'On' if ing.is_active else 'Off' }}</span></td>
             <td>
+              {% if ing.grams_per_serving %}
+              <small>{{ ing.grams_per_serving|int }}g</small>
+              {% else %}
+              <span class="text-muted" style="font-size:.75rem;">–</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if ing.stock_qty is not none %}
+                <span class="badge badge-{{ 'danger' if low_stock else 'success' }}"
+                      title="{{ 'Scorta bassa!' if low_stock else 'Ok' }}">
+                  {{ ing.stock_qty|int }}g
+                </span>
+                <button class="btn btn-xs btn-outline-secondary ml-1"
+                        data-toggle="modal" data-target="#stockModal{{ ing.id }}"
+                        title="Aggiusta giacenza">
+                  <i class="fas fa-boxes"></i>
+                </button>
+              {% else %}
+                <button class="btn btn-xs btn-outline-secondary"
+                        data-toggle="modal" data-target="#stockModal{{ ing.id }}"
+                        title="Abilita tracking">
+                  <i class="fas fa-plus-circle"></i>
+                </button>
+              {% endif %}
+            </td>
+            <td><span class="badge badge-{{ 'success' if ing.is_active else 'secondary' }}">{{ 'On' if ing.is_active else 'Off' }}</span></td>
+            <td style="white-space:nowrap;">
               <button class="btn btn-xs btn-info" data-toggle="modal" data-target="#editIng{{ ing.id }}"><i class="fas fa-pen"></i></button>
               <form method="POST" action="{{ url_for('admin.ingredient_toggle', iid=ing.id) }}" style="display:inline;">
                 <button class="btn btn-xs btn-{{ 'warning' if ing.is_active else 'success' }}">
@@ -45,7 +81,8 @@
               </form>
             </td>
           </tr>
-          <!-- Edit modal -->
+
+          {# ── Edit modal ── #}
           <div class="modal fade" id="editIng{{ ing.id }}" tabindex="-1">
             <div class="modal-dialog modal-sm">
               <div class="modal-content">
@@ -68,6 +105,15 @@
                       <label>Allergeni</label>
                       <input type="text" name="allergens" class="form-control" value="{{ ing.allergens }}">
                     </div>
+                    <div class="form-group">
+                      <label>Grammi per porzione <small class="text-muted">(per tracking magazzino, opzionale)</small></label>
+                      <div class="input-group input-group-sm">
+                        <input type="number" name="grams_per_serving" class="form-control"
+                               value="{{ ing.grams_per_serving|int if ing.grams_per_serving else '' }}"
+                               placeholder="es. 50" step="1" min="1">
+                        <div class="input-group-append"><span class="input-group-text">g</span></div>
+                      </div>
+                    </div>
                     <div class="form-check">
                       <input type="checkbox" name="is_vegetarian" id="veg{{ ing.id }}" class="form-check-input"
                              {{ 'checked' if ing.is_vegetarian }}>
@@ -82,6 +128,46 @@
               </div>
             </div>
           </div>
+
+          {# ── Stock modal ── #}
+          <div class="modal fade" id="stockModal{{ ing.id }}" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+              <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                  <h5 class="modal-title"><i class="fas fa-boxes mr-2"></i>Giacenza — {{ ing.name }}</h5>
+                  <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                  <p class="mb-2 text-muted" style="font-size:.85rem;">
+                    Attuale: <strong>{{ (ing.stock_qty|int ~ 'g') if ing.stock_qty is not none else '(non monitorato)' }}</strong>
+                    {% if ing.grams_per_serving %}· {{ (ing.stock_qty / ing.grams_per_serving)|int if ing.stock_qty else 0 }} porzioni{% endif %}
+                  </p>
+                  <form method="POST" action="{{ url_for('admin.ingredient_stock', iid=ing.id) }}">
+                    <div class="form-group mb-2">
+                      <label style="font-size:.85rem;">Operazione</label>
+                      <select name="op" class="form-control form-control-sm">
+                        <option value="set">Imposta valore assoluto</option>
+                        <option value="add">Aggiungi grammi (carico)</option>
+                        <option value="sub">Togli grammi (scarico)</option>
+                      </select>
+                    </div>
+                    <div class="input-group input-group-sm">
+                      <input type="number" name="qty" class="form-control"
+                             placeholder="Grammi" step="1" min="0">
+                      <div class="input-group-append"><span class="input-group-text">g</span></div>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 mt-3">
+                      <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Annulla</button>
+                      <button type="submit" class="btn btn-dark btn-sm">
+                        <i class="fas fa-save mr-1"></i>Aggiorna
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {% endfor %}
           </tbody>
         </table>
@@ -119,6 +205,14 @@
             <label>Allergeni</label>
             <input type="text" name="allergens" class="form-control" placeholder="Es: latte, uova">
           </div>
+          <div class="form-group">
+            <label>Grammi per porzione <small class="text-muted">(opzionale)</small></label>
+            <div class="input-group input-group-sm">
+              <input type="number" name="grams_per_serving" class="form-control"
+                     placeholder="es. 50" step="1" min="1">
+              <div class="input-group-append"><span class="input-group-text">g</span></div>
+            </div>
+          </div>
           <div class="form-check mb-3">
             <input type="checkbox" name="is_vegetarian" id="new-veg" class="form-check-input">
             <label class="form-check-label" for="new-veg">Vegetariano</label>
@@ -129,6 +223,28 @@
         </form>
       </div>
     </div>
+
+    {% set tracked = categories | map(attribute='ingredients') | sum(start=[])
+                   | selectattr('stock_qty') | list %}
+    {% if tracked %}
+    <div class="card card-outline card-warning mt-3">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-exclamation-triangle mr-2 text-warning"></i>Scorte basse</h3>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+        {% for ing in tracked %}
+          {% if ing.grams_per_serving and ing.stock_qty < ing.grams_per_serving * 10 %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <span style="font-size:.88rem;">{{ ing.name }}</span>
+            <span class="badge badge-danger">{{ ing.stock_qty|int }}g</span>
+          </li>
+          {% endif %}
+        {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

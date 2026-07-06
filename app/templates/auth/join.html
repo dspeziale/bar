@@ -70,6 +70,38 @@
     .btn-google:hover { box-shadow: 0 2px 8px rgba(0,0,0,.2); text-decoration: none; color: #3c4043; }
     [data-QuickLunch-theme="dark"] .btn-google { background: #2d2d2d; color: #e2e8f0; border-color: #444; }
 
+    /* email form */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 18px 0; color: var(--muted); font-size: .85rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .form-input {
+      width: 100%; padding: .55rem .75rem; font-size: .95rem;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--text);
+      margin-bottom: .65rem; outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-row-2 { display: flex; gap: .5rem; }
+    .form-row-2 .form-input { margin-bottom: 0; }
+    .btn-submit {
+      width: 100%; padding: .65rem; font-size: 1rem; font-weight: 700;
+      background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      cursor: pointer; margin-top: .65rem; transition: opacity .15s;
+    }
+    .btn-submit:hover { opacity: .88; }
+    .tab-btns { display: flex; gap: 0; margin-bottom: 18px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .tab-btn {
+      flex: 1; padding: .5rem; font-size: .9rem; font-weight: 600;
+      border: none; cursor: pointer; background: var(--card); color: var(--muted);
+      transition: background .15s, color .15s;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+
     .note {
       margin-top: 20px; padding: 12px 14px;
       background: rgba(233,69,96,.08); border-left: 3px solid var(--accent);
@@ -159,15 +191,44 @@
       {% endfor %}
     {% endwith %}
 
-    <a href="{{ url_for('auth.google_start') }}" class="btn-google">
-      <svg width="22" height="22" viewBox="0 0 48 48">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      Registrati con Google
-    </a>
+    <!-- tab switcher -->
+    <div class="tab-btns">
+      <button class="tab-btn active" id="tab-google" onclick="switchTab('google')">
+        <i class="fab fa-google mr-1"></i>Google
+      </button>
+      <button class="tab-btn" id="tab-email" onclick="switchTab('email')">
+        <i class="fas fa-envelope mr-1"></i>Email
+      </button>
+    </div>
+
+    <!-- Google tab -->
+    <div id="panel-google">
+      <a href="{{ url_for('auth.google_start') }}" class="btn-google">
+        <svg width="22" height="22" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Registrati con Google
+      </a>
+    </div>
+
+    <!-- Email tab -->
+    <div id="panel-email" style="display:none;">
+      <form method="POST" action="{{ url_for('auth.register') }}">
+        <div class="form-row-2" style="margin-bottom:.65rem;">
+          <input type="text" name="first_name" class="form-input" placeholder="Nome" required>
+          <input type="text" name="last_name"  class="form-input" placeholder="Cognome" required>
+        </div>
+        <input type="email" name="email" class="form-input" placeholder="Email" required>
+        <input type="password" name="password"  class="form-input" placeholder="Password (min 6 caratteri)" minlength="6" required>
+        <input type="password" name="password2" class="form-input" placeholder="Ripeti password" minlength="6" required>
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-user-plus mr-1"></i>Registrati
+        </button>
+      </form>
+    </div>
 
     <div class="note">
       <strong>Come funziona:</strong> dopo la registrazione il gestore attiverà il tuo account.
@@ -206,6 +267,13 @@
       width: 260, height: 260,
       colorDark: '#212529', colorLight: '#ffffff',
     });
+
+    function switchTab(name) {
+      document.getElementById('panel-google').style.display = (name === 'google') ? '' : 'none';
+      document.getElementById('panel-email').style.display  = (name === 'email')  ? '' : 'none';
+      document.getElementById('tab-google').classList.toggle('active', name === 'google');
+      document.getElementById('tab-email').classList.toggle('active',  name === 'email');
+    }
   </script>
 </body>
 </html>

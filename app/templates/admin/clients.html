@@ -87,7 +87,7 @@
     <h3 class="card-title"><i class="fas fa-address-book mr-2"></i>Clienti Registrati</h3>
     <div class="card-tools">
       <span class="badge badge-info">{{ clients|length }} clienti</span>
-      {% set pending_count = clients|selectattr('is_active','equalto',false)|selectattr('google_id')|list|length %}
+      {% set pending_count = clients|selectattr('is_active','equalto',false)|list|length %}
       {% if pending_count %}
         <span class="badge badge-warning ml-1">{{ pending_count }} in attesa</span>
       {% endif %}
@@ -169,10 +169,14 @@
           <td>
             {% if c.is_active %}
               <span class="badge badge-success">Attivo</span>
-            {% elif c.google_id %}
-              <span class="badge badge-warning">In attesa</span>
+              {% if c.corporate_membership and c.corporate_membership.is_active %}
+              <span class="badge badge-info ml-1" title="Pasto aziendale">
+                <i class="fas fa-building"></i> {{ c.corporate_membership.corporate.name }}
+              </span>
+              {% endif %}
             {% else %}
-              <span class="badge badge-secondary">Sospeso</span>
+              <span class="badge badge-warning">In attesa</span>
+              {% if c.google_id %}<small class="text-muted ml-1">Google</small>{% endif %}
             {% endif %}
           </td>
           <td style="white-space:nowrap;">
@@ -180,12 +184,19 @@
                     data-target="#editModal{{ c.id }}" title="Modifica">
               <i class="fas fa-edit"></i>
             </button>
+            {% if not c.is_active %}
+            {# Pending: open activation modal with corporate dropdown #}
+            <button class="btn btn-xs btn-success" data-toggle="modal"
+                    data-target="#activateModal{{ c.id }}" title="Attiva">
+              <i class="fas fa-check"></i>
+            </button>
+            {% else %}
             <form method="POST" action="{{ url_for('admin.client_toggle', uid=c.id) }}" style="display:inline;">
-              <button class="btn btn-xs btn-{{ 'warning' if c.is_active else 'info' }}"
-                      title="{{ 'Sospendi' if c.is_active else 'Riattiva' }}">
-                <i class="fas fa-{{ 'ban' if c.is_active else 'check' }}"></i>
+              <button class="btn btn-xs btn-warning" title="Sospendi">
+                <i class="fas fa-ban"></i>
               </button>
             </form>
+            {% endif %}
             <form method="POST" action="{{ url_for('admin.client_delete', uid=c.id) }}" style="display:inline;"
                   data-confirm="Eliminare definitivamente {{ c.full_name }}?">
               <button class="btn btn-xs btn-danger" title="Elimina">
@@ -194,6 +205,48 @@
             </form>
           </td>
         </tr>
+
+        {# ── Activate modal ── #}
+        {% if not c.is_active %}
+        <div class="modal fade" id="activateModal{{ c.id }}" tabindex="-1">
+          <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+              <form method="POST" action="{{ url_for('admin.client_toggle', uid=c.id) }}">
+                <div class="modal-header bg-success text-white">
+                  <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i>Attiva Cliente</h5>
+                  <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                  <p class="mb-2">
+                    <strong>{{ c.full_name }}</strong><br>
+                    <small class="text-muted">{{ c.email }}</small>
+                    {% if c.google_id %}<br><small class="text-muted"><i class="fab fa-google mr-1"></i>Account Google</small>{% endif %}
+                  </p>
+                  {% if corporates %}
+                  <div class="form-group mb-1">
+                    <label class="mb-1" style="font-size:.88rem;">
+                      Convenzione aziendale <small class="text-muted">(opzionale)</small>
+                    </label>
+                    <select name="corporate_id" class="form-control form-control-sm">
+                      <option value="">— nessuna —</option>
+                      {% for corp in corporates %}
+                      <option value="{{ corp.id }}">{{ corp.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Annulla</button>
+                  <button type="submit" class="btn btn-success btn-sm">
+                    <i class="fas fa-check mr-1"></i>Attiva
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
         {# ── Topup modal ── #}
         <div class="modal fade" id="topupModal{{ c.id }}" tabindex="-1">

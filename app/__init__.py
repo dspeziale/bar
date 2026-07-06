@@ -182,6 +182,13 @@ def _migrate_tenant_columns():
 
     _ensure('banco_sessions', 'tenant_id', 'INTEGER')
 
+    # Magazzino ingredienti (opzionale)
+    _ensure('ingredients', 'grams_per_serving', 'REAL')
+    _ensure('ingredients', 'stock_qty',         'REAL')
+
+    # Conferma prenotazione dal sondaggio
+    _ensure('poll_votes', 'confirm_reservation', 'BOOLEAN DEFAULT FALSE')
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

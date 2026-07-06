@@ -568,75 +568,158 @@ def s_super_admin(doc):
 
     role_badge(doc, '👑', 'Super Admin',
                'Il Super Admin ha accesso illimitato alla piattaforma. '
-               'Gestisce tenant, utenti globali e configurazioni di sistema. '
+               'Gestisce tenant, utenti globali, OAuth, bot Telegram, SMTP e configurazioni di sistema. '
                'Accede alla stessa interfaccia Admin ma con visibilità su tutti i locali.',
                HEX_RED)
     spacer(doc, 8)
 
-    h2(doc, '1.1  Primo accesso e login')
+    # ── 1.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.1  Primo accesso')
+    body_para(doc, 'Le credenziali predefinite per il primo avvio della piattaforma sono:')
+    spacer(doc, 4)
+
+    data_table(doc,
+        ['Campo', 'Valore predefinito'],
+        [
+            ['Username / Email', 'admin@bar.local'],
+            ['Password',         'admin123'],
+        ],
+        col_widths=[5.0, 12.6])
+    spacer(doc, 6)
+
+    info_box(doc, 'Cambia subito la password predefinita dopo il primo accesso: '
+             'Admin → Impostazioni → Modifica password. '
+             'Non lasciare mai admin123 in produzione.', style='warning')
+    spacer(doc, 8)
+
     step_row(doc, 1, 'Apri il browser', 'Vai all\'URL della piattaforma (es. https://pranzo.miodominio.it)')
     spacer(doc, 4)
-    step_row(doc, 2, 'Inserisci le credenziali', 'Username e password fornite al momento dell\'installazione')
+    step_row(doc, 2, 'Inserisci le credenziali', 'Email admin@bar.local e password admin123 (o quella aggiornata)')
     spacer(doc, 4)
     step_row(doc, 3, 'Dashboard principale', 'Vedrai la Dashboard con KPI globali: ordini, wallet, prodotti attivi, avvisi magazzino')
     spacer(doc, 8)
 
-    info_box(doc, 'Il Super Admin vede i dati di TUTTI i tenant. '
-             'Per lavorare su un locale specifico, non è necessario cambiare tenant — '
-             'le schermate Admin mostrano già il contesto giusto.', style='info')
-    spacer(doc, 8)
-
-    h2(doc, '1.2  Creare un nuovo tenant (locale)')
-    body_para(doc, 'Ogni locale (bar, mensa, caffetteria) è un "tenant" indipendente con i propri prodotti, utenti e impostazioni.')
+    # ── 1.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.2  Creazione tenant (nuovo locale)')
+    body_para(doc, 'Ogni locale (bar, mensa, caffetteria) è un "tenant" indipendente con propri '
+              'prodotti, utenti e impostazioni. Percorso: Admin → Tenant → + Nuovo Tenant.')
     spacer(doc, 4)
 
     data_table(doc,
         ['Campo', 'Descrizione', 'Esempio'],
         [
-            ['Nome locale', 'Nome commerciale del bar/mensa', 'Bar Centrale'],
+            ['Nome locale',  'Nome commerciale visualizzato nell\'app', 'Bar Centrale'],
             ['Slug / Codice', 'Identificativo URL, solo lettere minuscole e trattini', 'bar-centrale'],
-            ['Email contatto', 'Email del gestore principale', 'info@barcentrale.it'],
-            ['Token Telegram', 'Bot token per notifiche (opzionale)', '123456:ABC...'],
-            ['Chat ID Telegram', 'ID gruppo/canale notifiche cucina', '-100123456789'],
+            ['Colore tema',  'Colore esadecimale del brand (usato nei badge e nella UI)', '#E94560'],
+            ['Logo',         'File immagine PNG/JPG del logo (opzionale)', 'logo.png'],
+            ['Email contatto', 'Email del gestore principale per notifiche di sistema', 'info@barcentrale.it'],
         ],
-        col_widths=[3.8, 7.2, 6.6])
+        col_widths=[3.5, 8.0, 6.1])
     spacer(doc, 8)
 
-    h2(doc, '1.3  Gestione utenti staff')
-    body_para(doc, 'Per ogni tenant si creano gli utenti con i ruoli appropriati. '
-              'Solo gli utenti con il flag "is_admin" accedono all\'area Admin.')
+    info_box(doc, 'Lo slug deve essere univoco: viene usato come prefisso URL e nei cookie di sessione. '
+             'Una volta impostato non modificarlo senza aggiornare anche le configurazioni del server.',
+             style='warning')
+    spacer(doc, 8)
+
+    # ── 1.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.3  Configurazione Google OAuth')
+    body_para(doc, 'Per abilitare il login con Google, inserisci le credenziali OAuth 2.0 ottenute '
+              'dalla Google Cloud Console (APIs & Services → Credentials).')
+    spacer(doc, 6)
+
+    data_table(doc,
+        ['Variabile / Campo', 'Dove inserirla', 'Valore da inserire'],
+        [
+            ['GOOGLE_CLIENT_ID',     'Admin → Impostazioni → OAuth Google', 'ID client dalla Google Console'],
+            ['GOOGLE_CLIENT_SECRET', 'Admin → Impostazioni → OAuth Google', 'Secret client dalla Google Console'],
+            ['Callback URL',         'Google Console → URI autorizzati',    '/auth/google/callback'],
+        ],
+        col_widths=[4.5, 6.5, 6.6])
+    spacer(doc, 6)
+
+    info_box_color(doc,
+                   'URI di reindirizzamento autorizzato da configurare in Google Console:\n'
+                   'https://tuodominio.it/auth/google/callback',
+                   bg='EBF5FB', border=HEX_TEAL, icon='🔗')
+    spacer(doc, 8)
+
+    # ── 1.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.4  Configurazione Telegram Bot')
+    body_para(doc, 'Le notifiche Telegram (nuovi ordini, avvisi magazzino, scadenze tavoli) '
+              'richiedono un bot Telegram per tenant. Usa @BotFather su Telegram per creare il bot '
+              'e ottenere il token.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Crea il bot con @BotFather', 'Su Telegram: /newbot → scegli nome → ottieni token (es. 123456:ABCdef…)')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Inserisci il token nel pannello', 'Admin → Impostazioni → Telegram Bot Token → Salva')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Aggiungi il bot al gruppo notifiche', 'Crea un gruppo Telegram, aggiungici il bot e ottieni il Chat ID')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Inserisci il Chat ID', 'Admin → Impostazioni → Telegram Chat ID → Salva')
+    spacer(doc, 8)
+
+    # ── 1.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.5  Configurazione SMTP Email')
+    body_para(doc, 'Le email automatiche (avvisi magazzino al fornitore, conferme ordine) '
+              'richiedono la configurazione SMTP. Percorso: Admin → Impostazioni → Email SMTP.')
     spacer(doc, 4)
 
     data_table(doc,
-        ['Ruolo', 'Flag', 'Cosa può fare'],
+        ['Campo', 'Esempio'],
         [
-            ['Super Admin',        'is_admin + superadmin', 'Tutto, su tutti i tenant'],
-            ['Admin Tenant',       'is_admin',              'Tutto sul proprio tenant'],
-            ['Cassiere',           'manage_orders',         'Cassa, ordini, wallet clienti'],
-            ['Cucina / KDS',       'manage_kitchen',        'Schermo cucina, stati ordine'],
-            ['Sala',               'manage_reservations',   'Prenotazioni e tavoli'],
-            ['Cliente',            '(nessuno)',              'Auto-ordine, wallet, punti fedeltà'],
-            ['Dipendente Aziendale','(nessuno + convenzione)', 'Solo pasto fisso aziendale'],
+            ['SMTP Host',     'smtp.gmail.com'],
+            ['SMTP Port',     '587 (TLS) / 465 (SSL)'],
+            ['Username',      'notifiche@tuodominio.it'],
+            ['Password',      'app-password generata dal provider'],
+            ['Email mittente', 'QuickLunch <notifiche@tuodominio.it>'],
         ],
-        col_widths=[4.2, 4.0, 9.4])
+        col_widths=[4.5, 13.1])
     spacer(doc, 8)
 
-    info_box(doc, 'Un utente può avere più ruoli contemporaneamente. '
-             'Esempio: un Admin Tenant può anche fare da Cassiere attivando entrambi i flag.',
-             style='tip')
+    # ── 1.6 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.6  Gestione admin globali')
+    body_para(doc, 'Per aggiungere o modificare un amministratore globale: Admin → Utenti Staff.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Modifica password admin esistente', 'Admin → Utenti Staff → trova l\'admin → "Modifica" → nuovo campo password → Salva')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Aggiungi nuovo Super Admin', 'Admin → Utenti Staff → + Nuovo Staff → compila email, username, password → spunta "is_admin" e "superadmin" → Salva')
     spacer(doc, 8)
 
-    h2(doc, '1.4  Configurazioni globali di sistema')
-    step_row(doc, 1, 'Impostazioni email', 'Configura SMTP in config.py o variabili d\'ambiente per le email automatiche (avvisi magazzino)')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Bot Telegram', 'Inserisci TELEGRAM_TOKEN nelle variabili di ambiente. Ogni tenant ha il proprio Chat ID')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Backup database', 'Il file SQLite si trova in instance/bar.db — pianifica backup giornalieri')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Aggiornamenti', 'Esegui git pull + pip install -r requirements.txt + riavvio del server applicativo')
+    info_box(doc, 'Il flag "superadmin" garantisce visibilità su tutti i tenant. '
+             'Il solo flag "is_admin" senza "superadmin" crea un Admin Tenant limitato al proprio locale.',
+             style='info')
     spacer(doc, 8)
 
-    info_box(doc, 'Prima di ogni aggiornamento, esegui sempre il backup del database. '
+    # ── 1.7 ──────────────────────────────────────────────────────────────────
+    h2(doc, '1.7  CLI: flask seed-demo')
+    body_para(doc, 'Il comando seed-demo resetta il database e ricarica dati di dimostrazione '
+              'preconfigurati: prodotti, utenti, slot, convenzioni e ordini di esempio. '
+              'Utile per ambienti di test o demo commerciali.')
+    spacer(doc, 4)
+
+    info_box_color(doc,
+                   'Esegui dalla directory radice del progetto:\n'
+                   'flask seed-demo\n\n'
+                   'ATTENZIONE: cancella TUTTI i dati esistenti prima di reinserire i dati demo.',
+                   bg='FEF9E7', border=HEX_ORNG, icon='⚠️')
+    spacer(doc, 6)
+
+    data_table(doc,
+        ['Cosa crea', 'Dettaglio'],
+        [
+            ['Tenant demo',        'Un locale configurato con prodotti, slot e fasce orarie'],
+            ['Utenti staff',       'Admin, cassiere, cuoco, sala (vedi Appendice A.3 per le credenziali)'],
+            ['Clienti demo',       'cliente1 e cliente2 con wallet precaricato'],
+            ['Convenzione demo',   'Azienda ACME con dipendente associato e pasto del giorno'],
+            ['Ordini e transazioni', 'Storico degli ultimi 7 giorni per report e test'],
+        ],
+        col_widths=[4.5, 13.1])
+    spacer(doc, 8)
+
+    info_box(doc, 'Prima di ogni aggiornamento di produzione, esegui sempre il backup del database. '
              'I run di migrazione automatici (_ensure) aggiungono colonne in sicurezza senza perdere dati.',
              style='warning')
 
@@ -646,74 +729,124 @@ def s_super_admin(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s_admin_tenant(doc):
-    h1(doc, '2', 'Admin Tenant — Gestore del Locale', '🏢')
+    h1(doc, '2', 'Admin / Manager del Locale', '🏢')
 
     role_badge(doc, '🏢', 'Admin Tenant',
-               'Gestisce tutto ciò che riguarda il proprio locale: menu, fasce orarie, '
-               'magazzino, convenzioni aziendali, staff e report economici.',
+               'Gestisce tutto ciò che riguarda il proprio locale: menu, prodotti, slot ordini, '
+               'fasce orarie tavoli, stock giornaliero, magazzino, staff, clienti, '
+               'convenzioni aziendali, sondaggi e report economici.',
                HEX_NAVY)
     spacer(doc, 8)
 
-    h2(doc, '2.1  Dashboard — panoramica giornaliera')
-    body_para(doc, 'La Dashboard è la prima schermata dopo il login. '
+    # ── 2.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.1  Dashboard KPI')
+    body_para(doc, 'La Dashboard è la prima schermata dopo il login Admin. '
               'Mostra in tempo reale tutti i KPI del locale.')
     spacer(doc, 6)
 
     data_table(doc,
         ['KPI', 'Icona', 'Cosa indica'],
         [
-            ['Ordini del giorno',    '🛒', 'Numero di ordini ricevuti oggi'],
-            ['Incasso del giorno',   '💰', 'Totale incassato oggi (contanti + wallet)'],
-            ['Wallet clienti totale','💜', 'Somma di tutti i saldi wallet dei clienti'],
-            ['Prenotazioni oggi',    '🪑', 'Tavoli prenotati per oggi'],
-            ['Avvisi magazzino',     '🔴', 'Materiali sotto la soglia minima'],
-            ['Prodotti attivi',      '📦', 'Prodotti disponibili nel menu'],
-            ['Pasti Aziendali Oggi', '🏭', 'Card con prenotazioni/posti per ogni opzione, barra avanzamento e il proprio pasto prenotato (se applicabile)'],
+            ['Ordini oggi',           '🛒', 'Numero di ordini ricevuti oggi'],
+            ['Incasso del giorno',    '💰', 'Totale incassato oggi (contanti + wallet)'],
+            ['Wallet totale clienti', '💜', 'Somma di tutti i saldi wallet dei clienti'],
+            ['Prenotazioni oggi',     '🪑', 'Tavoli prenotati per la giornata corrente'],
+            ['Alert magazzino',       '🔴', 'Materiali consumabili sotto la soglia minima'],
+            ['Prodotti attivi',       '📦', 'Prodotti disponibili e visibili nel menu'],
+            ['Pasti Aziendali Oggi',  '🏭', 'Card per ogni convenzione: barra avanzamento prenotazioni/posti, '
+                                            'posti residui e (per il dipendente loggato) il proprio pasto prenotato'],
         ],
-        col_widths=[5.2, 1.5, 10.9])
+        col_widths=[4.8, 1.5, 11.3])
     spacer(doc, 8)
 
-    h2(doc, '2.2  Gestione prodotti e menu')
+    # ── 2.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.2  Gestione Prodotti e Categorie')
     workflow_table(doc, [
         ('📝', 'Crea prodotto', 'Nome, prezzo, categoria'),
-        ('🏷️', 'Aggiungi tag', 'Vegano, senza glutine…'),
-        ('📸', 'Foto prodotto', 'JPG/PNG consigliato'),
-        ('✅', 'Attiva', 'Rende visibile al cliente'),
+        ('🏷️', 'Allergeni', '14 tipologie selezionabili'),
+        ('✅', 'Attiva/Disattiva', 'Senza eliminare'),
+        ('📦', 'Verifica', 'Appare nel menu cliente'),
     ])
     spacer(doc, 8)
 
+    h3(doc, 'Aggiungere o modificare un prodotto')
     step_row(doc, 1, 'Vai a Menu → Prodotti', 'Nel menu laterale Admin, sezione "Menu"')
     spacer(doc, 4)
     step_row(doc, 2, 'Clicca "+ Nuovo Prodotto"', 'Si apre il form di creazione')
     spacer(doc, 4)
-    step_row(doc, 3, 'Compila i campi obbligatori', 'Nome, prezzo, categoria. Il campo "disponibile" attiva la visibilità')
+    step_row(doc, 3, 'Compila i campi obbligatori', 'Nome, prezzo, categoria. Il campo "is_active" controlla la visibilità nel menu')
     spacer(doc, 4)
-    step_row(doc, 4, 'Salva e verifica', 'Il prodotto appare immediatamente nel menu cliente')
+    step_row(doc, 4, 'Gestisci gli allergeni', 'Spunta le 14 tipologie applicabili (glutine, lattosio, arachidi…)')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Salva e verifica', 'Il prodotto appare immediatamente nel menu cliente se is_active = true')
     spacer(doc, 8)
 
-    info_box(doc, 'I prodotti possono essere temporaneamente disattivati senza eliminarli. '
-             'Utile per prodotti stagionali o temporaneamente esauriti.', style='tip')
+    info_box(doc, 'I prodotti possono essere disattivati (is_active = false) senza eliminarli: '
+             'lo storico ordini rimane integro. Utile per prodotti stagionali o temporaneamente esauriti.',
+             style='tip')
     spacer(doc, 8)
 
-    h2(doc, '2.3  Gestione Tavoli — due sistemi distinti')
-    body_para(doc, 'Admin → Tavoli è una pagina con quattro tab. '
-              'È fondamentale capire la differenza tra i due sistemi di orari:')
-    spacer(doc, 4)
-
-    data_table(doc,
-        ['Sistema', 'Scopo', 'Dove si configura'],
-        [
-            ['Slot ordini',    'Orari di ritiro del cibo (es. 12:00, 12:15…). '
-                               'Capienza max ordini per non sovraccaricare la cucina.',  'Tab "Slot ordini"'],
-            ['Fasce orarie',   'Blocchi di tempo per prenotare un tavolo. '
-                               'Ogni fascia ha inizio, fine e durata seduta in minuti.',  'Tab "Fasce orarie"'],
-        ],
-        col_widths=[3.5, 10.5, 3.5])
+    # ── 2.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.3  Stock Giornaliero')
+    body_para(doc, 'Ogni mattina l\'Admin imposta la disponibilità giornaliera dei prodotti '
+              '(quante porzioni sono preparate). Quando esaurito, il prodotto si disattiva automaticamente.')
     spacer(doc, 6)
 
-    body_para(doc, 'Le fasce orarie generano automaticamente le sessioni prenotabili: '
-              'una fascia 11:25–12:30 con 30 min crea le sessioni 11:25, 11:55 e 12:25. '
-              'I clienti scelgono data + sessione + tavolo disponibile.')
+    step_row(doc, 1, 'Vai a Menu → Stock Giornaliero', 'Sezione dedicata nel menu Admin')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Imposta le porzioni per ogni prodotto', 'Inserisci il numero di porzioni disponibili per oggi')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Configura soglia minima magazzino', 'Magazzino → Consumabili: imposta la soglia sotto cui scatta l\'alert fornitore')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Aggiungi articoli consumabili', 'Magazzino → + Nuovo: nome, unità (pz/kg/lt), soglia minima, fornitore associato')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Aggiungi fornitori', 'Magazzino → Fornitori → + Nuovo: nome e email. Riceveranno avvisi automatici sotto soglia')
+    spacer(doc, 8)
+
+    info_box(doc, 'Il sistema invia UNA SOLA email di avviso per ogni carenza. '
+             'Una seconda email parte solo dopo che le scorte sono tornate sopra soglia '
+             'e poi sono nuovamente scese. Questo evita spam al fornitore.', style='info')
+    spacer(doc, 8)
+
+    # ── 2.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.4  Slot Ordini e Fasce Orarie Tavoli')
+
+    info_box_color(doc,
+                   'ATTENZIONE — Questi sono DUE SISTEMI SEPARATI e indipendenti:\n'
+                   '• SLOT ORDINI: orari di ritiro del cibo, capienza cucina\n'
+                   '• FASCE ORARIE TAVOLI: prenotazione posti a sedere, sessioni tavolo\n'
+                   'Non si sovrappongono né si influenzano a vicenda.',
+                   bg='FEF9E7', border=HEX_ORNG, icon='⚠️')
+    spacer(doc, 8)
+
+    data_table(doc,
+        ['Sistema', 'Scopo', 'Percorso', 'Contenuto'],
+        [
+            ['Slot Ordini',
+             'Orario di ritiro del cibo. Capacità max ordini per non sovraccaricare la cucina.',
+             '/admin/tavoli → tab "Slot Ordini"',
+             'Orario (time picker) + capacità massima ordini'],
+            ['Fasce Orarie Tavoli\n(TableTimeBand)',
+             'Blocchi di tempo per prenotare un posto a sedere. Risorse GLOBALI del locale.',
+             '/admin/tavoli → tab "Fasce Orarie"',
+             'Nome, orario inizio/fine, sort_order per ordinamento'],
+        ],
+        col_widths=[3.5, 5.5, 4.5, 4.1])
+    spacer(doc, 8)
+
+    h3(doc, 'Aggiungere e rimuovere Slot Ordini')
+    step_row(doc, 1, 'Apri il tab "Slot Ordini"', 'Admin → Tavoli → tab Slot Ordini')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Compila il form in cima alla pagina', 'Inserisci l\'orario con il time picker e la capacità massima ordini per quello slot')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Clicca "Aggiungi slot"', 'Lo slot viene creato immediatamente e appare nella lista sottostante')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Eliminare uno slot esistente', 'Clicca il pulsante "Elimina" a fianco dello slot — viene rimosso senza conferma aggiuntiva')
+    spacer(doc, 8)
+
+    h3(doc, 'Configurare Fasce Orarie Tavoli')
+    body_para(doc, 'Le fasce orarie generano sessioni prenotabili: una fascia 11:25–12:30 con 30 min '
+              'a seduta crea le sessioni 11:25, 11:55 e 12:25. Percorso: Admin → Tavoli → tab "Fasce Orarie".')
     spacer(doc, 4)
 
     info_box(doc, 'La durata di permanenza (campo nella fascia oraria) determina quando viene inviata '
@@ -721,108 +854,114 @@ def s_admin_tenant(doc):
              style='warning')
     spacer(doc, 8)
 
-    h3(doc, 'Aggiungere e rimuovere slot ordini')
-    body_para(doc, 'Nel tab "Slot Ordini" (Admin → Tavoli) è possibile creare nuovi slot e '
-              'rimuovere quelli non più necessari direttamente dalla stessa pagina.')
-    spacer(doc, 4)
-
-    step_row(doc, 1, 'Apri il tab "Slot Ordini"', 'Admin → Tavoli → tab Slot Ordini')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Compila il form in cima alla pagina', 'Inserisci l\'orario (time picker) e la capacità massima di ordini per quello slot')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Clicca "Aggiungi slot"', 'Lo slot viene creato immediatamente e appare nella lista')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Eliminare uno slot esistente', 'Clicca il pulsante "Elimina" a fianco dello slot desiderato — viene rimosso senza conferma aggiuntiva')
-    spacer(doc, 8)
-
-    info_box(doc, 'Ogni slot ordine ha una capacità massima: una volta raggiunto il numero di ordini '
-             'configurato, lo slot non è più selezionabile dai clienti. Calibra la capacità in base '
-             'al ritmo di preparazione della cucina.', style='tip')
-    spacer(doc, 8)
-
-    h2(doc, '2.4  Magazzino — Materiali di consumo')
-    body_para(doc, 'Il magazzino tiene traccia dei materiali di consumo (forchette, ciotoline, bicchieri, ecc.) '
-              'e avvisa automaticamente il fornitore via email quando le scorte scendono sotto la soglia.')
-    spacer(doc, 6)
-
-    workflow_table(doc, [
-        ('📦', 'Registra item', 'Nome, unità, soglia min'),
-        ('🏭', 'Associa fornitore', 'Email per avvisi auto'),
-        ('➕', 'Carico merce', 'Aggiorna le scorte'),
-        ('🔴', 'Soglia raggiunta', 'Email al fornitore auto'),
-        ('✅', 'Rifornimento', 'Alert si azzera'),
-    ])
-    spacer(doc, 8)
-
-    step_row(doc, 1, 'Vai a Magazzino → Consumabili', 'Sezione Magazzino nel menu Admin')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Crea un fornitore (opzionale)', 'Magazzino → Fornitori. Inserisci nome e email. Sarà avvisato automaticamente')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Crea il materiale', '+ Nuovo: nome, unità di misura (pz, kg, lt), soglia minima, fornitore associato')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Registra movimenti', 'Usa il bottone "➕ Movimento" per caricare o scaricare scorte')
-    spacer(doc, 4)
-    step_row(doc, 5, 'Monitoraggio', 'Dashboard mostra il badge rosso con quanti item sono sotto soglia')
-    spacer(doc, 8)
-
-    info_box(doc, 'Il sistema invia UNA SOLA email di avviso per ogni carenza. '
-             'Una seconda email viene inviata solo dopo che le scorte sono tornate sopra soglia '
-             'e poi sono nuovamente scese. Questo evita spam al fornitore.', style='info')
-    spacer(doc, 8)
-
-    h2(doc, '2.5  Convenzioni Aziendali')
-    body_para(doc, 'Le convenzioni permettono a dipendenti di aziende convenzionate di prenotare '
-              'un pasto fisso giornaliero a prezzo concordato, senza usare il menu standard.')
-    spacer(doc, 4)
-
-    step_row(doc, 1, 'Crea l\'azienda convenzionata', 'Convenzioni → Aziende → + Nuova. Inserisci nome, prezzo giornaliero, max coperti')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Aggiungi i dipendenti', 'Nella scheda azienda, spunta i clienti già registrati da associare come dipendenti')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Crea il pasto del giorno', 'Convenzioni → nome azienda → "Pasto del giorno". Inserisci nome, descrizione, prezzo, max prenotazioni')
-    spacer(doc, 4)
-    step_row(doc, 4, 'I dipendenti prenotano', 'Ogni dipendente vede "Pasto Aziendale" nel suo menu e sceglie lo slot orario')
-    spacer(doc, 4)
-    step_row(doc, 5, 'Segna come consumato', 'Nella lista prenotazioni, clicca "✔ Consumato" per ogni dipendente che ha ritirato il pasto')
-    spacer(doc, 4)
-    step_row(doc, 6, 'Verifica totale fatturabile', 'In fondo alla lista prenotazioni compare il totale: N coperti × prezzo')
-    spacer(doc, 8)
-
-    h2(doc, '2.6  Report e statistiche')
-    data_table(doc,
-        ['Report', 'Percorso', 'Contenuto'],
-        [
-            ['Vendite giornaliere',    'Admin → Report → Giornaliero', 'Ordini, incasso, prodotti venduti'],
-            ['Andamento mensile',      'Admin → Report → Mensile',     'Grafico trend, confronto mesi'],
-            ['Prodotti più venduti',   'Admin → Report → Top prodotti','Ranking per quantità e fatturato'],
-            ['Wallet e punti fedeltà', 'Admin → Clienti',              'Saldo wallet e punti per ogni cliente'],
-            ['Magazzino',              'Admin → Magazzino',             'Stock attuale e storico movimenti'],
-        ],
-        col_widths=[4.2, 5.5, 7.9])
-    spacer(doc, 8)
-
-    h2(doc, '2.7  Banco POS — Gestione articoli')
-    body_para(doc, 'Il Banco POS è uno strumento di cassa rapida per pagamenti al bancone tramite QR. '
-              'L\'Admin configura la griglia degli articoli disponibili raggiungibile da '
-              'Admin → Banco → pulsante "Gestisci" (oppure direttamente su /admin/banco/items).')
+    # ── 2.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.5  Articoli Banco POS')
+    body_para(doc, 'Il Banco POS è la griglia di articoli rapidi per pagamenti al bancone via QR. '
+              'L\'Admin configura gli articoli disponibili dalla pagina /admin/banco/items '
+              '(oppure Admin → Banco → pulsante "Gestisci").')
     spacer(doc, 6)
 
     data_table(doc,
         ['Azione', 'Come fare', 'Nota'],
         [
-            ['Aggiungere articolo', 'Form inline: inserisci nome, prezzo, icona Font Awesome e colore → "Salva"',
+            ['Aggiungere articolo',
+             'Form inline: nome, prezzo, icona Font Awesome (es. fa-coffee), colore hex → "Salva"',
              'Appare subito nella griglia del Banco'],
-            ['Modificare articolo', 'Clicca sull\'articolo nella lista → si apre modal di modifica → "Salva"',
-             'Modifica immediata senza ricaricare'],
-            ['Rimuovere articolo',  'Pulsante "Elimina" a fianco dell\'articolo',
-             'Eliminazione soft: is_active=false (non persi i dati storici)'],
+            ['Modificare articolo',
+             'Clicca sull\'articolo nella lista → si apre modal di modifica → "Salva"',
+             'Modifica immediata senza ricaricare la pagina'],
+            ['Disattivare articolo',
+             'Pulsante "Elimina" a fianco dell\'articolo',
+             'Soft-delete: is_active=false, dati storici conservati'],
         ],
         col_widths=[3.8, 8.2, 5.6])
-    spacer(doc, 6)
+    spacer(doc, 8)
 
-    info_box(doc, 'Scegli icone Font Awesome per rendere la griglia più intuitiva per lo staff: '
-             'ad esempio "fa-coffee" per il caffè, "fa-bread-slice" per la brioche. '
-             'Il colore del pulsante aiuta a distinguere le categorie a colpo d\'occhio.', style='tip')
+    # ── 2.6 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.6  Personale Staff')
+    body_para(doc, 'Percorso: Admin → Utenti Staff. Da qui si gestisce tutto il personale del locale.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Aggiungi nuovo membro staff', 'Admin → Utenti Staff → + Nuovo Staff: inserisci email, username, password e ruolo')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Assegna ruoli e permessi', 'Spunta i flag appropriati: manage_orders (cassiere), manage_kitchen (cucina), manage_reservations (sala)')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Modifica profilo cliente (anagrafica estesa)', 'Admin → Clienti → trova utente → Modifica: nome, cognome, telefono, data di nascita')
+    spacer(doc, 8)
+
+    data_table(doc,
+        ['Ruolo', 'Flag da attivare', 'Accesso'],
+        [
+            ['Admin Tenant',    'is_admin',              'Tutta l\'area Admin del locale'],
+            ['Cassiere',        'manage_orders',         'Pannello ordini, banco POS, wallet clienti'],
+            ['Cucina / KDS',    'manage_kitchen',        'Schermata KDS, stati ordine'],
+            ['Sala',            'manage_reservations',   'Prenotazioni tavoli, check-in, ping-alerts'],
+        ],
+        col_widths=[3.5, 4.5, 9.6])
+    spacer(doc, 8)
+
+    # ── 2.7 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.7  Gestione Clienti')
+    step_row(doc, 1, 'Ricarica wallet cliente', 'Admin → Clienti → trova cliente → "Ricarica Wallet" → inserisci importo → Conferma')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Visualizza storico transazioni', 'Admin → Clienti → trova cliente → tab "Transazioni"')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Visualizza anagrafica', 'Admin → Clienti → trova cliente: nome, cognome, email, telefono, data nascita, saldo wallet, punti fedeltà')
+    spacer(doc, 8)
+
+    # ── 2.8 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.8  Convenzioni Aziendali (Corporate Meals)')
+    body_para(doc, 'Le convenzioni permettono a dipendenti di aziende convenzionate di prenotare '
+              'un pasto fisso giornaliero a prezzo concordato, separato dal menu standard.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Aggiungi azienda', 'Convenzioni → Aziende → + Nuova: nome azienda, codice identificativo, email di contatto')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Associa dipendenti', 'Nella scheda azienda, spunta i clienti già registrati da aggiungere come dipendenti')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Crea il pasto del giorno', 'Convenzioni → nome azienda → "Pasto del giorno": '
+             'primo, secondo, contorno, bevanda, caffè, allergeni, max porzioni, prezzo, data')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Monitora dashboard pasti', 'La scheda mostra per ogni opzione: '
+             'prenotazioni effettuate, barra avanzamento, posti residui')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Segna come consumato', 'Lista prenotazioni → "✔ Consumato" per ogni dipendente che ha ritirato il pasto')
+    spacer(doc, 4)
+    step_row(doc, 6, 'Verifica totale fatturabile', 'In fondo alla lista prenotazioni: N coperti × prezzo = importo da fatturare all\'azienda')
+    spacer(doc, 8)
+
+    # ── 2.9 ──────────────────────────────────────────────────────────────────
+    h2(doc, '2.9  Sondaggi')
+    body_para(doc, 'I sondaggi permettono di raccogliere preferenze dai clienti sul menu. '
+              'Percorso: Admin → Sondaggi.')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Crea sondaggio', 'Admin → Sondaggi → + Nuovo: inserisci domanda e almeno 2 opzioni di risposta')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Apertura manuale', 'Nella lista sondaggi, clicca "Apri" per renderlo visibile ai clienti')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Chiusura manuale', 'Clicca "Chiudi" per smettere di raccogliere voti')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Risultati in tempo reale', 'Nella scheda sondaggio: barre percentuale per ogni opzione, aggiornate ad ogni voto')
+    spacer(doc, 8)
+
+    # ── 2.10 ─────────────────────────────────────────────────────────────────
+    h2(doc, '2.10  Report')
+    body_para(doc, 'I report coprono gli ultimi 30 giorni e includono vendite, prodotti più richiesti '
+              'e andamento dell\'incasso giornaliero. Percorso: Admin → Report.')
+    spacer(doc, 4)
+
+    data_table(doc,
+        ['Report', 'Percorso', 'Contenuto'],
+        [
+            ['Ultimi 30 giorni',      'Admin → Report → Mensile',      'Totale ordini e incasso per ciascuno degli ultimi 30 giorni'],
+            ['Top prodotti',          'Admin → Report → Top prodotti',  'Ranking prodotti per quantità venduta e fatturato'],
+            ['Incasso giornaliero',   'Admin → Report → Giornaliero',   'Dettaglio ordini e metodi di pagamento del giorno'],
+            ['Wallet e fedeltà',      'Admin → Clienti',                'Saldo wallet e punti per ogni cliente'],
+            ['Magazzino',             'Admin → Magazzino',              'Stock attuale e storico movimenti consumabili'],
+        ],
+        col_widths=[4.0, 5.5, 8.1])
+    spacer(doc, 8)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -833,182 +972,131 @@ def s_cassiere(doc):
     h1(doc, '3', 'Cassiere / Cassa', '💳')
 
     role_badge(doc, '💳', 'Cassiere',
-               'Il Cassiere gestisce il punto vendita fisico: riceve gli ordini, '
-               'incassa i pagamenti, gestisce i wallet dei clienti e supporta i clienti '
-               'che non usano l\'app. È la figura più operativa del sistema.',
+               'Il Cassiere gestisce il punto vendita fisico: riceve ordini walk-in, '
+               'gestisce i pagamenti tramite Banco POS con QR, ricarica i wallet dei clienti '
+               'e annulla ordini se necessario. È la figura più operativa del sistema.',
                HEX_GREEN)
     spacer(doc, 8)
 
     info_box(doc,
-             'IL CASSIERE NON HA BISOGNO DI CONOSCERE TUTTA LA PIATTAFORMA. '
-             'Basta padroneggiare tre azioni: creare ordini, incassare pagamenti, ricaricare wallet.',
+             'FOCUS OPERATIVO: padroneggia tre azioni fondamentali: '
+             '1) ordini walk-in al pannello ordini, '
+             '2) pagamenti rapidi con il Banco POS / QR, '
+             '3) ricarica wallet cliente.',
              style='warning', label='FOCUS OPERATIVO')
     spacer(doc, 10)
 
-    # ── COME PAGARE UN CAFFÈ ─────────────────────────────────────────────────
-    h2(doc, '☕  Come pagare un caffè — Procedura passo per passo')
-    body_para(doc, 'Questo è lo scenario più comune. Un cliente si avvicina alla cassa e vuole pagare un caffè.')
+    # ── 3.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.1  Accesso pannello ordini')
+    step_row(doc, 1, 'Apri il pannello ordini', 'Vai su /admin/ordini oppure Admin → Ordini nel menu laterale')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Login con credenziali cassiere', 'Username e password forniti dall\'Admin (vedi account di test in Appendice A.3)')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Panoramica ordini', 'Vedi tutti gli ordini del giorno: in attesa, in preparazione, pronti, consegnati')
+    spacer(doc, 8)
+
+    # ── 3.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.2  Gestione ordini walk-in al banco')
+    body_para(doc, 'Per i clienti che ordinano direttamente al bancone senza usare l\'app cliente:')
+    spacer(doc, 4)
+
+    step_row(doc, 1, 'Apri nuovo ordine manuale', 'Admin → Ordini → "+ Nuovo ordine" — non richiede che il cliente sia registrato')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Seleziona prodotti dal catalogo', 'Clicca sui prodotti. Usa la barra di ricerca per trovare velocemente')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Modifica quantità', 'Clicca sul prodotto nel riepilogo per aumentare o diminuire la quantità')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Aggiungi note speciali (opzionale)', 'Es. "senza zucchero", "al latte di soia" — appariranno visibili in cucina')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Invia in cucina', 'Clicca "Invia ordine" — l\'ordine appare sullo schermo KDS della cucina')
+    spacer(doc, 4)
+    step_row(doc, 6, 'Incassa quando il cliente ritira', 'Seleziona metodo di pagamento: CONTANTI, WALLET o MISTO')
+    spacer(doc, 8)
+
+    # ── 3.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.3  Banco POS — Pagamento QR (8 step)')
+    body_para(doc, 'Il Banco POS è la modalità di cassa rapida: lo staff compone un carrello '
+              'veloce su una griglia di articoli e genera un QR che il cliente scansiona '
+              'con la sua app per pagare istantaneamente dal wallet. '
+              'Percorso: Admin → Banco (icona tazza nel menu laterale).')
     spacer(doc, 6)
 
     info_box_color(doc,
-                   'SCENARIO: Mario si avvicina alla cassa e dice "Un caffè, per favore".',
+                   'SCENARIO: Un cliente chiede un caffè e una brioche. '
+                   'Lo staff tocca gli articoli nella griglia, genera il QR '
+                   'e il cliente paga con il telefono in pochi secondi.',
                    bg='EAF7EA', border=HEX_GREEN, icon='☕')
     spacer(doc, 8)
 
-    step_row(doc, 1, 'Accedi alla Cassa', 'Vai in Admin → Cassa (o clicca sull\'icona cassa nel menu). '
-             'Se non sei loggato, inserisci le tue credenziali da Cassiere.', accent=HEX_GREEN)
+    step_row(doc, 1, 'Aprire /admin/banco', 'Vai in Admin → Banco. La schermata è divisa: griglia articoli a sinistra, riepilogo + QR a destra.', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 2, 'Seleziona il cliente (opzionale)', 'Se Mario ha un account, cercalo per nome o scansiona il suo QR. '
-             'Se è anonimo, puoi procedere senza selezionare un cliente.', accent=HEX_GREEN)
+    step_row(doc, 2, 'Tocca gli articoli nella griglia', 'Ogni tocco aggiunge 1 unità. Il badge numerico sul pulsante mostra la quantità corrente.', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 3, 'Aggiungi il caffè all\'ordine', 'Clicca su "Caffè espresso" (o la categoria Bevande calde → Caffè). '
-             'Il prodotto appare nel riepilogo ordine a destra.', accent=HEX_GREEN)
+    step_row(doc, 3, 'Rimuovi articoli se necessario', 'Nel riepilogo a destra, usa il pulsante "−" accanto all\'articolo per sottrarre unità.', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 4, 'Verifica il totale', 'In basso nel riepilogo compare: Caffè espresso × 1 = 1,20 € '
-             '(il prezzo dipende dalla configurazione del prodotto).', accent=HEX_GREEN)
+    step_row(doc, 4, 'Verifica il totale', 'Il totale aggiornato in tempo reale appare sotto il riepilogo.', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 5, 'Scegli il metodo di pagamento', 'Hai tre opzioni:\n'
-             '• CONTANTI → inserisci l\'importo ricevuto, il sistema calcola il resto\n'
-             '• WALLET → il saldo viene scalato dal wallet del cliente\n'
-             '• MISTO → parte contanti, parte wallet', accent=HEX_GREEN)
+    step_row(doc, 5, 'Tocca "Genera QR"', 'Si apre un modal con: QR code, totale in grande, countdown 10 minuti, status "In attesa…"', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 6, 'Conferma il pagamento', 'Clicca "Conferma e incassa". '
-             'Il sistema registra la transazione e aggiorna il saldo se usato il wallet.', accent=HEX_GREEN)
+    step_row(doc, 6, 'Mostra il QR al cliente', 'Il modal resta aperto in attesa — il cliente apre l\'app e scansiona il QR.', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 7, 'Stampa o mostra scontrino (opzionale)', 'Se Mario vuole lo scontrino, clicca "Stampa". '
-             'Se ha l\'app, la transazione appare già nel suo storico ordini.', accent=HEX_GREEN)
+    step_row(doc, 7, 'Pagamento confermato', 'Il modal mostra "✓ Pagato da [Nome Cliente]" — il carrello si svuota automaticamente.', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 8, 'QR scaduto: rigenerare', 'Se il countdown arriva a zero prima della scansione, chiudi il modal e tocca di nuovo "Genera QR".', accent=HEX_GREEN)
     spacer(doc, 8)
 
-    info_box_color(doc,
-                   'Mario ha pagato il caffè in 15 secondi. '
-                   'Se Mario usa il wallet e ha i punti fedeltà attivi, '
-                   'guadagnerà automaticamente punti su questo acquisto.',
-                   bg='EAF7EA', border=HEX_GREEN, icon='✅')
-    spacer(doc, 10)
-
-    # ── PAGAMENTO CON WALLET ──────────────────────────────────────────────────
-    h2(doc, '💜  Pagamento con Wallet digitale')
-    body_para(doc, 'Il wallet è il portafoglio digitale del cliente caricato dall\'Admin o dal cliente stesso tramite app.')
-    spacer(doc, 4)
-
-    step_row(doc, 1, 'Cerca il cliente', 'Digita il nome o scansiona il codice QR del cliente nell\'app cassa')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Verifica il saldo', 'Il saldo wallet del cliente appare accanto al nome (es. Mario Rossi — 💜 12,50€)')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Aggiungi prodotti all\'ordine', 'Seleziona i prodotti normalmente dal catalogo')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Seleziona pagamento: WALLET', 'Clicca "Wallet" come metodo di pagamento')
-    spacer(doc, 4)
-    step_row(doc, 5, 'Conferma', 'Se il saldo è sufficiente, la transazione viene completata. '
-             'Se il saldo non basta, il sistema avvisa e propone pagamento misto.')
+    info_box(doc, 'Il QR scade dopo 10 minuti (countdown visibile nel modal). '
+             'Per annullare la sessione in corso senza attendere la scadenza, '
+             'usa il pulsante "Annulla sessione" nel modal.', style='warning')
     spacer(doc, 8)
 
-    info_box(doc, 'Il saldo wallet non può andare in negativo per default. '
-             'Se il cliente vuole un prodotto ma non ha saldo sufficiente, '
-             'proponigli di ricaricare prima (vedi sezione 3.3) oppure pagare la differenza in contanti.', style='tip')
+    # ── 3.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.4  Situazioni speciali al banco')
+    data_table(doc,
+        ['Situazione', 'Cosa fare', 'Nota'],
+        [
+            ['Cliente senza app',
+             'Usa il pannello ordini tradizionale (sezione 3.2)',
+             'Il cliente non ha bisogno di essere registrato'],
+            ['QR scaduto',
+             'Chiudi il modal → tocca "Genera QR" di nuovo',
+             'Il carrello rimane invariato'],
+            ['Saldo insufficiente',
+             'Il cliente non riesce a pagare il QR: proponi ricarica wallet (sezione 3.5) o pagamento contanti',
+             'Il banco POS scala dal wallet del cliente'],
+            ['Errore di rete / pagamento non arriva',
+             'Attendi 30 secondi, poi tocca "Annulla sessione" e rigenerai il QR',
+             'Verifica connessione internet del dispositivo banco'],
+        ],
+        col_widths=[3.8, 7.2, 6.6])
     spacer(doc, 8)
 
-    # ── RICARICA WALLET ───────────────────────────────────────────────────────
-    h2(doc, '🔋  Ricaricare il wallet di un cliente')
-    step_row(doc, 1, 'Vai in Admin → Clienti', 'Oppure usa la ricerca rapida nella cassa')
+    # ── 3.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.5  Ricarica wallet cliente')
+    step_row(doc, 1, 'Vai in Admin → Clienti', 'Oppure usa la ricerca rapida nella barra in alto')
     spacer(doc, 4)
     step_row(doc, 2, 'Trova il cliente', 'Cerca per nome o email')
     spacer(doc, 4)
     step_row(doc, 3, 'Clicca "Ricarica Wallet"', 'Si apre il pannello di ricarica')
     spacer(doc, 4)
-    step_row(doc, 4, 'Inserisci l\'importo', 'Es. 20,00€ — il cliente paga in contanti o carta')
+    step_row(doc, 4, 'Inserisci l\'importo', 'Es. 20,00 € — il cliente paga in contanti o carta fisica')
     spacer(doc, 4)
     step_row(doc, 5, 'Conferma', 'Il saldo viene aggiornato immediatamente. Il cliente riceve notifica Telegram (se configurato)')
     spacer(doc, 8)
 
-    # ── GESTIONE ORDINI WALK-IN ────────────────────────────────────────────────
-    h2(doc, '📋  Gestione ordini al banco (walk-in)')
-    body_para(doc, 'Per i clienti che ordinano direttamente al bancone senza usare l\'app:')
+    # ── 3.6 ──────────────────────────────────────────────────────────────────
+    h2(doc, '3.6  Annullamento ordine dal pannello')
+    step_row(doc, 1, 'Apri Admin → Ordini', 'Vai al pannello ordini')
     spacer(doc, 4)
-
-    step_row(doc, 1, 'Apri un nuovo ordine', 'Cassa → Nuovo Ordine (oppure "+" in alto)')
+    step_row(doc, 2, 'Trova l\'ordine da annullare', 'Cerca per numero ordine o nome cliente')
     spacer(doc, 4)
-    step_row(doc, 2, 'Seleziona prodotti', 'Clicca sui prodotti del catalogo. Usa la barra di ricerca per trovare velocemente')
+    step_row(doc, 3, 'Clicca "Annulla"', 'Pulsante disponibile solo se l\'ordine è ancora in stato "In attesa" o "In preparazione"')
     spacer(doc, 4)
-    step_row(doc, 3, 'Modifica quantità', 'Clicca sul prodotto nell\'ordine per aumentare/diminuire la quantità')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Aggiungi note (opzionale)', 'Es. "senza zucchero", "al latte di soia" — visibile in cucina')
-    spacer(doc, 4)
-    step_row(doc, 5, 'Invia in cucina', 'Clicca "Invia ordine" — l\'ordine appare sullo schermo cucina (KDS)')
-    spacer(doc, 4)
-    step_row(doc, 6, 'Incassa', 'Quando il cliente ritira, incassa con il metodo scelto')
+    step_row(doc, 4, 'Conferma', 'L\'ordine viene marcato come "Annullato" — eventuale addebito wallet viene stornato automaticamente')
     spacer(doc, 8)
 
-    # ── CASI SPECIALI ─────────────────────────────────────────────────────────
-    h2(doc, '⚡  Scenari frequenti alla cassa')
-    data_table(doc,
-        ['Scenario', 'Azione', 'Nota'],
-        [
-            ['Cliente vuole annullare', 'Ordini → trova ordine → Annulla',
-             'Solo se non ancora preparato in cucina'],
-            ['Errore di prodotto',      'Apri ordine → Modifica → Salva',
-             'Prima che vada in cucina'],
-            ['Cliente senza app',       'Crea ordine manuale dalla cassa',
-             'Non serve che il cliente sia registrato'],
-            ['Scontrino già chiuso',    'Report → Transazioni → Stampa copia',
-             'Disponibile per 30 giorni'],
-            ['Resto da dare',           'Inserisci importo ricevuto → il sistema calcola',
-             'Campo "Importo ricevuto" nel form pagamento'],
-        ],
-        col_widths=[4.2, 7.0, 6.4])
-    spacer(doc, 8)
-
-    info_box(doc, 'In caso di dubbio, usa sempre il tasto "Annulla" invece di forzare una transazione errata. '
-             'È sempre possibile riaprire un ordine e correggerlo prima del pagamento finale.', style='warning')
-    spacer(doc, 10)
-
-    # ── BANCO POS — PAGAMENTO QR ──────────────────────────────────────────────
-    h2(doc, '☕  Banco POS — Pagamento QR')
-    body_para(doc, 'Il Banco POS è la modalità di cassa rapida per pagamenti al bancone: '
-              'lo staff compone l\'ordine su una griglia articoli e genera un QR che il cliente '
-              'scansiona con l\'app per pagare istantaneamente. '
-              'Si accede da Admin → Banco (icona tazza nel menu laterale).')
-    spacer(doc, 6)
-
-    info_box_color(doc,
-                   'SCENARIO: Un cliente si avvicina al bancone e chiede un caffè e una brioche. '
-                   'Lo staff tocca gli articoli, genera il QR e il cliente paga con il telefono in pochi secondi.',
-                   bg='EAF7EA', border=HEX_GREEN, icon='☕')
-    spacer(doc, 8)
-
-    h3(doc, 'Composizione dell\'ordine al banco')
-    step_row(doc, 1, 'Accedi al Banco', 'Vai in Admin → Banco. La schermata è divisa: griglia articoli a sinistra, riepilogo + QR a destra.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 2, 'Tocca gli articoli desiderati', 'Ogni tocco aggiunge 1 unità. Il badge sul pulsante mostra la quantità corrente.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 3, 'Rivedi il riepilogo', 'A destra compaiono gli articoli aggiunti con quantità. Usa il pulsante "−" per rimuovere unità.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 4, 'Verifica il totale', 'Il totale si aggiorna in tempo reale ad ogni modifica del carrello.', accent=HEX_GREEN)
-    spacer(doc, 8)
-
-    h3(doc, 'Generazione del QR e incasso')
-    step_row(doc, 5, 'Tocca "Genera QR"', 'Si apre un modal con: totale in grande, QR code e countdown di 10 minuti.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 6, 'Mostra il QR al cliente', 'Il modal mostra "In attesa di pagamento…" mentre aspetta la scansione.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 7, 'Il cliente scansiona e paga', 'Dall\'app cliente → "Paga al Banco", il cliente inquadra il QR e conferma il pagamento.', accent=HEX_GREEN)
-    spacer(doc, 4)
-    step_row(doc, 8, 'Conferma pagamento ricevuta', 'Il modal mostra "✓ Pagato da [Nome Cliente]". Il carrello si svuota automaticamente per il prossimo cliente.', accent=HEX_GREEN)
-    spacer(doc, 8)
-
-    info_box(doc, 'Il QR scade dopo 10 minuti (countdown visibile nel modal). '
-             'Se il cliente non riesce a scansionare in tempo, tocca "Annulla sessione" e genera un nuovo QR.', style='warning')
-    spacer(doc, 8)
-
-    data_table(doc,
-        ['Situazione', 'Cosa fare'],
-        [
-            ['Cliente non ha l\'app',        'Usa la cassa tradizionale (sezione 3.1) con pagamento contanti o wallet'],
-            ['QR scaduto',                    'Tocca "Annulla sessione" nel modal, poi "Genera QR" di nuovo'],
-            ['Cliente vuole annullare',       'Tocca "Annulla sessione" — il carrello rimane per eventuale nuovo tentativo'],
-            ['Articolo non presente in griglia', 'Aggiungi l\'articolo da Admin → Banco → "Gestisci" (vedi sez. 2.7)'],
-        ],
-        col_widths=[5.0, 12.6])
+    info_box(doc, 'Non è possibile annullare un ordine già in stato "Pronto" o "Consegnato". '
+             'In quel caso contatta l\'Admin per una correzione manuale.', style='warning')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1020,92 +1108,129 @@ def s_cucina(doc):
 
     role_badge(doc, '🍳', 'Cucina / KDS',
                'La cucina riceve gli ordini in tempo reale sullo schermo KDS. '
-               'L\'obiettivo è preparare gli ordini nell\'ordine giusto e '
-               'aggiornare lo stato in modo che la sala e il cassiere sappiano cosa è pronto.',
+               'L\'obiettivo è preparare gli ordini nell\'ordine corretto e aggiornare '
+               'lo stato perché sala e cassiere sappiano sempre cosa è pronto.',
                HEX_ORNG)
     spacer(doc, 8)
 
-    h2(doc, '4.1  Accesso alla schermata KDS')
-    step_row(doc, 1, 'Apri il browser sullo schermo cucina', 'Vai su: URL-locale/kds oppure Admin → Cucina/KDS')
+    # ── 4.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.1  Accesso schermata KDS')
+    step_row(doc, 1, 'Apri il browser sullo schermo cucina', 'Vai su /admin/ordini (oppure Admin → Cucina/KDS nel menu)', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 2, 'Login con credenziali cucina', 'Username e password del profilo Cucina (forniti dall\'Admin)')
+    step_row(doc, 2, 'Login con credenziali cucina', 'Username e password del profilo Cucina forniti dall\'Admin', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 3, 'Schermo sempre attivo', 'La pagina KDS si aggiorna automaticamente ogni 30 secondi. Non chiudere il browser')
+    step_row(doc, 3, 'Attiva la modalità full screen', 'Premi F11 (o il pulsante "Full Screen" se disponibile) per massimizzare la leggibilità', accent=HEX_ORNG)
+    spacer(doc, 4)
+    step_row(doc, 4, 'Schermo sempre attivo', 'La pagina KDS si aggiorna automaticamente ogni 30 secondi. Non chiudere il browser durante il servizio.', accent=HEX_ORNG)
     spacer(doc, 8)
 
-    h2(doc, '4.2  Lettura della schermata KDS')
-    body_para(doc, 'Gli ordini appaiono come schede colorate. Ogni scheda contiene:')
+    # ── 4.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.2  Lettura card ordini — colori per stato')
+    body_para(doc, 'Gli ordini appaiono come card colorate. Il colore indica immediatamente lo stato:')
     spacer(doc, 4)
 
     data_table(doc,
-        ['Elemento', 'Significato'],
+        ['Colore card', 'Stato', 'Significato'],
         [
-            ['🕐 Orario ordine',    'Quando è stato inviato l\'ordine dal cliente/cassa'],
-            ['👤 Cliente/Tavolo',   'Chi ha ordinato e a quale tavolo (se prenotato)'],
-            ['📋 Lista prodotti',   'Ogni prodotto con quantità e note speciali'],
-            ['🟡 NUOVO',            'Ordine appena arrivato — da iniziare a preparare'],
-            ['🔵 IN PREPARAZIONE',  'Ordine preso in carico dalla cucina'],
-            ['🟢 PRONTO',           'Piatto pronto per essere servito o ritirato'],
+            ['⬜ Grigio',   'NUOVO',           'Ordine appena arrivato — nessuno lo ha preso in carico'],
+            ['🟡 Giallo',   'NUOVO (alert)',    'Ordine in attesa da oltre 15 minuti — prioritizza'],
+            ['🔵 Blu',      'IN PREPARAZIONE', 'Cucina ha preso in carico — piatto in lavorazione'],
+            ['🟢 Verde',    'PRONTO',           'Piatto pronto per essere servito o ritirato'],
+        ],
+        col_widths=[3.0, 4.0, 10.6])
+    spacer(doc, 6)
+
+    data_table(doc,
+        ['Elemento card', 'Significato'],
+        [
+            ['🕐 Orario ordine',  'Quando è stato inviato l\'ordine dal cliente o dalla cassa'],
+            ['👤 Cliente/Tavolo', 'Chi ha ordinato e (se prenotato) a quale tavolo'],
+            ['📋 Lista prodotti', 'Ogni prodotto con quantità e note speciali in corsivo'],
+            ['BANCO nel codice',  'Ordine "Adesso al banco" — richiede preparazione immediata'],
         ],
         col_widths=[4.5, 13.1])
     spacer(doc, 8)
 
-    h2(doc, '4.3  Flusso operativo cucina')
+    # ── 4.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.3  Flusso operativo — 5 step')
     workflow_table(doc, [
-        ('🟡', 'NUOVO', 'Ordine arriva'),
-        ('👆', 'PRENDI', 'Clicca "In preparazione"'),
+        ('🟡', 'VEDI ORDINE', 'Leggi card grigia/gialla'),
+        ('👆', 'IN PREP.', 'Clicca "In preparazione"'),
         ('🍳', 'PREPARA', 'Cucina il piatto'),
         ('✅', 'PRONTO', 'Clicca "Pronto"'),
-        ('🔔', 'NOTIFICA', 'Sala avvisata'),
+        ('🔔', 'NOTIFICA', 'Cliente/sala avvisati'),
     ], accent=HEX_ORNG)
     spacer(doc, 8)
 
-    step_row(doc, 1, 'Vedi un nuovo ordine (giallo)', 'Leggi i prodotti richiesti. Se hai dubbi sulle note, chiedi alla cassa', accent=HEX_ORNG)
+    step_row(doc, 1, 'Vedi ordine — card grigia/gialla', 'Leggi prodotti e note. Se hai dubbi, chiedi alla cassa prima di iniziare.', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 2, 'Clicca "In preparazione"', 'L\'ordine diventa blu — segnale che la cucina l\'ha preso in carico', accent=HEX_ORNG)
+    step_row(doc, 2, 'Clicca "In preparazione"', 'La card diventa blu: segnale che la cucina ha preso in carico l\'ordine. Non saltare questo step.', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 3, 'Prepara i piatti', 'Segui l\'ordine di arrivo, salvo priorità decise internamente', accent=HEX_ORNG)
+    step_row(doc, 3, 'Prepara i piatti', 'Segui l\'ordine di arrivo. Per lo stesso cliente, prepara tutto prima di segnare "pronto".', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 4, 'Clicca "Pronto"', 'L\'ordine diventa verde. Il cliente/sala riceve notifica Telegram se configurata', accent=HEX_ORNG)
+    step_row(doc, 4, 'Clicca "Pronto"', 'La card diventa verde. Se configurato, il cliente riceve notifica Telegram automatica.', accent=HEX_ORNG)
     spacer(doc, 4)
-    step_row(doc, 5, 'L\'ordine scompare dal KDS', 'Dopo il ritiro da parte della sala, l\'ordine viene archiviato', accent=HEX_ORNG)
+    step_row(doc, 5, 'L\'ordine viene archiviato', 'Dopo il ritiro confermato dalla sala/cassiere, l\'ordine scompare dal KDS.', accent=HEX_ORNG)
     spacer(doc, 8)
 
-    info_box(doc, 'Non saltare lo step "In preparazione". '
-             'Serve alla cassa per capire che l\'ordine è stato visto dalla cucina '
-             'e non rischiare di inviarlo di nuovo.', style='warning')
+    info_box(doc, 'Non saltare lo step "In preparazione": serve alla cassa per sapere '
+             'che la cucina ha visto l\'ordine e non rischiare di inviarlo di nuovo.',
+             style='warning')
     spacer(doc, 8)
 
-    h2(doc, '4.4  Gestione ordini complessi')
+    # ── 4.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.4  Gestione note speciali e ordini builder')
+    body_para(doc, 'Gli ordini possono contenere personalizzazioni (ordini "builder") '
+              'o note scritte dal cliente. Leggile sempre prima di iniziare a preparare.')
+    spacer(doc, 4)
+
     data_table(doc,
-        ['Situazione', 'Cosa fare'],
+        ['Tipo', 'Dove appare', 'Come gestirlo'],
         [
-            ['Ordine con più piatti diversi',
-             'Prepara tutto insieme per lo stesso cliente prima di segnare "pronto"'],
-            ['Cliente ha aggiunto note speciali',
-             'Le note appaiono sotto il prodotto in corsivo — leggile sempre'],
+            ['Note testo (es. "senza glutine")',
+             'Sotto il prodotto, in corsivo',
+             'Segui l\'indicazione alla lettera — potrebbe essere un\'allergia'],
+            ['Ordine builder (personalizzato)',
+             'Card con sezione "Personalizzazioni"',
+             'Prepara ogni componente come indicato nell\'elenco opzioni'],
             ['Prodotto non disponibile',
-             'Avvisa immediatamente la cassa via interfono/telefono — la cassa gestirà il cliente'],
-            ['Ordine in ritardo',
-             'Il KDS mostra il tempo trascorso in rosso dopo 15 minuti — prioritizza'],
-            ['Schermo bloccato',
-             'Ricarica la pagina (F5). Se il problema persiste, avvisa l\'Admin'],
+             '—',
+             'Avvisa immediatamente la cassa via interfono — la cassa gestirà il cliente'],
         ],
-        col_widths=[5.0, 12.6])
+        col_widths=[4.0, 4.5, 9.1])
     spacer(doc, 8)
 
-    h2(doc, '4.5  Notifiche Telegram alla cucina')
-    body_para(doc, 'Se l\'Admin ha configurato il bot Telegram, la cucina riceve automaticamente:')
+    # ── 4.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.5  Ordini "Adesso al banco" (BANCO)')
+    body_para(doc, 'Quando il codice ordine contiene il tag BANCO (es. QL-250706-BANCO-0042), '
+              'significa che il cliente è fisicamente al bancone e l\'ordine deve essere '
+              'preparato immediatamente, senza attendere uno slot orario.')
+    spacer(doc, 4)
+
+    info_box_color(doc,
+                   'Riconosci un ordine BANCO dal codice in alto nella card: include la parola BANCO.\n'
+                   'Priorità alta: il cliente è già davanti al bancone e aspetta.',
+                   bg='FEF9E7', border=HEX_ORNG, icon='⚡')
+    spacer(doc, 8)
+
+    # ── 4.6 ──────────────────────────────────────────────────────────────────
+    h2(doc, '4.6  Notifiche Telegram cucina')
+    body_para(doc, 'Se l\'Admin ha configurato il bot Telegram per la cucina, '
+              'questi eventi generano notifiche automatiche sul gruppo cucina:')
     spacer(doc, 4)
 
     data_table(doc,
-        ['Evento', 'Notifica'],
+        ['Evento', 'Messaggio Telegram'],
         [
-            ['Nuovo ordine',              '🛒 Nuovo ordine #123 — Mario Rossi: 1x Risotto, 2x Acqua'],
-            ['Ordine urgente (ritardato)', '⚠️ Ordine #120 in attesa da 20 minuti!'],
-            ['Annullamento ordine',       '❌ Ordine #121 ANNULLATO — Mario Rossi'],
+            ['Nuovo ordine ricevuto',    '🛒 Nuovo ordine #123 — Mario Rossi: 1x Risotto, 2x Acqua'],
+            ['Ordine in attesa >15 min', '⚠️ Ordine #120 in attesa da 20 minuti — prioritizza!'],
+            ['Ordine annullato',         '❌ Ordine #121 ANNULLATO — Mario Rossi'],
         ],
         col_widths=[5.5, 12.1])
+    spacer(doc, 8)
+
+    info_box(doc, 'Le notifiche Telegram sono in aggiunta al KDS, non in sostituzione. '
+             'Tieni sempre aperto lo schermo KDS durante il servizio.', style='tip')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1113,111 +1238,101 @@ def s_cucina(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s_sala(doc):
-    h1(doc, '5', 'Sala — Gestione Tavoli e Permanenza', '🪑')
+    h1(doc, '5', 'Sala — Gestione Tavoli e Prenotazioni', '🪑')
 
     role_badge(doc, '🪑', 'Sala',
-               'Il personale sala gestisce le prenotazioni dei tavoli, il check-in dei clienti '
-               'e il monitoraggio del tempo di permanenza. Riceve avvisi Telegram quando '
-               'un tavolo sta per superare il tempo massimo consentito.',
+               'Il personale sala gestisce le prenotazioni dei tavoli, effettua il check-in '
+               'dei clienti all\'arrivo, monitora le scadenze di sessione e annulla prenotazioni '
+               'se necessario. Riceve avvisi Telegram automatici per i tavoli in scadenza.',
                HEX_TEAL)
     spacer(doc, 8)
 
-    h2(doc, '5.1  Come funzionano le fasce orarie')
-    body_para(doc, 'Il sistema di prenotazione tavoli è organizzato per FASCE ORARIE, '
-              'non per singoli slot. L\'admin crea fasce come «11:25–12:30 con 30 min a seduta»; '
-              'il sistema calcola automaticamente le sessioni disponibili: 11:25, 11:55, 12:25. '
-              'I clienti prenotano un tavolo a una sessione specifica.')
-    spacer(doc, 6)
+    # ── 5.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '5.1  Panoramica prenotazioni del giorno')
+    body_para(doc, 'La panoramica mostra tutte le prenotazioni del giorno suddivise per tavolo '
+              'e fascia oraria tramite chip colorati. Percorso: Admin → Tavoli → tab Panoramica.')
+    spacer(doc, 4)
 
-    info_box(doc, 'Gli SLOT ORDINI (tab "Slot ordini" in Admin → Tavoli) sono SEPARATI '
-             'dalle fasce orarie tavoli: regolano solo il ritiro del cibo ordinato, '
-             'non la prenotazione dei posti a sedere.',
-             style='warning')
+    step_row(doc, 1, 'Vai in Admin → Tavoli → tab Panoramica', 'Vedi tutte le fasce orarie e i tavoli del giorno corrente')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Naviga tra i giorni', 'Usa le frecce ‹ › o il selettore data per vedere un giorno diverso')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Leggi i chip colorati', 'Chip verde = tavolo libero in quella sessione; chip rosso = occupato con nome cliente')
     spacer(doc, 8)
 
-    h2(doc, '5.2  Visualizzare la panoramica del giorno')
-    step_row(doc, 1, 'Vai in Admin → Tavoli → tab Panoramica', 'Vedi tutte le fasce orarie del giorno corrente')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Naviga tra i giorni', 'Usa le frecce ‹ › o il selettore data per vedere un altro giorno')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Leggi i chip colorati', 'Verde = tavolo libero in quella sessione; rosso = occupato con il nome del cliente')
+    info_box(doc, 'Le FASCE ORARIE TAVOLI sono separate dagli SLOT ORDINI (ritiro cibo). '
+             'Un cliente può prenotare un tavolo e ordinare separatamente dal menu — '
+             'sono due azioni indipendenti.', style='info')
     spacer(doc, 8)
 
-    h2(doc, '5.3  Check-in all\'arrivo del cliente')
-    body_para(doc, 'Quando un cliente con prenotazione arriva fisicamente al locale, '
-              'registra il suo check-in per avviare il conteggio del tempo di permanenza.')
+    # ── 5.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '5.2  Check-in cliente al tavolo')
+    body_para(doc, 'Quando un cliente con prenotazione arriva fisicamente, '
+              'registra il check-in per avviare il timer di permanenza.')
     spacer(doc, 4)
 
-    step_row(doc, 1, 'Trova la prenotazione in Panoramica o nella lista', 'Cerca il cliente per nome o per orario sessione')
+    step_row(doc, 1, 'Trova la prenotazione', 'Cerca il cliente per nome o orario sessione nella Panoramica o nella lista')
     spacer(doc, 4)
     step_row(doc, 2, 'Clicca il pulsante check-in (icona porta)', 'Il sistema registra l\'orario esatto di arrivo del cliente')
     spacer(doc, 4)
-    step_row(doc, 3, 'Il timer parte', 'Accanto alla prenotazione appare l\'orario di check-in')
+    step_row(doc, 3, 'Il timer parte', 'Accanto alla prenotazione appare l\'orario di check-in e il conto alla rovescia')
     spacer(doc, 4)
-    step_row(doc, 4, 'Accompagna il cliente al tavolo prenotato', 'Il numero tavolo è visibile sulla prenotazione')
+    step_row(doc, 4, 'Accompagna il cliente al tavolo', 'Il numero tavolo è visibile sulla scheda prenotazione')
     spacer(doc, 8)
 
-    info_box(doc, 'Il check-in è fondamentale per far funzionare gli avvisi di tempo. '
-             'Senza check-in, il timer non parte e non arriverà nessuna notifica Telegram.',
+    info_box(doc, 'Il check-in è obbligatorio per far funzionare gli avvisi Telegram. '
+             'Senza check-in il timer non parte e nessuna notifica di scadenza verrà inviata.',
              style='warning')
     spacer(doc, 8)
 
-    h2(doc, '5.4  Avvisi di tempo — Notifiche Telegram')
-    body_para(doc, 'Quando un cliente è in sala da più di (durata fascia - 10 minuti), '
-              'il sistema invia un avviso Telegram al canale sala/admin.')
+    # ── 5.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '5.3  Monitoraggio scadenza sessioni')
+    body_para(doc, 'Quando un cliente è in sala da (durata fascia - 10 minuti), '
+              'il sistema invia automaticamente un avviso Telegram al canale sala.')
     spacer(doc, 4)
 
     info_box_color(doc,
                    'Esempio: Fascia 11:25–12:30 con 30 min di durata.\n'
                    'Cliente fa check-in alle 11:25.\n'
-                   'Alle 11:45 (dopo 20 min, cioè 10 min prima della scadenza) → avviso:\n'
+                   'Alle 11:45 (20 min dopo, cioè 10 min prima della scadenza) → avviso Telegram:\n'
                    '⏰ Tavolo 3 — Mario Rossi. Tempo rimasto: ~10 min.',
                    bg='FEF9E7', border=HEX_ORNG, icon='⏰')
-    spacer(doc, 8)
-
-    step_row(doc, 1, 'Ricevi la notifica Telegram', 'Arriva sul canale configurato dall\'Admin (gruppo sala/admin)')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Avvicina il cliente con discrezione', 'Informa gentilmente il cliente che presto libererà il tavolo')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Se il cliente ha ancora ordini da consumare', 'Dai priorità — non frettolizzare se ha appena ricevuto il piatto')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Chiudi la prenotazione', 'Quando il cliente lascia, segna la prenotazione come "Completata" nella lista')
-    spacer(doc, 8)
-
-    h2(doc, '5.4  Configurare le durate per slot orario')
-    body_para(doc, 'L\'Admin può impostare durate diverse per ogni fascia oraria. '
-              'Esempio: slot 12:00 = 45 minuti, slot 13:00 = 30 minuti (flusso più veloce).')
-    spacer(doc, 4)
-
-    step_row(doc, 1, 'Vai in Admin → Slot Orari', 'Menu → Fasce Orarie')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Clicca sull\'orario da modificare', 'Si apre il form di modifica')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Imposta "Durata permanenza (min)"', 'Inserisci i minuti. Metti 0 per nessun limite di tempo')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Salva', 'La nuova durata si applica alle prossime prenotazioni')
-    spacer(doc, 8)
-
-    h2(doc, '5.5  Polling avvisi tavoli')
-    body_para(doc, 'La pagina KDS può essere configurata per controllare automaticamente '
-              'ogni 60 secondi se ci sono tavoli con poco tempo rimasto. '
-              'Questo avviene tramite l\'endpoint /admin/tavoli/ping-alerts.')
-    spacer(doc, 4)
-
-    info_box(doc, 'L\'endpoint di ping-alert è già integrato nella pagina KDS. '
-             'Basta tenere aperta la pagina cucina/KDS su uno schermo — '
-             'controlla automaticamente i tavoli e invia i Telegram necessari.', style='tip')
     spacer(doc, 8)
 
     data_table(doc,
         ['Stato tavolo', 'Tempo rimasto', 'Azione sistema'],
         [
-            ['🟢 Tranquillo',   '> 15 minuti',       'Nessuna azione'],
-            ['🟡 Attenzione',   '10-15 minuti',       'Telegram avviso preparazione'],
-            ['🔴 Urgente',      '< 10 minuti',        'Telegram avviso liberazione'],
-            ['⬛ Scaduto',      '0 o negativo',       'Telegram avviso immediato + check manuale'],
+            ['🟢 Tranquillo', '> 15 minuti',  'Nessuna azione'],
+            ['🟡 Attenzione', '10–15 minuti', 'Telegram avviso preparazione liberazione'],
+            ['🔴 Urgente',    '< 10 minuti',  'Telegram avviso liberazione immediata'],
+            ['⬛ Scaduto',    '0 o negativo', 'Telegram avviso immediato + verifica manuale'],
         ],
         col_widths=[3.5, 3.5, 10.6])
+    spacer(doc, 8)
+
+    # ── 5.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '5.4  Annullamento prenotazione')
+    step_row(doc, 1, 'Trova la prenotazione da annullare', 'Admin → Tavoli → lista prenotazioni o Panoramica → cerca per nome o sessione')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Clicca "Annulla prenotazione"', 'Il pulsante è visibile nella scheda della prenotazione')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Conferma l\'annullamento', 'Il popup chiede conferma — clicca OK')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Il tavolo si libera', 'Il chip torna verde nella Panoramica e il posto è di nuovo prenotabile')
+    spacer(doc, 8)
+
+    # ── 5.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '5.5  Configurazione ping-alerts (polling automatico)')
+    body_para(doc, 'Il sistema controlla automaticamente ogni 60 secondi se ci sono tavoli '
+              'con poco tempo rimasto. Il polling avviene tramite l\'endpoint '
+              '/admin/tavoli/ping-alerts, integrato nella pagina KDS.')
+    spacer(doc, 4)
+
+    info_box(doc, 'Per ricevere gli avvisi automatici, mantieni aperta la pagina KDS '
+             '(o Admin → Tavoli) su almeno uno schermo durante il servizio. '
+             'Il polling ogni 60 secondi invia i Telegram necessari senza intervento manuale.',
+             style='tip')
+    spacer(doc, 8)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1228,136 +1343,115 @@ def s_cliente(doc):
     h1(doc, '6', 'Cliente — App e Auto-ordine', '👤')
 
     role_badge(doc, '👤', 'Cliente',
-               'Il cliente usa l\'app web per ordinare in autonomia, gestire il suo wallet, '
-               'accumulare punti fedeltà, prenotare un tavolo e votare il menu. '
-               'Non serve scaricare niente: funziona direttamente dal browser dello smartphone.',
+               'Il cliente usa l\'app web per ordinare in autonomia, gestire il wallet, '
+               'accumulare punti fedeltà, prenotare un tavolo, votare il menu e '
+               'pagare rapidamente al bancone tramite QR. '
+               'Non serve scaricare nulla: funziona dal browser dello smartphone.',
                HEX_PURPL)
     spacer(doc, 8)
 
-    h2(doc, '6.1  Registrazione e primo accesso')
+    info_box_color(doc,
+                   'DISTINZIONE IMPORTANTE:\n'
+                   '• "Adesso al banco" = il CLIENTE ordina dal menu e NON sceglie uno slot '
+                   '(ritiro immediato al bancone, cucina prepara subito)\n'
+                   '• "Paga al Banco" = lo STAFF genera un QR per una vendita rapida '
+                   '(caffè, brioche…) e il cliente lo scansiona per pagare dal wallet',
+                   bg='EBF5FB', border=HEX_NAVY, icon='ℹ️')
+    spacer(doc, 10)
+
+    # ── 6.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.1  Registrazione e accesso')
     step_row(doc, 1, 'Apri il browser sul telefono', 'Vai all\'URL del locale (es. https://pranzo.barcentrale.it)')
     spacer(doc, 4)
-    step_row(doc, 2, 'Clicca "Registrati"', 'Inserisci nome, email e scegli una password sicura')
+    step_row(doc, 2, 'Registrazione email/password', 'Clicca "Registrati": inserisci nome, email e una password sicura')
     spacer(doc, 4)
-    step_row(doc, 3, 'Accedi', 'Inserisci email e password. Il sistema ricorda il login per 30 giorni')
+    step_row(doc, 3, 'In alternativa: Google OAuth', 'Clicca "Accedi con Google" per registrarti o accedere con il tuo account Google (se l\'Admin ha configurato OAuth)')
     spacer(doc, 4)
-    step_row(doc, 4, 'Opzionale: aggiungi al telefono', 'Tocca "Aggiungi alla schermata home" nel browser per averla come app')
+    step_row(doc, 4, 'Accesso ricordato 30 giorni', 'Il sistema mantiene il login attivo per 30 giorni — non devi reinserire la password ogni volta')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Aggiungi al telefono (opzionale)', 'Nel browser tocca "Aggiungi alla schermata home" per usarla come app')
     spacer(doc, 8)
 
-    h2(doc, '6.2  Come ordinare dal menu')
+    # ── 6.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.2  Home dashboard')
+    body_para(doc, 'Dopo il login la dashboard mostra KPI personali e le azioni rapide principali.')
+    spacer(doc, 4)
+
+    data_table(doc,
+        ['Elemento dashboard', 'Descrizione'],
+        [
+            ['KPI personali',         'Saldo wallet, punti fedeltà, ultimi ordini'],
+            ['Menu',                  'Azione rapida → vai al menu del giorno'],
+            ['Builder',               'Azione rapida → crea un ordine personalizzato (testo)'],
+            ['Builder Visuale',       'Azione rapida → crea un ordine con interfaccia grafica'],
+            ['Prenota Tavolo',        'Azione rapida → scegli data, fascia oraria e tavolo'],
+            ['Paga al Banco',         'Azione rapida → apri scanner QR per pagare la sessione generata dallo staff'],
+        ],
+        col_widths=[4.5, 13.1])
+    spacer(doc, 8)
+
+    # ── 6.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.3  Flusso ordine dal menu')
     workflow_table(doc, [
         ('🍽️', 'Apri Menu', 'Sfoglia categorie'),
-        ('➕', 'Aggiungi', 'Clicca sul prodotto'),
-        ('🛒', 'Carrello', 'Rivedi ordine'),
+        ('➕', 'Aggiungi', 'Tocca prodotto → +'),
+        ('🛒', 'Carrello', 'Rivedi e scegli slot'),
         ('💳', 'Paga', 'Wallet o cassa'),
         ('⏳', 'Attendi', 'Notifica quando pronto'),
     ], accent=HEX_PURPL)
     spacer(doc, 8)
 
-    step_row(doc, 1, 'Vai in Menu', 'Dal menu laterale o dalla home, tocca "Menu"')
+    step_row(doc, 1, 'Vai in Menu', 'Dal menu laterale o dal pulsante rapido in dashboard')
     spacer(doc, 4)
-    step_row(doc, 2, 'Sfoglia per categoria', 'Primo, Secondo, Contorno, Bevande, Dolci — tocca la categoria')
+    step_row(doc, 2, 'Sfoglia per categoria', 'Primo, Secondo, Contorno, Bevande, Dolci — tocca la categoria desiderata')
     spacer(doc, 4)
-    step_row(doc, 3, 'Aggiungi al carrello', 'Tocca il prodotto → "+" per aggiungere. Ripeti per più prodotti')
+    step_row(doc, 3, 'Aggiungi prodotti al carrello', 'Tocca il prodotto → "+" per aggiungere. Ripeti per più prodotti')
     spacer(doc, 4)
     step_row(doc, 4, 'Vai al carrello', 'Tocca l\'icona carrello o vai in Ordina → Carrello')
     spacer(doc, 4)
-    step_row(doc, 5, 'Scegli come pagare', 'Se hai saldo wallet: seleziona "Wallet". Altrimenti "Paga alla cassa"')
+    step_row(doc, 5, 'Scegli lo slot di ritiro', 'Seleziona l\'orario di ritiro disponibile (slot configurati dall\'Admin)')
     spacer(doc, 4)
-    step_row(doc, 6, 'Conferma l\'ordine', 'Tocca "Invia ordine". Ricevi conferma e numero ordine')
+    step_row(doc, 6, 'Scegli come pagare', 'Se hai saldo wallet: seleziona "Wallet". Altrimenti "Paga alla cassa" al ritiro')
     spacer(doc, 4)
-    step_row(doc, 7, 'Attendi la notifica', 'Telegram (se hai collegato il bot) o controlla "I miei ordini" nell\'app')
+    step_row(doc, 7, 'Conferma e ricevi numero ordine', 'Tocca "Invia ordine". Ricevi conferma con numero ordine')
     spacer(doc, 8)
 
-    info_box(doc, 'Per il pagamento con wallet, devi avere saldo sufficiente. '
-             'Chiedi al cassiere di ricaricare il wallet o fallo tramite il tuo profilo (se disponibile il pagamento online).',
-             style='tip')
-    spacer(doc, 8)
-
-    h2(doc, '6.3  Wallet e punti fedeltà')
-    body_para(doc, 'Il wallet è il tuo portafoglio digitale nel locale. '
-              'Puoi caricare credito in anticipo e pagare più velocemente. '
-              'Ogni acquisto con wallet accumula punti fedeltà.')
-    spacer(doc, 4)
-
-    data_table(doc,
-        ['Funzione', 'Come si usa', 'Vantaggi'],
-        [
-            ['Saldo wallet',         'Wallet & Fedeltà → Saldo attuale',  'Pagamenti rapidi senza contanti'],
-            ['Storico transazioni',  'Wallet & Fedeltà → Movimenti',       'Tieni traccia di ogni spesa'],
-            ['Punti fedeltà',        'Wallet & Fedeltà → I tuoi punti',    'Accumula e ottieni premi'],
-            ['Ricarica wallet',      'Chiedi al cassiere o online',         'Ricarica per importi multipli'],
-        ],
-        col_widths=[4.0, 6.5, 7.1])
-    spacer(doc, 8)
-
-    h2(doc, '6.4  Prenotare un tavolo')
-    step_row(doc, 1, 'Vai in Tavoli → Prenota Tavolo', 'Dal menu laterale')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Scegli la data e lo slot orario', 'Sono mostrati solo gli slot con posti disponibili')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Indica il numero di persone', 'Inserisci quante persone siete')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Conferma prenotazione', 'Ricevi un codice di prenotazione e una notifica Telegram')
-    spacer(doc, 4)
-    step_row(doc, 5, 'All\'arrivo al locale', 'Mostra il codice alla sala o dichiara il tuo nome per il check-in')
-    spacer(doc, 8)
-
-    h2(doc, '6.5  Votare il menu (sondaggio)')
-    body_para(doc, 'Il locale può aprire sondaggi per sapere cosa vorresti nel menu. '
-              'La tua opinione influenza le scelte dell\'Admin!')
-    spacer(doc, 4)
-
-    step_row(doc, 1, 'Vai in "Vota il Menu"', 'Dal menu laterale cliente')
-    spacer(doc, 4)
-    step_row(doc, 2, 'Vedi i sondaggi aperti', 'Ogni sondaggio ha una domanda e più opzioni di risposta')
-    spacer(doc, 4)
-    step_row(doc, 3, 'Esprimi la tua preferenza', 'Clicca sull\'opzione preferita e conferma')
-    spacer(doc, 4)
-    step_row(doc, 4, 'Visualizza i risultati', 'Dopo il voto puoi vedere come stanno andando le preferenze')
-    spacer(doc, 8)
-
-    h2(doc, '6.6  I miei ordini — storico')
-    body_para(doc, 'Trovi tutto lo storico dei tuoi ordini in Ordina → I Miei Ordini. '
-              'Per ogni ordine puoi vedere: data, prodotti, importo pagato, stato.')
-    spacer(doc, 4)
-
-    info_box(doc, 'Se un ordine non è arrivato o c\'è un errore, '
-             'mostra al cassiere il numero ordine visibile in "I miei ordini". '
-             'Il numero ordine permette al cassiere di trovare e correggere il problema in pochi secondi.',
-             style='tip')
-    spacer(doc, 10)
-
-    h2(doc, '6.7  Adesso al banco — ordine senza slot')
-    body_para(doc, 'Se sei fisicamente al bancone e vuoi che il tuo ordine venga preparato subito, '
-              'scegli "Adesso al banco" nel carrello invece di uno slot di ritiro.')
+    # ── 6.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.4  "Adesso al banco" nel carrello')
+    body_para(doc, 'Se sei fisicamente al bancone e vuoi che il tuo ordine venga preparato SUBITO, '
+              'scegli "Adesso al banco" nel carrello invece di uno slot orario. '
+              'La cucina prepara l\'ordine immediatamente.')
     spacer(doc, 6)
 
-    step_row(doc, 1, 'Aggiungi prodotti al carrello', 'Componi l\'ordine normalmente dal menu')
+    step_row(doc, 1, 'Componi l\'ordine dal menu', 'Aggiungi i prodotti al carrello normalmente')
     spacer(doc, 4)
-    step_row(doc, 2, 'Vai al carrello', 'Tocca l\'icona carrello o vai in Ordina → Carrello')
+    step_row(doc, 2, 'Vai al carrello', 'Tocca l\'icona carrello o Ordina → Carrello')
     spacer(doc, 4)
-    step_row(doc, 3, 'Seleziona "Adesso al banco"', 'Prima delle opzioni di slot, trovi un\'opzione radio "Adesso al banco" — selezionala')
+    step_row(doc, 3, 'Seleziona "Adesso al banco"', 'Nella sezione slot, trovi come prima opzione "Adesso al banco" — selezionala (nessuno slot richiesto)')
     spacer(doc, 4)
-    step_row(doc, 4, 'Conferma l\'ordine', 'Il tuo ordine viene inviato in cucina immediatamente, senza prenotare uno slot orario')
+    step_row(doc, 4, 'Conferma l\'ordine', 'L\'ordine viene inviato in cucina immediatamente con tag BANCO nel codice')
     spacer(doc, 6)
 
     info_box_color(doc,
-                   'Il codice ordine generato con questa modalità include il tag BANCO: '
-                   'QuickLunch-AAMMGG-BANCO-NNNN. Mostralo allo staff per il ritiro.',
+                   'Il codice ordine generato con "Adesso al banco" include il tag BANCO:\n'
+                   'QL-AAMMGG-BANCO-NNNN\n'
+                   'Mostralo allo staff al bancone per il ritiro immediato.',
                    bg='EBF5FB', border=HEX_TEAL, icon='ℹ️')
     spacer(doc, 10)
 
-    h2(doc, '6.8  Paga al Banco — scanner QR')
-    body_para(doc, 'Quando sei al bancone e lo staff ti mostra un QR generato dal Banco POS, '
-              'puoi pagarlo direttamente dall\'app senza contanti e senza usare il wallet.')
+    # ── 6.5 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.5  "Paga al Banco" — scanner QR')
+    body_para(doc, 'Quando lo STAFF al bancone genera un QR per una vendita rapida '
+              '(caffè, brioche, ecc.), il cliente lo scansiona dalla sua dashboard '
+              'per pagare istantaneamente dal wallet. '
+              'Il cliente NON deve ordinare nulla: è lo staff che ha composto il carrello.')
     spacer(doc, 6)
 
-    step_row(doc, 1, 'Vai nella tua Dashboard', 'Dalla home o dal menu laterale')
+    step_row(doc, 1, 'Vai nella tua Dashboard', 'Dalla home o dal menu laterale dell\'app')
     spacer(doc, 4)
-    step_row(doc, 2, 'Tocca "Paga al Banco"', 'Il pulsante si trova nella dashboard principale del cliente')
+    step_row(doc, 2, 'Tocca "Paga al Banco"', 'Il pulsante si trova nelle azioni rapide della dashboard')
     spacer(doc, 4)
-    step_row(doc, 3, 'Autorizza la fotocamera', 'Alla prima apertura il browser chiede il permesso per usare la fotocamera — consenti')
+    step_row(doc, 3, 'Autorizza la fotocamera', 'Alla prima apertura il browser chiede il permesso — consenti')
     spacer(doc, 4)
     step_row(doc, 4, 'Inquadra il QR dello staff', 'Punta la fotocamera sul QR mostrato dallo staff al bancone')
     spacer(doc, 4)
@@ -1367,7 +1461,39 @@ def s_cliente(doc):
     spacer(doc, 8)
 
     info_box(doc, 'Il QR generato dallo staff ha una validità di 10 minuti. '
-             'Se scade prima che tu riesca a scansionarlo, chiedi allo staff di generarne uno nuovo.', style='warning')
+             'Se scade prima della scansione, chiedi allo staff di generarne uno nuovo.', style='warning')
+    spacer(doc, 8)
+
+    # ── 6.6 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.6  Prenotazione tavolo')
+    step_row(doc, 1, 'Vai in Tavoli → Prenota Tavolo', 'Dal menu laterale o dal pulsante rapido in dashboard')
+    spacer(doc, 4)
+    step_row(doc, 2, 'Scegli la data e la fascia oraria', 'Sono mostrate solo le fasce con posti disponibili')
+    spacer(doc, 4)
+    step_row(doc, 3, 'Seleziona il tavolo', 'Scegli tra i tavoli liberi nella fascia prescelta')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Conferma prenotazione', 'Ricevi codice prenotazione e notifica Telegram di conferma')
+    spacer(doc, 4)
+    step_row(doc, 5, 'All\'arrivo al locale', 'Dichiara il tuo nome al personale sala per il check-in')
+    spacer(doc, 8)
+
+    # ── 6.7 ──────────────────────────────────────────────────────────────────
+    h2(doc, '6.7  Wallet e punti fedeltà')
+    body_para(doc, 'Il wallet è il portafoglio digitale nel locale. '
+              'Ogni acquisto con wallet accumula punti fedeltà. '
+              'Sezione: Wallet & Fedeltà nel menu laterale.')
+    spacer(doc, 4)
+
+    data_table(doc,
+        ['Funzione', 'Come si usa', 'Nota'],
+        [
+            ['Saldo wallet',        'Wallet & Fedeltà → Saldo attuale',  'Pagamenti rapidi senza contanti'],
+            ['Storico transazioni', 'Wallet & Fedeltà → Movimenti',       'Ogni spesa tracciata con data e importo'],
+            ['Punti fedeltà',       'Wallet & Fedeltà → I tuoi punti',    'Accumulati ad ogni acquisto wallet'],
+            ['Ricarica wallet',     'Chiedi al cassiere al bancone',       'Il cassiere aggiorna il saldo in tempo reale'],
+        ],
+        col_widths=[4.0, 6.5, 7.1])
+    spacer(doc, 8)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1386,114 +1512,138 @@ def s_dipendente(doc):
 
     info_box_color(doc,
                    'Come funziona in breve:\n'
-                   '1. L\'amministratore del locale crea ogni mattina il "pasto del giorno" per la tua azienda\n'
+                   '1. L\'Admin crea ogni mattina il "pasto del giorno" per la tua azienda\n'
                    '2. Tu lo prenoti scegliendo uno slot orario\n'
                    '3. Arrivi al locale nello slot scelto e ritiri il pasto\n'
                    '4. Non paghi nulla: paga direttamente la tua azienda a fine mese',
                    bg='EBF5FB', border=HEX_TEAL, icon='🏭')
     spacer(doc, 10)
 
-    h2(doc, '7.1  Primo accesso come dipendente aziendale')
-    step_row(doc, 1, 'Registrati come cliente normale', 'Vai all\'URL del locale, clicca "Registrati" e crea il tuo account')
+    # ── 7.1 ──────────────────────────────────────────────────────────────────
+    h2(doc, '7.1  Accesso (stesse credenziali cliente)')
+    body_para(doc, 'Il dipendente aziendale usa le stesse credenziali di un normale cliente. '
+              'Non esiste un\'app separata. La sezione "Pasto Aziendale" appare nel menu laterale '
+              'solo dopo che l\'Admin ti ha associato alla convenzione aziendale.')
     spacer(doc, 4)
-    step_row(doc, 2, 'Comunica il tuo username all\'Admin', 'L\'Admin deve associarti alla tua azienda. Invia il tuo username o email')
+
+    step_row(doc, 1, 'Registrati come cliente normale', 'Vai all\'URL del locale, clicca "Registrati" e crea il tuo account email/password')
     spacer(doc, 4)
-    step_row(doc, 3, 'Attendi l\'associazione', 'L\'Admin ti aggiunge alla convenzione aziendale. Di solito avviene entro poche ore')
+    step_row(doc, 2, 'Comunica la tua email all\'Admin', 'L\'Admin deve associarti alla convenzione aziendale — invia email o username')
     spacer(doc, 4)
-    step_row(doc, 4, 'Comparirà "Pasto Aziendale" nel menu', 'La voce appare nel menu laterale solo per i dipendenti convenzionati')
+    step_row(doc, 3, 'Attendi l\'associazione', 'L\'Admin ti aggiunge alla convenzione. Di solito avviene entro poche ore')
+    spacer(doc, 4)
+    step_row(doc, 4, 'Comparirà "Pasto Aziendale"', 'La voce appare nel menu laterale solo per i dipendenti convenzionati')
     spacer(doc, 8)
 
-    h2(doc, '7.2  Prenotare il pasto del giorno')
+    # ── 7.2 ──────────────────────────────────────────────────────────────────
+    h2(doc, '7.2  Prenotazione pasto fisso convenzionato — 6 step')
     workflow_table(doc, [
         ('📱', 'Apri app', 'Accedi con le tue credenziali'),
         ('🍽️', 'Pasto Aziendale', 'Menu laterale → Pasto Aziendale'),
-        ('👁️', 'Vedi menu', 'Il pasto di oggi è già pronto'),
-        ('🕐', 'Scegli slot', 'Seleziona l\'orario che preferisci'),
+        ('👁️', 'Vedi menu', 'Leggi pasto, allergeni, posti'),
+        ('🕐', 'Scegli slot', 'Seleziona l\'orario di ritiro'),
         ('✅', 'Prenota', 'Conferma la prenotazione'),
+        ('🏃', 'Ritira', 'Presentati allo slot scelto'),
     ], accent=HEX_TEAL)
     spacer(doc, 8)
 
-    step_row(doc, 1, 'Vai in "Pasto Aziendale"', 'Menu laterale dell\'app → icona edificio viola "Pasto Aziendale"')
+    step_row(doc, 1, 'Vai in "Pasto Aziendale"', 'Menu laterale → icona edificio "Pasto Aziendale"')
     spacer(doc, 4)
-    step_row(doc, 2, 'Leggi il pasto del giorno', 'Trovi il nome del piatto, la descrizione e gli eventuali allergeni')
+    step_row(doc, 2, 'Leggi il pasto del giorno', 'Nome, descrizione, composizione (primo/secondo/contorno) e allergeni')
     spacer(doc, 4)
-    step_row(doc, 3, 'Controlla i posti rimasti', 'In alto a destra della scheda compare "X posti rimasti". Se è 0, posti esauriti')
+    step_row(doc, 3, 'Controlla i posti rimasti', 'Badge in alto: verde >50%, giallo 20–50%, rosso <20%. Se è 0, posti esauriti.')
     spacer(doc, 4)
-    step_row(doc, 4, 'Scegli lo slot orario', 'Dal menu a tendina seleziona quando vuoi venire a ritirare il pasto')
+    step_row(doc, 4, 'Scegli lo slot orario', 'Dal menu a tendina seleziona l\'orario di ritiro desiderato')
     spacer(doc, 4)
-    step_row(doc, 5, 'Clicca "Prenota il mio pasto"', 'La prenotazione è confermata. Ricevi una notifica Telegram con il riepilogo')
+    step_row(doc, 5, 'Clicca "Prenota il mio pasto"', 'Prenotazione confermata. Ricevi notifica Telegram con riepilogo.')
     spacer(doc, 4)
-    step_row(doc, 6, 'Arriva al locale', 'Presentati nello slot scelto. Dichiara il tuo nome — il cassiere trova la tua prenotazione')
+    step_row(doc, 6, 'Arriva al locale nello slot scelto', 'Dichiara il tuo nome — il cassiere trova la prenotazione e segna "Consumato"')
     spacer(doc, 8)
 
-    info_box(doc, 'Puoi prenotare una sola volta al giorno. '
-             'Se vuoi cambiare orario, annulla la prenotazione e rifalla scegliendo un altro slot. '
-             'Puoi annullare fino a un\'ora prima dello slot scelto.', style='tip')
+    # ── 7.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, '7.3  Annullamento prenotazione')
+
+    info_box(doc,
+             'REGOLA DI ANNULLAMENTO: puoi annullare solo se mancano PIU\' DI 30 MINUTI '
+             'all\'orario dello slot prenotato. '
+             'Il pulsante "Annulla prenotazione" sparisce automaticamente '
+             'quando rimangono 30 minuti o meno allo slot.',
+             style='warning', label='LIMITE 30 MINUTI')
     spacer(doc, 8)
 
-    h2(doc, '7.3  Annullare una prenotazione')
-    step_row(doc, 1, 'Vai in "Pasto Aziendale"', 'La tua prenotazione attiva è mostrata con un badge verde')
+    step_row(doc, 1, 'Vai in "Pasto Aziendale"', 'La tua prenotazione attiva è mostrata con badge verde "Prenotato"')
     spacer(doc, 4)
-    step_row(doc, 2, 'Clicca "Annulla prenotazione"', 'Bottone rosso sotto la scheda prenotazione')
+    step_row(doc, 2, 'Verifica che manchino >30 minuti allo slot', 'Se mancano 30 minuti o meno il pulsante non è visibile — annullamento non consentito')
     spacer(doc, 4)
-    step_row(doc, 3, 'Conferma l\'annullamento', 'Un popup chiede conferma — clicca OK')
+    step_row(doc, 3, 'Clicca "Annulla prenotazione"', 'Pulsante rosso sotto la scheda prenotazione — visibile solo se il termine non è scaduto')
     spacer(doc, 4)
-    step_row(doc, 4, 'Il posto si libera', 'Il posto torna disponibile per un altro collega')
+    step_row(doc, 4, 'Conferma l\'annullamento', 'Il popup chiede conferma — clicca OK')
+    spacer(doc, 4)
+    step_row(doc, 5, 'Il posto si libera', 'Il posto torna disponibile per un collega. Puoi riprenotare scegliendo un altro slot.')
     spacer(doc, 8)
 
-    h2(doc, '7.4  Cosa vedere nella schermata Pasto Aziendale')
+    # ── 7.4 ──────────────────────────────────────────────────────────────────
+    h2(doc, '7.4  Lettura interfaccia Pasto Aziendale')
     data_table(doc,
         ['Elemento', 'Significato'],
         [
-            ['Nome azienda (in alto)',      'Conferma che sei associato alla convenzione corretta'],
-            ['Banner del pasto',             'Il nome e la descrizione del pasto di oggi'],
-            ['Badge posti rimasti',          'Verde = disponibile, Giallo = quasi esaurito, Rosso = esaurito'],
-            ['Badge stato prenotazione',     'Verde "Prenotato", Arancio "Consumato", Grigio "Annullato"'],
-            ['Slot orario prenotato',        'L\'orario che hai scelto — ricordati di rispettarlo'],
-            ['"Nessun pasto disponibile"',   'L\'Admin non ha ancora pubblicato il menu oggi — ricontrolla più tardi'],
+            ['Nome azienda (in alto)',     'Conferma che sei associato alla convenzione corretta'],
+            ['Banner del pasto',            'Nome, descrizione e composizione del pasto di oggi'],
+            ['Badge posti rimasti (verde)', '>50% posti disponibili — prenotazione sicura'],
+            ['Badge posti rimasti (giallo)', '20–50% posti rimasti — prenota presto'],
+            ['Badge posti rimasti (rosso)', '<20% posti rimasti — ultimi posti disponibili'],
+            ['Badge stato prenotazione',    'Verde = Prenotato, Arancio = Consumato, Grigio = Annullato'],
+            ['Slot orario prenotato',       'L\'orario scelto — rispettalo o annulla con >30 min di anticipo'],
+            ['"Nessun pasto disponibile"',  'L\'Admin non ha ancora pubblicato il menu oggi — ricontrolla più tardi'],
         ],
         col_widths=[5.0, 12.6])
     spacer(doc, 8)
 
-    info_box(doc, 'Se non vedi "Pasto Aziendale" nel menu, significa che non sei ancora '
-             'associato a nessuna convenzione. Contatta l\'amministratore del locale '
-             'per farti aggiungere.', style='warning')
+    info_box(doc, 'Se non vedi "Pasto Aziendale" nel menu, non sei ancora associato '
+             'a nessuna convenzione. Contatta l\'Admin del locale per farti aggiungere.',
+             style='warning')
     spacer(doc, 8)
 
+    # ── 7.5 ──────────────────────────────────────────────────────────────────
     h2(doc, '7.5  FAQ Dipendente Aziendale')
     data_table(doc,
         ['Domanda', 'Risposta'],
         [
-            ['Posso ordinare anche dal menu normale?',
-             'Sì, il pasto aziendale è aggiuntivo. Puoi comunque usare il menu standard e pagare normalmente.'],
+            ['Posso usare anche il menu normale?',
+             'Sì, il pasto aziendale è aggiuntivo. Puoi ordinare anche dal menu standard e pagare normalmente.'],
             ['Cosa succede se non mi presento?',
-             'La prenotazione rimane come "prenotata". Nessuna penale, ma il posto è andato perso.'],
+             'La prenotazione resta come "prenotata". Nessuna penale automatica, ma il posto è andato perso.'],
             ['Il prezzo varia ogni giorno?',
-             'No, il prezzo è fisso per contratto. Può cambiare solo se l\'azienda rinnova la convenzione.'],
-            ['Posso prenotare per un collega?',
-             'No, ogni dipendente prenota solo per sé stesso. Ogni account è personale.'],
+             'No, il prezzo è fisso per contratto. Cambia solo se l\'azienda rinnova la convenzione.'],
+            ['Posso annullare anche all\'ultimo momento?',
+             'No: puoi annullare SOLO se mancano PIU\' DI 30 MINUTI allo slot. '
+             'Il pulsante sparisce automaticamente entro i 30 minuti.'],
             ['Ho dimenticato la password',
              'Clicca "Password dimenticata?" nella pagina di login oppure contatta l\'Admin del locale.'],
         ],
-        col_widths=[6.2, 11.4])
+        col_widths=[5.8, 11.8])
+    spacer(doc, 8)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# APPENDICE — Riepilogo ruoli e permessi
+# APPENDICE
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s_appendice(doc):
-    h1(doc, 'A', 'Appendice — Riepilogo Ruoli e Flussi', '📎')
+    h1(doc, 'A', 'Appendice — Permessi, Flussi e Account di Test', '📎')
 
+    # ── A.1 ──────────────────────────────────────────────────────────────────
     h2(doc, 'A.1  Matrice permessi per ruolo')
     data_table(doc,
         ['Funzione', '👑\nSuper', '🏢\nAdmin', '💳\nCassa', '🍳\nKDS', '🪑\nSala', '👤\nCliente', '🏭\nDip.'],
         [
             ['Login area Admin',         '✅', '✅', '✅', '✅', '✅', '❌', '❌'],
-            ['Gestione prodotti menu',   '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
+            ['Gestione prodotti/menu',   '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
             ['Creazione ordini',         '✅', '✅', '✅', '❌', '❌', '✅', '❌'],
             ['Incasso pagamenti',        '✅', '✅', '✅', '❌', '❌', '❌', '❌'],
-            ['Stato ordine (KDS)',        '✅', '✅', '❌', '✅', '❌', '❌', '❌'],
+            ['Banco POS (genera QR)',    '✅', '✅', '✅', '❌', '❌', '❌', '❌'],
+            ['Paga al Banco (scan QR)',  '❌', '❌', '❌', '❌', '❌', '✅', '✅'],
+            ['Stato ordine (KDS)',       '✅', '✅', '❌', '✅', '❌', '❌', '❌'],
             ['Prenotazioni tavoli',      '✅', '✅', '❌', '❌', '✅', '✅', '❌'],
             ['Check-in tavolo',          '✅', '✅', '❌', '❌', '✅', '❌', '❌'],
             ['Wallet clienti',           '✅', '✅', '✅', '❌', '❌', '✅', '❌'],
@@ -1501,40 +1651,44 @@ def s_appendice(doc):
             ['Convenzioni aziendali',    '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
             ['Pasto aziendale fisso',    '✅', '✅', '❌', '❌', '❌', '❌', '✅'],
             ['Report e statistiche',     '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
-            ['Voto menu (sondaggio)',     '❌', '✅', '❌', '❌', '❌', '✅', '❌'],
-            ['Banco POS (genera QR)',     '✅', '✅', '✅', '❌', '❌', '❌', '❌'],
-            ['Paga al Banco (scan QR)',   '❌', '❌', '❌', '❌', '❌', '✅', '✅'],
+            ['Sondaggi (crea/chiudi)',   '✅', '✅', '❌', '❌', '❌', '❌', '❌'],
+            ['Voto menu (sondaggio)',    '❌', '✅', '❌', '❌', '❌', '✅', '❌'],
         ],
         col_widths=[5.0, 1.8, 1.8, 1.8, 1.8, 1.8, 2.0, 2.6])
     spacer(doc, 10)
 
+    # ── A.2 ──────────────────────────────────────────────────────────────────
     h2(doc, 'A.2  Flusso giornaliero tipo — bar/mensa')
     workflow_table(doc, [
-        ('🌅', 'Apertura', 'Admin: crea pasto aziendale, verifica stock'),
+        ('🌅', 'Apertura', 'Admin: stock, pasto aziendale, slot ordini'),
         ('💳', 'Pre-pranzo', 'Cassa: ordini walk-in, ricariche wallet'),
-        ('🍳', 'Servizio', 'KDS: gestisce ordini, sala: check-in tavoli'),
+        ('🍳', 'Servizio', 'KDS: gestione ordini; sala: check-in tavoli'),
         ('⏰', 'Avvisi', 'Telegram: tavoli in scadenza, stock basso'),
-        ('📊', 'Chiusura', 'Admin: report giornaliero, aggiorna stock'),
+        ('📊', 'Chiusura', 'Admin: report 30 gg, aggiorna stock'),
     ])
     spacer(doc, 10)
 
-    h2(doc, 'A.3  Contatti e supporto')
-    body_para(doc, 'Per problemi tecnici o richieste di assistenza, contatta il supporto QuickLunch:')
+    # ── A.3 ──────────────────────────────────────────────────────────────────
+    h2(doc, 'A.3  Account di test (seed-demo)')
+    body_para(doc, 'Dopo l\'esecuzione di "flask seed-demo" sono disponibili questi account preconfigurati:')
     spacer(doc, 4)
 
     data_table(doc,
-        ['Canale', 'Quando usarlo', 'Tempo risposta'],
+        ['Email', 'Password', 'Ruolo', 'Note'],
         [
-            ['Email supporto',    'Bug, richieste funzionalità, account bloccati', '24 ore lavorative'],
-            ['Admin del locale',  'Password dimenticata, errori ordini, wallet',   'Immediato (di persona)'],
-            ['Telegram bot',      'Notifiche automatiche — non risponde',           'N/A'],
+            ['admin@bar.local',    'admin123',    'Super Admin',  'Accesso completo a tutti i tenant'],
+            ['banco@bar.local',    'Banco2024!',  'Cassiere',     'Pannello ordini + Banco POS'],
+            ['cucina@bar.local',   'Cucina2024!', 'Cuoco',        'Schermata KDS, stati ordine'],
+            ['sala@bar.local',     'Sala2024!',   'Manager Sala', 'Prenotazioni tavoli, check-in'],
+            ['cliente1@bar.local', 'Cliente1!',   'Cliente',      'Wallet: 30 €, 50 punti fedeltà'],
+            ['cliente2@bar.local', 'Cliente2!',   'Cliente',      'Wallet: 15 €, dipendente ACME'],
         ],
-        col_widths=[4.0, 8.5, 5.1])
+        col_widths=[4.5, 3.2, 3.5, 6.4])
     spacer(doc, 8)
 
-    info_box(doc, 'Per qualsiasi problema operativo durante il servizio, il primo contatto '
-             'deve sempre essere l\'Admin Tenant del proprio locale. '
-             'Solo per problemi tecnici gravi si escalate al supporto centrale.', style='tip')
+    info_box(doc, 'Non usare gli account di test in produzione. '
+             'Cambia subito le password predefinite dopo il primo avvio in ambiente reale.',
+             style='warning')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1579,6 +1733,7 @@ def main():
 
     doc.save(OUT)
     print(f'OK  Guida utente salvata in: {OUT}')
+    print(f'    Sezioni: Super Admin · Admin Tenant · Cassiere · Cucina/KDS · Sala · Cliente · Dipendente · Appendice')
 
 
 if __name__ == '__main__':
