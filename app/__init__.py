@@ -733,6 +733,13 @@ def _seed_defaults():
 
     # ── Impostazioni di default ────────────────────────────────────────────
     default_settings = [
+        # Anagrafica azienda gestore
+        ('company_name',    '',  'Ragione sociale'),
+        ('company_address', '',  'Indirizzo'),
+        ('company_city',    '',  'Città'),
+        ('company_vat',     '',  'Partita IVA'),
+        ('company_phone',   '',  'Telefono'),
+        ('company_email',   '',  'Email'),
         # Notifiche
         ('telegram_bot_token',     '',      'Token Bot Telegram'),
         ('telegram_chat_id',       '',      'Chat ID canale Telegram'),

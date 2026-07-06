@@ -1314,6 +1314,8 @@ def role_delete(rid):
 @require_permission('manage_settings')
 def settings():
     all_keys = [
+        'company_name', 'company_address', 'company_city',
+        'company_vat', 'company_phone', 'company_email',
         'telegram_bot_token', 'telegram_chat_id',
         'gmail_user', 'gmail_app_password',
         'registration_bonus',
@@ -2291,7 +2293,36 @@ def convenzione_report_docx(cid):
 
     doc = Document()
 
+    _co_name    = get_setting('company_name')    or ''
+    _co_address = get_setting('company_address') or ''
+    _co_city    = get_setting('company_city')    or ''
+    _co_vat     = get_setting('company_vat')     or ''
+    _co_phone   = get_setting('company_phone')   or ''
+    _co_email   = get_setting('company_email')   or ''
+
     # ── Intestazione ─────────────────────────────────────────────────────────
+    if _co_name:
+        co_p = doc.add_paragraph()
+        co_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_co = co_p.add_run(_co_name)
+        r_co.font.name = 'PT Sans Narrow'
+        r_co.font.size = Pt(11)
+        r_co.bold = True
+        co_details = []
+        if _co_address:  co_details.append(_co_address)
+        if _co_city:     co_details.append(_co_city)
+        if _co_vat:      co_details.append(f'P.IVA {_co_vat}')
+        if _co_phone:    co_details.append(_co_phone)
+        if _co_email:    co_details.append(_co_email)
+        if co_details:
+            co_d = doc.add_paragraph()
+            co_d.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r_d = co_d.add_run('  |  '.join(co_details))
+            r_d.font.name = 'PT Sans Narrow'
+            r_d.font.size = Pt(9)
+            r_d.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+        doc.add_paragraph()
+
     title = doc.add_heading('Lista Pasti Aziendali', 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
@@ -2430,6 +2461,13 @@ def convenzioni_abstract_docx():
         pBdr.append(bot)
         pPr.append(pBdr)
 
+    _co_name    = get_setting('company_name')    or ''
+    _co_address = get_setting('company_address') or ''
+    _co_city    = get_setting('company_city')    or ''
+    _co_vat     = get_setting('company_vat')     or ''
+    _co_phone   = get_setting('company_phone')   or ''
+    _co_email   = get_setting('company_email')   or ''
+
     doc = Document()
     for section in doc.sections:
         section.top_margin    = Inches(1.0)
@@ -2459,6 +2497,23 @@ def convenzioni_abstract_docx():
     datp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = datp.add_run(_it_mese_anno(_dt.now()))
     r.font.name = FONT; r.font.size = Pt(12); r.font.color.rgb = _rgb(GRAY)
+    if _co_name:
+        doc.add_paragraph()
+        cop = doc.add_paragraph()
+        cop.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = cop.add_run(_co_name)
+        r.font.name = FONT; r.font.size = Pt(12); r.bold = True
+        co_details = []
+        if _co_address:  co_details.append(_co_address)
+        if _co_city:     co_details.append(_co_city)
+        if _co_vat:      co_details.append(f'P.IVA {_co_vat}')
+        if _co_phone:    co_details.append(_co_phone)
+        if _co_email:    co_details.append(_co_email)
+        if co_details:
+            co_dp = doc.add_paragraph()
+            co_dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = co_dp.add_run('  |  '.join(co_details))
+            r.font.name = FONT; r.font.size = Pt(10); r.font.color.rgb = _rgb(GRAY)
     doc.add_page_break()
 
     # ── 1. Introduzione ───────────────────────────────────────────────────────
