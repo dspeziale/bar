@@ -413,10 +413,10 @@
                      background:linear-gradient(135deg,#e94560,#0f3460);
                      display:inline-flex;align-items:center;justify-content:center;
                      color:#fff;font-weight:700;font-size:.78rem;flex-shrink:0;">
-          {{ current_user.email[0]|upper }}
+          {{ current_user.full_name[0]|upper }}
         </span>
         <span class="d-none d-md-inline" style="font-size:.88rem;font-weight:600;color:var(--QuickLunch-nav-text,#3d4a5c);">
-          {{ current_user.email }}
+          {{ current_user.full_name }}
           {% if current_user.is_admin %}
           <span class="badge badge-danger ml-1" style="font-size:.6rem;vertical-align:middle;">Admin</span>
           {% elif current_user.roles %}
@@ -426,8 +426,13 @@
       </li>
       {% endif %}
       <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('auth.logout') }}" title="Esci">
+        <a class="nav-link d-flex align-items-center" href="{{ url_for('auth.logout') }}" title="Esci" style="gap:.4rem;">
+          {% if current_user.is_authenticated and current_user.avatar_url %}
+          <img src="{{ current_user.avatar_url }}" alt=""
+               style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          {% else %}
           <i class="fas fa-sign-out-alt"></i>
+          {% endif %}
           <span class="d-none d-md-inline ml-1">Esci</span>
         </a>
       </li>
