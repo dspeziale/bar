@@ -2493,41 +2493,132 @@ def convenzioni_abstract_docx():
     _bullet(doc, 'Riceve facoltativamente notifiche Telegram di conferma e reminder.')
     doc.add_paragraph()
 
-    # ── 3. Flusso ─────────────────────────────────────────────────────────────
-    _heading(doc, '3. Flusso operativo giornaliero')
+    # ── 3. Ciclo completo ─────────────────────────────────────────────────────
+    _heading(doc, '3. Ciclo completo: dalla prenotazione alla consegna')
     _divider(doc)
-    _heading(doc, '3.1  Lato amministratore (bar)', 2, color=DARK)
-    _step(doc, 1, 'Pubblicazione menu:',
-          "ogni mattina si inserisce il menu del giorno: nome pasto, portate "
-          "(primo, secondo, contorno, bevanda, caffè), prezzo e coperti massimi. "
-          "È possibile creare più opzioni pasto per la stessa giornata.")
-    _step(doc, 2, 'Monitoraggio prenotazioni:',
-          "durante la mattinata si verifica in tempo reale il numero di prenotazioni "
-          "ricevute e i nominativi dal Report Giornaliero.")
-    _step(doc, 3, 'Servizio pasti:',
-          "al momento della distribuzione, lo staff spunta ogni prenotazione come "
-          "Consumato dall'interfaccia, tracciando le presenze effettive.")
-    _step(doc, 4, 'Report e riconciliazione:',
-          "a fine servizio il report giornaliero è scaricabile in formato Word (.docx) "
-          "per la riconciliazione contabile con l'azienda.")
-    doc.add_paragraph()
-    _heading(doc, '3.2  Lato dipendente', 2, color=DARK)
-    _step(doc, 1, 'Accesso:',
-          "il dipendente apre l'applicazione da browser (PC, tablet, smartphone) "
-          "e accede con le proprie credenziali.")
-    _step(doc, 2, 'Prenotazione:',
-          "dalla sezione Pasto Aziendale visualizza il menu del giorno, seleziona "
-          "l'opzione desiderata, sceglie l'orario di ritiro (se configurato) e conferma.")
-    _step(doc, 3, 'Conferma:',
-          "la prenotazione viene registrata immediatamente con conferma a schermo "
-          "e notifica Telegram opzionale.")
-    _step(doc, 4, 'Annullamento:',
-          "il dipendente può annullare la propria prenotazione finché il pasto "
-          "non è stato segnato come consumato.")
+    _body(doc,
+        "Il ciclo di vita di ogni pasto aziendale si articola in cinque fasi distinte: "
+        "pubblicazione del menu, prenotazione da parte del dipendente, generazione del codice "
+        "di ritiro, consegna al banco e riconciliazione. Di seguito il dettaglio di ciascuna fase.")
     doc.add_paragraph()
 
-    # ── 4. Configurazione ─────────────────────────────────────────────────────
-    _heading(doc, '4. Configurazione della convenzione')
+    _heading(doc, 'Fase 1 — Pubblicazione del menu (amministratore)', 2, color=DARK)
+    _step(doc, 1, 'Accesso alla gestione:',
+          "ogni mattina l'amministratore accede alla sezione Convenzioni e seleziona "
+          "l'azienda destinataria.")
+    _step(doc, 2, 'Creazione del menu del giorno:',
+          "inserisce il nome del pasto, le portate strutturate (primo, secondo, contorno, "
+          "bevanda, caffè), il prezzo e il numero massimo di coperti. "
+          "È possibile creare più opzioni pasto per la stessa giornata e salvare "
+          "template riutilizzabili per i menu ricorrenti.")
+    _step(doc, 3, 'Pubblicazione:',
+          "confermata l'inserimento, il menu diventa immediatamente visibile "
+          "ai dipendenti dell'azienda nell'applicazione.")
+    doc.add_paragraph()
+
+    _heading(doc, 'Fase 2 — Prenotazione (dipendente)', 2, color=DARK)
+    _step(doc, 1, 'Accesso all\'applicazione:',
+          "il dipendente apre il browser (PC, tablet o smartphone) e accede "
+          "con email/password oppure con il proprio account Google.")
+    _step(doc, 2, 'Visualizzazione menu:',
+          "nella sezione Pasto Aziendale vede il menu del giorno con portate, "
+          "prezzo e posti ancora disponibili.")
+    _step(doc, 3, 'Selezione e conferma:',
+          "sceglie l'opzione desiderata, il numero di porzioni e l'orario di ritiro "
+          "(se configurato), quindi preme Prenota. "
+          "Il sistema verifica la disponibilità dei posti e registra la prenotazione "
+          "in stato Prenotato.")
+    _step(doc, 4, 'Conferma immediata:',
+          "a schermo compare la conferma con il riepilogo del pasto scelto. "
+          "Se il dipendente ha configurato Telegram, riceve contestualmente "
+          "un messaggio di conferma sul proprio telefono.")
+    _step(doc, 5, 'Annullamento (opzionale):',
+          "il dipendente può annullare la prenotazione in autonomia fino a 30 minuti "
+          "prima dell'orario di ritiro selezionato. "
+          "Oltre tale soglia il sistema blocca l'annullamento.")
+    doc.add_paragraph()
+
+    _heading(doc, 'Fase 3 — Codice di ritiro', 2, color=DARK)
+    _body(doc,
+        "Al momento della prenotazione il sistema genera automaticamente un codice "
+        "di ritiro univoco di 6 caratteri (es. A7 K3 M2). "
+        "Questo codice identifica la prenotazione in modo univoco e viene utilizzato "
+        "dallo staff al momento della consegna per verificare l'identità del prenotante "
+        "senza necessità di cercare il nominativo manualmente.")
+    _step(doc, 1, 'Visualizzazione del codice:',
+          "dopo la prenotazione confermata, il codice appare in grande nella pagina "
+          "Pasto Aziendale del dipendente, sempre visibile finché il pasto "
+          "non risulta consegnato.")
+    _step(doc, 2, 'Reminder automatico:',
+          "N minuti prima dell'orario di ritiro (configurabile in Impostazioni) "
+          "il sistema invia al dipendente un reminder Telegram con il codice "
+          "e il nome del pasto prenotato.")
+    _step(doc, 3, 'Utilizzo al banco:',
+          "al momento del ritiro il dipendente mostra il codice sullo schermo "
+          "del proprio dispositivo allo staff del bar.")
+    doc.add_paragraph()
+
+    _heading(doc, 'Fase 4 — Consegna al banco (amministratore / staff)', 2, color=DARK)
+    _body(doc,
+        "Lo staff dispone di due modalità equivalenti per registrare la consegna:")
+    _step(doc, 1, 'Ritiro rapido per codice:',
+          "dalla sezione Convenzioni → Ritiro Pasti, lo staff digita il codice "
+          "a 6 caratteri mostrato dal dipendente. "
+          "Il sistema mostra immediatamente nome, pasto e porzioni. "
+          "Un click su Conferma consegna cambia lo stato in Consumato.")
+    _step(doc, 2, 'Consegna dal report giornaliero:',
+          "dalla sezione Convenzioni → Report Giornaliero, ogni riga in stato "
+          "Prenotato riporta un pulsante Consegna. "
+          "Utile per spuntare più prenotazioni in sequenza o per correzioni a fine servizio.")
+    _step(doc, 3, 'Notifica al dipendente:',
+          "alla registrazione della consegna il sistema invia automaticamente "
+          "al dipendente una notifica Telegram di conferma ritiro.")
+    doc.add_paragraph()
+
+    _heading(doc, 'Fase 5 — Riconciliazione (amministratore)', 2, color=DARK)
+    _step(doc, 1, 'Scarica il report DOCX:',
+          "a fine servizio, dal Report Giornaliero, il pulsante Scarica DOCX "
+          "genera un documento Word per ciascuna azienda con: intestazione "
+          "azienda/data, totale prenotazioni e tabella Nominativo / Pasto / Quantità / Stato.")
+    _step(doc, 2, 'Invio all\'azienda:',
+          "il documento viene inviato al referente aziendale per la verifica "
+          "e la riconciliazione contabile del mese.")
+    _step(doc, 3, 'Storico mensile:',
+          "la sezione Storico Presenze di ciascuna azienda mantiene l'archivio "
+          "completo con i contatori di prenotati, consumati e annullati per ogni giornata.")
+    doc.add_paragraph()
+
+    # ── 4. Stati prenotazione ─────────────────────────────────────────────────
+    _heading(doc, '4. Stati della prenotazione')
+    _divider(doc)
+    _body(doc,
+        "Ogni prenotazione transita attraverso i seguenti stati durante il suo ciclo di vita:")
+    tbl_s = doc.add_table(rows=1, cols=3)
+    tbl_s.style = 'Table Grid'
+    for i, h in enumerate(['Stato', 'Descrizione', 'Transizione successiva']):
+        r = tbl_s.rows[0].cells[i].paragraphs[0].add_run(h)
+        r.bold = True; r.font.name = FONT; r.font.size = Pt(11)
+    for stato, descr, trans in [
+        ('Prenotato',
+         'La prenotazione è attiva. Il codice di ritiro è visibile al dipendente.',
+         'Consumato (consegna confermata) oppure Annullato (cancellazione)'),
+        ('Consumato',
+         'Il pasto è stato ritirato e confermato dallo staff al banco.',
+         'Stato finale — incluso nel report giornaliero'),
+        ('Annullato',
+         'Il dipendente ha annullato la prenotazione in autonomia entro i termini.',
+         'Stato finale — escluso dal conteggio pasti'),
+    ]:
+        row = tbl_s.add_row().cells
+        for i, val in enumerate([stato, descr, trans]):
+            r = row[i].paragraphs[0].add_run(val)
+            r.font.name = FONT; r.font.size = Pt(11)
+            if i == 0:
+                r.bold = True
+    doc.add_paragraph()
+
+    # ── 5. Configurazione ─────────────────────────────────────────────────────
+    _heading(doc, '5. Configurazione della convenzione')
     _divider(doc)
     _body(doc, 'Ogni azienda viene configurata con i seguenti parametri:')
     tbl = doc.add_table(rows=1, cols=2)
@@ -2559,7 +2650,7 @@ def convenzioni_abstract_docx():
     doc.add_paragraph()
 
     # ── 5. Report ─────────────────────────────────────────────────────────────
-    _heading(doc, '5. Report e documenti disponibili')
+    _heading(doc, '6. Report e documenti disponibili')
     _divider(doc)
     _heading(doc, 'Report Giornaliero (pagina web)', 2, color=DARK)
     _body(doc,
@@ -2577,7 +2668,7 @@ def convenzioni_abstract_docx():
     doc.add_paragraph()
 
     # ── 6. Notifiche ──────────────────────────────────────────────────────────
-    _heading(doc, '6. Notifiche automatiche')
+    _heading(doc, '7. Notifiche automatiche')
     _divider(doc)
     _body(doc,
         "Il sistema può inviare notifiche Telegram direttamente al dipendente (opzionale; "
@@ -2589,7 +2680,7 @@ def convenzioni_abstract_docx():
     doc.add_paragraph()
 
     # ── 7. Sicurezza ──────────────────────────────────────────────────────────
-    _heading(doc, '7. Accesso e sicurezza')
+    _heading(doc, '8. Accesso e sicurezza')
     _divider(doc)
     _bullet(doc, 'Email + password oppure account Google (OAuth 2.0).', 'Autenticazione:')
     _bullet(doc, 'Supporto opzionale MFA con Google Authenticator.', 'Doppio fattore:')
