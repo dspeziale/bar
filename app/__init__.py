@@ -193,7 +193,7 @@ def _migrate_tenant_columns():
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,
                             IngredientCategory, Ingredient,
-                            Permission, Role, AppSetting, Tenant)
+                            Permission, Role, AppSetting, Tenant, BancoItem)
     from sqlalchemy import text
     from config import Config
 
@@ -505,6 +505,46 @@ def _seed_defaults():
             if role:
                 u.roles.append(role)
             db.session.add(u)
+
+    # ── Articoli banco POS (idempotente) ─────────────────────────────────
+    if not BancoItem.query.filter_by(tenant_id=default_tenant.id).first():
+        _banco_items = [
+            # (name, price, icon, color, sort_order)
+            # Caffetteria
+            ('Caffè',           1.10, 'fa-mug-hot',       'warning',  1),
+            ('Caffè macchiato', 1.20, 'fa-mug-hot',       'warning',  2),
+            ('Cappuccino',      1.50, 'fa-mug-hot',       'warning',  3),
+            ('Latte macchiato', 1.60, 'fa-mug-hot',       'warning',  4),
+            ('Caffè americano', 1.30, 'fa-mug-hot',       'warning',  5),
+            ('Tè caldo',        1.20, 'fa-mug-saucer',    'warning',  6),
+            ('Orzo',            1.10, 'fa-mug-hot',       'warning',  7),
+            # Bevande fredde
+            ('Acqua naturale',  0.50, 'fa-bottle-water',  'info',     10),
+            ('Acqua frizzante', 0.50, 'fa-bottle-water',  'info',     11),
+            ('Succo di frutta', 1.50, 'fa-wine-glass',    'success',  12),
+            ('Bibita lattina',  1.50, 'fa-wine-bottle',   'danger',   13),
+            ('Birra media',     2.50, 'fa-beer-mug-empty','warning',  14),
+            # Snack freddi
+            ('Tramezzino',      2.50, 'fa-burger',        'success',  20),
+            ('Toast',           2.00, 'fa-burger',        'success',  21),
+            ('Panino semplice', 2.50, 'fa-burger',        'success',  22),
+            ('Cornetto salato', 1.80, 'fa-bread-slice',   'warning',  23),
+            # Dolci
+            ('Cornetto vuoto',  1.20, 'fa-cookie',        'warning',  30),
+            ('Cornetto crema',  1.40, 'fa-cookie',        'warning',  31),
+            ('Cornetto marmellata', 1.40, 'fa-cookie',    'warning',  32),
+            ('Torta fetta',     2.00, 'fa-cake-candles',  'pink',     33),
+            ('Biscotti (3 pz)', 0.80, 'fa-cookie-bite',   'warning',  34),
+            # Altro
+            ('Crackers',        0.50, 'fa-cookie-bite',   'secondary',40),
+            ('Cioccolata calda',1.80, 'fa-mug-hot',       'warning',  41),
+        ]
+        for name, price, icon, color, sort_order in _banco_items:
+            db.session.add(BancoItem(
+                name=name, price=price, icon=icon, color=color,
+                sort_order=sort_order, is_active=True,
+                tenant_id=default_tenant.id,
+            ))
 
     # ── Impostazioni di default (vuote) ───────────────────────────────────
     default_settings = [
