@@ -444,12 +444,21 @@
       {% if current_user.is_authenticated %}
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
+          {% if current_user.avatar_url %}
+          <img src="{{ current_user.avatar_url }}" alt=""
+               style="width:34px;height:34px;border-radius:50%;object-fit:cover;">
+          {% else %}
           <span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#e94560,#0f3460);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;">
-            {{ current_user.username[0]|upper }}
+            {{ current_user.full_name[0]|upper }}
           </span>
+          {% endif %}
         </div>
         <div class="info">
-          <span class="d-block" style="color:var(--QuickLunch-sidebar-link);">{{ current_user.username }}</span>
+          {% set display = current_user.full_name %}
+          <span class="d-block" style="color:var(--QuickLunch-sidebar-link);font-weight:600;">{{ display }}</span>
+          {% if display != current_user.username %}
+          <span class="d-block" style="color:var(--QuickLunch-sidebar-link);opacity:.55;font-size:.75rem;margin-top:-.1rem;">{{ current_user.username }}</span>
+          {% endif %}
         </div>
       </div>
       {% endif %}
