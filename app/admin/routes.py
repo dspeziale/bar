@@ -2550,8 +2550,345 @@ def convenzioni_abstract_docx():
                      mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
 
+@bp.route('/convenzioni/presentazione-pdf')
+@require_permission('manage_products')
+def convenzioni_presentazione_pdf():
+    from io import BytesIO
+    from flask import send_file
+    from fpdf import FPDF
 
-# â”€â”€ Slot durata tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    BRAND  = (233, 69,  96)
+    DARK   = (26,  26,  46)
+    DGRAY  = (80,  80,  95)
+    LGRAY  = (200, 200, 210)
+    VLIGHT = (248, 248, 252)
+    WHITE  = (255, 255, 255)
+
+    class Brochure(FPDF):
+        def header(self):
+            if self.page_no() == 1:
+                return
+            self.set_fill_color(*BRAND)
+            self.rect(0, 0, 210, 11, 'F')
+            self.set_font('Helvetica', 'B', 8)
+            self.set_text_color(*WHITE)
+            self.set_xy(12, 1.5)
+            self.cell(130, 8, 'QuickLunch  —  Modulo Pasti Aziendali', ln=0)
+            self.set_x(-30)
+            self.cell(18, 8, 'quicklunch.app', align='R')
+            self.set_text_color(*DARK)
+            self.ln(14)
+
+        def footer(self):
+            if self.page_no() == 1:
+                return
+            self.set_y(-13)
+            self.set_font('Helvetica', '', 7.5)
+            self.set_text_color(*LGRAY)
+            self.set_draw_color(*LGRAY)
+            self.line(12, self.get_y(), 198, self.get_y())
+            self.ln(1)
+            self.cell(0, 6,
+                f'QuickLunch Bar Self-Service  —  Documento riservato  —  Pag. {self.page_no()-1}',
+                align='C')
+
+        def section_title(self, text):
+            self.set_font('Helvetica', 'B', 13)
+            self.set_text_color(*BRAND)
+            self.cell(0, 8, text, ln=True)
+            self.set_draw_color(*BRAND)
+            self.set_line_width(0.5)
+            self.line(self.get_x(), self.get_y(), self.get_x() + 186, self.get_y())
+            self.ln(4)
+            self.set_text_color(*DARK)
+
+        def sub_title(self, text):
+            self.set_font('Helvetica', 'B', 10.5)
+            self.set_text_color(*DARK)
+            self.cell(0, 7, text, ln=True)
+            self.set_text_color(*DGRAY)
+
+        def body(self, text, indent=0):
+            self.set_font('Helvetica', '', 10)
+            self.set_text_color(*DGRAY)
+            self.set_x(12 + indent)
+            self.multi_cell(186 - indent, 5.5, text)
+            self.ln(1)
+            self.set_x(12)
+
+        def bullet(self, text, color=BRAND):
+            self.set_font('Helvetica', 'B', 11)
+            self.set_text_color(*color)
+            self.set_x(14)
+            self.cell(6, 6, '•', ln=0)
+            self.set_font('Helvetica', '', 10)
+            self.set_text_color(*DGRAY)
+            self.multi_cell(176, 5.5, text)
+            self.set_x(12)
+
+        def step_box(self, num, title, desc):
+            x0 = self.get_x()
+            y0 = self.get_y()
+            self.set_fill_color(*BRAND)
+            self.ellipse(x0 + 12, y0, 10, 10, 'F')
+            self.set_font('Helvetica', 'B', 9)
+            self.set_text_color(*WHITE)
+            self.set_xy(x0 + 12, y0 + 0.5)
+            self.cell(10, 9, str(num), align='C')
+            self.set_font('Helvetica', 'B', 10)
+            self.set_text_color(*DARK)
+            self.set_xy(x0 + 26, y0 + 0.5)
+            self.cell(160, 5, title)
+            self.set_font('Helvetica', '', 9.5)
+            self.set_text_color(*DGRAY)
+            self.set_xy(x0 + 26, y0 + 6)
+            self.multi_cell(160, 5, desc)
+            self.ln(3)
+            self.set_x(12)
+
+        def kpi_box(self, label, value, x, y, w=55, h=28):
+            self.set_fill_color(*VLIGHT)
+            self.set_draw_color(*LGRAY)
+            self.set_line_width(0.3)
+            self.rect(x, y, w, h, 'FD')
+            self.set_font('Helvetica', 'B', 18)
+            self.set_text_color(*BRAND)
+            self.set_xy(x, y + 4)
+            self.cell(w, 10, value, align='C')
+            self.set_font('Helvetica', '', 8.5)
+            self.set_text_color(*DGRAY)
+            self.set_xy(x, y + 16)
+            self.cell(w, 6, label, align='C')
+
+    pdf = Brochure(orientation='P', unit='mm', format='A4')
+    pdf.set_margins(12, 14, 12)
+    pdf.set_auto_page_break(True, margin=18)
+
+    # Copertina
+    pdf.add_page()
+    pdf.set_fill_color(*DARK)
+    pdf.rect(0, 0, 210, 297, 'F')
+    pdf.set_fill_color(*BRAND)
+    pdf.rect(0, 0, 8, 297, 'F')
+    pdf.rect(20, 110, 170, 1.5, 'F')
+
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(180, 180, 195)
+    pdf.set_xy(20, 70)
+    pdf.cell(0, 8, 'QuickLunch  —  Bar Self-Service')
+
+    pdf.set_font('Helvetica', 'B', 38)
+    pdf.set_text_color(*WHITE)
+    pdf.set_xy(20, 82)
+    pdf.cell(0, 18, 'Pasti Aziendali')
+
+    pdf.set_font('Helvetica', '', 15)
+    pdf.set_text_color(*BRAND)
+    pdf.set_xy(20, 102)
+    pdf.cell(0, 8, 'Il servizio mensa digitale per la tua azienda')
+
+    pdf.set_font('Helvetica', '', 11)
+    pdf.set_text_color(170, 170, 190)
+    pdf.set_xy(20, 125)
+    pdf.multi_cell(160, 7,
+        'Una soluzione semplice e moderna per gestire le prenotazioni pasto '
+        'dei tuoi dipendenti: niente code, niente liste cartacee, tutto '
+        'tracciato in tempo reale.')
+
+    pdf.kpi_box('Prenotazioni online', '100%',   20, 165)
+    pdf.kpi_box('Accesso da mobile',   'App Web',  80, 165)
+    pdf.kpi_box('Report giornaliero',  'DOCX',    140, 165)
+
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(100, 100, 120)
+    pdf.set_xy(20, 275)
+    pdf.cell(0, 6, _dt.now().strftime('Documento di presentazione  —  %B %Y'))
+
+    # Il servizio
+    pdf.add_page()
+    pdf.section_title('Il servizio')
+    pdf.body(
+        "QuickLunch Pasti Aziendali e' il modulo dedicato alle convenzioni mensa. "
+        'Consente ai dipendenti di prenotare il proprio pasto giornaliero direttamente '
+        'dal telefono o dal computer, senza bisogno di installare nulla. '
+        'Il gestore del bar pubblica ogni mattina il menu e gestisce le presenze in tempo reale.')
+    pdf.ln(3)
+
+    pdf.section_title("Perche' sceglierlo")
+    pdf.bullet('Eliminazione delle liste cartacee e delle code al banco.')
+    pdf.bullet("Tracciabilita' completa: chi ha prenotato, chi ha consumato, chi ha annullato.")
+    pdf.bullet('Report giornaliero scaricabile in Word per la riconciliazione contabile.')
+    pdf.bullet('Notifiche automatiche Telegram ai dipendenti (conferma, reminder orario).')
+    pdf.bullet('Accesso da qualsiasi dispositivo senza app da installare.')
+    pdf.bullet('Configurazione personalizzata per ogni azienda: prezzi, coperti, portate.')
+    pdf.ln(5)
+
+    pdf.section_title("A chi e' rivolto")
+    pdf.body(
+        "Il servizio e' pensato per aziende, enti pubblici, studi professionali e "
+        'qualsiasi organizzazione che voglia offrire ai propri dipendenti un servizio '
+        'mensa o pasto convenzionato in modo semplice, digitale e verificabile.')
+    pdf.ln(3)
+
+    pdf.set_fill_color(*VLIGHT)
+    pdf.set_draw_color(*LGRAY)
+    pdf.set_line_width(0.3)
+    pdf.rect(12, pdf.get_y(), 186, 30, 'FD')
+    pdf.set_font('Helvetica', 'BI', 10.5)
+    pdf.set_text_color(*BRAND)
+    pdf.set_xy(18, pdf.get_y() + 5)
+    pdf.cell(0, 6, '"Meno burocrazia, piu\' tempo per il pranzo."')
+    pdf.set_font('Helvetica', '', 9.5)
+    pdf.set_text_color(*DGRAY)
+    pdf.set_xy(18, pdf.get_y() + 7)
+    pdf.multi_cell(174, 5,
+        'Con QuickLunch il dipendente prenota in 10 secondi, il gestore '
+        "ha il conteggio esatto in tempo reale e l'azienda riceve il report pronto alla firma.")
+
+    # Come funziona
+    pdf.add_page()
+    pdf.section_title('Come funziona: il dipendente')
+    pdf.body('Tutto quello che il dipendente deve fare ogni giorno:')
+    pdf.ln(2)
+    pdf.step_box(1, "Accede all'applicazione",
+        'Apre il browser sul telefono o PC e accede con email/password oppure con il proprio account Google.')
+    pdf.step_box(2, 'Consulta il menu del giorno',
+        "Vede il menu pubblicato dal gestore: nome del pasto, portate (primo, secondo, contorno, bevanda, caffe').")
+    pdf.step_box(3, 'Prenota in un clic',
+        "Seleziona l'opzione desiderata, sceglie l'orario di ritiro e conferma. Tempo medio: 15 secondi.")
+    pdf.step_box(4, 'Riceve la conferma',
+        'La prenotazione viene registrata immediatamente. Con Telegram configurato, '
+        'riceve anche un messaggio diretto di conferma.')
+    pdf.step_box(5, 'Annulla se necessario',
+        "Puo' annullare la propria prenotazione in autonomia fino al momento del ritiro.")
+    pdf.ln(4)
+
+    pdf.section_title('Come funziona: il gestore del bar')
+    pdf.ln(1)
+    pdf.step_box(1, 'Pubblica il menu',
+        'Ogni mattina inserisce il menu del giorno: portate, prezzo e numero massimo di coperti. '
+        "Puo' usare template salvati per i menu ricorrenti.")
+    pdf.step_box(2, 'Monitora le prenotazioni',
+        'Il Report Giornaliero mostra in tempo reale la lista dei prenotati con i relativi dettagli.')
+    pdf.step_box(3, 'Segna i pasti consumati',
+        'Durante il servizio spunta ogni prenotazione come Consumato. '
+        'Il sistema aggiorna immediatamente i contatori.')
+    pdf.step_box(4, 'Scarica il report',
+        'A fine servizio scarica il report del giorno in formato Word (.docx), '
+        "pronto per essere inviato all'azienda.")
+
+    # Funzionalita
+    pdf.add_page()
+    pdf.section_title("Funzionalita' principali")
+    pdf.ln(1)
+
+    features = [
+        ('Prenotazione online',
+         'I dipendenti prenotano da browser senza installare niente. '
+         'Funziona su smartphone, tablet e PC.'),
+        ('Menu giornaliero configurabile',
+         'Il gestore pubblica ogni giorno il pasto con portate, prezzo e posti disponibili. '
+         "Supporto per piu' opzioni menu nella stessa giornata."),
+        ('Template menu riutilizzabili',
+         'Salva i menu ricorrenti come template e riutilizzali con un clic.'),
+        ('Report presenze in tempo reale',
+         'Pagina web con la lista aggiornata di chi ha prenotato, suddivisa per azienda.'),
+        ('Esportazione DOCX',
+         'Report giornaliero scaricabile in Word, pronto per la riconciliazione contabile.'),
+        ('Storico mensile',
+         'Archivio completo mese per mese: prenotati, consumati e annullati per ogni giornata.'),
+        ('Notifiche Telegram',
+         "Reminder automatico al dipendente N minuti prima dell'orario di ritiro."),
+        ('Accesso Google',
+         'Login con account Google tramite OAuth 2.0. Nessuna nuova password da ricordare.'),
+        ('Autenticazione a due fattori',
+         'Supporto MFA opzionale con Google Authenticator per maggiore sicurezza.'),
+        ('Multi-azienda',
+         "Gestione di piu' convenzioni in parallelo, ciascuna con proprie configurazioni e report."),
+    ]
+
+    col_w  = 87
+    col2_x = 111
+    _saved_y = pdf.get_y()
+    for i, (title, desc) in enumerate(features):
+        x0 = 12 if i % 2 == 0 else col2_x
+        if i % 2 == 0:
+            _saved_y = pdf.get_y()
+        card_h = 24
+        pdf.set_fill_color(*VLIGHT)
+        pdf.set_draw_color(*LGRAY)
+        pdf.set_line_width(0.3)
+        pdf.rect(x0, _saved_y, col_w, card_h, 'FD')
+        pdf.set_fill_color(*BRAND)
+        pdf.rect(x0, _saved_y, 2.5, card_h, 'F')
+        pdf.set_font('Helvetica', 'B', 9.5)
+        pdf.set_text_color(*DARK)
+        pdf.set_xy(x0 + 5, _saved_y + 3)
+        pdf.cell(col_w - 7, 5, title)
+        pdf.set_font('Helvetica', '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_xy(x0 + 5, _saved_y + 9)
+        pdf.multi_cell(col_w - 7, 4.2, desc)
+        if i % 2 != 0:
+            pdf.set_xy(12, _saved_y + card_h + 3)
+
+    if len(features) % 2 != 0:
+        pdf.set_xy(12, _saved_y + card_h + 3)
+
+    # Attivazione
+    pdf.add_page()
+    pdf.section_title('Avviare la convenzione')
+    pdf.body(
+        "L'attivazione richiede pochi minuti. Il gestore del bar crea la scheda "
+        'della tua azienda nel sistema, inserisce il prezzo del pasto e il numero '
+        'massimo di coperti giornalieri. I dipendenti si registrano autonomamente '
+        'tramite link di invito o QR code dedicato.')
+    pdf.ln(3)
+
+    pdf.sub_title('Cosa serve per iniziare')
+    pdf.bullet('Ragione sociale e email del referente aziendale.')
+    pdf.bullet('Numero massimo di coperti giornalieri desiderati.')
+    pdf.bullet('Prezzo concordato del pasto (modificabile in qualsiasi momento).')
+    pdf.bullet('Lista dei dipendenti da abilitare (oppure link/QR di auto-registrazione).')
+    pdf.ln(5)
+
+    pdf.section_title('Sicurezza e privacy')
+    pdf.body(
+        'Tutti i dati sono gestiti su infrastruttura sicura. '
+        'Ogni dipendente vede esclusivamente le informazioni relative alla propria azienda. '
+        "L'accesso avviene sempre su connessione cifrata HTTPS. "
+        'Supporto opzionale alla autenticazione a due fattori (MFA).')
+    pdf.ln(5)
+
+    bx_y = pdf.get_y()
+    pdf.set_fill_color(*DARK)
+    pdf.set_draw_color(*DARK)
+    pdf.rect(12, bx_y, 186, 52, 'F')
+    pdf.set_font('Helvetica', 'B', 13)
+    pdf.set_text_color(*WHITE)
+    pdf.set_xy(20, bx_y + 8)
+    pdf.cell(0, 7, 'Contatti e informazioni')
+    pdf.set_draw_color(*BRAND)
+    pdf.set_line_width(1)
+    pdf.line(20, bx_y + 17, 190, bx_y + 17)
+    pdf.set_font('Helvetica', '', 10.5)
+    pdf.set_text_color(200, 200, 215)
+    pdf.set_xy(20, bx_y + 21)
+    pdf.multi_cell(170, 6.5,
+        "Per attivare la tua convenzione o richiedere una dimostrazione del sistema, "
+        "contatta direttamente il gestore del bar. Il servizio e' attivo e operativo: "
+        "la tua azienda puo' essere online in pochi minuti.")
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(*BRAND)
+    pdf.set_xy(20, bx_y + 41)
+    pdf.cell(0, 6, 'QuickLunch  —  Bar Self-Service')
+
+    buf = BytesIO(bytes(pdf.output()))
+    buf.seek(0)
+    fname = f'QuickLunch_PastiAziendali_{_dt.now().strftime("%Y%m")}.pdf'
+    return send_file(buf, as_attachment=True, download_name=fname,
+                     mimetype='application/pdf')
+
 
 @bp.route('/slots/<int:sid>/durata', methods=['POST'])
 @require_permission('manage_slots')
