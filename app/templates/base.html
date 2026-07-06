@@ -710,12 +710,28 @@
             {% endif %}
 
             {% if current_user.is_admin %}
-            <li class="nav-item">
-              <a href="{{ url_for('admin.maintenance') }}"
-                 class="nav-link {{ 'active' if ep == 'admin.maintenance' }}">
-                <i class="nav-icon fas fa-tools" style="color:#e74c3c;"></i>
-                <p>Manutenzione</p>
+            {# ── DS CONSULTING ── #}
+            <li class="nav-item has-treeview {{ 'menu-open' if ep in ('admin.ds_guadagni','admin.maintenance') }}">
+              <a href="#" class="nav-link {{ 'active' if ep in ('admin.ds_guadagni','admin.maintenance') }}">
+                <i class="nav-icon fas fa-crown" style="color:#e94560;"></i>
+                <p>DS Consulting<i class="right fas fa-angle-left"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.ds_guadagni') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.ds_guadagni' }}">
+                    <i class="fas fa-chart-line nav-icon" style="color:#e94560;"></i>
+                    <p>Guadagni</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.maintenance') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.maintenance' }}">
+                    <i class="fas fa-tools nav-icon" style="color:#e74c3c;"></i>
+                    <p>Manutenzione</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             {% endif %}
 

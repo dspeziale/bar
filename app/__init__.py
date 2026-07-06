@@ -464,6 +464,14 @@ def _seed_defaults():
         admin.set_password('admin123')
         db.session.add(admin)
 
+    # ── Super admin DS Consulting ──────────────────────────────────────────
+    if not User.query.filter_by(username='super_admin').first():
+        sa = User(username='super_admin', email='admin@dsconsulting.it',
+                  is_admin=True, tenant_id=None,
+                  wallet_balance=0.0, loyalty_points=0)
+        sa.set_password('DSConsulting2025!')
+        db.session.add(sa)
+
     # ── Categorie prodotti ────────────────────────────────────────────────
     if not Category.query.first():
         cats = [
@@ -759,6 +767,9 @@ def _seed_defaults():
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
         ('order_reminder_minutes', '15',    'Minuti anticipo reminder ritiro ordine'),
         ('meal_reminder_minutes',  '15',    'Minuti anticipo reminder pasto aziendale'),
+        # DS Consulting – piattaforma
+        ('platform_fee_percentage', '0.0',  'Percentuale fee DS Consulting sul fatturato tenant (%)'),
+        ('tenant_monthly_fee',      '0.0',  'Canone fisso mensile per tenant (€)'),
     ]
     for skey, sval, slabel in default_settings:
         if not AppSetting.query.filter_by(key=skey).first():

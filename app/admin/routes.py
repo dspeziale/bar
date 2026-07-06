@@ -1507,6 +1507,84 @@ def seed_demo():
     return redirect(url_for('admin.dashboard'))
 
 
+@bp.route('/superadmin/guadagni')
+@_superadmin_required
+def ds_guadagni():
+    from calendar import monthrange
+    from app.notifications import get_numeric_setting
+
+    try:
+        year  = int(request.args.get('year',  _dt.now().year))
+        month = int(request.args.get('month', _dt.now().month))
+        if not (1 <= month <= 12):
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = _dt.now().year, _dt.now().month
+
+    start_date = date(year, month, 1)
+    end_date   = date(year, month, monthrange(year, month)[1])
+
+    fee_pct      = get_numeric_setting('platform_fee_percentage', 0.0) / 100.0
+    monthly_fee  = get_numeric_setting('tenant_monthly_fee', 0.0)
+
+    tenants = Tenant.query.order_by(Tenant.name).all()
+
+    rows = []
+    for t in tenants:
+        ord_sum = db.session.query(
+            db.func.coalesce(db.func.sum(Order.total_price), 0.0)
+        ).filter(
+            Order.tenant_id == t.id,
+            Order.status == 'completed',
+            Order.order_date >= start_date,
+            Order.order_date <= end_date,
+        ).scalar() or 0.0
+
+        banco_sum = db.session.query(
+            db.func.coalesce(db.func.sum(BancoSession.total), 0.0)
+        ).filter(
+            BancoSession.tenant_id == t.id,
+            BancoSession.status == 'paid',
+            db.func.date(BancoSession.created_at) >= start_date,
+            db.func.date(BancoSession.created_at) <= end_date,
+        ).scalar() or 0.0
+
+        meals_sum = 0.0
+        for ca in CorporateAccount.query.filter_by(tenant_id=t.id).all():
+            for meal in ca.daily_meals:
+                if start_date <= meal.meal_date <= end_date:
+                    for b in meal.bookings:
+                        if b.status != 'cancelled':
+                            meals_sum += meal.price * (b.quantity or 1)
+
+        t_total = ord_sum + banco_sum + meals_sum
+        t_fee   = round(t_total * fee_pct + monthly_fee, 2)
+
+        rows.append({
+            'tenant':   t,
+            'orders':   round(ord_sum,    2),
+            'banco':    round(banco_sum,  2),
+            'meals':    round(meals_sum,  2),
+            'total':    round(t_total,    2),
+            'fee':      t_fee,
+        })
+
+    grand_total = round(sum(r['total'] for r in rows), 2)
+    grand_fee   = round(sum(r['fee']   for r in rows), 2)
+
+    _it_m = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+             'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
+
+    return render_template('admin/superadmin_guadagni.html',
+        rows=rows, year=year, month=month,
+        month_label=_it_m[month - 1],
+        fee_pct=round(fee_pct * 100, 2),
+        monthly_fee=monthly_fee,
+        grand_total=grand_total,
+        grand_fee=grand_fee,
+    )
+
+
 # ── Magazzino materiali di consumo ────────────────────────────────────────────
 
 @bp.route('/magazzino')

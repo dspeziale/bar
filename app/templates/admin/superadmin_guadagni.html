@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Guadagni DS Consulting{% endblock %}
+{% block page_title %}Guadagni DS Consulting{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Guadagni DS Consulting</li>
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtro periodo ────────────────────────────────────────────────────────── #}
+<div class="card card-outline card-primary mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="form-inline">
+      <label class="mr-2"><i class="fas fa-calendar-alt mr-1"></i>Periodo</label>
+      <select name="month" class="form-control form-control-sm mr-2">
+        {% set mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                       'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'] %}
+        {% for i in range(1, 13) %}
+        <option value="{{ i }}" {{ 'selected' if i == month }}>{{ mesi[i-1] }}</option>
+        {% endfor %}
+      </select>
+      <select name="year" class="form-control form-control-sm mr-2">
+        {% for y in range(2024, 2028) %}
+        <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-search mr-1"></i>Filtra
+      </button>
+    </form>
+  </div>
+</div>
+
+{# ── KPI cards ─────────────────────────────────────────────────────────────── #}
+<div class="row mb-3">
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:#1a1a2e;color:#fff;">
+      <div class="inner">
+        <h3>{{ "%.2f"|format(grand_total) }} €</h3>
+        <p>Volume totale piattaforma</p>
+      </div>
+      <div class="icon"><i class="fas fa-chart-line"></i></div>
+      <a href="#tenant-table" class="small-box-footer" style="color:rgba(255,255,255,.6);">
+        Dettaglio per tenant <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-danger">
+      <div class="inner">
+        <h3>{{ "%.2f"|format(grand_fee) }} €</h3>
+        <p>Guadagno DS Consulting</p>
+      </div>
+      <div class="icon"><i class="fas fa-euro-sign"></i></div>
+      <a href="#ds-config" class="small-box-footer">
+        Configura fee <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-info">
+      <div class="inner">
+        <h3>{{ rows|length }}</h3>
+        <p>Tenant attivi</p>
+      </div>
+      <div class="icon"><i class="fas fa-store"></i></div>
+      <a href="#tenant-table" class="small-box-footer">
+        Vedi tutti <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-success">
+      <div class="inner">
+        <h3>{{ month_label }} {{ year }}</h3>
+        <p>Periodo di riferimento</p>
+      </div>
+      <div class="icon"><i class="fas fa-calendar-check"></i></div>
+      <a href="#" class="small-box-footer">
+        &nbsp;
+      </a>
+    </div>
+  </div>
+
+</div>
+
+{# ── Tabella per tenant ────────────────────────────────────────────────────── #}
+<div class="card card-outline" style="border-top:3px solid #e94560;" id="tenant-table">
+  <div class="card-header">
+    <h3 class="card-title">
+      <i class="fas fa-table mr-2" style="color:#e94560;"></i>
+      Dettaglio per tenant — {{ month_label }} {{ year }}
+    </h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="thead-dark">
+          <tr>
+            <th>Tenant</th>
+            <th class="text-right">Ordini completati</th>
+            <th class="text-right">Banco (QR)</th>
+            <th class="text-right">Pasti aziendali</th>
+            <th class="text-right"><strong>Totale</strong></th>
+            <th class="text-right" style="color:#e94560;">Fee DS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>
+              <span class="badge badge-{{ 'success' if r.tenant.is_active else 'secondary' }} mr-1">
+                {{ 'ON' if r.tenant.is_active else 'OFF' }}
+              </span>
+              <strong>{{ r.tenant.name }}</strong>
+              <small class="text-muted ml-1">/{{ r.tenant.slug }}</small>
+            </td>
+            <td class="text-right">{{ "%.2f"|format(r.orders) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(r.banco) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(r.meals) }} €</td>
+            <td class="text-right"><strong>{{ "%.2f"|format(r.total) }} €</strong></td>
+            <td class="text-right" style="color:#e94560;font-weight:700;">
+              {{ "%.2f"|format(r.fee) }} €
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+              <i class="fas fa-info-circle mr-1"></i>Nessun tenant trovato.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if rows %}
+        <tfoot>
+          <tr style="background:#1a1a2e;color:#fff;font-weight:700;">
+            <td>TOTALE</td>
+            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='orders')) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='banco')) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='meals')) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(grand_total) }} €</td>
+            <td class="text-right" style="color:#e94560;">{{ "%.2f"|format(grand_fee) }} €</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ── Configurazione fee DS Consulting ──────────────────────────────────────── #}
+<div class="card card-outline card-danger mt-4" id="ds-config">
+  <div class="card-header">
+    <h3 class="card-title">
+      <i class="fas fa-cog mr-2 text-danger"></i>Configurazione Commissioni DS Consulting
+    </h3>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('admin.settings_save') }}" class="row">
+      <input type="hidden" name="keys" value="platform_fee_percentage,tenant_monthly_fee">
+      <div class="col-md-4">
+        <div class="form-group">
+          <label>
+            <i class="fas fa-percent mr-1"></i>Percentuale sul fatturato (%)
+          </label>
+          <div class="input-group" style="max-width:200px;">
+            <input type="number" name="platform_fee_percentage" class="form-control"
+                   value="{{ fee_pct }}" min="0" max="100" step="0.1">
+            <div class="input-group-append">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <small class="form-text text-muted">
+            Applicata sul totale di ogni tenant per il periodo.
+          </small>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-group">
+          <label>
+            <i class="fas fa-euro-sign mr-1"></i>Canone fisso mensile per tenant (€)
+          </label>
+          <div class="input-group" style="max-width:200px;">
+            <div class="input-group-prepend">
+              <span class="input-group-text">€</span>
+            </div>
+            <input type="number" name="tenant_monthly_fee" class="form-control"
+                   value="{{ monthly_fee }}" min="0" step="1.00">
+          </div>
+          <small class="form-text text-muted">
+            Aggiunta fissa per ogni tenant, indipendente dal fatturato.
+          </small>
+        </div>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-group">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-save mr-1"></i>Salva commissioni
+          </button>
+        </div>
+      </div>
+    </form>
+    <div class="callout callout-info mt-2 mb-0">
+      <p class="mb-0" style="font-size:.85rem;">
+        <strong>Formula:</strong>
+        Fee tenant = (<em>Volume totale</em> × {{ fee_pct }}%) + {{ "%.2f"|format(monthly_fee) }} €
+        &nbsp;·&nbsp;
+        <strong>Guadagno totale mese</strong> = somma delle fee di tutti i tenant
+      </p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
