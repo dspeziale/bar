@@ -880,7 +880,7 @@ def banco_session_cancel(token):
 
 
 @bp.route('/banco/items')
-@require_permission('manage_products')
+@staff_required
 def banco_items():
     tid   = _active_tenant_id()
     items = BancoItem.query.filter_by(tenant_id=tid)\
@@ -889,7 +889,7 @@ def banco_items():
 
 
 @bp.route('/banco/items/new', methods=['POST'])
-@require_permission('manage_products')
+@staff_required
 def banco_item_new():
     name  = request.form.get('name', '').strip()
     price = request.form.get('price', type=float)
@@ -910,7 +910,7 @@ def banco_item_new():
 
 
 @bp.route('/banco/items/<int:iid>/edit', methods=['POST'])
-@require_permission('manage_products')
+@staff_required
 def banco_item_edit(iid):
     item = db.get_or_404(BancoItem, iid)
     item.name       = request.form.get('name', item.name).strip()
@@ -925,7 +925,7 @@ def banco_item_edit(iid):
 
 
 @bp.route('/banco/items/<int:iid>/delete', methods=['POST'])
-@require_permission('manage_products')
+@staff_required
 def banco_item_delete(iid):
     item = db.get_or_404(BancoItem, iid)
     name = item.name
