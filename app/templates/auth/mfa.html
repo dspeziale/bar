@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifica identità — QuickLunch</title>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f3460 0%, #e94560 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 2.5rem 2rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    .icon-wrap {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg,#0f3460,#e94560);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+    }
+    .icon-wrap i { color: #fff; font-size: 2rem; }
+    h1 { font-size: 1.4rem; font-weight: 800; color: #0f3460; margin-bottom: .35rem; }
+    p.sub { font-size: .88rem; color: #666; margin-bottom: 1.75rem; }
+    .flash { background: #fdecea; color: #c0392b; border-radius: 8px;
+             padding: .65rem .9rem; font-size: .87rem; margin-bottom: 1rem; text-align:left; }
+    .code-input {
+      width: 100%;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: .35em;
+      text-align: center;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      padding: .65rem .5rem;
+      outline: none;
+      transition: border-color .2s;
+      color: #0f3460;
+    }
+    .code-input:focus { border-color: #e94560; }
+    .btn {
+      display: block; width: 100%; margin-top: 1.25rem;
+      padding: .85rem;
+      background: linear-gradient(135deg,#e94560,#c0392b);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .9; }
+    .back { display: block; margin-top: 1rem; font-size: .85rem; color: #888; text-decoration: none; }
+    .back:hover { color: #e94560; }
+    .hint { font-size: .78rem; color: #aaa; margin-top: .6rem; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="icon-wrap"><i class="fas fa-shield-halved"></i></div>
+  <h1>Verifica in due passi</h1>
+  <p class="sub">Apri Google Authenticator e inserisci il codice a 6 cifre.</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash"><i class="fas fa-exclamation-circle mr-1"></i>{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('auth.mfa_verify') }}" autocomplete="off">
+    <input type="text" name="code" class="code-input"
+           placeholder="000000"
+           maxlength="6" inputmode="numeric" pattern="[0-9]*"
+           autofocus required>
+    <p class="hint">Il codice cambia ogni 30 secondi.</p>
+    <button type="submit" class="btn">
+      <i class="fas fa-check mr-2"></i>Verifica
+    </button>
+  </form>
+
+  <a href="{{ url_for('auth.login') }}" class="back">
+    <i class="fas fa-arrow-left mr-1"></i>Torna al login
+  </a>
+</div>
+</body>
+</html>

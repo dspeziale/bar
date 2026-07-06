@@ -1,5 +1,5 @@
 import re
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db, oauth
 from app.auth import bp
@@ -36,6 +36,10 @@ def login():
         password = request.form.get('password', '')
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password) and user.is_active:
+            if user.totp_enabled:
+                session['_mfa_uid']  = user.id
+                session['_mfa_next'] = request.args.get('next', '')
+                return redirect(url_for('auth.mfa_verify'))
             login_user(user, remember=True)
             next_page = request.args.get('next')
             if user.is_admin:
@@ -122,6 +126,10 @@ def google_callback():
         if last_name and not user.last_name:
             user.last_name = last_name
         db.session.commit()
+        if user.totp_enabled:
+            session['_mfa_uid']  = user.id
+            session['_mfa_next'] = request.args.get('next', '')
+            return redirect(url_for('auth.mfa_verify'))
         login_user(user, remember=True)
         next_page = request.args.get('next')
         if user.is_admin:
@@ -166,3 +174,88 @@ def pending():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+
+# ── MFA — verifica durante il login ──────────────────────────────────────────
+
+@bp.route('/mfa', methods=['GET', 'POST'])
+def mfa_verify():
+    uid = session.get('_mfa_uid')
+    if not uid:
+        return redirect(url_for('auth.login'))
+    user = User.query.get(uid)
+    if not user or not user.totp_enabled:
+        session.pop('_mfa_uid', None)
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        import pyotp
+        code = request.form.get('code', '').strip().replace(' ', '')
+        totp = pyotp.TOTP(user.totp_secret)
+        if totp.verify(code, valid_window=1):
+            session.pop('_mfa_uid', None)
+            next_page = session.pop('_mfa_next', '') or None
+            login_user(user, remember=True)
+            if user.is_admin:
+                return redirect(next_page or url_for('admin.dashboard'))
+            return redirect(next_page or url_for('main.index'))
+        flash('Codice non valido. Riprova.', 'danger')
+
+    return render_template('auth/mfa.html')
+
+
+# ── MFA — setup (utente autenticato) ─────────────────────────────────────────
+
+@bp.route('/mfa/setup', methods=['GET', 'POST'])
+@login_required
+def mfa_setup():
+    import pyotp
+    from app.notifications import get_setting
+
+    if request.method == 'POST':
+        secret = session.get('_mfa_pending_secret')
+        code   = request.form.get('code', '').strip().replace(' ', '')
+        if not secret:
+            flash('Sessione scaduta. Ricomincia la configurazione.', 'danger')
+            return redirect(url_for('auth.mfa_setup'))
+        totp = pyotp.TOTP(secret)
+        if totp.verify(code, valid_window=1):
+            current_user.totp_secret  = secret
+            current_user.totp_enabled = True
+            db.session.commit()
+            session.pop('_mfa_pending_secret', None)
+            flash('Autenticazione a due fattori attivata.', 'success')
+            return redirect(url_for('main.index'))
+        flash('Codice non valido. Riprova.', 'danger')
+
+    # Genera (o riusa dalla sessione) il segreto provvisorio
+    secret = session.get('_mfa_pending_secret') or pyotp.random_base32()
+    session['_mfa_pending_secret'] = secret
+
+    app_name = 'QuickLunch'
+    totp_uri = pyotp.TOTP(secret).provisioning_uri(
+        name=current_user.email,
+        issuer_name=app_name,
+    )
+    return render_template('auth/mfa_setup.html',
+                           totp_uri=totp_uri, secret=secret, app_name=app_name)
+
+
+# ── MFA — disabilita ─────────────────────────────────────────────────────────
+
+@bp.route('/mfa/disable', methods=['POST'])
+@login_required
+def mfa_disable():
+    import pyotp
+    code = request.form.get('code', '').strip().replace(' ', '')
+    if not current_user.totp_enabled:
+        return redirect(url_for('main.index'))
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if totp.verify(code, valid_window=1):
+        current_user.totp_secret  = None
+        current_user.totp_enabled = False
+        db.session.commit()
+        flash('Autenticazione a due fattori disattivata.', 'info')
+        return redirect(url_for('main.index'))
+    flash('Codice non valido. MFA non disattivato.', 'danger')
+    return redirect(url_for('main.index'))

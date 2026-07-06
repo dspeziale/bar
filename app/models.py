@@ -96,6 +96,10 @@ class User(UserMixin, db.Model):
     address          = db.Column(db.Text,        default='')
     telegram_chat_id = db.Column(db.String(64),  default='')
 
+    # ── MFA (TOTP) ────────────────────────────────────────────────────────────
+    totp_secret  = db.Column(db.String(64),  nullable=True)
+    totp_enabled = db.Column(db.Boolean,     default=False)
+
     @property
     def full_name(self):
         parts = [self.first_name or '', self.last_name or '']

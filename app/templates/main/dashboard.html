@@ -245,6 +245,72 @@
       </div>
     </div>
 
+    <!-- MFA -->
+    <div class="card card-outline {{ 'card-success' if current_user.totp_enabled else 'card-secondary' }} mt-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title">
+          <i class="fas fa-shield-halved mr-2 {{ 'text-success' if current_user.totp_enabled else 'text-secondary' }}"></i>
+          Verifica in due passi
+        </h3>
+        {% if current_user.totp_enabled %}
+        <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Attiva</span>
+        {% else %}
+        <span class="badge badge-secondary">Non attiva</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if current_user.totp_enabled %}
+        <p class="text-muted" style="font-size:.87rem;">
+          Il tuo account è protetto da Google Authenticator.
+          Al prossimo login ti verrà chiesto il codice a 6 cifre.
+        </p>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-block"
+                data-toggle="modal" data-target="#disableMfaModal">
+          <i class="fas fa-unlock mr-1"></i>Disattiva MFA
+        </button>
+        {% else %}
+        <p class="text-muted" style="font-size:.87rem;">
+          Aggiungi un secondo livello di sicurezza al tuo account usando
+          Google Authenticator o qualsiasi app TOTP.
+        </p>
+        <a href="{{ url_for('auth.mfa_setup') }}" class="btn btn-sm btn-success btn-block">
+          <i class="fas fa-shield-halved mr-1"></i>Attiva MFA
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if current_user.totp_enabled %}
+    <!-- Modal disattiva MFA -->
+    <div class="modal fade" id="disableMfaModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-unlock mr-2"></i>Disattiva MFA</h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <form method="POST" action="{{ url_for('auth.mfa_disable') }}" autocomplete="off">
+            <div class="modal-body">
+              <p class="text-muted" style="font-size:.88rem;">
+                Inserisci il codice attuale di Google Authenticator per confermare.
+              </p>
+              <input type="text" name="code" class="form-control form-control-lg text-center"
+                     style="letter-spacing:.3em;font-weight:700;font-size:1.4rem;"
+                     placeholder="000000" maxlength="6"
+                     inputmode="numeric" pattern="[0-9]*" required autofocus>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-unlock mr-1"></i>Disattiva
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Cancella account -->
     {% if current_user.is_client %}
     <div class="card card-outline card-danger mt-3">

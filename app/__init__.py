@@ -211,6 +211,10 @@ def _migrate_tenant_columns():
     # Conferma prenotazione dal sondaggio
     _ensure('poll_votes', 'confirm_reservation', 'BOOLEAN DEFAULT FALSE')
 
+    # MFA TOTP
+    _ensure('users', 'totp_secret',  "VARCHAR(64)")
+    _ensure('users', 'totp_enabled', "BOOLEAN DEFAULT FALSE")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,
@@ -223,13 +227,15 @@ def _seed_defaults():
     default_tenant = Tenant.query.filter_by(slug='default').first()
     if not default_tenant:
         default_tenant = Tenant(
-            name='QuickLunch',
+            name='Food Service',
             slug='default',
             primary_color='#e94560',
             is_active=True,
         )
         db.session.add(default_tenant)
         db.session.flush()  # ottieni l'ID prima del commit
+    elif default_tenant.name != 'Food Service':
+        default_tenant.name = 'Food Service'
 
     # Assegna tenant_id=default_tenant.id a tutti i record orfani
     orphan_tables = [

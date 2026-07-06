@@ -73,6 +73,24 @@
   </div>
 </div>
 
+<!-- KPI riga 3: clienti in attesa -->
+{% if pending_clients %}
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-orange">
+      <div class="inner">
+        <h3>{{ pending_clients }}</h3>
+        <p>Client{{ 'i' if pending_clients != 1 else 'e' }} in attesa</p>
+      </div>
+      <div class="icon"><i class="fas fa-user-clock"></i></div>
+      <a href="{{ url_for('admin.clients') }}" class="small-box-footer">
+        Attiva <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if today_meal_booking %}
 <div class="row mb-3">
   <div class="col-12">

@@ -133,6 +133,11 @@ def dashboard():
     corp_meals_today = DailyFixedMeal.query.filter_by(meal_date=today)\
         .order_by(DailyFixedMeal.corporate_id, DailyFixedMeal.name).all()
 
+    # Clienti in attesa di attivazione
+    pending_clients = User.query.filter_by(
+        is_client=True, is_active=False, **_tenant_filter()
+    ).count()
+
     # Sondaggio attivo più recente + andamento voti
     active_poll = Poll.query.filter_by(is_active=True)\
         .order_by(Poll.poll_date.desc()).first()
@@ -182,7 +187,8 @@ def dashboard():
                            today_meal_booking=today_meal_booking,
                            meal_booking_reminder=meal_booking_reminder,
                            corp_meals_today=corp_meals_today,
-                           poll_stats=poll_stats)
+                           poll_stats=poll_stats,
+                           pending_clients=pending_clients)
 
 
 # ── Prodotti ──────────────────────────────────────────────────────────────────

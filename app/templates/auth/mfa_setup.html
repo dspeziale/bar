@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Configura Autenticatore{% endblock %}
+{% block page_title %}Autenticazione a due fattori{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Configura MFA</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .mfa-card { max-width: 520px; margin: 0 auto; }
+  .step-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #e94560; color: #fff; font-weight: 700; font-size: .85rem;
+    flex-shrink: 0; margin-right: .6rem;
+  }
+  .step { display: flex; align-items: flex-start; margin-bottom: 1.25rem; }
+  #qr-mfa { display: flex; justify-content: center; margin: 1rem 0; }
+  #qr-mfa canvas, #qr-mfa img {
+    border: 6px solid #f8f9fa; border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+  }
+  .secret-box {
+    background: #f8f9fa; border-radius: 8px; padding: .65rem 1rem;
+    font-family: monospace; font-size: 1rem; letter-spacing: .12em;
+    text-align: center; word-break: break-all; color: #0f3460;
+    border: 1px dashed #ccc; margin-bottom: .5rem;
+  }
+  .code-input {
+    font-size: 1.6rem; font-weight: 700; letter-spacing: .3em;
+    text-align: center; border: 2px solid #ddd; border-radius: 10px;
+    padding: .5rem; width: 100%; outline: none;
+  }
+  .code-input:focus { border-color: #e94560; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mfa-card">
+  <div class="card card-outline card-primary">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="fas fa-shield-halved mr-2 text-primary"></i>
+        Configura Google Authenticator
+      </h3>
+    </div>
+    <div class="card-body">
+
+      <!-- Step 1 -->
+      <div class="step">
+        <span class="step-badge">1</span>
+        <div>
+          <strong>Installa l'app</strong><br>
+          <span class="text-muted" style="font-size:.88rem;">
+            Scarica <em>Google Authenticator</em> (o qualsiasi app TOTP compatibile
+            come Authy, 1Password, Microsoft Authenticator) sul tuo telefono.
+          </span>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step">
+        <span class="step-badge">2</span>
+        <div style="width:100%;">
+          <strong>Scansiona il QR</strong><br>
+          <span class="text-muted" style="font-size:.88rem;">
+            Apri l'app, tocca <em>"+"</em> e scansiona il QR qui sotto.
+          </span>
+          <div id="qr-mfa"></div>
+          <p class="text-muted text-center" style="font-size:.78rem; margin-top:-.5rem;">
+            Oppure inserisci manualmente la chiave:
+          </p>
+          <div class="secret-box">{{ secret }}</div>
+          <p class="text-muted text-center" style="font-size:.75rem;">
+            Account: <strong>{{ current_user.email }}</strong> · Emittente: {{ app_name }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step">
+        <span class="step-badge">3</span>
+        <div style="width:100%;">
+          <strong>Verifica il codice</strong><br>
+          <span class="text-muted" style="font-size:.88rem;">
+            Inserisci il codice a 6 cifre generato dall'app per confermare la configurazione.
+          </span>
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'danger' if cat == 'danger' else 'info' }} py-2">
+          {{ msg }}
+        </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.mfa_setup') }}" autocomplete="off">
+        <input type="text" name="code" class="code-input"
+               placeholder="000000" maxlength="6"
+               inputmode="numeric" pattern="[0-9]*"
+               autofocus required>
+        <button type="submit" class="btn btn-success btn-block btn-lg mt-3">
+          <i class="fas fa-check mr-2"></i>Attiva autenticazione a due fattori
+        </button>
+      </form>
+
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-block mt-2">
+        Annulla
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+new QRCode(document.getElementById('qr-mfa'), {
+  text: {{ totp_uri|tojson }},
+  width: 220, height: 220,
+  correctLevel: QRCode.CorrectLevel.M
+});
+</script>
+{% endblock %}
