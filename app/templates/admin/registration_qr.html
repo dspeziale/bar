@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}QR Registrazione Clienti{% endblock %}
+{% block page_title %}QR Registrazione Clienti{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.clients') }}">Clienti</a></li>
+<li class="breadcrumb-item active">QR Registrazione</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .qr-card {
+    max-width: 420px;
+    margin: 2rem auto;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 32px rgba(0,0,0,.13);
+    padding: 2.5rem 2rem 2rem;
+    text-align: center;
+  }
+  .qr-card .brand {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #e94560;
+    letter-spacing: .02em;
+    margin-bottom: .25rem;
+  }
+  .qr-card .subtitle {
+    font-size: .92rem;
+    color: #555;
+    margin-bottom: 1.8rem;
+  }
+  #qr-register {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+  #qr-register canvas, #qr-register img {
+    border: 6px solid #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+  }
+  .qr-url {
+    font-size: .7rem;
+    color: #999;
+    word-break: break-all;
+    margin-bottom: 1.5rem;
+  }
+  .qr-steps {
+    text-align: left;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: .88rem;
+    color: #444;
+  }
+  .qr-steps li { margin-bottom: .35rem; }
+  .btn-print-bar {
+    margin-bottom: 1.5rem;
+  }
+  @media print {
+    .content-header, .main-sidebar, .main-footer,
+    .btn-print-bar, nav, .breadcrumb-item { display: none !important; }
+    body, .content-wrapper { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+    .qr-card { box-shadow: none !important; margin: 0 auto !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="btn-print-bar text-center mb-3">
+  <button class="btn btn-primary btn-lg" onclick="window.print()">
+    <i class="fas fa-print mr-2"></i>Stampa / Salva PDF
+  </button>
+  <a href="{{ url_for('admin.clients') }}" class="btn btn-outline-secondary btn-lg ml-2">
+    <i class="fas fa-arrow-left mr-1"></i>Torna ai Clienti
+  </a>
+</div>
+
+<div class="qr-card">
+  <div class="brand">
+    <i class="fas fa-utensils mr-2"></i>{{ tenant.name if tenant else 'QuickLunch' }}
+  </div>
+  <div class="subtitle">Scansiona per registrarti come cliente</div>
+
+  <div id="qr-register"></div>
+
+  <div class="qr-url">{{ join_url }}</div>
+
+  <div class="qr-steps">
+    <strong>Come registrarsi:</strong>
+    <ol class="mb-0 pl-3 mt-1">
+      <li>Inquadra il QR con la fotocamera del telefono</li>
+      <li>Scegli "Registrati con Email" o continua con Google</li>
+      <li>Compila nome, cognome e password</li>
+      <li>Attendi l'approvazione dell'amministratore</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+new QRCode(document.getElementById('qr-register'), {
+  text: {{ join_url|tojson }},
+  width: 260,
+  height: 260,
+  correctLevel: QRCode.CorrectLevel.M
+});
+</script>
+{% endblock %}

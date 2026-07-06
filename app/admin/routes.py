@@ -463,6 +463,17 @@ def users():
 
 # ── Clienti ───────────────────────────────────────────────────────────────────
 
+@bp.route('/clients/registration-qr')
+@require_permission('manage_clients')
+def clients_registration_qr():
+    """Pagina stampabile con QR code per la registrazione clienti."""
+    from flask import request as _req
+    join_url = _req.host_url.rstrip('/') + url_for('auth.join')
+    tenant = Tenant.query.filter_by(slug='default').first()
+    return render_template('admin/registration_qr.html',
+                           join_url=join_url, tenant=tenant)
+
+
 @bp.route('/clients')
 @require_permission('manage_clients')
 def clients():

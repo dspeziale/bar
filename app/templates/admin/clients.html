@@ -12,6 +12,13 @@
 {% endblock %}
 
 {% block content %}
+<!-- Pulsante QR registrazione -->
+<div class="mb-3 text-right">
+  <a href="{{ url_for('admin.clients_registration_qr') }}" class="btn btn-outline-primary" target="_blank">
+    <i class="fas fa-qrcode mr-2"></i>Stampa QR Registrazione
+  </a>
+</div>
+
 <!-- Nuovo cliente -->
 <div class="card card-outline card-success mb-3">
   <div class="card-header">

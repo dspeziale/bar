@@ -244,6 +244,64 @@
         {% endif %}
       </div>
     </div>
+
+    <!-- Cancella account -->
+    {% if current_user.is_client %}
+    <div class="card card-outline card-danger mt-3">
+      <div class="card-header">
+        <h3 class="card-title text-danger"><i class="fas fa-trash-alt mr-2"></i>Zona pericolosa</h3>
+      </div>
+      <div class="card-body">
+        {% if current_user.wallet_balance and current_user.wallet_balance > 0 %}
+        <p class="text-muted" style="font-size:.87rem;">
+          Hai ancora <strong>{{ '%.2f'|format(current_user.wallet_balance) }}€</strong> nel wallet.
+          Per cancellare l'account contatta l'amministratore per il rimborso.
+        </p>
+        <button class="btn btn-sm btn-outline-danger btn-block" disabled>
+          <i class="fas fa-ban mr-1"></i>Cancella account
+        </button>
+        {% else %}
+        <p class="text-muted" style="font-size:.87rem;">
+          Cancella definitivamente il tuo account e tutti i dati associati. L'operazione è irreversibile.
+        </p>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-block"
+                data-toggle="modal" data-target="#deleteAccountModal">
+          <i class="fas fa-trash-alt mr-1"></i>Cancella account
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Modal conferma cancellazione -->
+    <div class="modal fade" id="deleteAccountModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title"><i class="fas fa-exclamation-triangle mr-2"></i>Conferma cancellazione</h5>
+            <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <div class="modal-body">
+            <p>Stai per <strong>cancellare definitivamente</strong> il tuo account.</p>
+            <ul class="text-muted" style="font-size:.88rem;">
+              <li>Storico ordini</li>
+              <li>Prenotazioni tavoli</li>
+              <li>Voti sondaggi</li>
+              <li>Punti fedeltà</li>
+            </ul>
+            <p class="mb-0">Questa operazione è <strong>irreversibile</strong>. Sei sicuro?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+            <form method="POST" action="{{ url_for('main.account_delete') }}" style="display:inline;">
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash-alt mr-1"></i>Sì, cancella il mio account
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

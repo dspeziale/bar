@@ -9,7 +9,8 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
-                        DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession)
+                        DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
+                        CorporateMembership, User)
 from config import Config
 
 
@@ -885,4 +886,55 @@ def banco_pay_confirm(token):
     db.session.commit()
     flash(f'Pagamento di {sess.total:.2f}€ confermato!', 'success')
     return redirect(url_for('main.index'))
+
+
+# ── Auto-cancellazione account utente ────────────────────────────────────────
+
+@bp.route('/account/delete', methods=['POST'])
+@login_required
+def account_delete():
+    if current_user.is_admin or current_user.is_staff:
+        flash('Gli account staff non possono essere cancellati da qui.', 'danger')
+        return redirect(url_for('main.index'))
+    if current_user.wallet_balance and current_user.wallet_balance > 0:
+        flash(
+            f'Impossibile cancellare l\'account: hai ancora '
+            f'{current_user.wallet_balance:.2f}€ nel wallet. '
+            f'Contatta l\'amministratore per il rimborso prima di procedere.',
+            'danger',
+        )
+        return redirect(url_for('main.index'))
+
+    from flask_login import logout_user
+    from sqlalchemy import text as _text
+    uid = current_user.id
+
+    # cascade delete (ordini → transazioni → prenotazioni → voti → membership → utente)
+    order_ids = db.session.query(Order.id).filter_by(user_id=uid).subquery()
+    coi_ids   = db.session.query(CustomOrderItem.id).filter(
+                    CustomOrderItem.order_id.in_(order_ids)).subquery()
+    CustomOrderItemIngredient.query.filter(
+        CustomOrderItemIngredient.custom_item_id.in_(coi_ids)
+    ).delete(synchronize_session=False)
+    CustomOrderItem.query.filter(
+        CustomOrderItem.order_id.in_(order_ids)
+    ).delete(synchronize_session=False)
+    OrderItem.query.filter(
+        OrderItem.order_id.in_(order_ids)
+    ).delete(synchronize_session=False)
+    Transaction.query.filter(
+        Transaction.order_id.in_(order_ids)
+    ).update({'order_id': None}, synchronize_session=False)
+    Order.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    Transaction.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    TableReservation.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    PollVote.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    CorporateMembership.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    db.session.execute(_text('DELETE FROM user_roles WHERE user_id = :uid'), {'uid': uid})
+    User.query.filter_by(id=uid).delete(synchronize_session=False)
+    db.session.commit()
+
+    logout_user()
+    flash('Il tuo account è stato cancellato.', 'info')
+    return redirect(url_for('auth.login'))
 
