@@ -45,9 +45,10 @@ def _active_tenant_id():
 def _delete_user_cascade(uid):
     """Elimina un utente e tutti i record collegati rispettando i vincoli FK NOT NULL."""
     # ordini: prima i sotto-record, poi gli ordini stessi
-    order_ids   = db.session.query(Order.id).filter_by(user_id=uid).subquery()
-    coi_ids     = db.session.query(CustomOrderItem.id).filter(
-                      CustomOrderItem.order_id.in_(order_ids)).subquery()
+    # scalar_subquery() è richiesto da SQLAlchemy 2.x quando usato dentro .in_()
+    order_ids = db.session.query(Order.id).filter_by(user_id=uid).scalar_subquery()
+    coi_ids   = db.session.query(CustomOrderItem.id).filter(
+                    CustomOrderItem.order_id.in_(order_ids)).scalar_subquery()
 
     CustomOrderItemIngredient.query.filter(
         CustomOrderItemIngredient.custom_item_id.in_(coi_ids)
@@ -67,6 +68,11 @@ def _delete_user_cascade(uid):
     ).update({'order_id': None}, synchronize_session=False)
 
     Order.query.filter_by(user_id=uid).delete(synchronize_session=False)
+
+    # sessioni banco: customer_id è nullable → azzera; staff_id NOT NULL → elimina
+    BancoSession.query.filter_by(customer_id=uid).update(
+        {'customer_id': None}, synchronize_session=False)
+    BancoSession.query.filter_by(staff_id=uid).delete(synchronize_session=False)
 
     # tutti gli altri record collegati direttamente all'utente
     Transaction.query.filter_by(user_id=uid).delete(synchronize_session=False)
