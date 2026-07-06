@@ -480,6 +480,32 @@ def _seed_defaults():
         if not Permission.query.filter_by(name=pname).first():
             db.session.add(Permission(name=pname, label=plabel, category=pcat))
 
+    # ── Account di lavoro (idempotente) ──────────────────────────────────
+    _crew = [
+        # (email, username, password, role_name, is_client, wallet)
+        ('banco@bar.local',   'banco_staff',  'Banco2024!',  'cassiere', False, 0.0),
+        ('cucina@bar.local',  'cuoco_mario',  'Cucina2024!', 'cuoco',    False, 0.0),
+        ('sala@bar.local',    'staff_sala',   'Sala2024!',   'manager',  False, 0.0),
+        ('cliente1@bar.local','luca_verdi',   'Cliente1!',   'utente',   True,  30.0),
+        ('cliente2@bar.local','anna_rossi',   'Cliente2!',   'utente',   True,  15.0),
+    ]
+    for email, username, password, role_name, is_client, wallet in _crew:
+        if not User.query.filter_by(email=email).first():
+            role = Role.query.filter_by(name=role_name).first()
+            base = username; n = 2
+            while User.query.filter_by(username=base).first():
+                base = f'{username}{n}'; n += 1
+            u = User(
+                username=base, email=email,
+                is_active=True, is_client=is_client,
+                wallet_balance=wallet, loyalty_points=0,
+                tenant_id=default_tenant.id,
+            )
+            u.set_password(password)
+            if role:
+                u.roles.append(role)
+            db.session.add(u)
+
     # ── Impostazioni di default (vuote) ───────────────────────────────────
     default_settings = [
         ('telegram_bot_token', '', 'Token Bot Telegram'),
