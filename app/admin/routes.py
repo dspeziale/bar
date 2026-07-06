@@ -1557,16 +1557,18 @@ def ds_guadagni():
                         if b.status != 'cancelled':
                             meals_sum += meal.price * (b.quantity or 1)
 
-        t_total = ord_sum + banco_sum + meals_sum
-        t_fee   = round(t_total * fee_pct + monthly_fee, 2)
+        t_total       = ord_sum + banco_sum + meals_sum
+        t_excl_vat    = round(t_total / 1.10, 2)   # imponibile (scorporo IVA 10%)
+        t_fee         = round(t_excl_vat * fee_pct + monthly_fee, 2)
 
         rows.append({
-            'tenant':   t,
-            'orders':   round(ord_sum,    2),
-            'banco':    round(banco_sum,  2),
-            'meals':    round(meals_sum,  2),
-            'total':    round(t_total,    2),
-            'fee':      t_fee,
+            'tenant':    t,
+            'orders':    round(ord_sum,   2),
+            'banco':     round(banco_sum, 2),
+            'meals':     round(meals_sum, 2),
+            'total':     round(t_total,   2),
+            'excl_vat':  t_excl_vat,
+            'fee':       t_fee,
         })
 
     grand_total = round(sum(r['total'] for r in rows), 2)

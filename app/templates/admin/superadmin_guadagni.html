@@ -106,7 +106,8 @@
             <th class="text-right">Ordini completati</th>
             <th class="text-right">Banco (QR)</th>
             <th class="text-right">Pasti aziendali</th>
-            <th class="text-right"><strong>Totale</strong></th>
+            <th class="text-right"><strong>Totale IVA incl.</strong></th>
+            <th class="text-right text-warning">Imponibile (÷1.10)</th>
             <th class="text-right" style="color:#e94560;">Fee DS</th>
           </tr>
         </thead>
@@ -124,13 +125,14 @@
             <td class="text-right">{{ "%.2f"|format(r.banco) }} €</td>
             <td class="text-right">{{ "%.2f"|format(r.meals) }} €</td>
             <td class="text-right"><strong>{{ "%.2f"|format(r.total) }} €</strong></td>
+            <td class="text-right text-warning">{{ "%.2f"|format(r.excl_vat) }} €</td>
             <td class="text-right" style="color:#e94560;font-weight:700;">
               {{ "%.2f"|format(r.fee) }} €
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="7" class="text-center text-muted py-4">
               <i class="fas fa-info-circle mr-1"></i>Nessun tenant trovato.
             </td>
           </tr>
@@ -144,6 +146,7 @@
             <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='banco')) }} €</td>
             <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='meals')) }} €</td>
             <td class="text-right">{{ "%.2f"|format(grand_total) }} €</td>
+            <td class="text-right" style="color:#ffc107;">{{ "%.2f"|format(rows|sum(attribute='excl_vat')) }} €</td>
             <td class="text-right" style="color:#e94560;">{{ "%.2f"|format(grand_fee) }} €</td>
           </tr>
         </tfoot>
@@ -208,9 +211,10 @@
     <div class="callout callout-info mt-2 mb-0">
       <p class="mb-0" style="font-size:.85rem;">
         <strong>Formula:</strong>
-        Fee tenant = (<em>Volume totale</em> × {{ fee_pct }}%) + {{ "%.2f"|format(monthly_fee) }} €
+        Imponibile = Totale IVA inclusa ÷ 1,10 &nbsp;·&nbsp;
+        Fee tenant = (<em>Imponibile</em> × {{ fee_pct }}%) + {{ "%.2f"|format(monthly_fee) }} €
         &nbsp;·&nbsp;
-        <strong>Guadagno totale mese</strong> = somma delle fee di tutti i tenant
+        <strong>Guadagno DS Consulting</strong> = somma delle fee di tutti i tenant
       </p>
     </div>
   </div>
