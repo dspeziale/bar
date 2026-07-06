@@ -870,6 +870,29 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
         synchronize_session=False)
     Category.query.filter(
         Category.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # NULL out slot_id FK in tutti i record che referenziano questi time_slots
+    # (CorporateMealBooking, Order, TableReservation possono avere slot_id nullable)
+    slot_ids = [r[0] for r in db.session.query(TimeSlot.id).filter(
+        TimeSlot.tenant_id.in_(tenant_ids)).all()]
+    if slot_ids:
+        if is_pg:
+            for tbl, col in [('corporate_meal_bookings', 'slot_id'),
+                              ('orders',                  'slot_id'),
+                              ('table_reservations',      'slot_id')]:
+                db.session.execute(
+                    db.text(f'UPDATE {tbl} SET {col} = NULL'
+                            f' WHERE {col} = ANY(:ids)'),
+                    {'ids': slot_ids})
+        else:
+            ids_str = ','.join(str(i) for i in slot_ids)
+            for tbl, col in [('corporate_meal_bookings', 'slot_id'),
+                              ('orders',                  'slot_id'),
+                              ('table_reservations',      'slot_id')]:
+                db.session.execute(db.text(
+                    f'UPDATE {tbl} SET {col} = NULL'
+                    f' WHERE {col} IN ({ids_str})'))
+
     TimeSlot.query.filter(
         TimeSlot.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
