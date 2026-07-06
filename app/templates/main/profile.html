@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Il mio profilo{% endblock %}
+{% block page_title %}Il mio profilo{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Profilo</li>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}
+    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<div class="row">
+
+  {# ── Colonna sinistra: avatar + info account ── #}
+  <div class="col-lg-4 mb-4">
+
+    <div class="card card-outline card-primary text-center">
+      <div class="card-body pt-4">
+        {% if current_user.avatar_url %}
+        <img src="{{ current_user.avatar_url }}" alt=""
+             class="rounded-circle mb-3"
+             style="width:80px;height:80px;object-fit:cover;
+                    box-shadow:0 2px 12px rgba(0,0,0,.18);">
+        {% else %}
+        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+             style="width:80px;height:80px;
+                    background:linear-gradient(135deg,#e94560,#0f3460);
+                    font-size:2rem;font-weight:700;color:#fff;">
+          {{ current_user.full_name[0]|upper }}
+        </div>
+        {% endif %}
+
+        <h5 class="mb-0 font-weight-bold">{{ current_user.full_name }}</h5>
+        <small class="text-muted">{{ current_user.email }}</small>
+
+        {% if current_user.is_admin %}
+        <div class="mt-2"><span class="badge badge-danger">Super Admin</span></div>
+        {% elif current_user.roles %}
+        <div class="mt-2">
+          {% for r in current_user.roles %}
+          <span class="badge badge-{{ r.color }}">{{ r.label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if current_user.google_id %}
+        <div class="mt-2">
+          <span class="badge badge-light border" style="font-size:.75rem;">
+            <i class="fab fa-google mr-1 text-danger"></i>Account Google
+          </span>
+        </div>
+        {% endif %}
+
+        {% if current_user.totp_enabled %}
+        <div class="mt-1">
+          <span class="badge badge-success" style="font-size:.75rem;">
+            <i class="fas fa-shield-halved mr-1"></i>MFA attivo
+          </span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-footer p-2">
+        <small class="text-muted">
+          Iscritto il {{ current_user.created_at|dt_rome('%d/%m/%Y') }}
+        </small>
+      </div>
+    </div>
+
+    {# Link rapidi #}
+    <div class="list-group mt-3">
+      <a href="{{ url_for('main.wallet') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+        <i class="fas fa-wallet mr-2 text-info"></i>
+        Wallet & Transazioni
+        <span class="badge badge-info ml-auto">{{ '%.2f'|format(current_user.wallet_balance) }}€</span>
+      </a>
+      <a href="{{ url_for('auth.mfa_setup') if not current_user.totp_enabled else '#' }}"
+         class="list-group-item list-group-item-action d-flex align-items-center
+                {{ 'disabled' if current_user.totp_enabled }}">
+        <i class="fas fa-shield-halved mr-2 text-{{ 'success' if current_user.totp_enabled else 'secondary' }}"></i>
+        Verifica in due passi
+        {% if current_user.totp_enabled %}
+        <span class="badge badge-success ml-auto">Attiva</span>
+        {% else %}
+        <span class="badge badge-secondary ml-auto">Non attiva</span>
+        {% endif %}
+      </a>
+    </div>
+
+  </div>
+
+  {# ── Colonna destra: form ── #}
+  <div class="col-lg-8">
+
+    {# ── Informazioni personali ── #}
+    <div class="card card-outline card-primary mb-4">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-user-edit mr-2"></i>Informazioni personali</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('main.profile') }}">
+          <input type="hidden" name="action" value="info">
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Nome</label>
+              <input type="text" name="first_name" class="form-control"
+                     value="{{ current_user.first_name or '' }}" placeholder="Nome">
+            </div>
+            <div class="form-group col-md-6">
+              <label>Cognome</label>
+              <input type="text" name="last_name" class="form-control"
+                     value="{{ current_user.last_name or '' }}" placeholder="Cognome">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Email</label>
+              <input type="email" class="form-control" value="{{ current_user.email }}"
+                     disabled title="L'email non può essere modificata da qui.">
+              <small class="text-muted">Non modificabile</small>
+            </div>
+            <div class="form-group col-md-6">
+              <label>Telefono</label>
+              <input type="tel" name="phone" class="form-control"
+                     value="{{ current_user.phone or '' }}" placeholder="+39 000 0000000">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Data di nascita</label>
+              <input type="date" name="birth_date" class="form-control"
+                     value="{{ current_user.birth_date.strftime('%Y-%m-%d') if current_user.birth_date else '' }}">
+            </div>
+            <div class="form-group col-md-6">
+              <label>Telegram Chat ID</label>
+              <input type="text" name="telegram_chat_id" class="form-control"
+                     value="{{ current_user.telegram_chat_id or '' }}"
+                     placeholder="es. 123456789">
+              <small class="text-muted">Per ricevere notifiche via Telegram</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Indirizzo</label>
+            <textarea name="address" class="form-control" rows="2"
+                      placeholder="Via, Città, CAP">{{ current_user.address or '' }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i>Salva modifiche
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# ── Cambio password (solo account non-Google) ── #}
+    {% if not current_user.google_id %}
+    <div class="card card-outline card-warning">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-key mr-2"></i>Cambia password</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('main.profile') }}" autocomplete="off">
+          <input type="hidden" name="action" value="password">
+          <div class="form-group">
+            <label>Password attuale</label>
+            <input type="password" name="current_password" class="form-control"
+                   placeholder="••••••••" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Nuova password</label>
+              <input type="password" name="new_password" class="form-control"
+                     placeholder="min. 6 caratteri" minlength="6" required>
+            </div>
+            <div class="form-group col-md-6">
+              <label>Conferma nuova password</label>
+              <input type="password" name="confirm_password" class="form-control"
+                     placeholder="••••••••" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-key mr-1"></i>Aggiorna password
+          </button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="card card-outline card-secondary">
+      <div class="card-body py-3 d-flex align-items-center" style="gap:.75rem;">
+        <i class="fab fa-google fa-lg text-danger"></i>
+        <span class="text-muted" style="font-size:.88rem;">
+          Il tuo account è collegato a Google. La password viene gestita da Google.
+        </span>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

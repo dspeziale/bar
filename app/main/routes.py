@@ -888,6 +888,55 @@ def banco_pay_confirm(token):
     return redirect(url_for('main.index'))
 
 
+# ── Profilo utente ───────────────────────────────────────────────────────────
+
+@bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    from datetime import datetime as _dt
+    if request.method == 'POST':
+        action = request.form.get('action', 'info')
+
+        if action == 'info':
+            current_user.first_name = request.form.get('first_name', '').strip()
+            current_user.last_name  = request.form.get('last_name',  '').strip()
+            current_user.phone      = request.form.get('phone',      '').strip()
+            current_user.address    = request.form.get('address',    '').strip()
+            current_user.telegram_chat_id = request.form.get('telegram_chat_id', '').strip()
+            birth_raw = request.form.get('birth_date', '').strip()
+            if birth_raw:
+                try:
+                    current_user.birth_date = _dt.strptime(birth_raw, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            else:
+                current_user.birth_date = None
+            db.session.commit()
+            flash('Profilo aggiornato.', 'success')
+
+        elif action == 'password':
+            if current_user.google_id:
+                flash('Gli account Google non hanno una password locale.', 'warning')
+            else:
+                current_pw  = request.form.get('current_password', '')
+                new_pw      = request.form.get('new_password', '')
+                confirm_pw  = request.form.get('confirm_password', '')
+                if not current_user.check_password(current_pw):
+                    flash('Password attuale non corretta.', 'danger')
+                elif len(new_pw) < 6:
+                    flash('La nuova password deve essere di almeno 6 caratteri.', 'danger')
+                elif new_pw != confirm_pw:
+                    flash('Le password non coincidono.', 'danger')
+                else:
+                    current_user.set_password(new_pw)
+                    db.session.commit()
+                    flash('Password aggiornata.', 'success')
+
+        return redirect(url_for('main.profile'))
+
+    return render_template('main/profile.html')
+
+
 # ── Auto-cancellazione account utente ────────────────────────────────────────
 
 @bp.route('/account/delete', methods=['POST'])

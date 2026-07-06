@@ -843,6 +843,14 @@
           {% endif %}
 
           {% if current_user.is_authenticated %}
+            <li class="nav-header">ACCOUNT</li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.profile') }}"
+                 class="nav-link {{ 'active' if ep == 'main.profile' }}">
+                <i class="nav-icon fas fa-user-circle"></i>
+                <p>Il mio profilo</p>
+              </a>
+            </li>
             <li class="nav-header">SUPPORTO</li>
             <li class="nav-item">
               <a href="{{ url_for('main.guida') }}"
