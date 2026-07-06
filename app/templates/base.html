@@ -401,15 +401,16 @@
         </a>
       </li>
       {% endif %}
-      <li class="nav-item mr-2">
-        <button id="QuickLunch-theme-toggle" onclick="bsrToggleTheme()">
+      {% if current_user.is_authenticated %}
+      <li class="nav-item d-flex align-items-center" style="gap:.45rem;">
+        <button id="QuickLunch-theme-toggle" onclick="bsrToggleTheme()" style="margin-right:.1rem;">
           <i class="fas fa-moon" id="QuickLunch-theme-icon"></i>
           <span class="QuickLunch-nav-label" id="QuickLunch-theme-label">Scuro</span>
         </button>
-      </li>
-      {% if current_user.is_authenticated %}
-      <li class="nav-item mr-2 d-flex align-items-center" style="gap:.5rem;">
-        {% if not current_user.avatar_url %}
+        {% if current_user.avatar_url %}
+        <img src="{{ current_user.avatar_url }}" alt=""
+             style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+        {% else %}
         <span style="width:28px;height:28px;border-radius:50%;
                      background:linear-gradient(135deg,#e94560,#0f3460);
                      display:inline-flex;align-items:center;justify-content:center;
@@ -426,18 +427,20 @@
           {% endif %}
         </span>
       </li>
-      {% endif %}
       <li class="nav-item">
-        <a class="nav-link d-flex align-items-center" href="{{ url_for('auth.logout') }}" title="Esci" style="gap:.4rem;">
-          {% if current_user.is_authenticated and current_user.avatar_url %}
-          <img src="{{ current_user.avatar_url }}" alt=""
-               style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
-          {% else %}
+        <a class="nav-link" href="{{ url_for('auth.logout') }}" title="Esci">
           <i class="fas fa-sign-out-alt"></i>
-          {% endif %}
           <span class="d-none d-md-inline ml-1">Esci</span>
         </a>
       </li>
+      {% else %}
+      <li class="nav-item">
+        <button id="QuickLunch-theme-toggle" onclick="bsrToggleTheme()">
+          <i class="fas fa-moon" id="QuickLunch-theme-icon"></i>
+          <span class="QuickLunch-nav-label" id="QuickLunch-theme-label">Scuro</span>
+        </button>
+      </li>
+      {% endif %}
     </ul>
   </nav>
 
