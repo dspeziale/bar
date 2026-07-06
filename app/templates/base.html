@@ -681,16 +681,17 @@
                   </a>
                 </li>
                 {% endif %}
-                {% if p('manage_settings') %}
-                <li class="nav-item">
-                  <a href="{{ url_for('admin.settings') }}"
-                     class="nav-link {{ 'active' if ep == 'admin.settings' }}">
-                    <i class="fas fa-gear nav-icon" style="color:#7f8c8d;"></i>
-                    <p>Impostazioni</p>
-                  </a>
-                </li>
-                {% endif %}
               </ul>
+            </li>
+            {% endif %}
+
+            {% if p('manage_settings') %}
+            <li class="nav-item">
+              <a href="{{ url_for('admin.settings') }}"
+                 class="nav-link {{ 'active' if ep == 'admin.settings' }}">
+                <i class="nav-icon fas fa-gear" style="color:#7f8c8d;"></i>
+                <p>Impostazioni</p>
+              </a>
             </li>
             {% endif %}
 
