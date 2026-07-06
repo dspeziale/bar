@@ -343,9 +343,16 @@ def redeem_points():
         flash(f'Punti insufficienti (servono {threshold}).', 'warning')
         return redirect(url_for('main.wallet'))
     blocks = current_user.loyalty_points // threshold
-    current_user.redeem_points(blocks * threshold, blocks * reward)
+    earned = blocks * reward
+    current_user.redeem_points(blocks * threshold, earned)
     db.session.commit()
-    flash(f'+{blocks * reward:.2f}€ aggiunti al wallet!', 'success')
+    flash(f'+{earned:.2f}€ aggiunti al wallet!', 'success')
+    send_telegram_to_user(
+        current_user,
+        f'🎁 Hai riscattato i tuoi punti fedeltà!\n'
+        f'<b>+{earned:.2f}€</b> aggiunti al wallet.\n'
+        f'💰 Saldo attuale: <b>{current_user.wallet_balance:.2f}€</b>'
+    )
     return redirect(url_for('main.wallet'))
 
 
@@ -614,6 +621,11 @@ def cancel_reservation(rid):
         f'🪑 Tavolo <b>{res.table.number}</b> — <b>{res.session_start}</b> — '
         f'{res.reservation_date.strftime("%d/%m/%Y")}'
     )
+    send_telegram_to_user(
+        current_user,
+        f'❌ Prenotazione tavolo <b>{res.table.number}</b> annullata.\n'
+        f'Orario: <b>{res.session_start}</b> — {res.reservation_date.strftime("%d/%m/%Y")}'
+    )
     return redirect(url_for('main.my_reservations'))
 
 
@@ -805,9 +817,14 @@ def pasto_aziendale_cancella():
             except Exception:
                 can_cancel = True
         if can_cancel:
+            meal_name = booking.meal.name
             booking.status = 'cancelled'
             db.session.commit()
             flash('Prenotazione annullata.', 'info')
+            send_telegram_to_user(
+                current_user,
+                f'❌ Prenotazione pasto annullata: <b>{meal_name}</b>'
+            )
         else:
             flash('Non è più possibile annullare: mancano meno di 30 minuti alla consegna.', 'warning')
     return redirect(url_for('main.pasto_aziendale'))
@@ -885,6 +902,11 @@ def banco_pay_confirm(token):
     sess.customer_id = current_user.id
     db.session.commit()
     flash(f'Pagamento di {sess.total:.2f}€ confermato!', 'success')
+    send_telegram_to_user(
+        current_user,
+        f'☕ Pagamento banco confermato: <b>{sess.total:.2f}€</b>\n'
+        f'💰 Saldo residuo: <b>{current_user.wallet_balance:.2f}€</b>'
+    )
     return redirect(url_for('main.index'))
 
 

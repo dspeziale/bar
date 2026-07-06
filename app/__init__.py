@@ -1,4 +1,5 @@
 ﻿import os
+import time as _time
 from zoneinfo import ZoneInfo
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -6,6 +7,9 @@ from flask_login import LoginManager
 from authlib.integrations.flask_client import OAuth
 
 _ROME = ZoneInfo('Europe/Rome')
+
+# ── Reminder tavoli: ultimo check (time-gate, per-process) ────────────────────
+_reminder_last_run = [0.0]   # list per consentire la modifica nel before_request
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -67,6 +71,18 @@ def create_app(config_object='config.Config'):
     from app.tenant import bp as tenant_bp
     app.register_blueprint(tenant_bp, url_prefix='/t')
 
+    # ── Reminder prenotazioni tavolo (10 min prima, lazy polling) ────────────
+    @app.before_request
+    def _maybe_remind_table_bookings():
+        now = _time.monotonic()
+        if now - _reminder_last_run[0] < 60:
+            return
+        _reminder_last_run[0] = now
+        try:
+            _check_table_reminders()
+        except Exception:
+            pass
+
     with app.app_context():
         db.create_all()
         _migrate_tenant_columns()
@@ -83,6 +99,49 @@ def create_app(config_object='config.Config'):
             print(('[OK]' if ok else '[SKIP]'), msg)
 
     return app
+
+
+def _check_table_reminders():
+    """Invia reminder Telegram ~10 min prima della prenotazione tavolo.
+    Chiamato lazy da before_request, al massimo una volta al minuto per processo.
+    Usa table_alert_sent come flag per non inviare duplicati (persiste nel DB).
+    """
+    from datetime import datetime as _dtt
+    from app.models import TableReservation
+    from app.notifications import send_telegram_to_user
+
+    REMIND_MINUTES = 10
+    now   = _dtt.utcnow()
+    today = now.date()
+
+    candidates = (
+        TableReservation.query
+        .filter_by(reservation_date=today, status='confirmed', table_alert_sent=False)
+        .filter(TableReservation.checkin_at.is_(None))
+        .all()
+    )
+    changed = False
+    for res in candidates:
+        if not res.session_start or not getattr(res.user, 'telegram_chat_id', None):
+            continue
+        try:
+            slot_dt = _dtt.strptime(
+                f'{today.isoformat()} {res.session_start}', '%Y-%m-%d %H:%M'
+            )
+        except ValueError:
+            continue
+        diff = (slot_dt - now).total_seconds() / 60
+        if 0 < diff <= REMIND_MINUTES:
+            send_telegram_to_user(
+                res.user,
+                f'⏰ Reminder: il tuo tavolo è tra <b>{int(diff)} minuti</b>!\n'
+                f'🪑 Tavolo <b>{res.table.number}</b> — ore <b>{res.session_start}</b>\n'
+                f'📅 {res.reservation_date.strftime("%d/%m/%Y")}'
+            )
+            res.table_alert_sent = True
+            changed = True
+    if changed:
+        db.session.commit()
 
 
 def _migrate_tenant_columns():

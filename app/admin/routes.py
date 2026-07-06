@@ -585,8 +585,12 @@ def client_toggle(uid):
     db.session.commit()
     if activating:
         send_telegram_to_user(u,
-            '\U00002705 Il tuo account è stato attivato!\n'
+            '✅ Il tuo account è stato attivato!\n'
             'Puoi ora accedere al servizio.')
+    else:
+        send_telegram_to_user(u,
+            '🔒 Il tuo account è stato sospeso.\n'
+            'Contatta l\'amministratore per informazioni.')
     flash(f'Cliente {u.full_name} {"attivato" if activating else "sospeso"}.', 'info')
     return redirect(url_for('admin.clients'))
 
@@ -618,6 +622,11 @@ def client_topup(uid):
     u.credit_wallet(amount, note)
     db.session.commit()
     flash(f'+{amount:.2f}€ aggiunti al wallet di {u.full_name}.', 'success')
+    send_telegram_to_user(u,
+        f'💳 Ricarica wallet: <b>+{amount:.2f}€</b>\n'
+        f'💰 Saldo attuale: <b>{u.wallet_balance:.2f}€</b>\n'
+        f'📝 {note}'
+    )
     return redirect(url_for('admin.clients'))
 
 
