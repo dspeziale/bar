@@ -2297,8 +2297,9 @@ def convenzione_report_docx(cid):
 
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = sub.add_run(f'{corp.name}  —  {sel_date.strftime("%d/%m/%Y")}')
-    run.font.size = Pt(13)
+    run = sub.add_run(f'{corp.name}  -  {sel_date.strftime("%d/%m/%Y")}')
+    run.font.name = 'PT Sans Narrow'
+    run.font.size = Pt(14)
 
     doc.add_paragraph()
 
@@ -2316,7 +2317,8 @@ def convenzione_report_docx(cid):
         hdr_cells[i].text = h
         run = hdr_cells[i].paragraphs[0].runs[0]
         run.bold = True
-        run.font.size = Pt(10)
+        run.font.name = 'PT Sans Narrow'
+        run.font.size = Pt(11)
 
     STATUS_IT = {'consumed': 'Consumato', 'booked': 'Prenotato'}
     for full_name, meal_name, qty, status in entries:
@@ -2326,12 +2328,18 @@ def convenzione_report_docx(cid):
         row[2].text = str(qty)
         row[3].text = STATUS_IT.get(status, status)
         for cell in row:
-            cell.paragraphs[0].runs[0].font.size = Pt(10)
+            r = cell.paragraphs[0].runs[0]
+            r.font.name = 'PT Sans Narrow'
+            r.font.size = Pt(11)
 
     doc.add_paragraph()
+    _it_m = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+             'luglio','agosto','settembre','ottobre','novembre','dicembre']
+    _it_now = f'{_dt.now().day} {_it_m[_dt.now().month-1]} {_dt.now().year} {_dt.now().strftime("%H:%M")}'
     note = doc.add_paragraph(
-        f'Documento generato il {_dt.now().strftime("%d/%m/%Y %H:%M")} da QuickLunch Bar Self-Service')
-    note.runs[0].font.size = Pt(8)
+        f'Documento generato il {_it_now} da QuickLunch Bar Self-Service')
+    note.runs[0].font.name = 'PT Sans Narrow'
+    note.runs[0].font.size = Pt(9)
     note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
     buf = BytesIO()
@@ -2361,9 +2369,17 @@ def convenzioni_abstract_docx():
         h = h.lstrip('#')
         return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
+    FONT = 'PT Sans Narrow'
+    _IT_MONTHS_D = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+                    'luglio','agosto','settembre','ottobre','novembre','dicembre']
+
+    def _it_mese_anno(dt):
+        return f'{_IT_MONTHS_D[dt.month - 1]} {dt.year}'
+
     def _heading(doc, text, level=1, color=BRAND):
         p = doc.add_heading(text, level)
         for run in p.runs:
+            run.font.name  = FONT
             run.font.color.rgb = _rgb(color)
         return p
 
@@ -2371,7 +2387,8 @@ def convenzioni_abstract_docx():
         p = doc.add_paragraph(text)
         p.paragraph_format.space_after = Pt(5)
         for run in p.runs:
-            run.font.size = Pt(11)
+            run.font.name = FONT
+            run.font.size = Pt(12)
         return p
 
     def _bullet(doc, text, bold_prefix=None):
@@ -2379,19 +2396,23 @@ def convenzioni_abstract_docx():
         if bold_prefix:
             r = p.add_run(bold_prefix + ' ')
             r.bold = True
-            r.font.size = Pt(11)
+            r.font.name  = FONT
+            r.font.size  = Pt(12)
             r.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(text)
-        r2.font.size = Pt(11)
+        r2.font.name = FONT
+        r2.font.size = Pt(12)
 
     def _step(doc, num, title, body):
         p = doc.add_paragraph()
         r1 = p.add_run(f'{num}. {title}  ')
         r1.bold = True
-        r1.font.size = Pt(11)
+        r1.font.name  = FONT
+        r1.font.size  = Pt(12)
         r1.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(body)
-        r2.font.size = Pt(11)
+        r2.font.name = FONT
+        r2.font.size = Pt(12)
         p.paragraph_format.left_indent = Inches(0.15)
         p.paragraph_format.space_after  = Pt(6)
 
@@ -2421,23 +2442,23 @@ def convenzioni_abstract_docx():
         doc.add_paragraph()
     tp = doc.add_paragraph()
     tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = tp.add_run('QuickLunch — Bar Self-Service')
-    r.font.size = Pt(26); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
+    r = tp.add_run('QuickLunch - Bar Self-Service')
+    r.font.name = FONT; r.font.size = Pt(28); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
     sp = doc.add_paragraph()
     sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = sp.add_run('Modulo Pasti Aziendali')
-    r.font.size = Pt(18); r.font.color.rgb = _rgb(DARK)
+    r.font.name = FONT; r.font.size = Pt(20); r.font.color.rgb = _rgb(DARK)
     doc.add_paragraph()
     dp = doc.add_paragraph()
     dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = dp.add_run('Documento descrittivo per le aziende convenzionate')
-    r.font.size = Pt(12); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    r.font.name = FONT; r.font.size = Pt(13); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
     for _ in range(2):
         doc.add_paragraph()
     datp = doc.add_paragraph()
     datp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = datp.add_run(_dt.now().strftime('%B %Y'))
-    r.font.size = Pt(11); r.font.color.rgb = _rgb(GRAY)
+    r = datp.add_run(_it_mese_anno(_dt.now()))
+    r.font.name = FONT; r.font.size = Pt(12); r.font.color.rgb = _rgb(GRAY)
     doc.add_page_break()
 
     # ── 1. Introduzione ───────────────────────────────────────────────────────
@@ -2517,7 +2538,8 @@ def convenzioni_abstract_docx():
     for cell in [h0, h1]:
         r = cell.paragraphs[0].runs[0]
         r.bold = True
-        r.font.size = Pt(10)
+        r.font.name = FONT
+        r.font.size = Pt(11)
     for pname, pdesc in [
         ('Nome azienda',           "Ragione sociale dell'azienda convenzionata."),
         ('Email di contatto',      'Referente aziendale per le comunicazioni.'),
@@ -2529,9 +2551,11 @@ def convenzioni_abstract_docx():
         row = tbl.add_row().cells
         rn = row[0].paragraphs[0].add_run(pname)
         rn.bold = True
-        rn.font.size = Pt(10)
+        rn.font.name = FONT
+        rn.font.size = Pt(11)
         rd = row[1].paragraphs[0].add_run(pdesc)
-        rd.font.size = Pt(10)
+        rd.font.name = FONT
+        rd.font.size = Pt(11)
     doc.add_paragraph()
 
     # ── 5. Report ─────────────────────────────────────────────────────────────
@@ -2577,9 +2601,12 @@ def convenzioni_abstract_docx():
     doc.add_page_break()
     cp = doc.add_paragraph()
     cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = cp.add_run(
-        f'QuickLunch Bar Self-Service  —  Documento generato il {_dt.now().strftime("%d/%m/%Y")}')
-    r.font.size = Pt(9)
+    _it_m2 = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+              'luglio','agosto','settembre','ottobre','novembre','dicembre']
+    _it_d2 = f'{_dt.now().day} {_it_m2[_dt.now().month-1]} {_dt.now().year}'
+    r = cp.add_run(f'QuickLunch Bar Self-Service  -  Documento generato il {_it_d2}')
+    r.font.name  = FONT
+    r.font.size  = Pt(10)
     r.font.italic = True
     r.font.color.rgb = _rgb(GRAY)
 
