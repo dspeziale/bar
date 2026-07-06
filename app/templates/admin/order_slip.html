@@ -159,7 +159,7 @@
   <!-- Footer -->
   <div class="center footer-text" style="margin-top:5px;">
     Buon appetito!<br>
-    Stampato: {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+    Stampato: {{ order.created_at|dt_rome }}
   </div>
 
   <!-- Pulsante stampa visibile solo a schermo -->

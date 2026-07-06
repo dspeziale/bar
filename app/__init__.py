@@ -1,8 +1,11 @@
 ﻿import os
+from zoneinfo import ZoneInfo
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from authlib.integrations.flask_client import OAuth
+
+_ROME = ZoneInfo('Europe/Rome')
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -23,6 +26,25 @@ def create_app(config_object='config.Config'):
     db.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+
+    # ── Filtri Jinja2 per fuso orario Europe/Rome ─────────────────────────
+    from datetime import datetime, timezone
+
+    @app.template_filter('dt_rome')
+    def _dt_rome(dt, fmt='%d/%m/%Y %H:%M'):
+        if dt is None:
+            return ''
+        if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(_ROME).strftime(fmt)
+        return dt.strftime(fmt.split(' ')[0] if ' ' in fmt else fmt)
+
+    @app.template_filter('d_rome')
+    def _d_rome(d):
+        if d is None:
+            return ''
+        return d.strftime('%d/%m/%Y')
 
     # Registra Google OAuth (se configurato)
     oauth.register(

@@ -205,7 +205,7 @@
             <div>
               <i class="fas {{ info[0] }} text-{{ info[1] }} mr-2"></i>
               <small>{{ t.description[:40] }}</small><br>
-              <small class="text-muted">{{ t.created_at.strftime('%d/%m %H:%M') }}</small>
+              <small class="text-muted">{{ t.created_at|dt_rome('%d/%m %H:%M') }}</small>
             </div>
             {% if t.amount != 0 %}
             <span class="badge badge-{{ 'success' if t.amount > 0 else 'danger' }}">

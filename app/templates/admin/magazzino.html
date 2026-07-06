@@ -139,7 +139,7 @@
               <tbody>
                 {% for mv in item.movements[:10] %}
                 <tr>
-                  <td>{{ mv.created_at.strftime('%d/%m %H:%M') }}</td>
+                  <td>{{ mv.created_at|dt_rome('%d/%m %H:%M') }}</td>
                   <td class="{{ 'text-success' if mv.delta > 0 else 'text-danger' }}">
                     {{ '+' if mv.delta > 0 else '' }}{{ '%.1f'|format(mv.delta) }} {{ item.unit }}
                   </td>

@@ -244,7 +244,7 @@
         <td class="align-middle">
           <span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span>
           {% if r.checkin_at %}
-          <small class="text-muted d-block">check-in {{ r.checkin_at.strftime('%H:%M') }}</small>
+          <small class="text-muted d-block">check-in {{ r.checkin_at|dt_rome('%H:%M') }}</small>
           {% endif %}
         </td>
         <td class="align-middle text-right" style="white-space:nowrap;">

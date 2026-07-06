@@ -13,8 +13,8 @@
   .item-btn:active { transform:scale(.94); }
   .item-btn.selected { border-color:#0f3460 !important; box-shadow:0 0 0 3px rgba(15,52,96,.18); }
   .item-icon { font-size:1.8rem; display:block; margin-bottom:.35rem; }
-  .item-name { font-size:.82rem; font-weight:700; line-height:1.2; }
-  .item-price { font-size:.9rem; color:#e94560; font-weight:800; margin-top:.2rem; }
+  .item-name { font-size:.82rem; font-weight:700; line-height:1.2; color:#212529 !important; }
+  .item-price { font-size:.9rem; color:#e94560 !important; font-weight:800; margin-top:.2rem; }
   .item-qty { position:absolute; top:.4rem; right:.5rem; font-size:.7rem;
               background:#0f3460; color:#fff; border-radius:50%;
               width:20px; height:20px; display:flex; align-items:center; justify-content:center;
@@ -235,6 +235,7 @@ function openQRModal(token, payUrl, total, expiresIn) {
     '<i class="fas fa-spinner fa-spin mr-1"></i>In attesa di pagamento...';
   document.getElementById('qr-status-msg').className = 'mb-2 text-muted';
   document.getElementById('btnCancelSession').disabled = false;
+  document.getElementById('btnCancelSession').style.display = '';
 
   // Genera QR code
   var qrDiv = document.getElementById('qr-code');
@@ -283,21 +284,39 @@ function pollStatus(token) {
     .then(function(data) {
       if (data.status === 'paid') {
         stopPolling();
-        var name = data.customer || 'Cliente';
-        document.getElementById('qr-status-msg').innerHTML =
-          '<i class="fas fa-check-circle mr-1 text-success"></i>'
-          + '<span class="text-success">Pagato da <strong>' + name + '</strong></span>';
-        document.getElementById('qr-status-msg').className = 'mb-2';
-        document.getElementById('btnCancelSession').disabled = true;
         resetCart();
+        var name = data.customer || 'Cliente';
+        var totale = document.getElementById('qr-total-label').textContent;
+        // Sostituisci interamente il corpo del modal
+        document.querySelector('#qrModal .modal-header .modal-title').innerHTML =
+          '<i class="fas fa-check-circle mr-2 text-success"></i>Pagamento completato';
+        document.querySelector('#qrModal .modal-body').innerHTML =
+          '<div class="py-3 text-center">'
+          + '<div style="font-size:5rem;line-height:1;color:#28a745;margin-bottom:.5rem;">✔</div>'
+          + '<div class="h4 text-success font-weight-bold mb-1">' + totale + '</div>'
+          + '<div class="text-muted">Pagato da <strong>' + name + '</strong></div>'
+          + '</div>';
+        document.querySelector('#qrModal .modal-footer').innerHTML =
+          '<button type="button" class="btn btn-success btn-lg px-5" data-dismiss="modal">'
+          + '<i class="fas fa-check mr-2"></i>Chiudi</button>';
+        // Auto-chiudi dopo 3 secondi
+        setTimeout(function() {
+          var m = document.getElementById('qrModal');
+          if (m && m.classList.contains('show')) { $(m).modal('hide'); }
+        }, 3000);
       } else if (data.status === 'expired') {
         stopPolling();
-        document.getElementById('qr-status-msg').innerHTML =
-          '<i class="fas fa-clock mr-1 text-danger"></i><span class="text-danger">QR scaduto</span>';
+        document.querySelector('#qrModal .modal-body').innerHTML =
+          '<div class="py-4 text-center text-danger">'
+          + '<i class="fas fa-clock fa-3x mb-3"></i>'
+          + '<div class="h5">QR scaduto</div>'
+          + '<div class="text-muted">Genera un nuovo codice.</div>'
+          + '</div>';
+        document.querySelector('#qrModal .modal-footer').innerHTML =
+          '<button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>';
       } else if (data.status === 'cancelled') {
         stopPolling();
-        document.getElementById('qr-status-msg').innerHTML =
-          '<i class="fas fa-times-circle mr-1 text-danger"></i><span class="text-danger">Sessione annullata</span>';
+        $('#qrModal').modal('hide');
       }
     })
     .catch(function() {});

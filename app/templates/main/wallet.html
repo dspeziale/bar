@@ -83,7 +83,7 @@
           {% for t in transactions %}
           {% set info = t.icon_info() %}
           <tr>
-            <td nowrap><small>{{ t.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+            <td nowrap><small>{{ t.created_at|dt_rome }}</small></td>
             <td>
               <span class="badge badge-{{ info[1] }}">
                 <i class="fas {{ info[0] }} me-1"></i>{{ info[2] }}

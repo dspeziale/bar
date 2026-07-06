@@ -59,7 +59,7 @@
           <code style="font-size:.8rem;font-weight:700;color:#e94560;letter-spacing:.03em;white-space:nowrap;">
             {{ o.order_code or ('#' ~ o.id) }}
           </code>
-          <br><small class="text-muted">{{ o.created_at.strftime('%H:%M') }}</small>
+          <br><small class="text-muted">{{ o.created_at|dt_rome('%H:%M') }}</small>
         </td>
         <td>
           <strong>{{ o.user.username }}</strong>
