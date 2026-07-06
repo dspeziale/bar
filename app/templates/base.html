@@ -409,12 +409,14 @@
       </li>
       {% if current_user.is_authenticated %}
       <li class="nav-item mr-2 d-flex align-items-center" style="gap:.5rem;">
+        {% if not current_user.avatar_url %}
         <span style="width:28px;height:28px;border-radius:50%;
                      background:linear-gradient(135deg,#e94560,#0f3460);
                      display:inline-flex;align-items:center;justify-content:center;
                      color:#fff;font-weight:700;font-size:.78rem;flex-shrink:0;">
           {{ current_user.full_name[0]|upper }}
         </span>
+        {% endif %}
         <span class="d-none d-md-inline" style="font-size:.88rem;font-weight:600;color:var(--QuickLunch-nav-text,#3d4a5c);">
           {{ current_user.full_name }}
           {% if current_user.is_admin %}
