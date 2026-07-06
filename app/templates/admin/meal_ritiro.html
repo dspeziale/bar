@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Ritiro Pasti{% endblock %}
+{% block page_title %}Ritiro Pasti Aziendali{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.convenzioni') }}">Convenzioni</a></li>
+<li class="breadcrumb-item active">Ritiro Pasti</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+
+    {# ── Input codice ── #}
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-qrcode mr-2"></i>Inserisci codice di ritiro
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.meal_ritiro') }}">
+          <div class="input-group input-group-lg">
+            <input type="text" name="token" id="tokenInput"
+                   class="form-control text-center font-weight-bold"
+                   style="letter-spacing:.35rem;font-size:1.6rem;text-transform:uppercase;"
+                   placeholder="A1B2C3"
+                   value="{{ token }}"
+                   maxlength="6"
+                   autocomplete="off"
+                   autofocus>
+            <div class="input-group-append">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+          <small class="text-muted d-block mt-1">
+            Digita il codice a 6 caratteri mostrato sul telefono del cliente.
+          </small>
+        </form>
+      </div>
+    </div>
+
+    {# ── Risultato ricerca ── #}
+    {% if token and booking %}
+    <div class="card card-outline card-success mt-3">
+      <div class="card-header bg-success text-white">
+        <h3 class="card-title mb-0">
+          <i class="fas fa-check-circle mr-2"></i>Prenotazione trovata
+        </h3>
+      </div>
+      <div class="card-body">
+
+        <div class="d-flex align-items-center mb-3" style="gap:1rem;">
+          <div style="width:56px;height:56px;border-radius:50%;background:#e94560;
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-user fa-xl text-white"></i>
+          </div>
+          <div>
+            <div style="font-size:1.2rem;font-weight:700;">{{ booking.user.full_name }}</div>
+            <div class="text-muted" style="font-size:.88rem;">{{ booking.user.email }}</div>
+          </div>
+        </div>
+
+        <table class="table table-sm table-borderless mb-3">
+          <tr>
+            <td class="text-muted" style="width:110px;">Pasto</td>
+            <td><strong>{{ booking.meal.name }}</strong></td>
+          </tr>
+          <tr>
+            <td class="text-muted">Azienda</td>
+            <td>{{ booking.meal.corporate.name }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Porzioni</td>
+            <td><strong>{{ booking.quantity }}</strong></td>
+          </tr>
+          {% if booking.slot %}
+          <tr>
+            <td class="text-muted">Orario</td>
+            <td><strong>{{ booking.slot.time_str }}</strong></td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="text-muted">Data</td>
+            <td>{{ booking.meal.meal_date.strftime('%d/%m/%Y') }}</td>
+          </tr>
+        </table>
+
+        <form method="POST" action="{{ url_for('admin.meal_consegna') }}">
+          <input type="hidden" name="booking_id" value="{{ booking.id }}">
+          <input type="hidden" name="next" value="{{ url_for('admin.meal_ritiro') }}">
+          <button type="submit" class="btn btn-success btn-lg btn-block">
+            <i class="fas fa-hand-holding mr-2"></i>Conferma consegna
+          </button>
+        </form>
+
+      </div>
+    </div>
+    {% elif token %}
+    <div class="alert alert-warning mt-3">
+      <i class="fas fa-exclamation-triangle mr-2"></i>
+      Nessuna prenotazione attiva con codice <strong>{{ token }}</strong>.
+      Verificare che il codice sia corretto o che il pasto non sia già stato consegnato.
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

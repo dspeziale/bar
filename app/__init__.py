@@ -361,6 +361,9 @@ def _migrate_tenant_columns():
     _ensure('orders',                  'reminder_sent', "BOOLEAN DEFAULT FALSE")
     _ensure('corporate_meal_bookings', 'reminder_sent', "BOOLEAN DEFAULT FALSE")
 
+    # Token di ritiro pasto aziendale
+    _ensure('corporate_meal_bookings', 'pickup_token', "VARCHAR(16) DEFAULT ''")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

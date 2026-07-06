@@ -89,6 +89,7 @@
             <th>Pasto</th>
             <th style="width:80px;" class="text-center">Qtà</th>
             <th style="width:110px;">Stato</th>
+            <th style="width:100px;"></th>
           </tr>
         </thead>
         <tbody>
@@ -123,6 +124,20 @@
                 <span class="badge badge-secondary">{{ b.status }}</span>
               {% endif %}
             </td>
+            <td class="text-right">
+              {% if b.status == 'booked' %}
+              <form method="POST" action="{{ url_for('admin.meal_consegna') }}"
+                    style="display:inline;">
+                <input type="hidden" name="booking_id" value="{{ b.id }}">
+                <input type="hidden" name="next"
+                       value="{{ url_for('admin.convenzioni_report', d=sel_date.isoformat()) }}">
+                <button type="submit" class="btn btn-xs btn-success"
+                        title="Segna come consegnato">
+                  <i class="fas fa-hand-holding"></i> Consegna
+                </button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -132,6 +147,7 @@
             <td class="text-center">
               <strong>{{ entries|sum(attribute='booking.quantity') or entries|length }}</strong>
             </td>
+            <td></td>
             <td></td>
           </tr>
         </tfoot>

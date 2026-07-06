@@ -779,6 +779,8 @@ def pasto_aziendale_prenota():
         existing.slot_id  = slot_id
         if existing.status == 'cancelled':
             existing.status = 'booked'
+        if not existing.pickup_token:
+            existing.pickup_token = secrets.token_hex(3).upper()
         db.session.commit()
         send_telegram_to_user(current_user,
             f'\ud83c\udf7d\ufe0f Prenotazione aggiornata: {quantity} porzioni di <b>{meal.name}</b>')
@@ -790,6 +792,7 @@ def pasto_aziendale_prenota():
         booking = CorporateMealBooking(
             user_id=current_user.id, meal_id=meal.id,
             slot_id=slot_id, quantity=quantity, status='booked')
+        booking.pickup_token = secrets.token_hex(3).upper()
         db.session.add(booking)
         db.session.commit()
         send_telegram_to_user(current_user,

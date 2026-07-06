@@ -2184,6 +2184,41 @@ def convenzione_presenze(cid):
                            nxt=f'{next_anno}-{next_mese:02d}')
 
 
+# ── Ritiro pasti aziendali ────────────────────────────────────────────────────
+
+@bp.route('/pasti/ritiro', methods=['GET', 'POST'])
+@require_permission('manage_products')
+def meal_ritiro():
+    booking = None
+    token   = ''
+    if request.method == 'POST':
+        token = request.form.get('token', '').strip().upper()
+        if token:
+            booking = CorporateMealBooking.query.filter_by(
+                pickup_token=token, status='booked').first()
+            if not booking:
+                flash('Codice non trovato o pasto già consegnato.', 'warning')
+    return render_template('admin/meal_ritiro.html', booking=booking, token=token)
+
+
+@bp.route('/pasti/consegna', methods=['POST'])
+@require_permission('manage_products')
+def meal_consegna():
+    bid = request.form.get('booking_id', type=int)
+    booking = CorporateMealBooking.query.get_or_404(bid)
+    if booking.status == 'booked':
+        booking.status = 'consumed'
+        db.session.commit()
+        send_telegram_to_user(
+            booking.user,
+            f'✅ Pasto ritirato: <b>{booking.meal.name}</b>. Buon appetito!')
+        flash(f'Consegnato a {booking.user.full_name}.', 'success')
+    else:
+        flash('Prenotazione non in stato "prenotato".', 'warning')
+    next_url = request.form.get('next') or url_for('admin.meal_ritiro')
+    return redirect(next_url)
+
+
 # ── Report giornaliero pasti aziendali ────────────────────────────────────────
 
 @bp.route('/convenzioni/report')

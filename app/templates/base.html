@@ -475,7 +475,7 @@
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
-            {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto','admin.convenzioni_report') %}
+            {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto','admin.convenzioni_report','admin.meal_ritiro') %}
 
             {# ── Dashboard ── #}
             <li class="nav-item">
@@ -615,6 +615,13 @@
                      class="nav-link {{ 'active' if ep == 'admin.convenzioni_report' }}">
                     <i class="fas fa-clipboard-list nav-icon" style="color:#27ae60;"></i>
                     <p>Report Giornaliero</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.meal_ritiro') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.meal_ritiro' }}">
+                    <i class="fas fa-hand-holding nav-icon" style="color:#e94560;"></i>
+                    <p>Ritiro Pasti</p>
                   </a>
                 </li>
               </ul>

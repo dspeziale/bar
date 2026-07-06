@@ -32,6 +32,26 @@
       </div>
     </div>
 
+    {# ── Codice di ritiro ── #}
+    {% if my_booking and my_booking.status == 'booked' and my_booking.pickup_token %}
+    <div class="card card-outline card-success mb-3">
+      <div class="card-body text-center py-3">
+        <div class="text-muted mb-1" style="font-size:.82rem;letter-spacing:.05rem;">
+          <i class="fas fa-qrcode mr-1"></i>CODICE DI RITIRO — mostralo al banco
+        </div>
+        <div style="font-size:2.4rem;font-weight:900;letter-spacing:.5rem;
+                    color:#e94560;font-family:monospace;line-height:1.1;">
+          {{ my_booking.pickup_token[:2] }}&nbsp;{{ my_booking.pickup_token[2:4] }}&nbsp;{{ my_booking.pickup_token[4:] }}
+        </div>
+        {% if my_booking.slot %}
+        <div class="text-muted mt-1" style="font-size:.85rem;">
+          <i class="fas fa-clock mr-1"></i>Ritiro alle <strong>{{ my_booking.slot.time_str }}</strong>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     {% if not meals %}
     {# ── Nessuna opzione oggi ── #}
     <div class="card">
