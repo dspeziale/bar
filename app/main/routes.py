@@ -875,7 +875,9 @@ def banco_pay_confirm(token):
     lines = ', '.join(f"{i['qty']}× {i['name']}" for i in items)
     current_user.debit_wallet(sess.total, f'Banco: {lines}')
     # marca ttype come banco
-    last_tx = current_user.transactions[-1] if current_user.transactions else None
+    from app.models import Transaction
+    last_tx = Transaction.query.filter_by(user_id=current_user.id)\
+        .order_by(Transaction.id.desc()).first()
     if last_tx:
         last_tx.ttype = 'banco'
     sess.status      = 'paid'
