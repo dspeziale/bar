@@ -1301,17 +1301,27 @@ def role_delete(rid):
 @bp.route('/settings')
 @require_permission('manage_settings')
 def settings():
-    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password',
-            'registration_bonus']
-    cfg  = {k: get_setting(k) for k in keys}
+    all_keys = [
+        'telegram_bot_token', 'telegram_chat_id',
+        'gmail_user', 'gmail_app_password',
+        'registration_bonus',
+        'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
+        'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
+        'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
+    ]
+    cfg = {k: get_setting(k) for k in all_keys}
     return render_template('admin/settings.html', cfg=cfg)
 
 
 @bp.route('/settings/save', methods=['POST'])
 @require_permission('manage_settings')
 def settings_save():
-    keys = ['telegram_bot_token', 'telegram_chat_id', 'gmail_user', 'gmail_app_password',
-            'registration_bonus']
+    # Ogni sezione del form include un campo "keys" con i propri tasti (comma-separated)
+    keys_raw = request.form.get('keys', '')
+    keys = [k.strip() for k in keys_raw.split(',') if k.strip()]
+    if not keys:
+        flash('Nessun campo da salvare.', 'warning')
+        return redirect(url_for('admin.settings'))
     for k in keys:
         val = request.form.get(k, '').strip()
         s   = AppSetting.query.filter_by(key=k).first()

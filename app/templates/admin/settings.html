@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Impostazioni{% endblock %}
 {% block page_title %}Impostazioni Sistema{% endblock %}
 {% block breadcrumb %}
@@ -7,187 +7,430 @@
 {% endblock %}
 
 {% block content %}
-<div class="row">
-
-  <!-- ── Telegram ── -->
-  <div class="col-lg-6">
-    <div class="card card-outline" style="border-top:3px solid #229ED9 !important;">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fab fa-telegram mr-2" style="color:#229ED9;"></i>Telegram Bot
-        </h3>
-      </div>
-      <div class="card-body">
-        <form method="POST" action="{{ url_for('admin.settings_save') }}">
-          <div class="form-group">
-            <label>Token Bot</label>
-            <input type="text" name="telegram_bot_token" class="form-control"
-                   value="{{ cfg.telegram_bot_token }}"
-                   placeholder="123456789:ABCdef...">
-            <small class="form-text text-muted">
-              Crealo con <strong>@BotFather</strong> su Telegram → /newbot
-            </small>
-          </div>
-          <div class="form-group">
-            <label>Chat ID</label>
-            <input type="text" name="telegram_chat_id" class="form-control"
-                   value="{{ cfg.telegram_chat_id }}"
-                   placeholder="-100123456789">
-            <small class="form-text text-muted">
-              Per un gruppo: aggiungi il bot, poi invia un messaggio e visita
-              <code>api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
-            </small>
-          </div>
-          <!-- preserve other fields -->
-          <input type="hidden" name="gmail_user"           value="{{ cfg.gmail_user }}">
-          <input type="hidden" name="gmail_app_password"   value="{{ cfg.gmail_app_password }}">
-          <input type="hidden" name="registration_bonus"   value="{{ cfg.registration_bonus }}">
-          <button type="submit" class="btn btn-primary mr-2">
-            <i class="fas fa-save mr-1"></i>Salva
-          </button>
-        </form>
-        <form method="POST" action="{{ url_for('admin.settings_test_telegram') }}" class="mt-2">
-          <button class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-paper-plane mr-1"></i>Invia messaggio di test
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Broadcast Telegram -->
-    <div class="card card-outline card-secondary">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-bullhorn mr-2"></i>Broadcast Telegram
-        </h3>
-      </div>
-      <div class="card-body">
-        <form method="POST" action="{{ url_for('admin.broadcast_telegram') }}">
-          <div class="form-group">
-            <label>Messaggio (HTML supportato)</label>
-            <textarea name="message" class="form-control" rows="4"
-                      placeholder="&lt;b&gt;Oggi&lt;/b&gt; il menu include..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-info">
-            <i class="fab fa-telegram mr-1"></i>Invia a tutti
-          </button>
-        </form>
-      </div>
-    </div>
+<div class="card card-primary card-tabs">
+  <div class="card-header p-0 pt-1">
+    <ul class="nav nav-tabs" id="settings-tabs" role="tablist">
+      <li class="nav-item">
+        <a class="nav-link active" id="tab-notifiche-link" data-toggle="pill"
+           href="#tab-notifiche" role="tab">
+          <i class="fas fa-bell mr-1"></i>Notifiche
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tab-fedelta-link" data-toggle="pill"
+           href="#tab-fedelta" role="tab">
+          <i class="fas fa-star mr-1"></i>Fedeltà
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tab-prezzi-link" data-toggle="pill"
+           href="#tab-prezzi" role="tab">
+          <i class="fas fa-tags mr-1"></i>Prezzi Menu
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tab-reminder-link" data-toggle="pill"
+           href="#tab-reminder" role="tab">
+          <i class="fas fa-clock mr-1"></i>Reminder
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tab-broadcast-link" data-toggle="pill"
+           href="#tab-broadcast" role="tab">
+          <i class="fas fa-bullhorn mr-1"></i>Broadcast
+        </a>
+      </li>
+    </ul>
   </div>
+  <div class="card-body">
+    <div class="tab-content" id="settings-tabs-content">
 
-  <!-- ── Gmail ── -->
-  <div class="col-lg-6">
-    <div class="card card-outline" style="border-top:3px solid #EA4335 !important;">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-envelope mr-2" style="color:#EA4335;"></i>Gmail
-        </h3>
-      </div>
-      <div class="card-body">
-        <div class="callout callout-warning mb-3" style="border-left:4px solid #ffc107;">
-          <h6><i class="fas fa-info-circle mr-1"></i>Come configurare</h6>
-          <ol class="mb-0" style="font-size:.85rem;padding-left:18px;">
-            <li>Abilita <strong>2-Step Verification</strong> sul tuo account Google</li>
-            <li>Vai su <strong>Account Google → Sicurezza → App password</strong></li>
-            <li>Crea una password per "App personalizzata" → QuickLunch</li>
-            <li>Incolla qui sotto quella password (16 caratteri)</li>
-          </ol>
-        </div>
-        <form method="POST" action="{{ url_for('admin.settings_save') }}">
-          <!-- preserve other fields -->
-          <input type="hidden" name="telegram_bot_token" value="{{ cfg.telegram_bot_token }}">
-          <input type="hidden" name="telegram_chat_id"   value="{{ cfg.telegram_chat_id }}">
-          <input type="hidden" name="registration_bonus" value="{{ cfg.registration_bonus }}">
-          <div class="form-group">
-            <label>Account Gmail mittente</label>
-            <input type="email" name="gmail_user" class="form-control"
-                   value="{{ cfg.gmail_user }}"
-                   placeholder="QuickLunch.ufficio@gmail.com">
-          </div>
-          <div class="form-group">
-            <label>App Password <small class="text-muted">(non la password normale)</small></label>
-            <input type="password" name="gmail_app_password" class="form-control"
-                   value="{{ cfg.gmail_app_password }}"
-                   placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
-          </div>
-          <button type="submit" class="btn btn-primary mr-2">
-            <i class="fas fa-save mr-1"></i>Salva
-          </button>
-        </form>
-        <form method="POST" action="{{ url_for('admin.settings_test_email') }}" class="mt-2">
-          <button class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-paper-plane mr-1"></i>Invia email di test a se stessi
-          </button>
-        </form>
-      </div>
-    </div>
+      <!-- ══ TAB 1: NOTIFICHE ══════════════════════════════════════════════ -->
+      <div class="tab-pane fade show active" id="tab-notifiche" role="tabpanel">
+        <div class="row">
 
-    <!-- Broadcast Email -->
-    <div class="card card-outline card-secondary">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-envelope-open-text mr-2"></i>Broadcast Email
-        </h3>
-      </div>
-      <div class="card-body">
-        <form method="POST" action="{{ url_for('admin.broadcast_email') }}">
-          <div class="form-group">
-            <label>Oggetto</label>
-            <input type="text" name="subject" class="form-control"
-                   placeholder="Comunicazione QuickLunch" value="Comunicazione QuickLunch">
-          </div>
-          <div class="form-group">
-            <label>Testo</label>
-            <textarea name="message" class="form-control" rows="4"
-                      placeholder="Domani il menu include..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-danger">
-            <i class="fas fa-envelope mr-1"></i>Invia a tutti gli utenti
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Bonus registrazione ── -->
-  <div class="col-lg-6">
-    <div class="card card-outline card-success">
-      <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-gift mr-2 text-success"></i>Bonus Benvenuto
-        </h3>
-      </div>
-      <div class="card-body">
-        <form method="POST" action="{{ url_for('admin.settings_save') }}">
-          <!-- preserve other fields -->
-          <input type="hidden" name="telegram_bot_token" value="{{ cfg.telegram_bot_token }}">
-          <input type="hidden" name="telegram_chat_id"   value="{{ cfg.telegram_chat_id }}">
-          <input type="hidden" name="gmail_user"         value="{{ cfg.gmail_user }}">
-          <input type="hidden" name="gmail_app_password" value="{{ cfg.gmail_app_password }}">
-          <div class="form-group">
-            <label>Importo accreditato alla registrazione (€)</label>
-            <div class="input-group">
-              <div class="input-group-prepend">
-                <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+          <!-- Telegram -->
+          <div class="col-lg-6">
+            <div class="card card-outline" style="border-top:3px solid #229ED9 !important;">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fab fa-telegram mr-2" style="color:#229ED9;"></i>Telegram Bot
+                </h3>
               </div>
-              <input type="number" name="registration_bonus" class="form-control"
-                     value="{{ cfg.registration_bonus or '' }}"
-                     min="0" step="0.50" placeholder="0.00">
+              <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys" value="telegram_bot_token,telegram_chat_id">
+                  <div class="form-group">
+                    <label>Token Bot</label>
+                    <input type="text" name="telegram_bot_token" class="form-control"
+                           value="{{ cfg.telegram_bot_token }}"
+                           placeholder="123456789:ABCdef...">
+                    <small class="form-text text-muted">
+                      Crealo con <strong>@BotFather</strong> su Telegram → /newbot
+                    </small>
+                  </div>
+                  <div class="form-group">
+                    <label>Chat ID canale</label>
+                    <input type="text" name="telegram_chat_id" class="form-control"
+                           value="{{ cfg.telegram_chat_id }}"
+                           placeholder="-100123456789">
+                    <small class="form-text text-muted">
+                      Per un gruppo: aggiungi il bot, invia un messaggio e visita
+                      <code>api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
+                    </small>
+                  </div>
+                  <button type="submit" class="btn btn-primary mr-2">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.settings_test_telegram') }}" class="mt-2">
+                  <button class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-paper-plane mr-1"></i>Invia messaggio di test
+                  </button>
+                </form>
+              </div>
             </div>
-            <small class="form-text text-muted">
-              Se maggiore di zero, viene accreditato automaticamente sul wallet del nuovo utente
-              al termine della registrazione (email/password e Google OAuth).
-              Lasciare vuoto o a 0 per disabilitare.
-            </small>
           </div>
-          <button type="submit" class="btn btn-success">
-            <i class="fas fa-save mr-1"></i>Salva
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
 
+          <!-- Gmail -->
+          <div class="col-lg-6">
+            <div class="card card-outline" style="border-top:3px solid #EA4335 !important;">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-envelope mr-2" style="color:#EA4335;"></i>Gmail
+                </h3>
+              </div>
+              <div class="card-body">
+                <div class="callout callout-warning mb-3" style="border-left:4px solid #ffc107;">
+                  <h6><i class="fas fa-info-circle mr-1"></i>Come configurare</h6>
+                  <ol class="mb-0" style="font-size:.85rem;padding-left:18px;">
+                    <li>Abilita <strong>2-Step Verification</strong> sul tuo account Google</li>
+                    <li>Vai su <strong>Account Google → Sicurezza → App password</strong></li>
+                    <li>Crea una password per "App personalizzata" → QuickLunch</li>
+                    <li>Incolla qui sotto quella password (16 caratteri)</li>
+                  </ol>
+                </div>
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys" value="gmail_user,gmail_app_password">
+                  <div class="form-group">
+                    <label>Account Gmail mittente</label>
+                    <input type="email" name="gmail_user" class="form-control"
+                           value="{{ cfg.gmail_user }}"
+                           placeholder="quicklunch.ufficio@gmail.com">
+                  </div>
+                  <div class="form-group">
+                    <label>App Password <small class="text-muted">(non la password normale)</small></label>
+                    <input type="password" name="gmail_app_password" class="form-control"
+                           value="{{ cfg.gmail_app_password }}"
+                           placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password">
+                  </div>
+                  <button type="submit" class="btn btn-primary mr-2">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.settings_test_email') }}" class="mt-2">
+                  <button class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-paper-plane mr-1"></i>Invia email di test a se stessi
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-notifiche -->
+
+      <!-- ══ TAB 2: FEDELTÀ ════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-fedelta" role="tabpanel">
+        <div class="row">
+          <div class="col-lg-6">
+            <div class="card card-outline card-warning">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-star mr-2 text-warning"></i>Programma Fedeltà
+                </h3>
+              </div>
+              <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys"
+                         value="loyalty_points_per_euro,loyalty_reward_points,loyalty_reward_amount">
+                  <div class="form-group">
+                    <label>Punti per ogni euro speso</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-star"></i></span>
+                      </div>
+                      <input type="number" name="loyalty_points_per_euro" class="form-control"
+                             value="{{ cfg.loyalty_points_per_euro or 10 }}"
+                             min="1" step="1">
+                    </div>
+                    <small class="form-text text-muted">
+                      Quanti punti si accumulano per ogni euro speso negli ordini.
+                    </small>
+                  </div>
+                  <div class="form-group">
+                    <label>Punti necessari per riscatto premio</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-trophy"></i></span>
+                      </div>
+                      <input type="number" name="loyalty_reward_points" class="form-control"
+                             value="{{ cfg.loyalty_reward_points or 100 }}"
+                             min="1" step="1">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Importo premio wallet (€)</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+                      </div>
+                      <input type="number" name="loyalty_reward_amount" class="form-control"
+                             value="{{ cfg.loyalty_reward_amount or '1.00' }}"
+                             min="0" step="0.50">
+                    </div>
+                    <small class="form-text text-muted">
+                      Credito wallet accreditato quando l'utente riscatta il premio.
+                    </small>
+                  </div>
+                  <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="card card-outline card-success">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-gift mr-2 text-success"></i>Bonus Benvenuto
+                </h3>
+              </div>
+              <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys" value="registration_bonus">
+                  <div class="form-group">
+                    <label>Importo accreditato alla registrazione (€)</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+                      </div>
+                      <input type="number" name="registration_bonus" class="form-control"
+                             value="{{ cfg.registration_bonus or '' }}"
+                             min="0" step="0.50" placeholder="0.00">
+                    </div>
+                    <small class="form-text text-muted">
+                      Accreditato automaticamente al nuovo utente al termine della registrazione.
+                      Lasciare vuoto o a 0 per disabilitare.
+                    </small>
+                  </div>
+                  <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tab-fedelta -->
+
+      <!-- ══ TAB 3: PREZZI MENU ════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-prezzi" role="tabpanel">
+        <div class="row">
+          <div class="col-lg-6">
+            <div class="card card-outline card-info">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-tags mr-2 text-info"></i>Prezzi Base Builder
+                </h3>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">
+                  Prezzo di partenza per ogni tipo di piatto personalizzato.
+                  Eventuali ingredienti extra si sommano al prezzo base.
+                </p>
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys"
+                         value="builder_price_panino,builder_price_insalata,builder_price_poke">
+                  <div class="form-group">
+                    <label><i class="fas fa-burger mr-1 text-warning"></i>Panino personalizzato (€)</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+                      </div>
+                      <input type="number" name="builder_price_panino" class="form-control"
+                             value="{{ cfg.builder_price_panino or '3.50' }}"
+                             min="0" step="0.10">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fas fa-leaf mr-1 text-success"></i>Insalata personalizzata (€)</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+                      </div>
+                      <input type="number" name="builder_price_insalata" class="form-control"
+                             value="{{ cfg.builder_price_insalata or '3.00' }}"
+                             min="0" step="0.10">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fas fa-bowl-food mr-1 text-danger"></i>Poke personalizzato (€)</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-euro-sign"></i></span>
+                      </div>
+                      <input type="number" name="builder_price_poke" class="form-control"
+                             value="{{ cfg.builder_price_poke or '4.00' }}"
+                             min="0" step="0.10">
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-info">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tab-prezzi -->
+
+      <!-- ══ TAB 4: REMINDER ═══════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-reminder" role="tabpanel">
+        <div class="row">
+          <div class="col-lg-6">
+            <div class="card card-outline card-secondary">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-clock mr-2"></i>Minuti di anticipo notifiche
+                </h3>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">
+                  Quanti minuti prima dell'orario pianificato inviare il reminder Telegram
+                  all'utente. L'invio avviene automaticamente al prossimo accesso all'app
+                  (polling lato server, max 1 check/minuto).
+                </p>
+                <form method="POST" action="{{ url_for('admin.settings_save') }}">
+                  <input type="hidden" name="keys"
+                         value="table_reminder_minutes,order_reminder_minutes,meal_reminder_minutes">
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-chair mr-1 text-primary"></i>
+                      Prenotazione tavolo — minuti prima
+                    </label>
+                    <div class="input-group" style="max-width:200px;">
+                      <input type="number" name="table_reminder_minutes" class="form-control"
+                             value="{{ cfg.table_reminder_minutes or 10 }}"
+                             min="1" max="120" step="1">
+                      <div class="input-group-append">
+                        <span class="input-group-text">min</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-box mr-1 text-warning"></i>
+                      Ritiro ordine — minuti prima
+                    </label>
+                    <div class="input-group" style="max-width:200px;">
+                      <input type="number" name="order_reminder_minutes" class="form-control"
+                             value="{{ cfg.order_reminder_minutes or 15 }}"
+                             min="1" max="120" step="1">
+                      <div class="input-group-append">
+                        <span class="input-group-text">min</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-utensils mr-1 text-success"></i>
+                      Pasto aziendale — minuti prima
+                    </label>
+                    <div class="input-group" style="max-width:200px;">
+                      <input type="number" name="meal_reminder_minutes" class="form-control"
+                             value="{{ cfg.meal_reminder_minutes or 15 }}"
+                             min="1" max="120" step="1">
+                      <div class="input-group-append">
+                        <span class="input-group-text">min</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-secondary">
+                    <i class="fas fa-save mr-1"></i>Salva
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tab-reminder -->
+
+      <!-- ══ TAB 5: BROADCAST ══════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-broadcast" role="tabpanel">
+        <div class="row">
+
+          <!-- Broadcast Telegram -->
+          <div class="col-lg-6">
+            <div class="card card-outline" style="border-top:3px solid #229ED9 !important;">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fab fa-telegram mr-2" style="color:#229ED9;"></i>Broadcast Telegram
+                </h3>
+              </div>
+              <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.broadcast_telegram') }}">
+                  <div class="form-group">
+                    <label>Messaggio (HTML supportato)</label>
+                    <textarea name="message" class="form-control" rows="5"
+                              placeholder="&lt;b&gt;Oggi&lt;/b&gt; il menu include..."></textarea>
+                    <small class="form-text text-muted">
+                      Inviato al canale/gruppo configurato nelle impostazioni Notifiche.
+                    </small>
+                  </div>
+                  <button type="submit" class="btn btn-info">
+                    <i class="fab fa-telegram mr-1"></i>Invia al canale
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Broadcast Email -->
+          <div class="col-lg-6">
+            <div class="card card-outline" style="border-top:3px solid #EA4335 !important;">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-envelope-open-text mr-2" style="color:#EA4335;"></i>Broadcast Email
+                </h3>
+              </div>
+              <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.broadcast_email') }}">
+                  <div class="form-group">
+                    <label>Oggetto</label>
+                    <input type="text" name="subject" class="form-control"
+                           placeholder="Comunicazione QuickLunch"
+                           value="Comunicazione QuickLunch">
+                  </div>
+                  <div class="form-group">
+                    <label>Testo</label>
+                    <textarea name="message" class="form-control" rows="5"
+                              placeholder="Domani il menu include..."></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-envelope mr-1"></i>Invia a tutti gli utenti
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-broadcast -->
+
+    </div><!-- /tab-content -->
+  </div>
 </div>
 {% endblock %}

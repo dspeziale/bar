@@ -287,9 +287,10 @@ class Order(db.Model):
     order_date = db.Column(db.Date, nullable=False, default=date.today)
     status     = db.Column(db.String(20), default='pending')
     total_price= db.Column(db.Float, default=0.0)
-    notes      = db.Column(db.Text, default='')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    notes         = db.Column(db.Text, default='')
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    tenant_id     = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    reminder_sent = db.Column(db.Boolean, default=False)
 
     user = db.relationship('User', back_populates='orders')
     slot = db.relationship('TimeSlot', back_populates='orders')
@@ -724,9 +725,10 @@ class CorporateMealBooking(db.Model):
     user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     meal_id      = db.Column(db.Integer, db.ForeignKey('daily_fixed_meals.id'), nullable=False)
     slot_id      = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=True)
-    quantity     = db.Column(db.Integer, default=1, nullable=False, server_default='1')
-    status       = db.Column(db.String(20), default='booked')  # booked, consumed, cancelled
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    quantity      = db.Column(db.Integer, default=1, nullable=False, server_default='1')
+    status        = db.Column(db.String(20), default='booked')  # booked, consumed, cancelled
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    reminder_sent = db.Column(db.Boolean, default=False)
     __table_args__ = (db.UniqueConstraint('user_id', 'meal_id', name='uq_corp_booking'),)
     user = db.relationship('User')
     meal = db.relationship('DailyFixedMeal', back_populates='bookings')

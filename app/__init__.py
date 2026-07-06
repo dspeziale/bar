@@ -71,7 +71,7 @@ def create_app(config_object='config.Config'):
     from app.tenant import bp as tenant_bp
     app.register_blueprint(tenant_bp, url_prefix='/t')
 
-    # ── Reminder prenotazioni tavolo (10 min prima, lazy polling) ────────────
+    # ── Reminder (lazy polling: max 1 check/min per processo) ─────────────────
     @app.before_request
     def _maybe_remind_table_bookings():
         now = _time.monotonic()
@@ -80,6 +80,8 @@ def create_app(config_object='config.Config'):
         _reminder_last_run[0] = now
         try:
             _check_table_reminders()
+            _check_order_reminders()
+            _check_meal_reminders()
         except Exception:
             pass
 
@@ -102,17 +104,13 @@ def create_app(config_object='config.Config'):
 
 
 def _check_table_reminders():
-    """Invia reminder Telegram ~10 min prima della prenotazione tavolo.
-    Chiamato lazy da before_request, al massimo una volta al minuto per processo.
-    Usa table_alert_sent come flag per non inviare duplicati (persiste nel DB).
-    """
     from datetime import datetime as _dtt
     from app.models import TableReservation
-    from app.notifications import send_telegram_to_user
+    from app.notifications import send_telegram_to_user, get_numeric_setting
 
-    REMIND_MINUTES = 10
-    now   = _dtt.utcnow()
-    today = now.date()
+    remind = get_numeric_setting('table_reminder_minutes', 10)
+    now    = _dtt.utcnow()
+    today  = now.date()
 
     candidates = (
         TableReservation.query
@@ -131,7 +129,7 @@ def _check_table_reminders():
         except ValueError:
             continue
         diff = (slot_dt - now).total_seconds() / 60
-        if 0 < diff <= REMIND_MINUTES:
+        if 0 < diff <= remind:
             send_telegram_to_user(
                 res.user,
                 f'⏰ Reminder: il tuo tavolo è tra <b>{int(diff)} minuti</b>!\n'
@@ -139,6 +137,91 @@ def _check_table_reminders():
                 f'📅 {res.reservation_date.strftime("%d/%m/%Y")}'
             )
             res.table_alert_sent = True
+            changed = True
+    if changed:
+        db.session.commit()
+
+
+def _check_order_reminders():
+    from datetime import datetime as _dtt, date as _date
+    from app.models import Order
+    from app.notifications import send_telegram_to_user, get_numeric_setting
+
+    remind = get_numeric_setting('order_reminder_minutes', 15)
+    now    = _dtt.utcnow()
+    today  = _date.today()
+
+    candidates = (
+        Order.query
+        .filter_by(order_date=today, reminder_sent=False)
+        .filter(Order.status.in_(['pending', 'confirmed', 'preparing']))
+        .filter(Order.slot_id.isnot(None))
+        .all()
+    )
+    changed = False
+    for order in candidates:
+        if not getattr(order.user, 'telegram_chat_id', None):
+            continue
+        if not order.slot or not order.slot.time_str:
+            continue
+        try:
+            slot_dt = _dtt.strptime(
+                f'{today.isoformat()} {order.slot.time_str}', '%Y-%m-%d %H:%M'
+            )
+        except ValueError:
+            continue
+        diff = (slot_dt - now).total_seconds() / 60
+        if 0 < diff <= remind:
+            send_telegram_to_user(
+                order.user,
+                f'🍽️ Reminder: il tuo ordine è pronto per il ritiro alle <b>{order.slot.time_str}</b>!\n'
+                f'📦 Ordine #{order.order_code or order.id} — <b>{order.total_price:.2f}€</b>\n'
+                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>'
+            )
+            order.reminder_sent = True
+            changed = True
+    if changed:
+        db.session.commit()
+
+
+def _check_meal_reminders():
+    from datetime import datetime as _dtt, date as _date
+    from app.models import CorporateMealBooking
+    from app.notifications import send_telegram_to_user, get_numeric_setting
+
+    remind = get_numeric_setting('meal_reminder_minutes', 15)
+    now    = _dtt.utcnow()
+    today  = _date.today()
+
+    candidates = (
+        CorporateMealBooking.query
+        .filter_by(status='booked', reminder_sent=False)
+        .filter(CorporateMealBooking.slot_id.isnot(None))
+        .all()
+    )
+    changed = False
+    for booking in candidates:
+        if not booking.meal or booking.meal.meal_date != today:
+            continue
+        if not getattr(booking.user, 'telegram_chat_id', None):
+            continue
+        if not booking.slot or not booking.slot.time_str:
+            continue
+        try:
+            slot_dt = _dtt.strptime(
+                f'{today.isoformat()} {booking.slot.time_str}', '%Y-%m-%d %H:%M'
+            )
+        except ValueError:
+            continue
+        diff = (slot_dt - now).total_seconds() / 60
+        if 0 < diff <= remind:
+            send_telegram_to_user(
+                booking.user,
+                f'🥗 Reminder: il tuo pasto aziendale è alle <b>{booking.slot.time_str}</b>!\n'
+                f'📋 <b>{booking.meal.name}</b>\n'
+                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>'
+            )
+            booking.reminder_sent = True
             changed = True
     if changed:
         db.session.commit()
@@ -273,6 +356,10 @@ def _migrate_tenant_columns():
     # MFA TOTP
     _ensure('users', 'totp_secret',  "VARCHAR(64)")
     _ensure('users', 'totp_enabled', "BOOLEAN DEFAULT FALSE")
+
+    # Reminder ordine e pasto aziendale
+    _ensure('orders',                  'reminder_sent', "BOOLEAN DEFAULT FALSE")
+    _ensure('corporate_meal_bookings', 'reminder_sent', "BOOLEAN DEFAULT FALSE")
 
 
 def _seed_defaults():
@@ -633,12 +720,27 @@ def _seed_defaults():
                 tenant_id=default_tenant.id,
             ))
 
-    # ── Impostazioni di default (vuote) ───────────────────────────────────
+    # ── Impostazioni di default ────────────────────────────────────────────
     default_settings = [
-        ('telegram_bot_token', '', 'Token Bot Telegram'),
-        ('telegram_chat_id',   '', 'Chat ID Telegram'),
-        ('gmail_user',         '', 'Account Gmail mittente'),
-        ('gmail_app_password', '', 'App Password Gmail'),
+        # Notifiche
+        ('telegram_bot_token',     '',      'Token Bot Telegram'),
+        ('telegram_chat_id',       '',      'Chat ID canale Telegram'),
+        ('gmail_user',             '',      'Account Gmail mittente'),
+        ('gmail_app_password',     '',      'App Password Gmail'),
+        # Bonus benvenuto
+        ('registration_bonus',     '0',     'Bonus wallet alla registrazione €'),
+        # Fedeltà
+        ('loyalty_points_per_euro','10',    'Punti per ogni euro speso'),
+        ('loyalty_reward_points',  '100',   'Punti necessari per riscatto premio'),
+        ('loyalty_reward_amount',  '1.00',  'Importo premio wallet €'),
+        # Prezzi builder
+        ('builder_price_panino',   '3.50',  'Prezzo base panino personalizzato €'),
+        ('builder_price_insalata', '3.00',  'Prezzo base insalata personalizzata €'),
+        ('builder_price_poke',     '4.00',  'Prezzo base poke personalizzato €'),
+        # Reminder
+        ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
+        ('order_reminder_minutes', '15',    'Minuti anticipo reminder ritiro ordine'),
+        ('meal_reminder_minutes',  '15',    'Minuti anticipo reminder pasto aziendale'),
     ]
     for skey, sval, slabel in default_settings:
         if not AppSetting.query.filter_by(key=skey).first():

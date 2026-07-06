@@ -4,7 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
-from app.notifications import send_telegram, send_telegram_to_user
+from app.notifications import send_telegram, send_telegram_to_user, get_numeric_setting
 from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
@@ -64,8 +64,8 @@ def index():
                            recent_tx=recent_tx,
                            today_meal_booking=today_meal_booking,
                            meal_booking_reminder=meal_booking_reminder,
-                           loyalty_threshold=Config.LOYALTY_REWARD_POINTS,
-                           reward_amount=Config.LOYALTY_REWARD_AMOUNT)
+                           loyalty_threshold=get_numeric_setting('loyalty_reward_points', 100),
+                           reward_amount=get_numeric_setting('loyalty_reward_amount', 1.0))
 
 
 # ── Menu ──────────────────────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ def place_order():
     )
     order.compute_total()
     current_user.debit_wallet(total, f'Ordine {order.order_code}', order_id=order.id)
-    points = int(total * Config.LOYALTY_POINTS_PER_EURO)
+    points = int(total * get_numeric_setting('loyalty_points_per_euro', 10))
     if points:
         current_user.add_points(points)
 
@@ -303,7 +303,7 @@ def cancel_order(order_id):
     order.status = 'cancelled'
     current_user.credit_wallet(order.total_price,
                                f'Rimborso ordine #{order.id}', order_id=order.id)
-    points_back = int(order.total_price * Config.LOYALTY_POINTS_PER_EURO)
+    points_back = int(order.total_price * get_numeric_setting('loyalty_points_per_euro', 10))
     current_user.loyalty_points = max(0, current_user.loyalty_points - points_back)
 
     for item in order.items:
@@ -330,15 +330,15 @@ def wallet():
     transactions = Transaction.query.filter_by(user_id=current_user.id)\
         .order_by(Transaction.created_at.desc()).limit(50).all()
     return render_template('main/wallet.html', transactions=transactions,
-                           loyalty_threshold=Config.LOYALTY_REWARD_POINTS,
-                           reward_amount=Config.LOYALTY_REWARD_AMOUNT)
+                           loyalty_threshold=get_numeric_setting('loyalty_reward_points', 100),
+                           reward_amount=get_numeric_setting('loyalty_reward_amount', 1.0))
 
 
 @bp.route('/wallet/redeem', methods=['POST'])
 @login_required
 def redeem_points():
-    threshold = Config.LOYALTY_REWARD_POINTS
-    reward = Config.LOYALTY_REWARD_AMOUNT
+    threshold = get_numeric_setting('loyalty_reward_points', 100)
+    reward = get_numeric_setting('loyalty_reward_amount', 1.0)
     if current_user.loyalty_points < threshold:
         flash(f'Punti insufficienti (servono {threshold}).', 'warning')
         return redirect(url_for('main.wallet'))
@@ -371,7 +371,7 @@ def builder():
         IngredientCategory.tenant_id == tid,
     ).order_by(IngredientCategory.sort_order).all()
 
-    base_price = Config.BUILDER_PRICES[builder_type]
+    base_price = get_numeric_setting(f'builder_price_{builder_type}', Config.BUILDER_PRICES.get(builder_type, 3.50))
     return render_template('main/builder.html',
                            builder_type=builder_type,
                            categories=categories,
@@ -428,7 +428,7 @@ def builder_add():
             })
             extra_price += ing.price_extra
 
-    base_price = Config.BUILDER_PRICES[builder_type]
+    base_price = get_numeric_setting(f'builder_price_{builder_type}', Config.BUILDER_PRICES.get(builder_type, 3.50))
     total_price = round(base_price + extra_price, 2)
     grill_requested = (builder_type == 'panino' and
                        request.form.get('grill_requested', '0') == '1')
@@ -471,7 +471,7 @@ def builder_visual():
         categories = IngredientCategory.query.filter(
             IngredientCategory.builder_type.in_([builder_type, 'both'])
         ).order_by(IngredientCategory.sort_order).all()
-        base_price = Config.BUILDER_PRICES[builder_type]
+        base_price = get_numeric_setting(f'builder_price_{builder_type}', Config.BUILDER_PRICES.get(builder_type, 3.50))
 
     return render_template('main/builder_visual.html',
                            builder_type=builder_type,

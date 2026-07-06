@@ -20,6 +20,17 @@ def get_setting(key, default=''):
     return (s.value or default) if s else default
 
 
+def get_numeric_setting(key, default):
+    """Legge un'impostazione numerica dal DB con fallback al default (int o float)."""
+    val = get_setting(key)
+    if not val:
+        return default
+    try:
+        return int(float(val)) if isinstance(default, int) else float(val)
+    except (ValueError, TypeError):
+        return default
+
+
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 def send_telegram(text):
