@@ -315,6 +315,22 @@
     lookupBarcode(raw);
   }
 
+  /* ── Beep ── */
+  function beep() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.12);
+    } catch(e) {}
+  }
+
   /* ── Lookup ── */
   function lookupBarcode(ean) {
     scanError.textContent = '';
@@ -322,9 +338,17 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.error) { scanError.textContent = 'Prodotto non trovato (EAN: ' + ean + ')'; return; }
+        beep();
+        closeScanner();
         addToCart(data);
       })
       .catch(function() { scanError.textContent = 'Errore di rete. Riprova.'; });
+  }
+
+  function closeScanner() {
+    scannerArea.style.display = 'none';
+    stopCamera();
+    btnToggle.innerHTML = '<i class="fas fa-barcode mr-1"></i>Aggiungi bevanda / snack';
   }
 
   /* ── Cart ── */
