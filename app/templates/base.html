@@ -523,12 +523,27 @@
 
             {# ── CESTO CUCINA ── #}
             {% if p('manage_cesto') %}
-            <li class="nav-item">
-              <a href="{{ url_for('admin.cesto') }}"
-                 class="nav-link {{ 'active' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla') }}">
+            <li class="nav-item has-treeview {{ 'menu-open' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla','admin.cucina_prenotazioni') }}">
+              <a href="#" class="nav-link {{ 'active' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla','admin.cucina_prenotazioni') }}">
                 <i class="nav-icon fas fa-shopping-basket" style="color:#fd7e14;"></i>
-                <p>Cesto Cucina</p>
+                <p>Cucina<i class="right fas fa-angle-left"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.cesto') }}"
+                     class="nav-link {{ 'active' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla') }}">
+                    <i class="fas fa-shopping-basket nav-icon" style="color:#fd7e14;"></i>
+                    <p>Cesto Cucina</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.cucina_prenotazioni') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.cucina_prenotazioni' }}">
+                    <i class="fas fa-calendar-alt nav-icon" style="color:#6f42c1;"></i>
+                    <p>Prenotazioni</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             {% endif %}
 

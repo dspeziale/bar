@@ -15,6 +15,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         DailyFixedMeal, CorporateMealBooking, MealConfiguration,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
                         BancoItem, BancoSession, PrepLabel,
+                        Prenotazione, PrenotazioneItem,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
@@ -1358,6 +1359,61 @@ def cesto_annulla_tutto():
     db.session.commit()
     flash(f'{n} etichet{"ta eliminata" if n == 1 else "te eliminate"}.', 'info')
     return redirect(url_for('admin.cesto'))
+
+
+# ── Prenotazioni cucina ───────────────────────────────────────────────────────
+
+@bp.route('/cucina/prenotazioni')
+@require_permission('manage_cesto')
+def cucina_prenotazioni():
+    from datetime import datetime as _dtm, timedelta as _td
+    tid   = _active_tenant_id()
+    today = date.today()
+
+    # Prenotazioni di oggi e future non cancellate
+    prens = (Prenotazione.query
+             .filter_by(tenant_id=tid)
+             .filter(Prenotazione.pickup_date >= today)
+             .filter(Prenotazione.status != 'cancelled')
+             .order_by(Prenotazione.pickup_date.asc(), Prenotazione.slot_id.asc())
+             .all())
+
+    # Conta PrepLabel ready per prodotto (solo oggi)
+    start = _dtm(today.year, today.month, today.day)
+    end   = start + _td(days=1)
+    ready_labels = (PrepLabel.query
+                    .filter_by(tenant_id=tid, status='ready')
+                    .filter(PrepLabel.prepared_at >= start, PrepLabel.prepared_at < end)
+                    .all())
+    # { product_id: count }
+    cesto_qty = {}
+    for lb in ready_labels:
+        cesto_qty[lb.product_id] = cesto_qty.get(lb.product_id, 0) + 1
+
+    # Raggruppa prenotazioni per data
+    by_date = {}
+    for p in prens:
+        by_date.setdefault(p.pickup_date, []).append(p)
+
+    # Per ogni data, calcola fabbisogno per prodotto
+    # { date: { product_id: {product, needed, in_cesto} } }
+    fabbisogno = {}
+    for d, plist in by_date.items():
+        prod_map = {}
+        for p in plist:
+            for item in p.items:
+                pid = item.product_id
+                if pid not in prod_map:
+                    prod_map[pid] = {'product': item.product, 'needed': 0}
+                prod_map[pid]['needed'] += item.quantity
+        # cesto qty è rilevante solo per oggi
+        for pid, info in prod_map.items():
+            info['in_cesto'] = cesto_qty.get(pid, 0) if d == today else 0
+        fabbisogno[d] = prod_map
+
+    return render_template('admin/cucina_prenotazioni.html',
+                           by_date=by_date, fabbisogno=fabbisogno,
+                           today=today, cesto_qty=cesto_qty)
 
 
 # ── Tavoli ────────────────────────────────────────────────────────────────────
