@@ -2441,8 +2441,20 @@ def maintenance():
             ConsumableMovement.query.delete(synchronize_session=False)
             ConsumableItem.query.delete(synchronize_session=False)
             Supplier.query.delete(synchronize_session=False)
-            # step 6: users
-            User.query.filter_by(is_client=True).delete(synchronize_session=False)
+            # step 6: banco sessions (customer_id → users FK)
+            BancoSession.query.delete(synchronize_session=False)
+            # step 7: users
+            is_pg = db.engine.url.drivername.startswith('postgresql')
+            client_ids = [r[0] for r in db.session.query(User.id).filter_by(is_client=True).all()]
+            if client_ids:
+                db.session.flush()
+                if is_pg:
+                    db.session.execute(db.text('DELETE FROM user_roles WHERE user_id = ANY(:ids)'), {'ids': client_ids})
+                    db.session.execute(db.text('DELETE FROM users WHERE id = ANY(:ids)'), {'ids': client_ids})
+                else:
+                    ids_str = ','.join(str(i) for i in client_ids)
+                    db.session.execute(db.text(f'DELETE FROM user_roles WHERE user_id IN ({ids_str})'))
+                    db.session.execute(db.text(f'DELETE FROM users WHERE id IN ({ids_str})'))
             db.session.commit()
             flash('Reset completo eseguito.', 'success')
 
