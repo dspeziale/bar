@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Ordini{% endblock %}
 {% block page_title %}Gestione Ordini{% endblock %}
 {% block breadcrumb %}
@@ -10,12 +10,12 @@
 <!-- Filtri -->
 <div class="card card-outline card-secondary mb-3">
   <div class="card-body py-2">
-    <form method="GET" class="QuickLunch-filter-form">
+    <div class="QuickLunch-filter-form">
       <div class="input-group" style="max-width:180px;flex:1 1 140px;">
         <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-calendar"></i></span></div>
-        <input type="date" name="date" class="form-control" value="{{ filter_date }}">
+        <input type="date" id="filterDate" class="form-control" value="{{ filter_date }}">
       </div>
-      <select name="status" class="form-control" style="max-width:160px;flex:1 1 130px;">
+      <select id="filterStatus" class="form-control" style="max-width:160px;flex:1 1 130px;">
         <option value="">Tutti gli stati</option>
         <option value="pending"   {{ 'selected' if status_filter=='pending' }}>Ricevuto</option>
         <option value="confirmed" {{ 'selected' if status_filter=='confirmed' }}>Confermato</option>
@@ -24,202 +24,135 @@
         <option value="completed" {{ 'selected' if status_filter=='completed' }}>Consegnato</option>
         <option value="cancelled" {{ 'selected' if status_filter=='cancelled' }}>Annullato</option>
       </select>
-      <button type="submit" class="btn btn-primary">
+      <button id="btnFilter" class="btn btn-primary">
         <i class="fas fa-filter mr-1"></i>Filtra
       </button>
       <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary">Reset</a>
-    </form>
+      <a href="{{ url_for('admin.cucina') }}" class="btn btn-warning ml-auto">
+        <i class="fas fa-fire mr-1"></i>Vista Cucina
+      </a>
+    </div>
   </div>
 </div>
 
 <!-- Tabella ordini -->
 <div class="card card-outline card-primary">
   <div class="card-header">
-    <h3 class="card-title">
-      <i class="fas fa-receipt mr-2"></i>
-      {{ orders|length }} ordini — {{ filter_date }}
-    </h3>
-    <div class="card-tools">
-      <a href="{{ url_for('admin.cucina') }}" class="btn btn-sm btn-warning">
-        <i class="fas fa-fire mr-1"></i>Vista Cucina
-      </a>
-    </div>
+    <h3 class="card-title"><i class="fas fa-receipt mr-2"></i>Ordini</h3>
   </div>
   <div class="card-body p-0">
-    {% if orders %}
-    <table class="table table-hover mb-0">
+    <table id="ordersTable" class="table table-hover mb-0" style="width:100%">
       <thead class="thead-dark">
-        <tr><th>Codice Ordine</th><th>Utente</th><th>Slot</th><th>Prodotti</th><th>Note</th><th>Totale</th><th>Stato</th><th>Azioni</th><th></th></tr>
+        <tr>
+          <th>Codice / Ora</th>
+          <th>Utente</th>
+          <th>Slot</th>
+          <th>Prodotti</th>
+          <th>Note</th>
+          <th>Totale</th>
+          <th>Stato</th>
+          <th class="no-sort">Azioni</th>
+        </tr>
       </thead>
-      <tbody>
-      {% for o in orders %}
-      {% set lbl = o.label() %}
-      <tr>
-        <td>
-          <code style="font-size:.8rem;font-weight:700;color:#e94560;letter-spacing:.03em;white-space:nowrap;">
-            {{ o.order_code or ('#' ~ o.id) }}
-          </code>
-          <br><small class="text-muted">{{ o.created_at|dt_rome('%H:%M') }}</small>
-        </td>
-        <td>
-          <strong>{{ o.user.username }}</strong>
-        </td>
-        <td><span class="badge badge-info">{{ o.slot.time_str }}</span></td>
-        <td style="max-width:260px;">
-          {% for item in o.items %}
-          <span class="badge badge-light border d-inline-block mb-1">
-            {{ item.quantity }}× {{ item.product.name }}
-          </span>
-          {% endfor %}
-          {% for ci in o.custom_items %}
-          <span class="badge d-inline-block mb-1"
-                style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;cursor:pointer;white-space:nowrap;"
-                onclick="openBuilderDetail('ci_{{ o.id }}_{{ loop.index0 }}')"
-                title="Clicca per vedere il dettaglio">
-            {{ '🥪' if ci.builder_type == 'panino' else '🥗' }}
-            {{ 'Panino' if ci.builder_type == 'panino' else 'Insalata' }} builder
-            <i class="fas fa-eye ml-1" style="font-size:.7rem;opacity:.8;"></i>
-          </span>
-          {% endfor %}
-          {% if not o.items and not o.custom_items %}—{% endif %}
-        </td>
-        <td><small class="text-muted">{{ o.notes or '—' }}</small></td>
-        <td><strong>{{ '%.2f'|format(o.total_price) }}€</strong></td>
-        <td><span class="badge badge-{{ lbl[1] }} px-2 py-1">{{ lbl[0] }}</span></td>
-        <td>
-          <div class="d-flex flex-wrap" style="gap:.25rem;">
-            {% if o.status == 'pending' %}
-            <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-              <input type="hidden" name="status" value="confirmed">
-              <button class="btn btn-xs btn-info" title="Conferma"><i class="fas fa-check"></i></button>
-            </form>
-            {% elif o.status == 'confirmed' %}
-            <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-              <input type="hidden" name="status" value="preparing">
-              <button class="btn btn-xs btn-primary" title="Inizia preparazione"><i class="fas fa-fire"></i></button>
-            </form>
-            {% elif o.status == 'preparing' %}
-            <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-              <input type="hidden" name="status" value="ready">
-              <button class="btn btn-xs btn-success" title="Pronto"><i class="fas fa-bell"></i></button>
-            </form>
-            {% elif o.status == 'ready' %}
-            <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-              <input type="hidden" name="status" value="completed">
-              <button class="btn btn-xs btn-secondary" title="Consegnato"><i class="fas fa-check-double"></i></button>
-            </form>
-            {% endif %}
-            {% if o.status not in ('completed','cancelled') %}
-            <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}"
-                  data-confirm="Annullare ordine #{{ o.id }}? Sarà rimborsato.">
-              <input type="hidden" name="status" value="cancelled">
-              <button class="btn btn-xs btn-danger" title="Annulla"><i class="fas fa-times"></i></button>
-            </form>
-            {% endif %}
-          </div>
-        </td>
-        <td>
-          <a href="{{ url_for('admin.order_slip', oid=o.id) }}" target="_blank"
-             class="btn btn-xs btn-outline-secondary" title="Stampa scontrino">
-            <i class="fas fa-print"></i>
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
     </table>
-    {% else %}
-    <div class="text-center py-5 text-muted">
-      <i class="fas fa-receipt fa-3x mb-3"></i><br>
-      Nessun ordine trovato per i filtri selezionati.
-    </div>
-    {% endif %}
-  </div>
-  {% if orders %}
-  <div class="card-footer text-right text-muted">
-    <strong>Totale incassato: {{ '%.2f'|format(orders | selectattr('status','ne','cancelled') | map(attribute='total_price') | sum) }}€</strong>
-  </div>
-  {% endif %}
-</div>
-
-<!-- ── Modal dettaglio builder ── -->
-<div class="modal fade" id="builderDetailModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header text-white" id="bdm-header"
-           style="background:linear-gradient(135deg,#e94560,#0f3460);">
-        <div>
-          <div id="bdm-emoji" style="font-size:2rem;line-height:1;"></div>
-          <h5 class="modal-title mb-0 mt-1" id="bdm-title"></h5>
-          <small id="bdm-subtitle" style="opacity:.85;"></small>
-        </div>
-        <button type="button" class="close text-white ml-auto" data-dismiss="modal"><span>&times;</span></button>
-      </div>
-      <div class="modal-body p-0">
-        <ul class="list-group list-group-flush" id="bdm-ing-list"></ul>
-        <div class="px-3 py-2 border-top d-flex justify-content-between align-items-center">
-          <span class="text-muted" style="font-size:.82rem;">Totale</span>
-          <strong id="bdm-total" style="font-size:1.2rem;color:#e94560;"></strong>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-/* Dati builder per ogni custom item, indicizzati per chiave */
-var BUILDER_DATA = {};
-{% for o in orders %}
-  {% for ci in o.custom_items %}
-  BUILDER_DATA['ci_{{ o.id }}_{{ loop.index0 }}'] = {
-    type:     '{{ ci.builder_type }}',
-    order:    '#{{ o.id }}',
-    user:     '{{ o.user.username }}',
-    slot:     '{{ o.slot.time_str }}',
-    total:    {{ '%.2f'|format(ci.unit_price) }},
-    ings: [
-      {% for ing in ci.ingredients %}
-      { name: {{ ing.ingredient_name | tojson }}, extra: {{ ing.price_extra }} }{% if not loop.last %},{% endif %}
-      {% endfor %}
-    ]
-  };
-  {% endfor %}
-{% endfor %}
+var DT_URL = '{{ url_for("admin.orders_dt") }}';
+var currentDate   = '{{ filter_date }}';
+var currentStatus = '{{ status_filter }}';
 
-function openBuilderDetail(key) {
-  var d = BUILDER_DATA[key];
-  if (!d) return;
-
-  var isPanino = d.type === 'panino';
-  document.getElementById('bdm-emoji').textContent   = isPanino ? '🥪' : '🥗';
-  document.getElementById('bdm-title').textContent   = isPanino ? 'Panino Builder' : 'Insalata Builder';
-  document.getElementById('bdm-subtitle').textContent = 'Ordine ' + d.order + ' · ' + d.user + ' · ' + d.slot;
-  document.getElementById('bdm-total').textContent   = d.total.toFixed(2) + '€';
-
-  var base = d.total;
-  d.ings.forEach(function(i){ base -= i.extra; });
-  base = Math.round(base * 100) / 100;
-
-  var listEl = document.getElementById('bdm-ing-list');
-  var html = '<li class="list-group-item d-flex justify-content-between py-2">'
-           + '<span class="text-muted" style="font-size:.8rem;">Base ' + d.type + '</span>'
-           + '<span style="font-size:.85rem;">' + base.toFixed(2) + '€</span>'
-           + '</li>';
-
-  d.ings.forEach(function(ing) {
-    html += '<li class="list-group-item d-flex justify-content-between py-2">'
-          + '<span style="font-size:.88rem;">' + ing.name + '</span>'
-          + (ing.extra > 0
-              ? '<span style="font-size:.8rem;color:#e94560;font-weight:700;">+' + ing.extra.toFixed(2) + '€</span>'
-              : '<span style="font-size:.8rem;color:var(--QuickLunch-text-muted);">incluso</span>')
-          + '</li>';
-  });
-
-  listEl.innerHTML = html;
-  $('#builderDetailModal').modal('show');
+function submitForm(url) {
+  var f = $('<form method="POST">').attr('action', url);
+  $('body').append(f); f.submit();
 }
+function submitFormField(url, name, val) {
+  var f = $('<form method="POST">').attr('action', url);
+  f.append($('<input type="hidden">').attr('name', name).val(val));
+  $('body').append(f); f.submit();
+}
+
+var table = $('#ordersTable').DataTable({
+  serverSide: true,
+  processing: true,
+  ajax: {
+    url: DT_URL,
+    data: function(d) {
+      d.date   = currentDate;
+      d.status = currentStatus;
+    }
+  },
+  language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json' },
+  pageLength: 25,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, 'desc']],
+  dom: '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>',
+  stateSave: false,
+  columns: [
+    {
+      data: null,
+      render: function(d) {
+        return '<code style="font-size:.8rem;font-weight:700;color:#e94560;letter-spacing:.03em;white-space:nowrap;">' + $('<span>').text(d.order_code).html() + '</code>'
+             + '<br><small class="text-muted">' + d.created_at + '</small>';
+      }
+    },
+    { data: 'username', render: function(d) { return '<strong>' + $('<span>').text(d).html() + '</strong>'; } },
+    { data: 'slot', render: function(d) { return '<span class="badge badge-info">' + $('<span>').text(d).html() + '</span>'; } },
+    { data: 'items', render: function(d) { return d ? $('<span>').text(d).html() : '—'; }, orderable: false },
+    { data: 'notes', render: function(d) { return d ? '<small class="text-muted">' + $('<span>').text(d).html() + '</small>' : '<span class="text-muted">—</span>'; }, orderable: false },
+    { data: 'total_price', render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; } },
+    {
+      data: null,
+      render: function(d) {
+        return '<span class="badge badge-' + d.status_color + ' px-2 py-1">' + d.status_label + '</span>';
+      }
+    },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        var s = '<div class="d-flex flex-wrap" style="gap:.25rem;">';
+        if (d.status === 'pending') {
+          s += '<button class="btn btn-xs btn-info" title="Conferma" onclick="submitFormField(\'' + d.status_url + '\',\'status\',\'confirmed\')"><i class="fas fa-check"></i></button>';
+        } else if (d.status === 'confirmed') {
+          s += '<button class="btn btn-xs btn-primary" title="Inizia preparazione" onclick="submitFormField(\'' + d.status_url + '\',\'status\',\'preparing\')"><i class="fas fa-fire"></i></button>';
+        } else if (d.status === 'preparing') {
+          s += '<button class="btn btn-xs btn-success" title="Pronto" onclick="submitFormField(\'' + d.status_url + '\',\'status\',\'ready\')"><i class="fas fa-bell"></i></button>';
+        } else if (d.status === 'ready') {
+          s += '<button class="btn btn-xs btn-secondary" title="Consegnato" onclick="submitFormField(\'' + d.status_url + '\',\'status\',\'completed\')"><i class="fas fa-check-double"></i></button>';
+        }
+        if (d.status !== 'completed' && d.status !== 'cancelled') {
+          s += '<button class="btn btn-xs btn-danger" title="Annulla" onclick="confirmCancel(\'' + d.status_url + '\', ' + d.id + ')"><i class="fas fa-times"></i></button>';
+        }
+        s += '<a href="' + d.slip_url + '" target="_blank" class="btn btn-xs btn-outline-secondary" title="Stampa"><i class="fas fa-print"></i></a>';
+        s += '</div>';
+        return s;
+      }
+    }
+  ]
+});
+
+function confirmCancel(url, id) {
+  Swal.fire({
+    title: 'Annullare ordine #' + id + '?',
+    text: 'Sarà rimborsato.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e3342f',
+    confirmButtonText: 'Annulla ordine',
+    cancelButtonText: 'No'
+  }).then(function(r) {
+    if (r.isConfirmed) submitFormField(url, 'status', 'cancelled');
+  });
+}
+
+$('#btnFilter').on('click', function() {
+  currentDate   = $('#filterDate').val();
+  currentStatus = $('#filterStatus').val();
+  table.ajax.reload();
+});
 </script>
 {% endblock %}

@@ -19,7 +19,7 @@
 
 <div class="card card-outline card-primary">
   <div class="card-body p-0">
-    <table class="table table-sm table-hover mb-0">
+    <table id="fornitoriTable" class="table table-sm table-hover mb-0" style="width:100%">
       <thead class="thead-dark">
         <tr>
           <th>Nome</th>
@@ -27,59 +27,70 @@
           <th>Telefono</th>
           <th>Articoli associati</th>
           <th>Note</th>
-          <th></th>
+          <th class="no-sort"></th>
         </tr>
       </thead>
-      <tbody>
-        {% for s in suppliers %}
-        <tr>
-          <td class="align-middle fw-bold">
-            <i class="fas fa-truck text-muted mr-1"></i>{{ s.name }}
-          </td>
-          <td class="align-middle">
-            {% if s.email %}
-            <a href="mailto:{{ s.email }}">{{ s.email }}</a>
-            {% else %}
-            <span class="text-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Nessuna email</span>
-            {% endif %}
-          </td>
-          <td class="align-middle text-muted">{{ s.phone or '—' }}</td>
-          <td class="align-middle">
-            {% if s.items %}
-              {% for item in s.items %}
-              <span class="badge badge-{{ item.stock_status == 'critical' and 'danger' or (item.stock_status == 'warning' and 'warning' or 'secondary') }} mr-1">
-                {{ item.name }}
-              </span>
-              {% endfor %}
-            {% else %}
-            <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="align-middle text-muted small">{{ s.notes or '—' }}</td>
-          <td class="align-middle text-right" style="white-space:nowrap;">
-            <a href="{{ url_for('admin.fornitore_edit', sid=s.id) }}"
-               class="btn btn-xs btn-outline-secondary mr-1" title="Modifica">
-              <i class="fas fa-pencil-alt"></i>
-            </a>
-            <form method="POST" action="{{ url_for('admin.fornitore_delete', sid=s.id) }}"
-                  style="display:inline;"
-                  data-confirm="Eliminare il fornitore {{ s.name }}? Gli articoli associati rimarranno senza fornitore.">
-              <button class="btn btn-xs btn-outline-danger" title="Elimina">
-                <i class="fas fa-trash"></i>
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="text-center py-4 text-muted">
-            <i class="fas fa-truck fa-2x mb-2 d-block"></i>
-            Nessun fornitore. <a href="{{ url_for('admin.fornitore_edit') }}">Aggiungine uno.</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function submitForm(url) {
+  var f = $('<form method="POST">').attr('action', url); $('body').append(f); f.submit();
+}
+
+$('#fornitoriTable').DataTable({
+  serverSide: true,
+  processing: true,
+  ajax: '{{ url_for("admin.fornitori_dt") }}',
+  language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json' },
+  pageLength: 25,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, 'asc']],
+  dom: '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>',
+  stateSave: true,
+  columns: [
+    { data: 'name', render: function(d) { return '<i class="fas fa-truck text-muted mr-1"></i><strong>' + $('<span>').text(d).html() + '</strong>'; } },
+    {
+      data: 'email',
+      render: function(d) {
+        if (!d) return '<span class="text-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Nessuna email</span>';
+        return '<a href="mailto:' + d + '">' + $('<span>').text(d).html() + '</a>';
+      }
+    },
+    { data: 'phone', render: function(d) { return d ? $('<span>').text(d).html() : '<span class="text-muted">—</span>'; } },
+    {
+      data: 'items',
+      orderable: false,
+      render: function(d) {
+        if (!d || !d.length) return '<span class="text-muted">—</span>';
+        return d.map(function(n){ return '<span class="badge badge-secondary mr-1">' + $('<span>').text(n).html() + '</span>'; }).join('');
+      }
+    },
+    { data: 'notes', render: function(d) { return d ? '<small class="text-muted">' + $('<span>').text(d).html() + '</small>' : '<span class="text-muted">—</span>'; } },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        return '<a href="' + d.edit_url + '" class="btn btn-xs btn-outline-secondary mr-1" title="Modifica"><i class="fas fa-pencil-alt"></i></a>'
+             + '<button class="btn btn-xs btn-outline-danger" title="Elimina" onclick="confirmDelete(\'' + d.delete_url + '\',\'' + $('<span>').text(d.name).html() + '\')"><i class="fas fa-trash"></i></button>';
+      }
+    }
+  ]
+});
+
+function confirmDelete(url, name) {
+  Swal.fire({
+    title: 'Eliminare "' + name + '"?',
+    text: 'Gli articoli associati rimarranno senza fornitore.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e3342f',
+    confirmButtonText: 'Elimina',
+    cancelButtonText: 'Annulla'
+  }).then(function(r) { if (r.isConfirmed) submitForm(url); });
+}
+</script>
 {% endblock %}

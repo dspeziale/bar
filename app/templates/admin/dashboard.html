@@ -149,9 +149,9 @@
       </div>
       <div class="card-body p-0">
         {% if orders_today %}
-        <table class="table table-sm table-hover mb-0">
+        <table class="table table-sm table-hover mb-0 auto-dt">
           <thead class="thead-dark">
-            <tr><th>Codice</th><th>Utente</th><th>Slot</th><th>Prodotti</th><th>Totale</th><th>Stato</th><th></th></tr>
+            <tr><th>Codice</th><th>Utente</th><th>Slot</th><th>Prodotti</th><th>Totale</th><th>Stato</th><th class="no-sort"></th></tr>
           </thead>
           <tbody>
           {% for o in orders_today %}

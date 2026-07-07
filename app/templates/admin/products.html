@@ -8,9 +8,6 @@
 
 {% from 'admin/_allergen_widget.html' import allergen_checkboxes with context %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
-{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -157,8 +154,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
 <script>
 var BASE = '{{ url_for("admin.products") }}';
 function productUrl(pid, action) { return BASE + '/' + pid + '/' + action; }

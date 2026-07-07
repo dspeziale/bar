@@ -1,6 +1,6 @@
 ﻿import secrets
 from datetime import date, datetime, timedelta
-from flask import render_template, redirect, url_for, flash, request, session
+from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
@@ -285,9 +285,53 @@ def place_order():
 @bp.route('/orders')
 @login_required
 def my_orders():
-    orders = Order.query.filter_by(user_id=current_user.id)\
-        .order_by(Order.created_at.desc()).limit(50).all()
-    return render_template('main/my_orders.html', orders=orders)
+    return render_template('main/my_orders.html')
+
+
+@bp.route('/orders/dt')
+@login_required
+def my_orders_dt():
+    draw   = request.args.get('draw', 1, type=int)
+    start  = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search = (request.args.get('search[value]') or '').strip()
+    col    = request.args.get('order[0][column]', 0, type=int)
+    dirn   = request.args.get('order[0][dir]', 'desc')
+    q = Order.query.filter_by(user_id=current_user.id)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(Order.order_code.ilike(like),
+                             Order.status.ilike(like)))
+    filtered = q.count()
+    col_map = {0: Order.order_code, 1: Order.order_date, 2: Order.total_price, 4: Order.status}
+    order_expr = col_map.get(col, Order.created_at)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    _STATUS = {'pending':('Ricevuto','warning'), 'confirmed':('Confermato','info'),
+               'preparing':('In prep.','primary'), 'ready':('Pronto','success'),
+               'completed':('Consegnato','success'), 'cancelled':('Annullato','secondary')}
+    data = []
+    for o in q.offset(start).limit(length).all():
+        lbl = _STATUS.get(o.status, (o.status, 'light'))
+        items_parts = [f'{it.quantity}× {it.product.name}' for it in o.items]
+        for ci in o.custom_items:
+            t = '🥪' if ci.builder_type == 'panino' else '🥗'
+            items_parts.append(f'{t} Builder')
+        can_cancel = o.status in ('pending', 'confirmed')
+        data.append({
+            'id':           o.id,
+            'order_code':   o.order_code or f'#{o.id}',
+            'date':         o.order_date.strftime('%d/%m/%Y'),
+            'slot':         o.slot.time_str if o.slot else '—',
+            'items':        ' · '.join(items_parts) if items_parts else '—',
+            'notes':        o.notes or '',
+            'total_price':  round(o.total_price, 2),
+            'status_label': lbl[0],
+            'status_color': lbl[1],
+            'can_cancel':   can_cancel,
+            'cancel_url':   url_for('main.cancel_order', order_id=o.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
 @bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
@@ -328,11 +372,41 @@ def cancel_order(order_id):
 @bp.route('/wallet')
 @login_required
 def wallet():
-    transactions = Transaction.query.filter_by(user_id=current_user.id)\
-        .order_by(Transaction.created_at.desc()).limit(50).all()
-    return render_template('main/wallet.html', transactions=transactions,
+    return render_template('main/wallet.html',
                            loyalty_threshold=get_numeric_setting('loyalty_reward_points', 100),
                            reward_amount=get_numeric_setting('loyalty_reward_amount', 1.0))
+
+
+@bp.route('/wallet/dt')
+@login_required
+def wallet_dt():
+    draw   = request.args.get('draw', 1, type=int)
+    start  = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search = (request.args.get('search[value]') or '').strip()
+    col    = request.args.get('order[0][column]', 0, type=int)
+    dirn   = request.args.get('order[0][dir]', 'desc')
+    q = Transaction.query.filter_by(user_id=current_user.id)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(Transaction.description.ilike(like))
+    filtered = q.count()
+    col_map = {0: Transaction.created_at, 3: Transaction.amount}
+    order_expr = col_map.get(col, Transaction.created_at)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for t in q.offset(start).limit(length).all():
+        info = t.icon_info()
+        data.append({
+            'created_at':  t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '',
+            'icon':        info[0],
+            'badge_color': info[1],
+            'type_label':  info[2],
+            'description': t.description or '',
+            'amount':      round(t.amount, 2),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
 @bp.route('/wallet/redeem', methods=['POST'])
@@ -597,10 +671,51 @@ def table_book():
 @bp.route('/reservations')
 @login_required
 def my_reservations():
-    reservations = TableReservation.query.filter_by(user_id=current_user.id)\
-        .order_by(TableReservation.created_at.desc()).limit(30).all()
-    return render_template('main/my_reservations.html', reservations=reservations,
-                           today_date=date.today())
+    return render_template('main/my_reservations.html', today_date=date.today())
+
+
+@bp.route('/reservations/dt')
+@login_required
+def my_reservations_dt():
+    draw   = request.args.get('draw', 1, type=int)
+    start  = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search = (request.args.get('search[value]') or '').strip()
+    col    = request.args.get('order[0][column]', 0, type=int)
+    dirn   = request.args.get('order[0][dir]', 'desc')
+    from app.models import Table as TableModel
+    q = TableReservation.query.join(
+        TableModel, TableReservation.table_id == TableModel.id
+    ).filter(TableReservation.user_id == current_user.id)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(TableReservation.status.ilike(like),
+                             TableReservation.notes.ilike(like)))
+    filtered = q.count()
+    col_map = {0: TableReservation.reservation_date, 1: TableModel.number,
+               5: TableReservation.status}
+    order_expr = col_map.get(col, TableReservation.reservation_date)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    today = date.today()
+    data = []
+    for r in q.offset(start).limit(length).all():
+        lbl = r.label()
+        can_cancel = r.status == 'confirmed' and r.reservation_date >= today
+        data.append({
+            'date':        r.reservation_date.strftime('%d/%m/%Y'),
+            'table_num':   r.table.number,
+            'table_seats': r.table.seats,
+            'location':    r.table.location or '',
+            'slot':        r.slot.time_str if r.slot else '—',
+            'party_size':  r.party_size,
+            'notes':       r.notes or '',
+            'status_label': lbl[0],
+            'status_color': lbl[1],
+            'can_cancel':   can_cancel,
+            'cancel_url':   url_for('main.cancel_reservation', rid=r.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
 @bp.route('/reservations/<int:rid>/cancel', methods=['POST'])

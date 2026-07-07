@@ -125,8 +125,8 @@
       </div>
       <div class="card-body p-0">
         {% if today_orders %}
-        <table class="table table-striped tbl-mini mb-0">
-          <thead><tr><th>Codice</th><th>Slot</th><th>Totale</th><th>Stato</th><th></th></tr></thead>
+        <table class="table table-striped tbl-mini mb-0 auto-dt">
+          <thead><tr><th>Codice</th><th>Slot</th><th>Totale</th><th>Stato</th><th class="no-sort"></th></tr></thead>
           <tbody>
           {% for o in today_orders %}
           {% set lbl = o.label() %}

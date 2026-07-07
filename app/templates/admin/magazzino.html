@@ -10,11 +10,6 @@
 <style>
 .stock-bar-wrap { background:#e9ecef; border-radius:4px; height:8px; overflow:hidden; min-width:80px; }
 .stock-bar      { height:8px; border-radius:4px; transition:width .4s; }
-.mv-form        { display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; }
-.mv-input       { width:80px; }
-.badge-critical { background:#e94560; color:#fff; }
-.badge-warning  { background:#f39c12; color:#fff; }
-.badge-ok       { background:#27ae60; color:#fff; }
 </style>
 {% endblock %}
 
@@ -42,134 +37,103 @@
       <i class="fas fa-truck mr-1"></i>Fornitori
     </a>
   </div>
-  <span class="text-muted" style="font-size:.88rem;">
-    {{ items|length }} articol{{ 'o' if items|length == 1 else 'i' }} &mdash;
-    <span class="text-danger">{{ alerts|length }} sotto soglia</span>
-  </span>
 </div>
 
 {# ── Tabella ── #}
 <div class="card card-outline card-primary">
   <div class="card-body p-0">
-    <table class="table table-sm table-hover mb-0">
+    <table id="magazzinoTable" class="table table-sm table-hover mb-0" style="width:100%">
       <thead class="thead-dark">
         <tr>
-          <th style="width:30%">Articolo</th>
+          <th>Articolo</th>
           <th>Unità</th>
           <th>Giacenza</th>
           <th>Soglia min.</th>
           <th>Stato</th>
           <th>Fornitore</th>
-          <th>Movimento rapido</th>
-          <th></th>
+          <th class="no-sort">Movimento rapido</th>
+          <th class="no-sort"></th>
         </tr>
       </thead>
-      <tbody>
-        {% for item in items %}
-        {% set status = item.stock_status %}
-        <tr class="{{ 'table-danger' if status == 'critical' else ('table-warning' if status == 'warning' else '') }}">
-          <td class="align-middle fw-bold">{{ item.name }}</td>
-          <td class="align-middle text-muted">{{ item.unit }}</td>
-          <td class="align-middle">
-            <strong>{{ '%.1f'|format(item.quantity) }}</strong>
-            {% if item.min_threshold > 0 %}
-            <div class="stock-bar-wrap mt-1">
-              {% set pct = [[(item.quantity / item.min_threshold * 100)|int, 0]|max, 100]|min %}
-              <div class="stock-bar"
-                   style="width:{{ pct }}%;
-                          background:{{ '#e94560' if status == 'critical' else ('#f39c12' if status == 'warning' else '#27ae60') }};">
-              </div>
-            </div>
-            {% endif %}
-          </td>
-          <td class="align-middle text-muted">
-            {{ '%.1f'|format(item.min_threshold) if item.min_threshold > 0 else '—' }}
-          </td>
-          <td class="align-middle">
-            <span class="badge badge-{{ status }}">
-              {{ '⛔ Critico' if status == 'critical' else ('⚠️ Basso' if status == 'warning' else '✅ OK') }}
-            </span>
-            {% if item.alert_active %}
-            <br><small class="text-danger"><i class="fas fa-envelope mr-1"></i>Alert inviato</small>
-            {% endif %}
-          </td>
-          <td class="align-middle">
-            {% if item.supplier %}
-            <span title="{{ item.supplier.email or 'nessuna email' }}">
-              <i class="fas fa-truck text-muted mr-1"></i>{{ item.supplier.name }}
-              {% if not item.supplier.email %}
-              <i class="fas fa-exclamation-circle text-warning ml-1" title="Nessuna email fornitore"></i>
-              {% endif %}
-            </span>
-            {% else %}
-            <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="align-middle">
-            <form method="POST" action="{{ url_for('admin.magazzino_movimento', iid=item.id) }}" class="mv-form">
-              <input type="number" name="delta" step="0.5" placeholder="±qty"
-                     class="form-control form-control-sm mv-input" required>
-              <input type="text" name="notes" placeholder="Note"
-                     class="form-control form-control-sm" style="width:110px;">
-              <button type="submit" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-save"></i>
-              </button>
-            </form>
-          </td>
-          <td class="align-middle text-right" style="white-space:nowrap;">
-            <a href="{{ url_for('admin.magazzino_edit', iid=item.id) }}"
-               class="btn btn-xs btn-outline-secondary mr-1" title="Modifica">
-              <i class="fas fa-pencil-alt"></i>
-            </a>
-            <form method="POST" action="{{ url_for('admin.magazzino_delete', iid=item.id) }}"
-                  style="display:inline;"
-                  data-confirm="Eliminare {{ item.name }}?">
-              <button class="btn btn-xs btn-outline-danger" title="Elimina">
-                <i class="fas fa-trash"></i>
-              </button>
-            </form>
-          </td>
-        </tr>
-        {# storico movimenti (collapsible) #}
-        {% if item.movements %}
-        <tr class="collapse" id="mv-{{ item.id }}">
-          <td colspan="8" class="p-0">
-            <table class="table table-sm mb-0" style="background:#f8f9fa;">
-              <thead><tr><th>Data/ora</th><th>Delta</th><th>Note</th><th>Utente</th></tr></thead>
-              <tbody>
-                {% for mv in item.movements[:10] %}
-                <tr>
-                  <td>{{ mv.created_at|dt_rome('%d/%m %H:%M') }}</td>
-                  <td class="{{ 'text-success' if mv.delta > 0 else 'text-danger' }}">
-                    {{ '+' if mv.delta > 0 else '' }}{{ '%.1f'|format(mv.delta) }} {{ item.unit }}
-                  </td>
-                  <td>{{ mv.notes or '—' }}</td>
-                  <td>{{ mv.user.username if mv.user else '—' }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="8" class="p-0 text-right" style="background:#f0f0f0;">
-            <button class="btn btn-xs btn-link text-muted py-0"
-                    data-toggle="collapse" data-target="#mv-{{ item.id }}">
-              <i class="fas fa-history mr-1"></i>Storico movimenti ({{ item.movements|length }})
-            </button>
-          </td>
-        </tr>
-        {% endif %}
-        {% else %}
-        <tr>
-          <td colspan="8" class="text-center py-4 text-muted">
-            <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
-            Nessun articolo. <a href="{{ url_for('admin.magazzino_edit') }}">Aggiungine uno.</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function submitForm(url) {
+  var f = $('<form method="POST">').attr('action', url); $('body').append(f); f.submit();
+}
+
+var table = $('#magazzinoTable').DataTable({
+  serverSide: true,
+  processing: true,
+  ajax: '{{ url_for("admin.magazzino_dt") }}',
+  language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json' },
+  pageLength: 25,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, 'asc']],
+  dom: '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>',
+  stateSave: true,
+  rowCallback: function(row, d) {
+    if (d.status === 'critical')      $(row).addClass('table-danger');
+    else if (d.status === 'warning') $(row).addClass('table-warning');
+  },
+  columns: [
+    { data: 'name', render: function(d) { return '<strong>' + $('<span>').text(d).html() + '</strong>'; } },
+    { data: 'unit', render: function(d) { return '<small class="text-muted">' + $('<span>').text(d).html() + '</small>'; } },
+    {
+      data: null,
+      render: function(d) {
+        var s = '<strong>' + d.quantity.toFixed(1) + '</strong>';
+        if (d.min_threshold > 0) {
+          var pct = Math.min(Math.max(Math.round(d.quantity / d.min_threshold * 100), 0), 100);
+          var clr = d.status === 'critical' ? '#e94560' : (d.status === 'warning' ? '#f39c12' : '#27ae60');
+          s += '<div class="stock-bar-wrap mt-1"><div class="stock-bar" style="width:' + pct + '%;background:' + clr + ';"></div></div>';
+        }
+        return s;
+      }
+    },
+    { data: 'min_threshold', render: function(d) { return d > 0 ? d.toFixed(1) : '<span class="text-muted">—</span>'; } },
+    {
+      data: null,
+      render: function(d) {
+        var icons = { critical: '⛔', warning: '⚠️', ok: '✅' };
+        var labels = { critical: 'Critico', warning: 'Basso', ok: 'OK' };
+        var colors = { critical: 'danger', warning: 'warning', ok: 'success' };
+        var s = '<span class="badge badge-' + (colors[d.status] || 'secondary') + '">' + (icons[d.status] || '') + ' ' + (labels[d.status] || d.status) + '</span>';
+        if (d.alert_active) s += '<br><small class="text-danger"><i class="fas fa-envelope mr-1"></i>Alert inviato</small>';
+        return s;
+      }
+    },
+    { data: 'supplier_name', render: function(d) { return d ? '<i class="fas fa-truck text-muted mr-1"></i>' + $('<span>').text(d).html() : '<span class="text-muted">—</span>'; } },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        return '<form method="POST" action="' + d.movement_url + '" class="d-flex" style="gap:.3rem;">'
+             + '<input type="number" name="delta" step="0.5" placeholder="±qty" class="form-control form-control-sm" style="width:80px;" required>'
+             + '<input type="text" name="notes" placeholder="Note" class="form-control form-control-sm" style="width:100px;">'
+             + '<button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-save"></i></button>'
+             + '</form>';
+      }
+    },
+    {
+      data: null,
+      orderable: false,
+      render: function(d) {
+        return '<a href="' + d.edit_url + '" class="btn btn-xs btn-outline-secondary mr-1" title="Modifica"><i class="fas fa-pencil-alt"></i></a>'
+             + '<button class="btn btn-xs btn-outline-danger" title="Elimina" onclick="confirmDel(\'' + d.delete_url + '\',\'' + $('<span>').text(d.name).html() + '\')"><i class="fas fa-trash"></i></button>';
+      }
+    }
+  ]
+});
+
+function confirmDel(url, name) {
+  Swal.fire({ title:'Eliminare "'+name+'"?', icon:'warning', showCancelButton:true,
+    confirmButtonColor:'#e3342f', confirmButtonText:'Elimina', cancelButtonText:'Annulla'
+  }).then(function(r){ if(r.isConfirmed){ var f=$('<form method="POST">').attr('action',url);$('body').append(f);f.submit(); }});
+}
+</script>
 {% endblock %}

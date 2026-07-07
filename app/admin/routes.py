@@ -258,6 +258,283 @@ def products_dt():
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
+# ── Helper DT params ──────────────────────────────────────────────────────────
+def _dt_params():
+    draw   = request.args.get('draw', 1, type=int)
+    start  = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search = (request.args.get('search[value]') or '').strip()
+    col    = request.args.get('order[0][column]', 0, type=int)
+    dirn   = request.args.get('order[0][dir]', 'asc')
+    return draw, start, length, search, col, dirn
+
+
+# ── CLIENTS DT ────────────────────────────────────────────────────────────────
+@bp.route('/clients/dt')
+@require_permission('manage_clients')
+def clients_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = User.query.filter_by(is_client=True, tenant_id=tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(
+            User.first_name.ilike(like), User.last_name.ilike(like),
+            User.email.ilike(like), User.phone.ilike(like), User.address.ilike(like),
+        ))
+    filtered = q.count()
+    col_map = {0: db.func.concat(User.last_name, ' ', User.first_name),
+               1: User.phone, 2: User.birth_date, 5: User.wallet_balance, 6: User.is_active}
+    order_expr = col_map.get(col, db.func.concat(User.last_name, ' ', User.first_name))
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for c in q.offset(start).limit(length).all():
+        m = c.corporate_membership
+        data.append({
+            'id':             c.id,
+            'full_name':      c.full_name,
+            'first_name':     c.first_name or '',
+            'last_name':      c.last_name or '',
+            'email':          c.email,
+            'phone':          c.phone or '',
+            'birth_date':     c.birth_date.strftime('%Y-%m-%d') if c.birth_date else '',
+            'birth_date_str': c.birth_date.strftime('%d/%m/%Y') if c.birth_date else '',
+            'address':        c.address or '',
+            'telegram':       c.telegram_chat_id or '',
+            'wallet_balance': round(c.wallet_balance, 2),
+            'wallet_overdraft': round(c.wallet_overdraft or 0, 2),
+            'loyalty_points': c.loyalty_points,
+            'is_active':      c.is_active,
+            'has_google':     bool(c.google_id),
+            'corporate_name': (m.corporate.name if m and m.is_active else ''),
+            'toggle_url':     url_for('admin.client_toggle',  uid=c.id),
+            'edit_url':       url_for('admin.client_edit',    uid=c.id),
+            'topup_url':      url_for('admin.client_topup',   uid=c.id),
+            'delete_url':     url_for('admin.client_delete',  uid=c.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── ORDERS DT ─────────────────────────────────────────────────────────────────
+@bp.route('/orders/dt')
+@require_permission('view_orders')
+def orders_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    filter_date_str = request.args.get('date', str(date.today()))
+    status_filter   = request.args.get('status', '')
+    try:
+        filter_date_obj = _dt.strptime(filter_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        filter_date_obj = date.today()
+    q = Order.query.join(User, Order.user_id == User.id).filter(
+        Order.tenant_id == tid, Order.order_date == filter_date_obj)
+    if status_filter:
+        q = q.filter(Order.status == status_filter)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(
+            Order.order_code.ilike(like), User.username.ilike(like),
+            User.first_name.ilike(like), User.last_name.ilike(like),
+        ))
+    filtered = q.count()
+    col_map = {0: Order.created_at, 1: User.username, 5: Order.total_price, 6: Order.status}
+    order_expr = col_map.get(col, Order.created_at)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    _STATUS = {'pending':('Ricevuto','warning'), 'confirmed':('Confermato','info'),
+               'preparing':('In prep.','primary'), 'ready':('Pronto','success'),
+               'completed':('Consegnato','success'), 'cancelled':('Annullato','secondary')}
+    data = []
+    for o in q.offset(start).limit(length).all():
+        lbl = _STATUS.get(o.status, (o.status, 'light'))
+        items_parts = []
+        for it in o.items:
+            items_parts.append(f'{it.quantity}× {it.product.name}')
+        for ci in o.custom_items:
+            t = '🥪' if ci.builder_type == 'panino' else '🥗'
+            items_parts.append(f'{t} Builder')
+        data.append({
+            'id':          o.id,
+            'order_code':  o.order_code or f'#{o.id}',
+            'created_at':  o.created_at.strftime('%H:%M') if o.created_at else '',
+            'username':    o.user.username,
+            'full_name':   o.user.full_name,
+            'slot':        o.slot.time_str if o.slot else '—',
+            'items':       ' · '.join(items_parts),
+            'notes':       o.notes or '',
+            'total_price': round(o.total_price, 2),
+            'status':      o.status,
+            'status_label': lbl[0],
+            'status_color': lbl[1],
+            'status_url':  url_for('admin.order_status', oid=o.id),
+            'slip_url':    url_for('admin.order_slip',   oid=o.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── USERS DT ──────────────────────────────────────────────────────────────────
+@bp.route('/users/dt')
+@require_permission('manage_users')
+def users_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = User.query.filter_by(is_admin=False, is_client=False, tenant_id=tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(User.username.ilike(like), User.email.ilike(like)))
+    filtered = q.count()
+    col_map = {0: User.email, 2: User.wallet_balance, 4: User.is_active, 5: User.created_at}
+    order_expr = col_map.get(col, User.username)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for u in q.offset(start).limit(length).all():
+        data.append({
+            'id':            u.id,
+            'email':         u.email,
+            'username':      u.username,
+            'roles':         [{'label': r.label, 'color': r.color} for r in u.roles],
+            'wallet_balance': round(u.wallet_balance, 2),
+            'loyalty_points': u.loyalty_points,
+            'is_active':     u.is_active,
+            'created_at':    u.created_at.strftime('%d/%m/%Y') if u.created_at else '',
+            'toggle_url':    url_for('admin.user_toggle', uid=u.id),
+            'topup_url':     url_for('admin.user_topup',  uid=u.id),
+            'delete_url':    url_for('admin.user_delete', uid=u.id),
+            'roles_url':     url_for('admin.user_roles_assign', uid=u.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── FORNITORI DT ──────────────────────────────────────────────────────────────
+@bp.route('/fornitori/dt')
+@require_permission('manage_stock')
+def fornitori_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = Supplier.query.filter_by(tenant_id=tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(Supplier.name.ilike(like), Supplier.email.ilike(like),
+                             Supplier.phone.ilike(like), Supplier.notes.ilike(like)))
+    filtered = q.count()
+    col_map = {0: Supplier.name, 1: Supplier.email, 2: Supplier.phone}
+    order_expr = col_map.get(col, Supplier.name)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for s in q.offset(start).limit(length).all():
+        data.append({
+            'id':         s.id,
+            'name':       s.name,
+            'email':      s.email or '',
+            'phone':      s.phone or '',
+            'notes':      s.notes or '',
+            'items':      [i.name for i in s.items],
+            'edit_url':   url_for('admin.fornitore_edit',   sid=s.id),
+            'delete_url': url_for('admin.fornitore_delete', sid=s.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── MAGAZZINO DT ──────────────────────────────────────────────────────────────
+@bp.route('/magazzino/dt')
+@require_permission('manage_stock')
+def magazzino_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = ConsumableItem.query.outerjoin(Supplier).filter(ConsumableItem.tenant_id == tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(ConsumableItem.name.ilike(like),
+                             Supplier.name.ilike(like)))
+    filtered = q.count()
+    col_map = {0: ConsumableItem.name, 1: ConsumableItem.unit,
+               2: ConsumableItem.quantity, 3: ConsumableItem.min_threshold}
+    order_expr = col_map.get(col, ConsumableItem.name)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for item in q.offset(start).limit(length).all():
+        st = item.stock_status
+        data.append({
+            'id':            item.id,
+            'name':          item.name,
+            'unit':          item.unit,
+            'quantity':      round(item.quantity, 1),
+            'min_threshold': round(item.min_threshold, 1),
+            'status':        st,
+            'supplier_name': item.supplier.name if item.supplier else '',
+            'alert_active':  item.alert_active,
+            'movement_url':  url_for('admin.magazzino_movimento', iid=item.id),
+            'edit_url':      url_for('admin.magazzino_edit',      iid=item.id),
+            'delete_url':    url_for('admin.magazzino_delete',    iid=item.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── BANCO ITEMS DT ────────────────────────────────────────────────────────────
+@bp.route('/banco/items/dt')
+@require_permission('manage_products')
+def banco_items_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = BancoItem.query.filter_by(tenant_id=tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(BancoItem.name.ilike(like))
+    filtered = q.count()
+    col_map = {0: BancoItem.name, 1: BancoItem.price, 2: BancoItem.sort_order, 3: BancoItem.is_active}
+    order_expr = col_map.get(col, BancoItem.sort_order)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for item in q.offset(start).limit(length).all():
+        data.append({
+            'id':         item.id,
+            'name':       item.name,
+            'price':      round(item.price, 2),
+            'icon':       item.icon,
+            'color':      item.color,
+            'sort_order': item.sort_order,
+            'is_active':  item.is_active,
+            'edit_url':   url_for('admin.banco_item_edit',   iid=item.id),
+            'delete_url': url_for('admin.banco_item_delete', iid=item.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
+# ── CATEGORIES DT ─────────────────────────────────────────────────────────────
+@bp.route('/categories/dt')
+@require_permission('manage_categories')
+def categories_dt():
+    tid                    = _active_tenant_id()
+    draw, start, length, search, col, dirn = _dt_params()
+    q = Category.query.filter_by(tenant_id=tid)
+    total = q.count()
+    if search:
+        like = f'%{search}%'
+        q = q.filter(db.or_(Category.name.ilike(like), Category.color.ilike(like)))
+    filtered = q.count()
+    col_map = {0: Category.name, 3: Category.color}
+    order_expr = col_map.get(col, Category.name)
+    q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
+    data = []
+    for cat in q.offset(start).limit(length).all():
+        data.append({
+            'id':        cat.id,
+            'name':      cat.name,
+            'icon':      cat.icon,
+            'color':     cat.color,
+            'n_products': cat.products.count(),
+            'edit_url':   url_for('admin.category_edit',   cid=cat.id),
+            'delete_url': url_for('admin.category_delete', cid=cat.id),
+        })
+    return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
+
+
 @bp.route('/products/new', methods=['POST'])
 @require_permission('manage_products')
 def product_new():

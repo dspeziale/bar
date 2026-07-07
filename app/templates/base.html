@@ -18,6 +18,32 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+  <style>
+    /* DataTables dark-theme overrides */
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .dataTables_filter input,
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .dataTables_length select {
+      background: var(--QuickLunch-input-bg) !important;
+      color: var(--QuickLunch-input-color) !important;
+      border-color: var(--QuickLunch-input-border) !important;
+    }
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .dataTables_info,
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .dataTables_filter label,
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .dataTables_length label {
+      color: var(--QuickLunch-text) !important;
+    }
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .page-item .page-link {
+      background: var(--QuickLunch-card-bg) !important;
+      border-color: var(--QuickLunch-card-border) !important;
+      color: var(--QuickLunch-text) !important;
+    }
+    [data-QuickLunch-theme="dark"] .dataTables_wrapper .page-item.active .page-link {
+      background: var(--c-accent) !important;
+      border-color: var(--c-accent) !important;
+      color: #fff !important;
+    }
+    .dataTables_wrapper .dataTables_processing { z-index: 9; }
+  </style>
 
   <style>
     /* ═══════════════════════════════════════════════════════════════════
@@ -920,6 +946,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
 function bsrApplyTheme(t) {
@@ -950,6 +978,26 @@ document.querySelectorAll('.table').forEach(function(t) {
     t.parentNode.insertBefore(w, t);
     w.appendChild(t);
   }
+});
+
+/* DataTables auto-init per tabelle client-side con classe .auto-dt */
+$(function() {
+  var dtLang = 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json';
+  var dtDom  = '<"row mb-2"<"col-sm-6"l><"col-sm-6"f>>rt<"row mt-2"<"col-sm-5"i><"col-sm-7"p>>';
+  $('.auto-dt').each(function() {
+    var noSortCols = [];
+    $(this).find('thead th').each(function(i) {
+      if ($(this).hasClass('no-sort')) noSortCols.push(i);
+    });
+    $(this).DataTable({
+      language:   { url: dtLang },
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100],
+      dom:        dtDom,
+      stateSave:  true,
+      columnDefs: noSortCols.map(function(i){ return { orderable: false, targets: i }; })
+    });
+  });
 });
 
 /* Sidebar treeview — gestione manuale, AdminLTE non è coinvolto */
