@@ -367,6 +367,9 @@ def _migrate_tenant_columns():
     # Fido wallet (saldo negativo consentito)
     _ensure('users', 'wallet_overdraft', 'FLOAT DEFAULT 0.0')
 
+    # Barcode prodotto (EAN-13/UPC per scansione lattine al cesto)
+    _ensure('products', 'barcode', "VARCHAR(32)")
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

@@ -72,6 +72,47 @@
     .back { display: inline-block; margin-top: 20px; color: rgba(255,255,255,.55); font-size:.85rem; text-decoration:none; }
     .back:hover { color: white; }
     .code { font-family: monospace; font-size:.8rem; color:var(--muted); margin-top:14px; }
+
+    /* Extra scanner section */
+    .extras-section {
+      margin-top: 18px; padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.12);
+      text-align: left;
+    }
+    .btn-add-extra {
+      width: 100%; padding: 10px; font-size: .95rem; font-weight: 600;
+      border: 2px dashed rgba(255,255,255,.35); border-radius: 8px;
+      background: transparent; color: var(--text); cursor: pointer;
+      transition: border-color .15s;
+    }
+    .btn-add-extra:hover { border-color: var(--accent); }
+    .scanner-wrap {
+      margin-top: 12px; border-radius: 8px;
+      overflow: hidden; background: #000;
+      position: relative;
+    }
+    #quagga-viewport { width: 100%; }
+    #quagga-viewport video { width: 100%; display: block; max-height: 220px; object-fit: cover; }
+    #quagga-viewport canvas { display: none !important; }
+    .scan-hint {
+      text-align: center; font-size: .82rem; color: var(--muted);
+      margin: 6px 0 10px;
+    }
+    .cart-list { list-style: none; padding: 0; margin: 0 0 12px; }
+    .cart-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: 7px; margin-bottom: 5px;
+      background: rgba(255,255,255,.08); font-size: .9rem;
+    }
+    .cart-item button {
+      background: none; border: none; cursor: pointer;
+      color: var(--accent); font-size: .85rem; padding: 0 4px;
+    }
+    .total-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 1rem; font-weight: 700; padding: 8px 0 0;
+      border-top: 1px solid rgba(255,255,255,.18);
+    }
   </style>
 </head>
 <body>
@@ -115,7 +156,7 @@
     <span class="badge badge-success">Disponibile</span>
     <h2>Conferma acquisto</h2>
     <div class="product">{{ lb.product.name }}</div>
-    <div class="price">{{ '%.2f'|format(lb.product.price) }} €</div>
+    <div class="price" id="main-price">{{ '%.2f'|format(lb.product.price) }} €</div>
 
     <div class="wallet-row">
       <span>Saldo wallet</span>
@@ -123,24 +164,49 @@
     </div>
 
     {% set balance = current_user.wallet_balance or 0 %}
-    {% if balance >= lb.product.price %}
-    <form method="POST" action="{{ url_for('main.cesto_acquista', code=lb.code) }}">
-      <button type="submit" class="btn-buy">
+
+    <form method="POST" action="{{ url_for('main.cesto_acquista', code=lb.code) }}" id="buy-form">
+      <input type="hidden" name="extras" id="extras-field" value="[]">
+
+      {# ── Aggiungi bevanda/snack ── #}
+      <div class="extras-section">
+        <button type="button" class="btn-add-extra" id="btn-toggle-scanner">
+          <i class="fas fa-barcode mr-1"></i>Aggiungi bevanda / snack
+        </button>
+
+        <div id="scanner-area" style="display:none;">
+          <div class="scanner-wrap">
+            <div id="quagga-viewport"></div>
+          </div>
+          <div class="scan-hint">Inquadra il codice a barre della lattina o dello snack</div>
+          <div id="scan-error" style="color:#e94560;font-size:.82rem;text-align:center;min-height:18px;"></div>
+        </div>
+
+        <ul class="cart-list" id="cart-list" style="margin-top:10px;"></ul>
+
+        <div class="total-row" id="total-row" style="display:none;">
+          <span>Totale</span>
+          <span id="total-display" style="color:var(--accent);"></span>
+        </div>
+      </div>
+
+      {% if balance >= lb.product.price %}
+      <button type="submit" class="btn-buy" id="btn-buy" style="margin-top:14px;">
         <i class="fas fa-wallet mr-2"></i>Acquista ora
       </button>
+      <div class="sub" id="after-balance" style="margin-top:10px;">
+        Saldo dopo acquisto: <strong id="after-val">{{ '%.2f'|format(balance - lb.product.price) }} €</strong>
+      </div>
+      {% else %}
+      <button class="btn-buy" id="btn-buy" disabled style="margin-top:14px;">
+        <i class="fas fa-wallet mr-2"></i>Saldo insufficiente
+      </button>
+      <div class="sub" style="color:#e94560;margin-top:8px;">
+        Ti mancano {{ '%.2f'|format(lb.product.price - balance) }} €.
+        <a href="{{ url_for('main.wallet') }}" style="color:var(--accent);">Ricarica il wallet</a>
+      </div>
+      {% endif %}
     </form>
-    <div class="sub" style="margin-top:10px;">
-      Saldo dopo acquisto: <strong>{{ '%.2f'|format(balance - lb.product.price) }} €</strong>
-    </div>
-    {% else %}
-    <button class="btn-buy" disabled>
-      <i class="fas fa-wallet mr-2"></i>Saldo insufficiente
-    </button>
-    <div class="sub" style="color:#e94560;margin-top:8px;">
-      Ti mancano {{ '%.2f'|format(lb.product.price - balance) }} €.
-      <a href="{{ url_for('main.wallet') }}" style="color:var(--accent);">Ricarica il wallet</a>
-    </div>
-    {% endif %}
   {% endif %}
 
   <div class="code">{{ lb.code }}</div>
@@ -150,5 +216,146 @@
   <i class="fas fa-arrow-left mr-1"></i>Home
 </a>
 
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script>
+(function () {
+  var MAIN_PRICE = {{ lb.product.price | tojson }};
+  var BALANCE    = {{ (current_user.wallet_balance or 0) | tojson }};
+  var cart       = [];   // [{id, name, price}]
+  var scanning   = false;
+
+  var btnToggle   = document.getElementById('btn-toggle-scanner');
+  var scannerArea = document.getElementById('scanner-area');
+  var scanError   = document.getElementById('scan-error');
+  var cartList    = document.getElementById('cart-list');
+  var totalRow    = document.getElementById('total-row');
+  var totalDisp   = document.getElementById('total-display');
+  var extrasField = document.getElementById('extras-field');
+  var btnBuy      = document.getElementById('btn-buy');
+  var afterVal    = document.getElementById('after-val');
+
+  if (!btnToggle) return;   // not in 'ready' state
+
+  function startQuagga() {
+    if (scanning) return;
+    scanning = true;
+    scanError.textContent = '';
+    Quagga.init({
+      inputStream: {
+        name: 'Live',
+        type: 'LiveStream',
+        target: document.getElementById('quagga-viewport'),
+        constraints: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 220 } }
+      },
+      decoder: {
+        readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader']
+      },
+      locate: true
+    }, function(err) {
+      if (err) {
+        scanning = false;
+        scanError.textContent = 'Fotocamera non disponibile.';
+        return;
+      }
+      Quagga.start();
+    });
+
+    var lastCode = null, lastTs = 0;
+    Quagga.onDetected(function(result) {
+      var code = result.codeResult.code;
+      var now  = Date.now();
+      if (code === lastCode && now - lastTs < 2000) return;
+      lastCode = code; lastTs = now;
+      handleBarcode(code);
+    });
+  }
+
+  function stopQuagga() {
+    if (!scanning) return;
+    scanning = false;
+    Quagga.stop();
+  }
+
+  function handleBarcode(ean) {
+    scanError.textContent = '';
+    fetch('/api/product/barcode/' + encodeURIComponent(ean))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          scanError.textContent = 'Prodotto non trovato per: ' + ean;
+          return;
+        }
+        addToCart(data);
+      })
+      .catch(function() {
+        scanError.textContent = 'Errore di rete. Riprova.';
+      });
+  }
+
+  function addToCart(product) {
+    cart.push(product);
+    renderCart();
+  }
+
+  function removeFromCart(idx) {
+    cart.splice(idx, 1);
+    renderCart();
+  }
+
+  function renderCart() {
+    cartList.innerHTML = '';
+    cart.forEach(function(item, i) {
+      var li = document.createElement('li');
+      li.className = 'cart-item';
+      li.innerHTML =
+        '<span>' + escHtml(item.name) + '</span>' +
+        '<span style="display:flex;align-items:center;gap:8px;">' +
+          '<strong style="color:var(--accent);">' + item.price.toFixed(2) + ' €</strong>' +
+          '<button type="button" onclick="window._rmExtra(' + i + ')" title="Rimuovi">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>' +
+        '</span>';
+      cartList.appendChild(li);
+    });
+
+    var extrasTotal = cart.reduce(function(s, x) { return s + x.price; }, 0);
+    var total = MAIN_PRICE + extrasTotal;
+
+    extrasField.value = JSON.stringify(cart.map(function(x) { return x.id; }));
+
+    if (cart.length > 0) {
+      totalRow.style.display = 'flex';
+      totalDisp.textContent  = total.toFixed(2) + ' €';
+    } else {
+      totalRow.style.display = 'none';
+    }
+
+    if (btnBuy && afterVal) {
+      var canAfford = BALANCE >= total;
+      btnBuy.disabled = !canAfford;
+      afterVal.textContent = (BALANCE - total).toFixed(2) + ' €';
+    }
+  }
+
+  window._rmExtra = function(idx) { removeFromCart(idx); };
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  btnToggle.addEventListener('click', function() {
+    var open = scannerArea.style.display !== 'none';
+    if (open) {
+      scannerArea.style.display = 'none';
+      stopQuagga();
+      btnToggle.innerHTML = '<i class="fas fa-barcode mr-1"></i>Aggiungi bevanda / snack';
+    } else {
+      scannerArea.style.display = 'block';
+      startQuagga();
+      btnToggle.innerHTML = '<i class="fas fa-times mr-1"></i>Chiudi scanner';
+    }
+  });
+})();
+</script>
 </body>
 </html>

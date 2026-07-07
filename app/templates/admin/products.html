@@ -78,6 +78,12 @@
             <label><i class="fas fa-exclamation-triangle text-warning mr-1"></i>Allergeni</label>
             {{ allergen_checkboxes([]) }}
           </div>
+          <div class="form-group">
+            <label><i class="fas fa-barcode mr-1"></i>Barcode EAN (opzionale)</label>
+            <input type="text" name="barcode" class="form-control" placeholder="Es: 8000057004898"
+                   maxlength="32" pattern="[0-9]{8,14}" title="8-14 cifre">
+            <small class="text-muted">Per scansione lattine/snack al Cesto Cucina</small>
+          </div>
           <button type="submit" class="btn btn-success btn-block">
             <i class="fas fa-plus mr-1"></i>Aggiungi Prodotto
           </button>
@@ -137,6 +143,11 @@
           <div class="form-group">
             <label><i class="fas fa-exclamation-triangle text-warning mr-1"></i>Allergeni</label>
             {{ allergen_checkboxes([]) }}
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-barcode mr-1"></i>Barcode EAN (opzionale)</label>
+            <input type="text" name="barcode" id="editBarcode" class="form-control"
+                   maxlength="32" placeholder="Es: 8000057004898">
           </div>
           <div class="form-check mt-2">
             <input type="checkbox" name="is_active" id="editActive" class="form-check-input">
@@ -234,6 +245,7 @@ $(document).on('click', '.btn-edit-prod', function() {
   $('#editQuantity').val(d.daily_quantity);
   $('#editCategory').val(d.category_id);
   $('#editActive').prop('checked', d.is_active);
+  $('#editBarcode').val(d.barcode || '');
   // allergen checkboxes
   $('#editModal input[name="allergens"]').prop('checked', false);
   if (d.allergens) {

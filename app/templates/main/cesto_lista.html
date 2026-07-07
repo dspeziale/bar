@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Cesto Cucina{% endblock %}
+{% block page_title %}Cesto Cucina{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Home</a></li>
+<li class="breadcrumb-item active">Cesto</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  {# ── Prodotti disponibili ── #}
+  <div class="col-lg-6 mb-4">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-shopping-basket mr-2"></i>Disponibili ora
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if by_product %}
+          <div class="row">
+          {% for pid, items in by_product.items() %}
+          {% set prod = items[0].product %}
+          <div class="col-6 col-sm-4 mb-3">
+            <div class="info-box mb-0" style="min-height:0;">
+              <span class="info-box-icon bg-success" style="font-size:1.4rem; width:60px; line-height:60px;">
+                <i class="fas fa-cookie-bite"></i>
+              </span>
+              <div class="info-box-content" style="padding:8px 10px;">
+                <span class="info-box-text text-truncate" style="font-size:.82rem;" title="{{ prod.name }}">{{ prod.name }}</span>
+                <span class="info-box-number" style="font-size:1.1rem;">{{ '%.2f'|format(prod.price) }} €</span>
+                <span class="progress-description" style="font-size:.78rem; color:#555;">
+                  <strong>{{ items|length }}</strong> disponibil{{ 'e' if items|length == 1 else 'i' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="fas fa-shopping-basket fa-3x mb-3 d-block"></i>
+            Il cesto è vuoto al momento.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Scanner QR ── #}
+  <div class="col-lg-6 mb-4">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-qrcode mr-2"></i>Scansiona etichetta</h3>
+      </div>
+      <div class="card-body p-0">
+
+        <div id="cam-error" class="alert alert-warning m-3 d-none">
+          <i class="fas fa-exclamation-triangle mr-1"></i>
+          Fotocamera non disponibile: usa il codice manuale sotto.
+        </div>
+
+        <div id="cam-wrap" style="position:relative; background:#000; max-height:340px; overflow:hidden;">
+          <video id="qr-video" autoplay muted playsinline
+                 style="width:100%; display:block; max-height:340px; object-fit:cover;"></video>
+          <canvas id="qr-canvas" style="display:none;"></canvas>
+          <!-- crosshair -->
+          <div style="
+              position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+              width:180px; height:180px; pointer-events:none;
+              border:3px solid rgba(233,69,96,.8);
+              border-radius:4px;
+              box-shadow:0 0 0 9999px rgba(0,0,0,.35);">
+          </div>
+        </div>
+
+        <div id="scan-status" class="text-center py-2 px-3"
+             style="font-size:.9rem; min-height:38px; color:#555;">
+          <i class="fas fa-spinner fa-spin mr-1"></i>Avvio fotocamera…
+        </div>
+
+        <div class="p-3 border-top">
+          <p class="text-muted mb-2" style="font-size:.85rem;">
+            Oppure digita il codice dall'etichetta:
+          </p>
+          <form id="manual-form" class="input-group">
+            <input type="text" id="manual-code" class="form-control"
+                   placeholder="CESTO-XXXXXX" autocomplete="off" autocapitalize="characters"
+                   style="text-transform:uppercase; letter-spacing:1px;">
+            <div class="input-group-append">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+(function () {
+  var video    = document.getElementById('qr-video');
+  var canvas   = document.getElementById('qr-canvas');
+  var statusEl = document.getElementById('scan-status');
+  var ctx      = null;
+  var scanning = false;
+
+  function setStatus(html, type) {
+    statusEl.innerHTML = html;
+    statusEl.style.color = type === 'found' ? '#28a745'
+                         : type === 'error'  ? '#dc3545'
+                         : '#555';
+  }
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showCamError(); return;
+    }
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+    }).then(function(stream) {
+      video.srcObject = stream;
+      video.play();
+      canvas.width  = 640;
+      canvas.height = 480;
+      ctx = canvas.getContext('2d');
+      scanning = true;
+      setStatus('<i class="fas fa-camera mr-1"></i>Inquadra il QR sull\'etichetta', '');
+      requestAnimationFrame(tick);
+    }).catch(function() { showCamError(); });
+  }
+
+  function showCamError() {
+    document.getElementById('cam-error').classList.remove('d-none');
+    document.getElementById('cam-wrap').style.display = 'none';
+    setStatus('Usa il codice manuale.', '');
+  }
+
+  function tick() {
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var code = jsQR(imgData.data, imgData.width, imgData.height, {
+        inversionAttempts: 'dontInvert'
+      });
+      if (code) { handleQR(code.data); return; }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function handleQR(text) {
+    scanning = false;
+    var code = extractCode(text);
+    if (code) {
+      setStatus('<i class="fas fa-check-circle mr-1"></i>Codice rilevato! Apertura…', 'found');
+      setTimeout(function() {
+        window.location.href = '/cesto/' + code;
+      }, 500);
+    } else {
+      setStatus('<i class="fas fa-exclamation-triangle mr-1"></i>QR non valido. Riprova.', 'error');
+      setTimeout(function() { scanning = true; requestAnimationFrame(tick); }, 1500);
+    }
+  }
+
+  function extractCode(text) {
+    text = text.trim();
+    // URL form: .../cesto/CESTO-XXXXXX
+    var m = text.match(/\/cesto\/(CESTO-[A-Z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+    // Bare code form: CESTO-XXXXXX
+    if (/^CESTO-[A-Z0-9]{6,}$/i.test(text)) return text.toUpperCase();
+    return null;
+  }
+
+  startCamera();
+
+  document.getElementById('manual-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var val = document.getElementById('manual-code').value.trim().toUpperCase();
+    if (!val) return;
+    var code = extractCode(val) || (val.startsWith('CESTO-') ? val : null);
+    if (code) {
+      window.location.href = '/cesto/' + code;
+    } else {
+      setStatus('<i class="fas fa-exclamation-triangle mr-1"></i>Codice non valido.', 'error');
+    }
+  });
+})();
+</script>
+{% endblock %}

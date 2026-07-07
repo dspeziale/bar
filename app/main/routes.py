@@ -1,4 +1,5 @@
-﻿import secrets
+﻿import json
+import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
@@ -1132,6 +1133,37 @@ def account_delete():
     return redirect(url_for('auth.login'))
 
 
+# ── CESTO: lookup prodotto per barcode (EAN) ─────────────────────────────────
+
+@bp.route('/api/product/barcode/<ean>')
+@login_required
+def api_product_by_barcode(ean):
+    tid = current_user.tenant_id
+    p = Product.query.filter_by(
+        barcode=ean.strip(), tenant_id=tid, is_active=True
+    ).first()
+    if not p:
+        return jsonify({'error': 'Prodotto non trovato'}), 404
+    return jsonify({'id': p.id, 'name': p.name, 'price': p.price})
+
+
+# ── CESTO: lista disponibili + scanner ────────────────────────────────────────
+
+@bp.route('/cesto')
+@login_required
+def cesto_lista():
+    from collections import defaultdict
+    tid    = current_user.tenant_id
+    labels = (PrepLabel.query
+              .filter_by(tenant_id=tid, status='ready')
+              .order_by(PrepLabel.product_id, PrepLabel.prepared_at)
+              .all())
+    by_product = defaultdict(list)
+    for lb in labels:
+        by_product[lb.product_id].append(lb)
+    return render_template('main/cesto_lista.html', labels=labels, by_product=dict(by_product))
+
+
 # ── CESTO: scansione etichetta QR ─────────────────────────────────────────────
 
 @bp.route('/cesto/<code>')
@@ -1151,24 +1183,46 @@ def cesto_scan(code):
 @bp.route('/cesto/<code>/acquista', methods=['POST'])
 @login_required
 def cesto_acquista(code):
-    from datetime import timezone
     lb = PrepLabel.query.filter_by(code=code.upper()).first_or_404()
     if lb.status != 'ready':
         flash('Questo prodotto non è più disponibile.', 'danger')
         return redirect(url_for('main.cesto_scan', code=code))
-    price = lb.product.price
-    if (current_user.wallet_balance or 0) < price:
+
+    # Raccoglie extra (lattine/snack scansionati)
+    try:
+        extra_ids = json.loads(request.form.get('extras', '[]'))
+        if not isinstance(extra_ids, list):
+            extra_ids = []
+    except (ValueError, TypeError):
+        extra_ids = []
+
+    extra_products = []
+    if extra_ids:
+        tid = current_user.tenant_id
+        for eid in extra_ids[:10]:  # max 10 extra
+            ep = Product.query.filter_by(id=int(eid), tenant_id=tid, is_active=True).first()
+            if ep:
+                extra_products.append(ep)
+
+    total = lb.product.price + sum(p.price for p in extra_products)
+    balance = current_user.wallet_balance or 0
+    if balance < total:
         flash(
-            f'Saldo insufficiente. Hai {current_user.wallet_balance or 0:.2f} €, '
-            f'serve {price:.2f} €.',
+            f'Saldo insufficiente. Hai {balance:.2f} €, serve {total:.2f} €.',
             'danger',
         )
         return redirect(url_for('main.cesto_scan', code=code))
-    current_user.debit_wallet(price, f'Cesto: {lb.product.name}')
+
+    current_user.debit_wallet(lb.product.price, f'Cesto: {lb.product.name}')
+    for ep in extra_products:
+        current_user.debit_wallet(ep.price, f'Cesto extra: {ep.name}')
+
     lb.status   = 'sold'
     lb.sold_at  = datetime.utcnow()
     lb.buyer_id = current_user.id
     db.session.commit()
-    flash(f'Acquisto confermato! Buon appetito.', 'success')
+
+    extras_str = ' + ' + ', '.join(p.name for p in extra_products) if extra_products else ''
+    flash(f'Acquisto confermato! {lb.product.name}{extras_str}. Buon appetito.', 'success')
     return redirect(url_for('main.cesto_scan', code=code))
 

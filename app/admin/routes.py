@@ -254,6 +254,7 @@ def products_dt():
             'allergens':      p.allergens or '',
             'allergen_list':  [[k, l, i] for k, l, i in p.allergen_list],
             'is_active':      p.is_active,
+            'barcode':        p.barcode or '',
         })
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
@@ -544,12 +545,14 @@ def product_new():
     daily_quantity = request.form.get('daily_quantity', type=int, default=20)
     description = request.form.get('description', '').strip()
     allergens = ','.join(request.form.getlist('allergens'))
+    barcode   = request.form.get('barcode', '').strip() or None
     if not name or not price or price <= 0 or not category_id:
         flash('Compila tutti i campi obbligatori.', 'danger')
         return redirect(url_for('admin.products'))
     db.session.add(Product(name=name, description=description, price=price,
                            category_id=category_id, daily_quantity=daily_quantity,
-                           allergens=allergens, tenant_id=_active_tenant_id()))
+                           allergens=allergens, barcode=barcode,
+                           tenant_id=_active_tenant_id()))
     db.session.commit()
     flash(f'Prodotto "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.products'))
@@ -566,6 +569,7 @@ def product_edit(pid):
     p.daily_quantity = request.form.get('daily_quantity', type=int) or p.daily_quantity
     p.is_active    = 'is_active' in request.form
     p.allergens    = ','.join(request.form.getlist('allergens'))
+    p.barcode      = request.form.get('barcode', '').strip() or None
     db.session.commit()
     flash(f'Prodotto "{p.name}" aggiornato.', 'success')
     return redirect(url_for('admin.products'))

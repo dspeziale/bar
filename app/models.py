@@ -219,6 +219,7 @@ class Product(db.Model):
     daily_quantity = db.Column(db.Integer, default=20)
     is_active      = db.Column(db.Boolean, default=True)
     allergens      = db.Column(db.String(512), default='')
+    barcode        = db.Column(db.String(32), nullable=True, index=True)
     tenant_id      = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     category = db.relationship('Category', back_populates='products')
