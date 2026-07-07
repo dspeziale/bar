@@ -68,16 +68,17 @@
 
 {% block extra_js %}
 <script>
-const days = {{ days | tojson }};
-const revenueData = days.map(d => {{ revenue_by_day | tojson }}[d] || 0);
-const ordersData  = days.map(d => {{ orders_by_day | tojson }}[d] || 0);
-
-const labels = days.map(d => d.slice(5)); // MM-DD
+var days       = {{ days | tojson }};
+var revByDay   = {{ revenue_by_day | tojson }};
+var ordByDay   = {{ orders_by_day | tojson }};
+var revenueData = days.map(function(d){ return revByDay[d] || 0; });
+var ordersData  = days.map(function(d){ return ordByDay[d] || 0; });
+var labels      = days.map(function(d){ return d.slice(5); });
 
 new Chart(document.getElementById('revenueChart'), {
   type: 'line',
   data: {
-    labels,
+    labels: labels,
     datasets: [{
       label: 'Incasso (€)',
       data: revenueData,
@@ -85,7 +86,7 @@ new Chart(document.getElementById('revenueChart'), {
       backgroundColor: 'rgba(233,69,96,.1)',
       fill: true,
       tension: .4,
-      pointRadius: 3,
+      pointRadius: 3
     }]
   },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
@@ -94,23 +95,22 @@ new Chart(document.getElementById('revenueChart'), {
 new Chart(document.getElementById('ordersChart'), {
   type: 'bar',
   data: {
-    labels,
+    labels: labels,
     datasets: [{
       label: 'Ordini',
       data: ordersData,
-      backgroundColor: 'rgba(23,162,184,.7)',
+      backgroundColor: 'rgba(23,162,184,.7)'
     }]
   },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
 });
 
-// Ultimi 7 giorni nel pie
-const last7 = days.slice(-7);
-const last7Rev = last7.map(d => {{ revenue_by_day | tojson }}[d] || 0);
+var last7    = days.slice(-7);
+var last7Rev = last7.map(function(d){ return revByDay[d] || 0; });
 new Chart(document.getElementById('pieChart'), {
   type: 'doughnut',
   data: {
-    labels: last7.map(d => d.slice(5)),
+    labels: last7.map(function(d){ return d.slice(5); }),
     datasets: [{ data: last7Rev, backgroundColor: ['#e94560','#0f3460','#198754','#ffc107','#0dcaf0','#6f42c1','#fd7e14'] }]
   },
   options: { plugins: { legend: { position: 'bottom' } } }
