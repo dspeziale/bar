@@ -548,7 +548,7 @@ def _seed_ordini(t, clients, admin):
 
     for delta in range(35, -1, -1):
         d = today - timedelta(days=delta)
-        n_day = _RNG.randint(8, 15)
+        n_day = _RNG.randint(16, 28)
         day_clients = _RNG.sample(clients, min(n_day, len(clients)))
 
         for client in day_clients:
@@ -611,7 +611,7 @@ def _seed_banco(t, clients, admin):
 
     for delta in range(25, 0, -1):
         d = today - timedelta(days=delta)
-        n_sess = _RNG.randint(3, 7)
+        n_sess = _RNG.randint(6, 14)
 
         for _ in range(n_sess):
             n_items = _RNG.randint(1, 4)
