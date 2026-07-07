@@ -1336,6 +1336,20 @@ def cesto_annulla(code):
     return redirect(url_for('admin.cesto'))
 
 
+@bp.route('/cesto/annulla-tutto', methods=['POST'])
+@require_permission('manage_cesto')
+def cesto_annulla_tutto():
+    tid   = _active_tenant_id()
+    today = date.today()
+    n = (PrepLabel.query
+         .filter_by(tenant_id=tid, status='ready')
+         .filter(db.func.date(PrepLabel.prepared_at) == today)
+         .update({'status': 'expired'}, synchronize_session=False))
+    db.session.commit()
+    flash(f'{n} etichet{"ta annullata" if n == 1 else "te annullate"}.', 'info')
+    return redirect(url_for('admin.cesto'))
+
+
 # ── Tavoli ────────────────────────────────────────────────────────────────────
 
 @bp.route('/tables')
