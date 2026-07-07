@@ -549,7 +549,7 @@ def product_new():
         return redirect(url_for('admin.products'))
     db.session.add(Product(name=name, description=description, price=price,
                            category_id=category_id, daily_quantity=daily_quantity,
-                           allergens=allergens))
+                           allergens=allergens, tenant_id=_active_tenant_id()))
     db.session.commit()
     flash(f'Prodotto "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.products'))

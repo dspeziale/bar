@@ -188,10 +188,10 @@ def google_callback():
             f'🆕 <b>Nuovo utente Google</b> — {tenant.name}\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
         )
-        flash('Account creato con Google. Benvenuto!', 'success')
+        return redirect(url_for('auth.pending'))
 
     if not user.is_active:
-        flash("Account sospeso. Contatta l'amministratore.", 'danger')
+        flash("Account non attivo. Contatta l'amministratore.", 'warning')
         return redirect(url_for('auth.login'))
 
     login_user(user, remember=True)
