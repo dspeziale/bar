@@ -90,14 +90,30 @@ def register():
     return render_template('auth/register.html')
 
 
+def _refresh_oauth_google():
+    """Load Google OAuth credentials from DB (fallback: env/config)."""
+    from flask import current_app
+    cid     = current_app.config.get('GOOGLE_CLIENT_ID') or get_setting('google_client_id') or ''
+    csecret = current_app.config.get('GOOGLE_CLIENT_SECRET') or get_setting('google_client_secret') or ''
+    if not cid or not csecret:
+        return False
+    oauth.google.client_id     = cid
+    oauth.google.client_secret = csecret
+    return True
+
+
 @bp.route('/google')
 def google_start():
+    if not _refresh_oauth_google():
+        flash('Login con Google non configurato. Contatta l\'amministratore.', 'danger')
+        return redirect(url_for('auth.login'))
     callback_url = url_for('auth.google_callback', _external=True)
     return oauth.google.authorize_redirect(callback_url)
 
 
 @bp.route('/google/callback')
 def google_callback():
+    _refresh_oauth_google()
     try:
         token = oauth.google.authorize_access_token()
         user_info = token.get('userinfo') or oauth.google.userinfo()

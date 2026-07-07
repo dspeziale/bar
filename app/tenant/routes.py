@@ -110,10 +110,24 @@ def login(slug):
     return render_template('tenant/register.html', tenant=tenant, mode='login')
 
 
+def _refresh_oauth_google():
+    from flask import current_app
+    cid     = current_app.config.get('GOOGLE_CLIENT_ID') or get_setting('google_client_id') or ''
+    csecret = current_app.config.get('GOOGLE_CLIENT_SECRET') or get_setting('google_client_secret') or ''
+    if not cid or not csecret:
+        return False
+    oauth.google.client_id     = cid
+    oauth.google.client_secret = csecret
+    return True
+
+
 # ── Google OAuth: avvio ───────────────────────────────────────────────────────
 
 @bp.route('/<slug>/google')
 def google_start(slug):
+    if not _refresh_oauth_google():
+        flash('Login con Google non configurato. Contatta l\'amministratore.', 'danger')
+        return redirect(url_for('auth.login'))
     tenant = _get_tenant_or_404(slug)
     session['oauth_tenant_slug'] = slug
     callback_url = url_for('tenant.google_callback', _external=True)
@@ -124,6 +138,7 @@ def google_start(slug):
 
 @bp.route('/google/callback')
 def google_callback():
+    _refresh_oauth_google()
     try:
         token     = oauth.google.authorize_access_token()
         user_info = token.get('userinfo') or oauth.google.userinfo()

@@ -1595,6 +1595,7 @@ def settings():
         'company_vat', 'company_phone', 'company_email',
         'telegram_bot_token', 'telegram_chat_id',
         'gmail_user', 'gmail_app_password',
+        'google_client_id', 'google_client_secret',
         'registration_bonus',
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
@@ -2629,18 +2630,27 @@ def convenzioni_report():
                            prev_date=prev_date, next_date=next_date)
 
 
-@bp.route('/convenzioni/<int:cid>/report-docx')
+@bp.route('/convenzioni/<int:cid>/report-pdf')
 @require_permission('manage_products')
-def convenzione_report_docx(cid):
+def convenzione_report_pdf(cid):
+    import os
     from io import BytesIO
+    from pathlib import Path
     from flask import send_file
-    try:
-        from docx import Document
-        from docx.shared import Pt, RGBColor
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        _HAS_DOCX = True
-    except ImportError:
-        _HAS_DOCX = False
+    from fpdf import FPDF
+
+    BRAND  = (233,  69,  96)
+    DARK   = ( 26,  26,  46)
+    DGRAY  = ( 80,  80,  95)
+    LGRAY  = (200, 200, 210)
+    VLIGHT = (248, 248, 252)
+    WHITE  = (255, 255, 255)
+    GREEN  = ( 39, 174,  96)
+    FONT   = 'PTSansNarrow'
+
+    _IT_MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
+                  'luglio','agosto','settembre','ottobre','novembre','dicembre']
+    _IT_DAYS   = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica']
 
     corp = CorporateAccount.query.get_or_404(cid)
     try:
@@ -2648,106 +2658,252 @@ def convenzione_report_docx(cid):
     except (ValueError, TypeError):
         sel_date = date.today()
 
-    meals   = DailyFixedMeal.query.filter_by(corporate_id=corp.id, meal_date=sel_date).all()
-    entries = []
+    meals = DailyFixedMeal.query.filter_by(corporate_id=corp.id, meal_date=sel_date).all()
+
+    entries    = []
+    n_consumed = 0
+    n_booked   = 0
     for meal in meals:
         for b in meal.bookings:
-            if b.status != 'cancelled':
-                entries.append((b.user.full_name, meal.name, b.quantity or 1, b.status))
-    entries.sort(key=lambda x: x[0])
+            if b.status == 'cancelled' or not b.user:
+                continue
+            qty = b.quantity or 1
+            entries.append({
+                'full_name': (b.user.full_name or b.user.username or '')[:38],
+                'meal_name': meal.name[:38],
+                'qty':       qty,
+                'status':    b.status,
+                'slot':      b.slot.time_str if b.slot else '',
+                'price':     float(meal.price),
+            })
+            if b.status == 'consumed':
+                n_consumed += qty
+            else:
+                n_booked   += qty
+    entries.sort(key=lambda x: x['full_name'])
+    n_total = n_consumed + n_booked
 
-    if not _HAS_DOCX:
-        flash('Libreria python-docx non installata. Esegui: pip install python-docx', 'danger')
-        return redirect(url_for('admin.convenzioni_report', d=sel_date.isoformat()))
-
-    doc = Document()
-
-    _co_name    = get_setting('company_name')    or ''
+    _co_name    = get_setting('company_name')    or 'QuickLunch Bar'
     _co_address = get_setting('company_address') or ''
     _co_city    = get_setting('company_city')    or ''
     _co_vat     = get_setting('company_vat')     or ''
     _co_phone   = get_setting('company_phone')   or ''
     _co_email   = get_setting('company_email')   or ''
 
-    # ── Intestazione ─────────────────────────────────────────────────────────
-    if _co_name:
-        co_p = doc.add_paragraph()
-        co_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        r_co = co_p.add_run(_co_name)
-        r_co.font.name = 'PT Sans Narrow'
-        r_co.font.size = Pt(11)
-        r_co.bold = True
-        co_details = []
-        if _co_address:  co_details.append(_co_address)
-        if _co_city:     co_details.append(_co_city)
-        if _co_vat:      co_details.append(f'P.IVA {_co_vat}')
-        if _co_phone:    co_details.append(_co_phone)
-        if _co_email:    co_details.append(_co_email)
-        if co_details:
-            co_d = doc.add_paragraph()
-            co_d.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r_d = co_d.add_run('  |  '.join(co_details))
-            r_d.font.name = 'PT Sans Narrow'
-            r_d.font.size = Pt(9)
-            r_d.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
-        doc.add_paragraph()
+    date_str = (f'{_IT_DAYS[sel_date.weekday()]} {sel_date.day}'
+                f' {_IT_MONTHS[sel_date.month - 1]} {sel_date.year}')
 
-    title = doc.add_heading('Lista Pasti Aziendali', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _font_dir = Path(os.path.abspath(__file__)).parent.parent / 'static' / 'fonts'
 
-    sub = doc.add_paragraph()
-    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = sub.add_run(f'{corp.name}  -  {sel_date.strftime("%d/%m/%Y")}')
-    run.font.name = 'PT Sans Narrow'
-    run.font.size = Pt(14)
+    class ReportPDF(FPDF):
+        def header(self):
+            self.set_fill_color(*BRAND)
+            self.rect(0, 0, 210, 11, 'F')
+            self.set_fill_color(*DARK)
+            self.rect(0, 0, 8, 11, 'F')
+            self.set_font(FONT, 'B', 9)
+            self.set_text_color(*WHITE)
+            self.set_xy(12, 1.5)
+            self.cell(130, 8,
+                      f'REPORT PASTI AZIENDALI  \xb7  {corp.name.upper()}', ln=0)
+            self.set_font(FONT, '', 9)
+            self.set_x(-58)
+            self.cell(46, 8, date_str.upper(), align='R')
+            self.set_text_color(*DARK)
+            self.ln(14)
 
-    doc.add_paragraph()
+        def footer(self):
+            self.set_y(-14)
+            self.set_font(FONT, '', 8)
+            self.set_text_color(*LGRAY)
+            self.set_draw_color(*LGRAY)
+            self.set_line_width(0.25)
+            self.line(12, self.get_y(), 198, self.get_y())
+            self.ln(1.5)
+            now_str = _dt.now().strftime('%d/%m/%Y  %H:%M')
+            self.set_x(12)
+            self.cell(155, 5,
+                      f'Generato il {now_str}  \xb7  Documento riservato  \xb7  {_co_name}',
+                      ln=0)
+            self.set_x(-25)
+            self.cell(13, 5, f'Pag. {self.page_no()}', align='R')
 
-    meta = doc.add_paragraph()
-    meta.add_run('Totale prenotazioni: ').bold = True
-    meta.add_run(str(len(entries)))
+    pdf = ReportPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_margins(12, 16, 12)
+    pdf.set_auto_page_break(True, margin=20)
+    pdf.add_font(FONT, '',  str(_font_dir / 'PTSansNarrow-Regular.ttf'))
+    pdf.add_font(FONT, 'B', str(_font_dir / 'PTSansNarrow-Bold.ttf'))
+    pdf.add_page()
 
-    doc.add_paragraph()
+    # ── Mittente (intestazione bar) ───────────────────────────────────────────
+    pdf.set_font(FONT, 'B', 13)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 7, _co_name, ln=True)
+    co_parts = [p for p in [
+        _co_address, _co_city, _co_phone, _co_email,
+        (f'P.IVA {_co_vat}' if _co_vat else ''),
+    ] if p]
+    if co_parts:
+        pdf.set_font(FONT, '', 9)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 5, '  \xb7  '.join(co_parts), ln=True)
+    pdf.ln(4)
 
-    # ── Tabella presenze ──────────────────────────────────────────────────────
-    table = doc.add_table(rows=1, cols=4)
-    table.style = 'Table Grid'
-    hdr_cells = table.rows[0].cells
-    for i, h in enumerate(['Nominativo', 'Pasto', 'Quantità', 'Stato']):
-        hdr_cells[i].text = h
-        run = hdr_cells[i].paragraphs[0].runs[0]
-        run.bold = True
-        run.font.name = 'PT Sans Narrow'
-        run.font.size = Pt(11)
+    # Separatore BRAND
+    pdf.set_draw_color(*BRAND)
+    pdf.set_line_width(0.8)
+    pdf.line(12, pdf.get_y(), 198, pdf.get_y())
+    pdf.ln(6)
 
-    STATUS_IT = {'consumed': 'Consumato', 'booked': 'Prenotato'}
-    for full_name, meal_name, qty, status in entries:
-        row = table.add_row().cells
-        row[0].text = full_name
-        row[1].text = meal_name
-        row[2].text = str(qty)
-        row[3].text = STATUS_IT.get(status, status)
-        for cell in row:
-            r = cell.paragraphs[0].runs[0]
-            r.font.name = 'PT Sans Narrow'
-            r.font.size = Pt(11)
+    # ── Destinatario / oggetto ────────────────────────────────────────────────
+    pdf.set_font(FONT, '', 9)
+    pdf.set_text_color(*DGRAY)
+    pdf.cell(0, 5, 'A:', ln=True)
+    pdf.set_font(FONT, 'B', 18)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 9, corp.name, ln=True)
+    pdf.set_font(FONT, 'B', 10)
+    pdf.set_text_color(*BRAND)
+    pdf.cell(0, 6, f'LISTA PASTI  \xb7  {date_str.upper()}', ln=True)
+    pdf.ln(6)
 
-    doc.add_paragraph()
-    _it_m = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
-             'luglio','agosto','settembre','ottobre','novembre','dicembre']
-    _it_now = f'{_dt.now().day} {_it_m[_dt.now().month-1]} {_dt.now().year} {_dt.now().strftime("%H:%M")}'
-    note = doc.add_paragraph(
-        f'Documento generato il {_it_now} da QuickLunch Bar Self-Service')
-    note.runs[0].font.name = 'PT Sans Narrow'
-    note.runs[0].font.size = Pt(9)
-    note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
+    # ── KPI boxes ─────────────────────────────────────────────────────────────
+    kpi_y = pdf.get_y()
 
-    buf = BytesIO()
-    doc.save(buf)
+    def _kpi(x, label, value, color):
+        pdf.set_fill_color(*VLIGHT)
+        pdf.set_draw_color(*LGRAY)
+        pdf.set_line_width(0.3)
+        pdf.rect(x, kpi_y, 59, 26, 'FD')
+        pdf.set_fill_color(*color)
+        pdf.rect(x, kpi_y, 59, 4, 'F')
+        pdf.set_font(FONT, 'B', 26)
+        pdf.set_text_color(*color)
+        pdf.set_xy(x, kpi_y + 5)
+        pdf.cell(59, 12, str(value), align='C')
+        pdf.set_font(FONT, '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_xy(x, kpi_y + 18.5)
+        pdf.cell(59, 5, label, align='C')
+
+    _kpi(12,  'TOTALE PASTI',  n_total,    DARK)
+    _kpi(76,  'CONSUMATI',     n_consumed, GREEN)
+    _kpi(140, 'IN ATTESA',     n_booked,   BRAND)
+    pdf.set_y(kpi_y + 33)
+
+    # ── Opzioni del giorno ────────────────────────────────────────────────────
+    if meals:
+        pdf.set_font(FONT, 'B', 10)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 7, 'OPZIONI DEL GIORNO', ln=True)
+        pdf.set_draw_color(*LGRAY)
+        pdf.set_line_width(0.25)
+        pdf.line(12, pdf.get_y(), 198, pdf.get_y())
+        pdf.ln(3)
+
+        for meal in meals:
+            n_bk = sum(b.quantity or 1 for b in meal.bookings if b.status != 'cancelled')
+            pdf.set_font(FONT, 'B', 10)
+            pdf.set_text_color(*DARK)
+            pdf.set_x(12)
+            pdf.cell(143, 6, meal.name, ln=0)
+            pdf.set_font(FONT, '', 9)
+            pdf.set_text_color(*DGRAY)
+            pdf.cell(43, 6,
+                     f'{n_bk} pren.  \xb7  € {meal.price:.2f}',
+                     align='R', ln=True)
+            if meal.courses:
+                pdf.set_font(FONT, '', 8.5)
+                pdf.set_text_color(*DGRAY)
+                pdf.set_x(16)
+                cstr = '  \xb7  '.join(
+                    f'{lbl}: {val}' for lbl, _icon, val in meal.courses if val)
+                if cstr:
+                    pdf.multi_cell(180, 4.5, cstr)
+            pdf.ln(2)
+        pdf.ln(3)
+
+    # ── Elenco prenotazioni ───────────────────────────────────────────────────
+    pdf.set_font(FONT, 'B', 10)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 7, 'ELENCO PRENOTAZIONI', ln=True)
+    pdf.set_draw_color(*LGRAY)
+    pdf.set_line_width(0.25)
+    pdf.line(12, pdf.get_y(), 198, pdf.get_y())
+    pdf.ln(3)
+
+    if not entries:
+        pdf.set_font(FONT, '', 10)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 8, 'Nessuna prenotazione per questa data.', ln=True)
+    else:
+        # Colonne: # | Nominativo | Pasto | Orario | Qtà | Stato = 186mm
+        CW  = [7, 67, 63, 17, 12, 20]
+        HDR = ['#', 'NOMINATIVO', 'PASTO', 'ORARIO', 'QTÀ', 'STATO']
+        ALN = ['C', 'L', 'L', 'C', 'C', 'C']
+        TH  = 7
+
+        # Intestazione tabella
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        pdf.set_font(FONT, 'B', 8.5)
+        for w, ht, al in zip(CW, HDR, ALN):
+            pdf.cell(w, TH, ht, align=al, fill=True)
+        pdf.ln()
+        pdf.set_draw_color(*BRAND)
+        pdf.set_line_width(0.5)
+        pdf.line(12, pdf.get_y(), 198, pdf.get_y())
+
+        STATUS_IT  = {'consumed': 'Consumato', 'booked': 'Prenotato'}
+        STATUS_CLR = {'consumed': GREEN, 'booked': BRAND}
+
+        for idx, e in enumerate(entries):
+            fill = idx % 2 == 0
+            pdf.set_fill_color(*(VLIGHT if fill else WHITE))
+            pdf.set_draw_color(*LGRAY)
+            pdf.set_line_width(0.15)
+            RH = 6.5
+
+            pdf.set_font(FONT, '', 9)
+            pdf.set_text_color(*DARK)
+            pdf.cell(CW[0], RH, str(idx + 1),    align='C', fill=fill, border='B')
+            pdf.cell(CW[1], RH, e['full_name'],               fill=fill, border='B')
+            pdf.cell(CW[2], RH, e['meal_name'],               fill=fill, border='B')
+            pdf.cell(CW[3], RH, e['slot'],        align='C', fill=fill, border='B')
+            pdf.cell(CW[4], RH, str(e['qty']),    align='C', fill=fill, border='B')
+            pdf.set_text_color(*STATUS_CLR.get(e['status'], DGRAY))
+            pdf.set_font(FONT, 'B', 8.5)
+            pdf.cell(CW[5], RH,
+                     STATUS_IT.get(e['status'], e['status']),
+                     align='C', fill=fill, border='B')
+            pdf.ln()
+
+        # Riga totale
+        span = CW[0] + CW[1] + CW[2] + CW[3]
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        pdf.set_font(FONT, 'B', 9)
+        pdf.cell(span, TH, f'TOTALE  ({len(entries)} dipendenti)', fill=True)
+        pdf.cell(CW[4], TH, str(n_total), align='C', fill=True)
+        pdf.cell(CW[5], TH, '', fill=True)
+        pdf.ln()
+
+        # Fatturabile
+        total_fat = sum(e['qty'] * e['price'] for e in entries)
+        pdf.ln(4)
+        pdf.set_font(FONT, '', 10)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_x(12)
+        pdf.cell(50, 6, 'Totale fatturabile:', ln=0)
+        pdf.set_font(FONT, 'B', 10)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 6, f'€ {total_fat:.2f}', ln=True)
+
+    buf = BytesIO(bytes(pdf.output()))
     buf.seek(0)
-    filename = f'pasti_{corp.name.replace(" ","_")}_{sel_date.isoformat()}.docx'
+    filename = f'pasti_{corp.name.replace(" ", "_")}_{sel_date.isoformat()}.pdf'
     return send_file(buf, as_attachment=True, download_name=filename,
-                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                     mimetype='application/pdf')
 
 @bp.route('/convenzioni/abstract-docx')
 @require_permission('manage_products')

@@ -68,12 +68,10 @@
         {{ entries|length }} prenotazion{% if entries|length == 1 %}e{% else %}i{% endif %}
       </span>
     </h3>
-    {% if entries %}
-    <a href="{{ url_for('admin.convenzione_report_docx', cid=corp.id, d=sel_date.isoformat()) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-file-word mr-1" style="color:#2B579A;"></i>Scarica DOCX
+    <a href="{{ url_for('admin.convenzione_report_pdf', cid=corp.id, d=sel_date.isoformat()) }}"
+       class="btn btn-sm btn-outline-danger">
+      <i class="fas fa-file-pdf mr-1"></i>Scarica PDF
     </a>
-    {% endif %}
   </div>
 
   <div class="card-body p-0">
