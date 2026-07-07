@@ -521,6 +521,17 @@
               </a>
             </li>
 
+            {# ── CESTO CUCINA ── #}
+            {% if p('manage_products') %}
+            <li class="nav-item">
+              <a href="{{ url_for('admin.cesto') }}"
+                 class="nav-link {{ 'active' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla') }}">
+                <i class="nav-icon fas fa-shopping-basket" style="color:#fd7e14;"></i>
+                <p>Cesto Cucina</p>
+              </a>
+            </li>
+            {% endif %}
+
             {# ── ORDINI ── #}
             {% if p('view_orders') %}
             <li class="nav-item has-treeview {{ 'menu-open' if in_ordini }}">

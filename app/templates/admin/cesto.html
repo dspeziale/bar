@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Cesto Cucina{% endblock %}
+{% block page_title %}Cesto Cucina — Etichette QR{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Cesto</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+
+  {# ── Genera nuovo lotto ── #}
+  <div class="col-lg-4">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-qrcode mr-2"></i>Genera etichette</h3>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size:.9rem;">
+          Seleziona il prodotto e il numero di panini preparati oggi.
+          Il sistema genera i QR da stampare e applicare agli involucri.
+        </p>
+        <form method="POST" action="{{ url_for('admin.cesto_genera') }}">
+          <div class="form-group">
+            <label>Prodotto</label>
+            <select name="product_id" class="form-control" required>
+              <option value="">Seleziona...</option>
+              {% for p in products %}
+              <option value="{{ p.id }}">{{ p.name }} — {{ '%.2f'|format(p.price) }} €</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quantità preparata</label>
+            <input type="number" name="qty" class="form-control" value="5" min="1" max="50" required>
+            <small class="text-muted">Max 50 etichette per lotto</small>
+          </div>
+          <button type="submit" class="btn btn-success btn-block">
+            <i class="fas fa-print mr-1"></i>Genera e stampa
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Riepilogo giornata ── #}
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-shopping-basket mr-2"></i>
+          Cesto di oggi — {{ today.strftime('%d/%m/%Y') }}
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        {% if summary %}
+        <table class="table table-sm mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Prodotto</th>
+              <th class="text-center">Preparati</th>
+              <th class="text-center text-success">Venduti</th>
+              <th class="text-center text-warning">Disponibili</th>
+              <th class="text-center text-secondary">Annullati</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for pid, s in summary.items() %}
+          {% set tot = s.ready + s.sold + s.expired %}
+          <tr>
+            <td><strong>{{ s.name }}</strong><br><small class="text-muted">{{ '%.2f'|format(s.price) }} €</small></td>
+            <td class="text-center">{{ tot }}</td>
+            <td class="text-center"><span class="badge badge-success">{{ s.sold }}</span></td>
+            <td class="text-center"><span class="badge badge-warning">{{ s.ready }}</span></td>
+            <td class="text-center"><span class="badge badge-secondary">{{ s.expired }}</span></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fas fa-shopping-basket fa-2x mb-2"></i><br>
+          Nessuna etichetta generata oggi.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Lista etichette singole ── #}
+    {% if labels %}
+    <div class="card card-outline card-secondary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-tags mr-2"></i>Etichette odierne</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 auto-dt">
+          <thead class="thead-light">
+            <tr>
+              <th>Codice</th>
+              <th>Prodotto</th>
+              <th>Ora prep.</th>
+              <th>Stato</th>
+              <th class="no-sort"></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for lb in labels %}
+          <tr>
+            <td><code>{{ lb.code }}</code></td>
+            <td>{{ lb.product.name }}</td>
+            <td>{{ lb.prepared_at.strftime('%H:%M') }}</td>
+            <td>
+              {% if lb.status == 'ready' %}
+                <span class="badge badge-warning">Disponibile</span>
+              {% elif lb.status == 'sold' %}
+                <span class="badge badge-success">Venduto</span>
+                {% if lb.buyer %}<br><small class="text-muted">{{ lb.buyer.full_name }}</small>{% endif %}
+              {% else %}
+                <span class="badge badge-secondary">Annullato</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if lb.status == 'ready' %}
+              <form method="POST" action="{{ url_for('admin.cesto_annulla', code=lb.code) }}"
+                    onsubmit="return confirm('Annullare etichetta {{ lb.code }}?')">
+                <button class="btn btn-xs btn-outline-danger">
+                  <i class="fas fa-times"></i>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

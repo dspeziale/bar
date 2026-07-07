@@ -14,7 +14,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         CorporateAccount, CorporateMembership,
                         DailyFixedMeal, CorporateMealBooking, MealConfiguration,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
-                        BancoItem, BancoSession,
+                        BancoItem, BancoSession, PrepLabel,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
@@ -1250,6 +1250,90 @@ def banco_item_delete(iid):
     db.session.commit()
     flash(f'Articolo "{name}" eliminato.', 'info')
     return redirect(url_for('admin.banco_items'))
+
+
+# ── CESTO CUCINA ──────────────────────────────────────────────────────────────
+
+@bp.route('/cesto')
+@require_permission('manage_products')
+def cesto():
+    from collections import defaultdict
+    tid    = _active_tenant_id()
+    today  = date.today()
+    labels = (PrepLabel.query
+              .filter_by(tenant_id=tid)
+              .filter(db.func.date(PrepLabel.prepared_at) == today)
+              .order_by(PrepLabel.prepared_at.desc())
+              .all())
+    summary = defaultdict(lambda: {'name': '', 'price': 0.0, 'ready': 0, 'sold': 0, 'expired': 0})
+    for lb in labels:
+        d = summary[lb.product_id]
+        d['name']   = lb.product.name
+        d['price']  = lb.product.price
+        d[lb.status] = d[lb.status] + 1
+    products = (Product.query
+                .filter_by(tenant_id=tid, is_active=True)
+                .order_by(Product.name).all())
+    return render_template('admin/cesto.html',
+                           labels=labels, summary=dict(summary),
+                           products=products, today=today)
+
+
+@bp.route('/cesto/genera', methods=['POST'])
+@require_permission('manage_products')
+def cesto_genera():
+    import secrets as _sec
+    CHARS      = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    tid        = _active_tenant_id()
+    product_id = request.form.get('product_id', type=int)
+    qty        = min(max(request.form.get('qty', type=int, default=1), 1), 50)
+    if not product_id:
+        flash('Seleziona un prodotto.', 'danger')
+        return redirect(url_for('admin.cesto'))
+    product  = db.get_or_404(Product, product_id)
+    batch_id = _dt.now().strftime('%y%m%d%H%M') + str(current_user.id)
+    for _ in range(qty):
+        for _attempt in range(30):
+            code = 'CESTO-' + ''.join(_sec.choice(CHARS) for _ in range(6))
+            if not PrepLabel.query.filter_by(code=code).first():
+                break
+        db.session.add(PrepLabel(
+            code=code, product_id=product_id, batch_id=batch_id,
+            tenant_id=tid, prepared_by=current_user.id,
+        ))
+    db.session.commit()
+    flash(f'{qty} etichet{"ta" if qty == 1 else "te"} generate per "{product.name}".', 'success')
+    return redirect(url_for('admin.cesto_stampa', bid=batch_id))
+
+
+@bp.route('/cesto/stampa/<bid>')
+@require_permission('manage_products')
+def cesto_stampa(bid):
+    tid    = _active_tenant_id()
+    labels = (PrepLabel.query
+              .filter_by(batch_id=bid, tenant_id=tid)
+              .order_by(PrepLabel.id).all())
+    if not labels:
+        flash('Lotto non trovato.', 'warning')
+        return redirect(url_for('admin.cesto'))
+    co_name  = get_setting('company_name') or 'QuickLunch'
+    base_url = request.host_url.rstrip('/')
+    return render_template('admin/cesto_stampa.html',
+                           labels=labels, co_name=co_name, base_url=base_url)
+
+
+@bp.route('/cesto/<code>/annulla', methods=['POST'])
+@require_permission('manage_products')
+def cesto_annulla(code):
+    tid = _active_tenant_id()
+    lb  = PrepLabel.query.filter_by(code=code, tenant_id=tid).first_or_404()
+    if lb.status == 'sold':
+        flash('Etichetta già venduta, non annullabile.', 'danger')
+    else:
+        lb.status = 'expired'
+        db.session.commit()
+        flash(f'Etichetta {code} annullata.', 'info')
+    return redirect(url_for('admin.cesto'))
 
 
 # ── Tavoli ────────────────────────────────────────────────────────────────────

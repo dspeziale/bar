@@ -10,7 +10,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
                         DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
-                        CorporateMembership, User)
+                        CorporateMembership, PrepLabel, User)
 from config import Config
 
 
@@ -240,13 +240,15 @@ def place_order():
                         _ingredient.stock_qty - _ingredient.grams_per_serving * coi.quantity
                     )
 
-    slot_tag   = 'BANCO' if banco else slot.time_str.replace(':', '')
     slot_label = 'adesso al banco' if banco else f'alle {slot.time_str}'
-    order.order_code = (
-        f"QuickLunch-{order.order_date.strftime('%y%m%d')}"
-        f"-{slot_tag}"
-        f"-{order.id:04d}"
-    )
+    if banco:
+        order.order_code = f"BANCO-{order.id:04d}"
+    else:
+        order.order_code = (
+            f"QL-{order.order_date.strftime('%y%m%d')}"
+            f"-{slot.time_str.replace(':', '')}"
+            f"-{order.id:04d}"
+        )
     order.compute_total()
     current_user.debit_wallet(total, f'Ordine {order.order_code}', order_id=order.id)
     points = int(total * get_numeric_setting('loyalty_points_per_euro', 10))
@@ -1128,4 +1130,45 @@ def account_delete():
     logout_user()
     flash('Il tuo account è stato cancellato.', 'info')
     return redirect(url_for('auth.login'))
+
+
+# ── CESTO: scansione etichetta QR ─────────────────────────────────────────────
+
+@bp.route('/cesto/<code>')
+@login_required
+def cesto_scan(code):
+    from datetime import datetime as _dtm, timezone
+    lb = PrepLabel.query.filter_by(code=code.upper()).first_or_404()
+    # etichette di ieri o più vecchie scadono automaticamente
+    if lb.status == 'ready':
+        age_hours = (datetime.now(timezone.utc) - lb.prepared_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
+        if age_hours > 24:
+            lb.status = 'expired'
+            db.session.commit()
+    return render_template('main/cesto_scan.html', lb=lb)
+
+
+@bp.route('/cesto/<code>/acquista', methods=['POST'])
+@login_required
+def cesto_acquista(code):
+    from datetime import timezone
+    lb = PrepLabel.query.filter_by(code=code.upper()).first_or_404()
+    if lb.status != 'ready':
+        flash('Questo prodotto non è più disponibile.', 'danger')
+        return redirect(url_for('main.cesto_scan', code=code))
+    price = lb.product.price
+    if (current_user.wallet_balance or 0) < price:
+        flash(
+            f'Saldo insufficiente. Hai {current_user.wallet_balance or 0:.2f} €, '
+            f'serve {price:.2f} €.',
+            'danger',
+        )
+        return redirect(url_for('main.cesto_scan', code=code))
+    current_user.debit_wallet(price, f'Cesto: {lb.product.name}')
+    lb.status   = 'sold'
+    lb.sold_at  = datetime.utcnow()
+    lb.buyer_id = current_user.id
+    db.session.commit()
+    flash(f'Acquisto confermato! Buon appetito.', 'success')
+    return redirect(url_for('main.cesto_scan', code=code))
 

@@ -534,6 +534,27 @@ class BancoSession(db.Model):
     customer = db.relationship('User', foreign_keys='BancoSession.customer_id')
 
 
+# ── Cesto cucina: etichette QR pre-preparate ─────────────────────────────────
+
+class PrepLabel(db.Model):
+    """Un'etichetta QR apposta su un panino/tramezzino preparato in cucina."""
+    __tablename__ = 'prep_labels'
+    id          = db.Column(db.Integer, primary_key=True)
+    code        = db.Column(db.String(16), unique=True, nullable=False, index=True)
+    product_id  = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    batch_id    = db.Column(db.String(24), nullable=True, index=True)
+    tenant_id   = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True)
+    prepared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    prepared_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    status      = db.Column(db.String(12), default='ready')  # ready | sold | expired
+    sold_at     = db.Column(db.DateTime, nullable=True)
+    buyer_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    product  = db.relationship('Product', foreign_keys='PrepLabel.product_id')
+    preparer = db.relationship('User',    foreign_keys='PrepLabel.prepared_by')
+    buyer    = db.relationship('User',    foreign_keys='PrepLabel.buyer_id')
+
+
 # ── Magazzino materiali di consumo ────────────────────────────────────────────
 
 class Supplier(db.Model):
