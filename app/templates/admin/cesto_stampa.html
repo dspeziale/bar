@@ -129,6 +129,9 @@
       font-weight: bold;
       color: #333;
     }
+    .hide-date  .lbl-date { display: none; }
+    .hide-time  .lbl-time { display: none; }
+    .hide-date.hide-time .lbl-footer { display: none; }
   </style>
 </head>
 <body>
@@ -140,6 +143,16 @@
       🖨️ Stampa
     </button>
     <a href="{{ url_for('admin.cesto') }}" style="font-size:13px;">← Cesto</a>
+
+    <label style="font-size:13px;cursor:pointer;user-select:none;">
+      <input type="checkbox" id="chk-date" checked onchange="toggleField('date')">
+      Data
+    </label>
+    <label style="font-size:13px;cursor:pointer;user-select:none;">
+      <input type="checkbox" id="chk-time" checked onchange="toggleField('time')">
+      Ora
+    </label>
+
     <span style="color:#666; font-size:12px;">
       {{ labels|length }} etichett{{ 'a' if labels|length == 1 else 'e' }}
       &mdash; {{ labels[0].product.name if labels }}
@@ -174,7 +187,8 @@
 
     <div class="lbl-footer">
       <span class="lbl-code">{{ lb.code }}</span>
-      <span class="lbl-time">{{ lb.prepared_at.strftime('%d/%m %H:%M') }}</span>
+      <span class="lbl-date">{{ lb.prepared_at.strftime('%d/%m/%Y') }}</span>
+      <span class="lbl-time">{{ lb.prepared_at.strftime('%H:%M') }}</span>
     </div>
 
   </div>
@@ -182,6 +196,13 @@
   </div>
 
   <script>
+  function toggleField(field) {
+    var checked = document.getElementById('chk-' + field).checked;
+    document.querySelectorAll('.grid').forEach(function(g) {
+      g.classList.toggle('hide-' + field, !checked);
+    });
+  }
+
   var BASE = {{ base_url | tojson }};
   {% for lb in labels %}
   new QRCode(document.getElementById('qr-{{ lb.id }}'), {
