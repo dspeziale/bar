@@ -1258,11 +1258,14 @@ def banco_item_delete(iid):
 @require_permission('manage_cesto')
 def cesto():
     from collections import defaultdict
+    from datetime import datetime as _dtm, timedelta
     tid    = _active_tenant_id()
     today  = date.today()
+    start  = _dtm(today.year, today.month, today.day)
+    end    = start + timedelta(days=1)
     labels = (PrepLabel.query
               .filter_by(tenant_id=tid)
-              .filter(db.func.date(PrepLabel.prepared_at) == today)
+              .filter(PrepLabel.prepared_at >= start, PrepLabel.prepared_at < end)
               .order_by(PrepLabel.prepared_at.desc())
               .all())
     summary = defaultdict(lambda: {'name': '', 'price': 0.0, 'ready': 0, 'sold': 0, 'expired': 0})
@@ -1339,11 +1342,14 @@ def cesto_annulla(code):
 @bp.route('/cesto/annulla-tutto', methods=['POST'])
 @require_permission('manage_cesto')
 def cesto_annulla_tutto():
+    from datetime import datetime as _dtm, timedelta
     tid   = _active_tenant_id()
     today = date.today()
+    start = _dtm(today.year, today.month, today.day)
+    end   = start + timedelta(days=1)
     n = (PrepLabel.query
          .filter_by(tenant_id=tid, status='ready')
-         .filter(db.func.date(PrepLabel.prepared_at) == today)
+         .filter(PrepLabel.prepared_at >= start, PrepLabel.prepared_at < end)
          .update({'status': 'expired'}, synchronize_session=False))
     db.session.commit()
     flash(f'{n} etichet{"ta annullata" if n == 1 else "te annullate"}.', 'info')
