@@ -414,6 +414,7 @@ def _seed_defaults():
             Permission(name='manage_categories',         label='Gestisci categorie',             category='prodotti'),
             Permission(name='manage_ingredients',        label='Gestisci ingredienti builder',   category='prodotti'),
             Permission(name='manage_stock',              label='Gestisci stock giornaliero',     category='prodotti'),
+            Permission(name='manage_cesto',              label='Gestisci cesto cucina (QR)',     category='prodotti'),
             # Tavoli
             Permission(name='manage_tables_admin',       label='Gestisci tavoli',                category='tavoli'),
             Permission(name='manage_reservations_admin', label='Gestisci prenotazioni tavoli',   category='tavoli'),
@@ -449,12 +450,25 @@ def _seed_defaults():
                 'view_orders', 'manage_orders', 'view_reports',
             ]),
             _role('cuoco',      'Cuoco',       'success',   True,  [
-                'view_orders', 'manage_orders',
+                'view_orders', 'manage_orders', 'manage_cesto',
             ]),
             _role('utente',     'Utente',      'secondary', True,  []),
         ]
         db.session.add_all(roles)
         db.session.flush()
+
+    # ── Ensure permesso manage_cesto (aggiornamento DB esistenti) ───────────
+    _p_cesto = Permission.query.filter_by(name='manage_cesto').first()
+    if not _p_cesto:
+        _p_cesto = Permission(name='manage_cesto',
+                              label='Gestisci cesto cucina (QR)',
+                              category='prodotti')
+        db.session.add(_p_cesto)
+        db.session.flush()
+    for _rname in ('cuoco', 'manager', 'superadmin'):
+        _r = Role.query.filter_by(name=_rname).first()
+        if _r and _p_cesto not in _r.permissions:
+            _r.permissions.append(_p_cesto)
 
     # ── Super admin globale (unico, tenant_id=None) ───────────────────────
     if not User.query.filter_by(is_admin=True).first():

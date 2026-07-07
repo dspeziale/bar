@@ -1255,7 +1255,7 @@ def banco_item_delete(iid):
 # ── CESTO CUCINA ──────────────────────────────────────────────────────────────
 
 @bp.route('/cesto')
-@require_permission('manage_products')
+@require_permission('manage_cesto')
 def cesto():
     from collections import defaultdict
     tid    = _active_tenant_id()
@@ -1280,7 +1280,7 @@ def cesto():
 
 
 @bp.route('/cesto/genera', methods=['POST'])
-@require_permission('manage_products')
+@require_permission('manage_cesto')
 def cesto_genera():
     import secrets as _sec
     CHARS      = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -1307,7 +1307,7 @@ def cesto_genera():
 
 
 @bp.route('/cesto/stampa/<bid>')
-@require_permission('manage_products')
+@require_permission('manage_cesto')
 def cesto_stampa(bid):
     tid    = _active_tenant_id()
     labels = (PrepLabel.query
@@ -1323,7 +1323,7 @@ def cesto_stampa(bid):
 
 
 @bp.route('/cesto/<code>/annulla', methods=['POST'])
-@require_permission('manage_products')
+@require_permission('manage_cesto')
 def cesto_annulla(code):
     tid = _active_tenant_id()
     lb  = PrepLabel.query.filter_by(code=code, tenant_id=tid).first_or_404()

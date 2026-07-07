@@ -522,7 +522,7 @@
             </li>
 
             {# ── CESTO CUCINA ── #}
-            {% if p('manage_products') %}
+            {% if p('manage_cesto') %}
             <li class="nav-item">
               <a href="{{ url_for('admin.cesto') }}"
                  class="nav-link {{ 'active' if ep in ('admin.cesto','admin.cesto_genera','admin.cesto_stampa','admin.cesto_annulla') }}">
