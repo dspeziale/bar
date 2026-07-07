@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Le Mie Prenotazioni{% endblock %}
+{% block page_title %}Prenotazioni Pasto{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Prenotazioni</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12 d-flex justify-content-end">
+    <a href="{{ url_for('main.prenotazioni_nuova') }}" class="btn btn-success">
+      <i class="fas fa-plus mr-1"></i>Nuova Prenotazione
+    </a>
+  </div>
+</div>
+
+{# ── Prenotazioni future ── #}
+<div class="card card-outline card-primary">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-calendar-alt mr-2"></i>Prossime prenotazioni</h3>
+  </div>
+  <div class="card-body p-0">
+    {% if upcoming %}
+    <table class="table table-hover mb-0">
+      <thead class="thead-light">
+        <tr>
+          <th>Codice</th>
+          <th>Data ritiro</th>
+          <th>Slot</th>
+          <th>Prodotti</th>
+          <th class="text-right">Totale</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in upcoming %}
+      <tr>
+        <td><code>{{ p.code }}</code></td>
+        <td><strong>{{ p.pickup_date.strftime('%d/%m/%Y') }}</strong>
+          {% if p.pickup_date == today %}<span class="badge badge-warning ml-1">Oggi</span>
+          {% elif (p.pickup_date - today).days == 1 %}<span class="badge badge-info ml-1">Domani</span>
+          {% endif %}
+        </td>
+        <td>{{ p.slot.time_str if p.slot else '—' }}</td>
+        <td>
+          {% for item in p.items %}
+          <span class="badge badge-light border">{{ item.quantity }}× {{ item.product.name }}</span>
+          {% endfor %}
+          {% if p.notes %}<br><small class="text-muted"><i class="fas fa-sticky-note mr-1"></i>{{ p.notes }}</small>{% endif %}
+        </td>
+        <td class="text-right"><strong>{{ '%.2f'|format(p.total_price) }} €</strong></td>
+        <td>
+          {% if p.status == 'pending' %}
+            <span class="badge badge-warning">In attesa</span>
+          {% elif p.status == 'confirmed' %}
+            <span class="badge badge-success">Confermata</span>
+          {% else %}
+            <span class="badge badge-secondary">{{ p.status }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.status != 'cancelled' and p.pickup_date > today %}
+          <form method="POST" action="{{ url_for('main.prenotazioni_cancella', pid=p.id) }}"
+                onsubmit="return confirm('Cancellare la prenotazione {{ p.code }}?\nVerrà rimborsato {{ '%.2f'|format(p.total_price) }} €.')">
+            <button class="btn btn-xs btn-outline-danger" title="Cancella">
+              <i class="fas fa-times"></i>
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-calendar-plus fa-3x mb-3 d-block"></i>
+      Nessuna prenotazione futura.
+      <br>
+      <a href="{{ url_for('main.prenotazioni_nuova') }}" class="btn btn-success mt-3">
+        <i class="fas fa-plus mr-1"></i>Prenota ora
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Storico ── #}
+{% if past %}
+<div class="card card-outline card-secondary mt-3">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-history mr-2"></i>Storico (ultime 10)</h3>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead class="thead-light">
+        <tr><th>Codice</th><th>Data</th><th>Prodotti</th><th class="text-right">Totale</th><th>Stato</th></tr>
+      </thead>
+      <tbody>
+      {% for p in past %}
+      <tr class="text-muted">
+        <td><code style="font-size:.8rem;">{{ p.code }}</code></td>
+        <td>{{ p.pickup_date.strftime('%d/%m/%Y') }}</td>
+        <td>{% for item in p.items %}<small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}{% endfor %}</td>
+        <td class="text-right">{{ '%.2f'|format(p.total_price) }} €</td>
+        <td>
+          {% if p.status == 'cancelled' %}<span class="badge badge-secondary">Cancellata</span>
+          {% else %}<span class="badge badge-light border">{{ p.status }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

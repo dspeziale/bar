@@ -11,7 +11,8 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
                         DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
-                        CorporateMembership, PrepLabel, User)
+                        CorporateMembership, PrepLabel, User,
+                        Prenotazione, PrenotazioneItem)
 from config import Config
 
 
@@ -1225,4 +1226,143 @@ def cesto_acquista(code):
     extras_str = ' + ' + ', '.join(p.name for p in extra_products) if extra_products else ''
     flash(f'Acquisto confermato! {lb.product.name}{extras_str}. Buon appetito.', 'success')
     return redirect(url_for('main.cesto_scan', code=code))
+
+
+# ── PRENOTAZIONI FUTURE ───────────────────────────────────────────────────────
+
+_PREN_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+def _gen_pren_code():
+    while True:
+        code = 'PREN-' + ''.join(secrets.choice(_PREN_CHARS) for _ in range(6))
+        if not Prenotazione.query.filter_by(code=code).first():
+            return code
+
+
+@bp.route('/prenotazioni')
+@login_required
+def prenotazioni_list():
+    uid = current_user.id
+    tid = current_user.tenant_id
+    upcoming = (Prenotazione.query
+                .filter_by(user_id=uid, tenant_id=tid)
+                .filter(Prenotazione.pickup_date >= date.today())
+                .filter(Prenotazione.status != 'cancelled')
+                .order_by(Prenotazione.pickup_date.asc())
+                .all())
+    past = (Prenotazione.query
+            .filter_by(user_id=uid, tenant_id=tid)
+            .filter(Prenotazione.pickup_date < date.today())
+            .order_by(Prenotazione.pickup_date.desc())
+            .limit(10).all())
+    return render_template('main/prenotazioni.html', upcoming=upcoming, past=past,
+                           today=date.today())
+
+
+@bp.route('/prenotazioni/nuova')
+@login_required
+def prenotazioni_nuova():
+    tid = current_user.tenant_id
+    tomorrow = date.today() + timedelta(days=1)
+    products = (Product.query
+                .filter_by(tenant_id=tid, is_active=True)
+                .join(Category)
+                .order_by(Category.name, Product.name)
+                .all())
+    slots = (TimeSlot.query
+             .filter_by(tenant_id=tid, is_active=True)
+             .order_by(TimeSlot.time_str)
+             .all())
+    categories = {}
+    for p in products:
+        categories.setdefault(p.category.name, []).append(p)
+    return render_template('main/prenotazioni_nuova.html',
+                           categories=categories, slots=slots,
+                           tomorrow=tomorrow.isoformat())
+
+
+@bp.route('/prenotazioni/crea', methods=['POST'])
+@login_required
+def prenotazioni_crea():
+    tid = current_user.tenant_id
+    tomorrow = date.today() + timedelta(days=1)
+
+    # Valida data
+    try:
+        pickup_date = date.fromisoformat(request.form.get('pickup_date', ''))
+    except ValueError:
+        flash('Data non valida.', 'danger')
+        return redirect(url_for('main.prenotazioni_nuova'))
+    if pickup_date < tomorrow:
+        flash('Puoi prenotare solo dal giorno di domani in poi.', 'danger')
+        return redirect(url_for('main.prenotazioni_nuova'))
+
+    slot_id = request.form.get('slot_id', type=int) or None
+    notes   = request.form.get('notes', '').strip()
+
+    # Raccoglie prodotti
+    items_data = []
+    for key, val in request.form.items():
+        if key.startswith('qty_'):
+            try:
+                pid = int(key[4:])
+                qty = int(val)
+            except ValueError:
+                continue
+            if qty < 1:
+                continue
+            p = Product.query.filter_by(id=pid, tenant_id=tid, is_active=True).first()
+            if p:
+                items_data.append((p, qty))
+
+    if not items_data:
+        flash('Seleziona almeno un prodotto.', 'danger')
+        return redirect(url_for('main.prenotazioni_nuova'))
+
+    total = sum(p.price * q for p, q in items_data)
+    balance = current_user.wallet_balance or 0
+    if balance < total:
+        flash(f'Saldo insufficiente. Hai {balance:.2f} €, serve {total:.2f} €.', 'danger')
+        return redirect(url_for('main.prenotazioni_nuova'))
+
+    # Crea prenotazione
+    code = _gen_pren_code()
+    pren = Prenotazione(
+        code=code, user_id=current_user.id, tenant_id=tid,
+        pickup_date=pickup_date, slot_id=slot_id,
+        notes=notes, status='pending', total_price=total,
+    )
+    db.session.add(pren)
+    db.session.flush()
+
+    for p, qty in items_data:
+        db.session.add(PrenotazioneItem(
+            prenotazione_id=pren.id, product_id=p.id,
+            quantity=qty, unit_price=p.price,
+        ))
+
+    current_user.debit_wallet(total, f'Prenotazione {code}')
+    db.session.commit()
+
+    flash(f'Prenotazione {code} confermata per il {pickup_date.strftime("%d/%m/%Y")}!', 'success')
+    return redirect(url_for('main.prenotazioni_list'))
+
+
+@bp.route('/prenotazioni/<int:pid>/cancella', methods=['POST'])
+@login_required
+def prenotazioni_cancella(pid):
+    pren = Prenotazione.query.filter_by(id=pid, user_id=current_user.id).first_or_404()
+    if pren.status == 'cancelled':
+        flash('Prenotazione già cancellata.', 'warning')
+        return redirect(url_for('main.prenotazioni_list'))
+    if pren.pickup_date <= date.today():
+        flash('Non è possibile cancellare una prenotazione del giorno stesso o passata.', 'danger')
+        return redirect(url_for('main.prenotazioni_list'))
+    pren.status = 'cancelled'
+    # Rimborso wallet
+    if pren.total_price and pren.total_price > 0:
+        current_user.credit_wallet(pren.total_price, f'Rimborso {pren.code}')
+    db.session.commit()
+    flash(f'Prenotazione {pren.code} cancellata. Rimborso di {pren.total_price:.2f} € accreditato.', 'info')
+    return redirect(url_for('main.prenotazioni_list'))
 

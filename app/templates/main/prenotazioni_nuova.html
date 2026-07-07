@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Nuova Prenotazione{% endblock %}
+{% block page_title %}Nuova Prenotazione Pasto{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('main.prenotazioni_list') }}">Prenotazioni</a></li>
+<li class="breadcrumb-item active">Nuova</li>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('main.prenotazioni_crea') }}" id="pren-form">
+
+<div class="row">
+
+  {# ── Colonna sinistra: data, slot, note ── #}
+  <div class="col-lg-4 mb-4">
+    <div class="card card-outline card-success sticky-top" style="top:70px;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-calendar-plus mr-2"></i>Dettagli</h3>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label><i class="fas fa-calendar mr-1"></i>Data ritiro *</label>
+          <input type="date" name="pickup_date" id="pickup-date" class="form-control"
+                 min="{{ tomorrow }}" value="{{ tomorrow }}" required>
+          <small class="text-muted">Minimo domani</small>
+        </div>
+
+        {% if slots %}
+        <div class="form-group">
+          <label><i class="fas fa-clock mr-1"></i>Orario (facoltativo)</label>
+          <select name="slot_id" class="form-control">
+            <option value="">Qualsiasi orario</option>
+            {% for s in slots %}
+            <option value="{{ s.id }}">{{ s.time_str }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label><i class="fas fa-sticky-note mr-1"></i>Note</label>
+          <textarea name="notes" class="form-control" rows="2"
+                    placeholder="Allergie, preferenze…"></textarea>
+        </div>
+
+        <hr>
+
+        <div id="cart-summary">
+          <div class="text-muted text-center py-2" id="empty-msg">
+            <i class="fas fa-shopping-basket mr-1"></i>Nessun prodotto selezionato
+          </div>
+          <ul id="cart-list" class="list-unstyled mb-0" style="display:none;"></ul>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="font-weight-bold">Totale</span>
+          <span class="font-weight-bold text-success" id="total-display" style="font-size:1.2rem;">0.00 €</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 text-muted" style="font-size:.85rem;">
+          <span>Saldo wallet</span>
+          <span>{{ '%.2f'|format(current_user.wallet_balance or 0) }} €</span>
+        </div>
+
+        <div id="balance-warn" class="alert alert-danger py-2 d-none" style="font-size:.85rem;">
+          <i class="fas fa-exclamation-triangle mr-1"></i>Saldo insufficiente
+        </div>
+
+        <button type="submit" id="btn-submit" class="btn btn-success btn-block" disabled>
+          <i class="fas fa-check mr-1"></i>Conferma Prenotazione
+        </button>
+        <a href="{{ url_for('main.prenotazioni_list') }}" class="btn btn-outline-secondary btn-block mt-2">
+          Annulla
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# ── Colonna destra: catalogo prodotti ── #}
+  <div class="col-lg-8">
+    {% for cat_name, products in categories.items() %}
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title">{{ cat_name }}</h3>
+      </div>
+      <div class="card-body p-2">
+        <div class="row mx-0">
+          {% for prod in products %}
+          <div class="col-12 col-sm-6 col-md-4 p-1">
+            <div class="card h-100 product-card" data-id="{{ prod.id }}"
+                 data-name="{{ prod.name }}" data-price="{{ prod.price }}">
+              <div class="card-body p-2 d-flex flex-column" style="min-height:90px;">
+                <div class="font-weight-bold" style="font-size:.9rem; line-height:1.2;">
+                  {{ prod.name }}
+                </div>
+                {% if prod.description %}
+                <div class="text-muted mt-1" style="font-size:.75rem; flex:1;">
+                  {{ prod.description[:60] }}{% if prod.description|length > 60 %}…{% endif %}
+                </div>
+                {% endif %}
+                <div class="mt-2 d-flex align-items-center justify-content-between">
+                  <span class="text-danger font-weight-bold">{{ '%.2f'|format(prod.price) }} €</span>
+                  <div class="input-group input-group-sm" style="width:100px;">
+                    <div class="input-group-prepend">
+                      <button type="button" class="btn btn-outline-secondary btn-minus px-2">−</button>
+                    </div>
+                    <input type="number" name="qty_{{ prod.id }}" value="0" min="0" max="20"
+                           class="form-control text-center qty-input px-1"
+                           style="min-width:0;" readonly>
+                    <div class="input-group-append">
+                      <button type="button" class="btn btn-outline-success btn-plus px-2">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">Nessun prodotto disponibile.</div>
+    {% endfor %}
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var BALANCE = {{ (current_user.wallet_balance or 0) | tojson }};
+  var cart    = {};  // { id: {name, price, qty} }
+
+  var cartList    = document.getElementById('cart-list');
+  var emptyMsg    = document.getElementById('empty-msg');
+  var totalDisp   = document.getElementById('total-display');
+  var btnSubmit   = document.getElementById('btn-submit');
+  var balanceWarn = document.getElementById('balance-warn');
+
+  document.querySelectorAll('.product-card').forEach(function(card) {
+    var pid   = card.dataset.id;
+    var name  = card.dataset.name;
+    var price = parseFloat(card.dataset.price);
+    var input = card.querySelector('.qty-input');
+
+    card.querySelector('.btn-plus').addEventListener('click', function() {
+      var v = parseInt(input.value) || 0;
+      if (v < 20) { input.value = v + 1; updateCart(pid, name, price, v + 1); }
+    });
+    card.querySelector('.btn-minus').addEventListener('click', function() {
+      var v = parseInt(input.value) || 0;
+      if (v > 0) { input.value = v - 1; updateCart(pid, name, price, v - 1); }
+    });
+  });
+
+  function updateCart(pid, name, price, qty) {
+    if (qty <= 0) { delete cart[pid]; }
+    else          { cart[pid] = { name: name, price: price, qty: qty }; }
+    renderCart();
+  }
+
+  function renderCart() {
+    var total = 0;
+    var lines = [];
+    for (var id in cart) {
+      var item = cart[id];
+      total += item.price * item.qty;
+      lines.push(item.qty + '× ' + item.name + ' (' + (item.price * item.qty).toFixed(2) + ' €)');
+    }
+    totalDisp.textContent = total.toFixed(2) + ' €';
+
+    var hasItems = lines.length > 0;
+    emptyMsg.style.display  = hasItems ? 'none' : '';
+    cartList.style.display  = hasItems ? '' : 'none';
+
+    cartList.innerHTML = '';
+    lines.forEach(function(l) {
+      var li = document.createElement('li');
+      li.style.cssText = 'font-size:.82rem;padding:2px 0;border-bottom:1px solid #f0f0f0;';
+      li.textContent = l;
+      cartList.appendChild(li);
+    });
+
+    var canAfford = BALANCE >= total && hasItems;
+    btnSubmit.disabled = !canAfford;
+    balanceWarn.classList.toggle('d-none', BALANCE >= total || !hasItems);
+  }
+})();
+</script>
+{% endblock %}

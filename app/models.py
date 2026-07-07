@@ -556,6 +556,39 @@ class PrepLabel(db.Model):
     buyer    = db.relationship('User',    foreign_keys='PrepLabel.buyer_id')
 
 
+# ── Prenotazione pasto futuro ─────────────────────────────────────────────────
+
+class Prenotazione(db.Model):
+    __tablename__ = 'prenotazioni'
+    id          = db.Column(db.Integer, primary_key=True)
+    code        = db.Column(db.String(16), unique=True, nullable=False, index=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    tenant_id   = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    pickup_date = db.Column(db.Date, nullable=False, index=True)
+    slot_id     = db.Column(db.Integer, db.ForeignKey('time_slots.id'), nullable=True)
+    status      = db.Column(db.String(16), default='pending')  # pending/confirmed/cancelled
+    notes       = db.Column(db.Text, default='')
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    total_price = db.Column(db.Float, default=0.0)
+
+    user  = db.relationship('User',     foreign_keys='Prenotazione.user_id')
+    slot  = db.relationship('TimeSlot', foreign_keys='Prenotazione.slot_id')
+    items = db.relationship('PrenotazioneItem', back_populates='prenotazione',
+                            cascade='all, delete-orphan')
+
+
+class PrenotazioneItem(db.Model):
+    __tablename__ = 'prenotazione_items'
+    id              = db.Column(db.Integer, primary_key=True)
+    prenotazione_id = db.Column(db.Integer, db.ForeignKey('prenotazioni.id'), nullable=False)
+    product_id      = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity        = db.Column(db.Integer, nullable=False, default=1)
+    unit_price      = db.Column(db.Float, nullable=False)
+
+    prenotazione = db.relationship('Prenotazione', back_populates='items')
+    product      = db.relationship('Product', foreign_keys='PrenotazioneItem.product_id')
+
+
 # ── Magazzino materiali di consumo ────────────────────────────────────────────
 
 class Supplier(db.Model):

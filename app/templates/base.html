@@ -845,6 +845,14 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a href="{{ url_for('main.prenotazioni_list') }}"
+                 class="nav-link {{ 'active' if ep in ('main.prenotazioni_list','main.prenotazioni_nuova') }}">
+                <i class="nav-icon fas fa-calendar-plus"></i>
+                <p>Prenotazioni</p>
+              </a>
+            </li>
+
             {# TAVOLI #}
             <li class="nav-item has-treeview {{ 'menu-open' if in_tavoli }}">
               <a href="#" class="nav-link {{ 'active' if in_tavoli }}">
