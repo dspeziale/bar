@@ -1348,11 +1348,11 @@ def cesto_annulla_tutto():
     start = _dtm(today.year, today.month, today.day)
     end   = start + timedelta(days=1)
     n = (PrepLabel.query
-         .filter_by(tenant_id=tid, status='ready')
+         .filter_by(tenant_id=tid)
          .filter(PrepLabel.prepared_at >= start, PrepLabel.prepared_at < end)
-         .update({'status': 'expired'}, synchronize_session=False))
+         .delete(synchronize_session=False))
     db.session.commit()
-    flash(f'{n} etichet{"ta annullata" if n == 1 else "te annullate"}.', 'info')
+    flash(f'{n} etichet{"ta eliminata" if n == 1 else "te eliminate"}.', 'info')
     return redirect(url_for('admin.cesto'))
 
 
