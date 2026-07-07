@@ -249,6 +249,8 @@
   function startScanner() {
     if (scanner) return;
     scanError.textContent = '';
+    // Pulisce DOM residuo lasciato dalla sessione precedente
+    document.getElementById('barcode-scanner').innerHTML = '';
     scanner = new Html5Qrcode('barcode-scanner');
     scanner.start(
       { facingMode: 'environment' },
@@ -259,8 +261,8 @@
         setTimeout(function() { paused = false; }, 2500);
         handleBarcode(ean);
       },
-      function() {}   // ignore per-frame errors
-    ).catch(function(err) {
+      function() {}
+    ).catch(function() {
       scanError.textContent = 'Fotocamera non disponibile. Usa il campo manuale.';
       scanner = null;
     });
