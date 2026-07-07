@@ -175,7 +175,14 @@
         </button>
 
         <div id="scanner-area" style="display:none;">
-          <div id="barcode-scanner" style="width:100%;border-radius:8px;overflow:hidden;"></div>
+          <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;max-height:200px;">
+            <video id="barcode-video" autoplay muted playsinline
+                   style="width:100%;display:block;max-height:200px;object-fit:cover;"></video>
+            <canvas id="barcode-canvas" style="display:none;"></canvas>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                        width:260px;height:80px;border:2px solid rgba(233,69,96,.9);
+                        border-radius:4px;pointer-events:none;"></div>
+          </div>
           <div class="scan-hint">Inquadra il codice a barre della lattina</div>
           <div id="scan-error" style="color:#e94560;font-size:.82rem;text-align:center;min-height:18px;"></div>
           <div style="margin-top:8px;display:flex;gap:6px;">
@@ -225,14 +232,15 @@
   <i class="fas fa-arrow-left mr-1"></i>Home
 </a>
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
 <script>
 (function () {
   var MAIN_PRICE = {{ lb.product.price | tojson }};
   var BALANCE    = {{ (current_user.wallet_balance or 0) | tojson }};
   var cart       = [];
-  var scanner    = null;
-  var paused     = false;
+  var stream     = null;
+  var scanning   = false;
+  var lastCode   = null;
+  var lastTs     = 0;
 
   var btnToggle   = document.getElementById('btn-toggle-scanner');
   var scannerArea = document.getElementById('scanner-area');
@@ -244,62 +252,85 @@
   var btnBuy      = document.getElementById('btn-buy');
   var afterVal    = document.getElementById('after-val');
 
-  if (!btnToggle) return;  // not in 'ready' state
+  if (!btnToggle) return;
 
-  function startScanner() {
-    if (scanner) return;
+  /* ── Camera + BarcodeDetector ── */
+  var detector = null;
+  if (window.BarcodeDetector) {
+    try {
+      detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code']
+      });
+    } catch(e) { detector = null; }
+  }
+
+  function startCamera() {
+    if (stream) return;
     scanError.textContent = '';
-    // Pulisce DOM residuo lasciato dalla sessione precedente
-    document.getElementById('barcode-scanner').innerHTML = '';
-    scanner = new Html5Qrcode('barcode-scanner');
-    scanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 280, height: 100 } },
-      function(ean) {
-        if (paused) return;
-        paused = true;
-        setTimeout(function() { paused = false; }, 2500);
-        handleBarcode(ean);
-      },
-      function() {}
-    ).catch(function() {
+    var video  = document.getElementById('barcode-video');
+    var canvas = document.getElementById('barcode-canvas');
+    var ctx    = canvas.getContext('2d');
+
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+    }).then(function(s) {
+      stream = s;
+      video.srcObject = s;
+      video.play();
+      scanning = true;
+      requestAnimationFrame(tick);
+    }).catch(function() {
       scanError.textContent = 'Fotocamera non disponibile. Usa il campo manuale.';
-      scanner = null;
     });
+
+    function tick() {
+      if (!scanning) return;
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) { requestAnimationFrame(tick); return; }
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      if (detector) {
+        detector.detect(canvas).then(function(codes) {
+          if (codes.length > 0) onCode(codes[0].rawValue);
+          if (scanning) requestAnimationFrame(tick);
+        }).catch(function() { if (scanning) requestAnimationFrame(tick); });
+      } else {
+        requestAnimationFrame(tick);
+      }
+    }
   }
 
-  function stopScanner() {
-    if (!scanner) return;
-    var s = scanner; scanner = null;
-    s.stop().catch(function() {});
+  function stopCamera() {
+    scanning = false;
+    if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    var video = document.getElementById('barcode-video');
+    if (video) video.srcObject = null;
   }
 
-  function handleBarcode(ean) {
+  function onCode(raw) {
+    var now = Date.now();
+    if (raw === lastCode && now - lastTs < 3000) return;
+    lastCode = raw; lastTs = now;
+    lookupBarcode(raw);
+  }
+
+  /* ── Lookup ── */
+  function lookupBarcode(ean) {
     scanError.textContent = '';
     fetch('/api/product/barcode/' + encodeURIComponent(ean))
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.error) {
-          scanError.textContent = 'Prodotto non trovato (EAN: ' + ean + ')';
-          return;
-        }
+        if (data.error) { scanError.textContent = 'Prodotto non trovato (EAN: ' + ean + ')'; return; }
         addToCart(data);
-        scanError.textContent = '';
       })
-      .catch(function() {
-        scanError.textContent = 'Errore di rete. Riprova.';
-      });
+      .catch(function() { scanError.textContent = 'Errore di rete. Riprova.'; });
   }
 
-  function addToCart(product) {
-    cart.push(product);
-    renderCart();
-  }
+  /* ── Cart ── */
+  function addToCart(product) { cart.push(product); renderCart(); }
 
-  function removeFromCart(idx) {
-    cart.splice(idx, 1);
-    renderCart();
-  }
+  function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
 
   function renderCart() {
     cartList.innerHTML = '';
@@ -315,15 +346,10 @@
         '</span>';
       cartList.appendChild(li);
     });
-
-    var extrasTotal = cart.reduce(function(s, x) { return s + x.price; }, 0);
-    var total = MAIN_PRICE + extrasTotal;
-
-    extrasField.value = JSON.stringify(cart.map(function(x) { return x.id; }));
-
-    totalRow.style.display = cart.length > 0 ? 'flex' : 'none';
-    if (cart.length > 0) totalDisp.textContent = total.toFixed(2) + ' €';
-
+    var total = MAIN_PRICE + cart.reduce(function(s,x){ return s+x.price; }, 0);
+    extrasField.value = JSON.stringify(cart.map(function(x){ return x.id; }));
+    totalRow.style.display = cart.length ? 'flex' : 'none';
+    if (cart.length) totalDisp.textContent = total.toFixed(2) + ' €';
     if (btnBuy && afterVal) {
       btnBuy.disabled = BALANCE < total;
       afterVal.textContent = (BALANCE - total).toFixed(2) + ' €';
@@ -336,23 +362,28 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  /* ── Toggle scanner ── */
   btnToggle.addEventListener('click', function() {
+    if (!detector && !window._nativeWarn) {
+      window._nativeWarn = true;
+      scanError.textContent = 'Browser non supportato: usa il campo EAN manuale.';
+    }
     var open = scannerArea.style.display !== 'none';
     if (open) {
       scannerArea.style.display = 'none';
-      stopScanner();
+      stopCamera();
       btnToggle.innerHTML = '<i class="fas fa-barcode mr-1"></i>Aggiungi bevanda / snack';
     } else {
       scannerArea.style.display = 'block';
       btnToggle.innerHTML = '<i class="fas fa-times mr-1"></i>Chiudi scanner';
-      setTimeout(startScanner, 80);  // lascia il tempo al browser di renderizzare il div
+      if (detector) startCamera();
     }
   });
 
-  // Manual EAN entry
+  /* ── Manual EAN ── */
   document.getElementById('btn-manual-ean').addEventListener('click', function() {
     var val = document.getElementById('manual-ean').value.trim();
-    if (val) { handleBarcode(val); document.getElementById('manual-ean').value = ''; }
+    if (val) { lookupBarcode(val); document.getElementById('manual-ean').value = ''; }
   });
   document.getElementById('manual-ean').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btn-manual-ean').click(); }
