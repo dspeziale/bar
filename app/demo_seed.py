@@ -794,17 +794,42 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
         Supplier.tenant_id.in_(tenant_ids)).delete(
         synchronize_session=False)
 
-    # pasto aziendale
-    # Elimina booking per meal_id (meal del tenant) E per user_id (utenti da eliminare).
-    # Il doppio criterio copre il caso di meal con tenant_id=NULL non catturate da meal_ids.
-    if meal_ids:
-        CorporateMealBooking.query.filter(
-            CorporateMealBooking.meal_id.in_(meal_ids)).delete(
-            synchronize_session=False)
-    if user_ids:
-        CorporateMealBooking.query.filter(
-            CorporateMealBooking.user_id.in_(user_ids)).delete(
-            synchronize_session=False)
+    # pasto aziendale — raw SQL per garantire pulizia FK completa
+    # (l'ORM bulk-delete con synchronize_session=False non aggiorna l'identity map,
+    #  lasciando oggetti "fantasma" che bloccano la successiva delete sugli utenti)
+    if is_pg:
+        if user_ids:
+            db.session.execute(
+                db.text('DELETE FROM corporate_meal_bookings'
+                        ' WHERE user_id = ANY(:ids)'),
+                {'ids': user_ids})
+        if meal_ids:
+            db.session.execute(
+                db.text('DELETE FROM corporate_meal_bookings'
+                        ' WHERE meal_id = ANY(:ids)'),
+                {'ids': meal_ids})
+        if tenant_ids:
+            db.session.execute(
+                db.text('DELETE FROM corporate_meal_bookings'
+                        ' WHERE meal_id IN'
+                        ' (SELECT id FROM daily_fixed_meals'
+                        '  WHERE tenant_id = ANY(:tids))'),
+                {'tids': tenant_ids})
+    else:
+        if user_ids:
+            db.session.execute(db.text(
+                'DELETE FROM corporate_meal_bookings WHERE user_id IN ({})'.format(
+                    ','.join(str(i) for i in user_ids))))
+        if meal_ids:
+            db.session.execute(db.text(
+                'DELETE FROM corporate_meal_bookings WHERE meal_id IN ({})'.format(
+                    ','.join(str(i) for i in meal_ids))))
+        if tenant_ids:
+            db.session.execute(db.text(
+                'DELETE FROM corporate_meal_bookings WHERE meal_id IN'
+                ' (SELECT id FROM daily_fixed_meals WHERE tenant_id IN ({}))'.format(
+                    ','.join(str(i) for i in tenant_ids))))
+    db.session.flush()  # forza commit SQL prima di procedere
     DailyFixedMeal.query.filter(
         DailyFixedMeal.tenant_id.in_(tenant_ids)).delete(
         synchronize_session=False)
@@ -902,12 +927,19 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
     TimeSlot.query.filter(
         TimeSlot.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # utenti
+    # utenti — flush prima di eliminare per garantire che tutti i figli siano già cancellati
     if user_ids:
+        db.session.flush()
         db.session.execute(
             user_roles.delete().where(user_roles.c.user_id.in_(user_ids)))
-        User.query.filter(
-            User.id.in_(user_ids)).delete(synchronize_session=False)
+        if is_pg:
+            db.session.execute(
+                db.text('DELETE FROM users WHERE id = ANY(:ids)'),
+                {'ids': user_ids})
+        else:
+            db.session.execute(db.text(
+                'DELETE FROM users WHERE id IN ({})'.format(
+                    ','.join(str(i) for i in user_ids))))
 
     if delete_tenants:
         Tenant.query.filter(
