@@ -246,38 +246,29 @@
 
   if (!btnToggle) return;  // not in 'ready' state
 
-  var FORMATS = [
-    Html5QrcodeSupportedFormats.EAN_13,
-    Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.CODE_128
-  ];
-
   function startScanner() {
     if (scanner) return;
     scanError.textContent = '';
     scanner = new Html5Qrcode('barcode-scanner');
     scanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 280, height: 100 }, formatsToSupport: FORMATS },
+      { fps: 10, qrbox: { width: 280, height: 100 } },
       function(ean) {
         if (paused) return;
         paused = true;
         setTimeout(function() { paused = false; }, 2500);
         handleBarcode(ean);
       },
-      function() {}
-    ).catch(function() {
-      scanError.textContent = 'Fotocamera non disponibile. Usa il campo manuale sotto.';
+      function() {}   // ignore per-frame errors
+    ).catch(function(err) {
+      scanError.textContent = 'Fotocamera non disponibile. Usa il campo manuale.';
       scanner = null;
     });
   }
 
   function stopScanner() {
     if (!scanner) return;
-    var s = scanner;
-    scanner = null;
+    var s = scanner; scanner = null;
     s.stop().catch(function() {});
   }
 
@@ -351,8 +342,8 @@
       btnToggle.innerHTML = '<i class="fas fa-barcode mr-1"></i>Aggiungi bevanda / snack';
     } else {
       scannerArea.style.display = 'block';
-      startScanner();
       btnToggle.innerHTML = '<i class="fas fa-times mr-1"></i>Chiudi scanner';
+      setTimeout(startScanner, 80);  // lascia il tempo al browser di renderizzare il div
     }
   });
 
