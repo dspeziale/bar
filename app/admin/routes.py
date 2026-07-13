@@ -3129,7 +3129,7 @@ def convenzioni_abstract_docx():
         h = h.lstrip('#')
         return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
-    FONT   = 'PT Sans Narrow'
+    FONT   = 'Calibri'
     LS     = Pt(13)   # interlinea compatta uniforme
     SA     = Pt(3)    # spazio dopo paragrafo ridotto
     SB     = Pt(0)    # spazio prima paragrafo
