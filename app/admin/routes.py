@@ -3117,7 +3117,7 @@ def convenzioni_abstract_docx():
     from flask import send_file
     from docx import Document
     from docx.shared import Pt, Inches, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
     from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
 
@@ -3129,56 +3129,75 @@ def convenzioni_abstract_docx():
         h = h.lstrip('#')
         return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
-    FONT = 'PT Sans Narrow'
+    FONT   = 'PT Sans Narrow'
+    LS     = Pt(13)   # interlinea compatta uniforme
+    SA     = Pt(3)    # spazio dopo paragrafo ridotto
+    SB     = Pt(0)    # spazio prima paragrafo
+
     _IT_MONTHS_D = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
                     'luglio','agosto','settembre','ottobre','novembre','dicembre']
 
     def _it_mese_anno(dt):
         return f'{_IT_MONTHS_D[dt.month - 1]} {dt.year}'
 
+    def _set_spacing(p, ls=LS, sa=SA, sb=SB):
+        pf = p.paragraph_format
+        pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+        pf.line_spacing  = ls
+        pf.space_after   = sa
+        pf.space_before  = sb
+
     def _heading(doc, text, level=1, color=BRAND):
         p = doc.add_heading(text, level)
+        pf = p.paragraph_format
+        pf.space_before = Pt(6) if level == 1 else Pt(4)
+        pf.space_after  = Pt(2)
         for run in p.runs:
-            run.font.name  = FONT
+            run.font.name      = FONT
             run.font.color.rgb = _rgb(color)
         return p
 
     def _body(doc, text):
         p = doc.add_paragraph(text)
-        p.paragraph_format.space_after = Pt(5)
+        _set_spacing(p)
         for run in p.runs:
             run.font.name = FONT
-            run.font.size = Pt(12)
+            run.font.size = Pt(11)
         return p
 
     def _bullet(doc, text, bold_prefix=None):
         p = doc.add_paragraph(style='List Bullet')
+        _set_spacing(p, sa=Pt(2))
         if bold_prefix:
             r = p.add_run(bold_prefix + ' ')
             r.bold = True
-            r.font.name  = FONT
-            r.font.size  = Pt(12)
+            r.font.name      = FONT
+            r.font.size      = Pt(11)
             r.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(text)
         r2.font.name = FONT
-        r2.font.size = Pt(12)
+        r2.font.size = Pt(11)
 
     def _step(doc, num, title, body):
         p = doc.add_paragraph()
+        _set_spacing(p, sa=Pt(3))
+        p.paragraph_format.left_indent = Inches(0.15)
         r1 = p.add_run(f'{num}. {title}  ')
         r1.bold = True
-        r1.font.name  = FONT
-        r1.font.size  = Pt(12)
+        r1.font.name      = FONT
+        r1.font.size      = Pt(11)
         r1.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(body)
         r2.font.name = FONT
-        r2.font.size = Pt(12)
-        p.paragraph_format.left_indent = Inches(0.15)
-        p.paragraph_format.space_after  = Pt(6)
+        r2.font.size = Pt(11)
+
+    def _gap(doc, h=Pt(4)):
+        p = doc.add_paragraph()
+        _set_spacing(p, ls=h, sa=Pt(0))
 
     def _divider(doc):
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_before = Pt(1)
         p.paragraph_format.space_after  = Pt(2)
         pPr  = p._p.get_or_add_pPr()
         pBdr = OxmlElement('w:pBdr')
@@ -3198,51 +3217,62 @@ def convenzioni_abstract_docx():
     _co_email   = get_setting('company_email')   or ''
 
     doc = Document()
+
+    # Interlinea compatta sul stile Normal di default
+    normal = doc.styles['Normal']
+    normal.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    normal.paragraph_format.line_spacing  = LS
+    normal.paragraph_format.space_after   = SA
+    normal.paragraph_format.space_before  = SB
+
     for section in doc.sections:
-        section.top_margin    = Inches(1.0)
-        section.bottom_margin = Inches(1.0)
-        section.left_margin   = Inches(1.2)
-        section.right_margin  = Inches(1.2)
+        section.top_margin    = Inches(0.9)
+        section.bottom_margin = Inches(0.9)
+        section.left_margin   = Inches(1.1)
+        section.right_margin  = Inches(1.1)
 
     # ── Copertina ─────────────────────────────────────────────────────────────
-    for _ in range(3):
-        doc.add_paragraph()
+    for _ in range(2):
+        _gap(doc, Pt(8))
     tp = doc.add_paragraph()
     tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = tp.add_run('QuickLunch - Bar Self-Service')
-    r.font.name = FONT; r.font.size = Pt(28); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
+    r = tp.add_run('QuickLunch — Bar Self-Service')
+    r.font.name = FONT; r.font.size = Pt(26); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
+    _set_spacing(tp, sa=Pt(4))
     sp = doc.add_paragraph()
     sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = sp.add_run('Modulo Pasti Aziendali')
-    r.font.name = FONT; r.font.size = Pt(20); r.font.color.rgb = _rgb(DARK)
-    doc.add_paragraph()
+    r.font.name = FONT; r.font.size = Pt(18); r.font.color.rgb = _rgb(DARK)
+    _set_spacing(sp, sa=Pt(6))
     dp = doc.add_paragraph()
     dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = dp.add_run('Documento descrittivo per le aziende convenzionate')
-    r.font.name = FONT; r.font.size = Pt(13); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
-    for _ in range(2):
-        doc.add_paragraph()
+    r.font.name = FONT; r.font.size = Pt(12); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    _set_spacing(dp, sa=Pt(8))
     datp = doc.add_paragraph()
     datp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = datp.add_run(_it_mese_anno(_dt.now()))
-    r.font.name = FONT; r.font.size = Pt(12); r.font.color.rgb = _rgb(GRAY)
+    r.font.name = FONT; r.font.size = Pt(11); r.font.color.rgb = _rgb(GRAY)
+    _set_spacing(datp)
     if _co_name:
-        doc.add_paragraph()
+        _gap(doc, Pt(6))
         cop = doc.add_paragraph()
         cop.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = cop.add_run(_co_name)
-        r.font.name = FONT; r.font.size = Pt(12); r.bold = True
+        r.font.name = FONT; r.font.size = Pt(11); r.bold = True
+        _set_spacing(cop, sa=Pt(2))
         co_details = []
-        if _co_address:  co_details.append(_co_address)
-        if _co_city:     co_details.append(_co_city)
-        if _co_vat:      co_details.append(f'P.IVA {_co_vat}')
-        if _co_phone:    co_details.append(_co_phone)
-        if _co_email:    co_details.append(_co_email)
+        if _co_address: co_details.append(_co_address)
+        if _co_city:    co_details.append(_co_city)
+        if _co_vat:     co_details.append(f'P.IVA {_co_vat}')
+        if _co_phone:   co_details.append(_co_phone)
+        if _co_email:   co_details.append(_co_email)
         if co_details:
             co_dp = doc.add_paragraph()
             co_dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
             r = co_dp.add_run('  |  '.join(co_details))
-            r.font.name = FONT; r.font.size = Pt(10); r.font.color.rgb = _rgb(GRAY)
+            r.font.name = FONT; r.font.size = Pt(9); r.font.color.rgb = _rgb(GRAY)
+            _set_spacing(co_dp)
     doc.add_page_break()
 
     # ── 1. Introduzione ───────────────────────────────────────────────────────
@@ -3257,149 +3287,124 @@ def convenzioni_abstract_docx():
         "Ogni azienda dispone di un proprio spazio con configurazioni personalizzate "
         "(prezzo del pasto, numero massimo di coperti, portate). I dipendenti prenotano "
         "autonomamente tramite applicazione web da qualsiasi dispositivo, senza installazione.")
-    doc.add_paragraph()
+    _gap(doc)
 
     # ── 2. Attori ─────────────────────────────────────────────────────────────
     _heading(doc, '2. Attori del sistema')
     _divider(doc)
-    _heading(doc, 'Amministratore del bar', 2, color=DARK)
+    _heading(doc, 'Amministratore / Staff del bar', 2, color=DARK)
     _bullet(doc, 'Gestisce le convenzioni aziendali (creazione, modifica, disattivazione).')
     _bullet(doc, 'Pubblica il menu giornaliero per ciascuna azienda (portate, prezzo, massimo coperti).')
-    _bullet(doc, 'Visualizza e scarica il report giornaliero delle presenze in formato Word.')
-    _bullet(doc, 'Segna i pasti come Consumati in tempo reale durante il servizio.')
+    _bullet(doc, 'Visualizza e scarica il report giornaliero delle presenze in formato PDF/Word.')
+    _bullet(doc, 'Segna i pasti come Consumati in tempo reale durante il servizio, '
+                 'anche direttamente dal terminale Banco tramite il pannello dedicato.')
     _bullet(doc, 'Consulta lo storico mensile delle presenze per convenzione.')
-    doc.add_paragraph()
+    _gap(doc)
     _heading(doc, 'Dipendente (utente finale)', 2, color=DARK)
-    _bullet(doc, "Si registra nell'applicazione (email + password oppure account Google).")
+    _bullet(doc, "Si registra nell'applicazione (email + password oppure account Google OAuth 2.0).")
     _bullet(doc, "Viene associato alla propria azienda convenzionata dall'amministratore.")
-    _bullet(doc, 'Visualizza il menu del giorno e prenota con pochi clic.')
-    _bullet(doc, "Può annullare la prenotazione in autonomia.")
-    _bullet(doc, 'Riceve facoltativamente notifiche Telegram di conferma e reminder.')
-    doc.add_paragraph()
+    _bullet(doc, 'Visualizza il menu del giorno e prenota con pochi clic da smartphone, tablet o PC.')
+    _bullet(doc, "Può annullare la prenotazione in autonomia entro i termini configurati.")
+    _bullet(doc, 'Riceve notifiche Telegram di conferma prenotazione, reminder e conferma ritiro.')
+    _gap(doc)
 
     # ── 3. Ciclo completo ─────────────────────────────────────────────────────
     _heading(doc, '3. Ciclo completo: dalla prenotazione alla consegna')
     _divider(doc)
     _body(doc,
-        "Il ciclo di vita di ogni pasto aziendale si articola in cinque fasi distinte: "
-        "pubblicazione del menu, prenotazione da parte del dipendente, generazione del codice "
-        "di ritiro, consegna al banco e riconciliazione. Di seguito il dettaglio di ciascuna fase.")
-    doc.add_paragraph()
+        "Il ciclo di vita di ogni pasto aziendale si articola in cinque fasi: pubblicazione "
+        "del menu, prenotazione, generazione del codice di ritiro, consegna al banco e "
+        "riconciliazione.")
+    _gap(doc)
 
     _heading(doc, 'Fase 1 — Pubblicazione del menu (amministratore)', 2, color=DARK)
-    _step(doc, 1, 'Accesso alla gestione:',
-          "ogni mattina l'amministratore accede alla sezione Convenzioni e seleziona "
-          "l'azienda destinataria.")
-    _step(doc, 2, 'Creazione del menu del giorno:',
-          "inserisce il nome del pasto, le portate strutturate (primo, secondo, contorno, "
-          "bevanda, caffè), il prezzo e il numero massimo di coperti. "
-          "È possibile creare più opzioni pasto per la stessa giornata e salvare "
-          "template riutilizzabili per i menu ricorrenti.")
-    _step(doc, 3, 'Pubblicazione:',
-          "confermata l'inserimento, il menu diventa immediatamente visibile "
-          "ai dipendenti dell'azienda nell'applicazione.")
-    doc.add_paragraph()
+    _step(doc, 1, 'Accesso:', "ogni mattina l'amministratore accede a Convenzioni e seleziona l'azienda.")
+    _step(doc, 2, 'Creazione del menu:', "inserisce nome del pasto, portate (primo, secondo, contorno, "
+          "bevanda, caffè), prezzo e numero massimo di coperti. Supporta più opzioni per la stessa "
+          "giornata e template riutilizzabili per menu ricorrenti.")
+    _step(doc, 3, 'Pubblicazione:', "il menu diventa immediatamente visibile ai dipendenti dell'azienda.")
+    _gap(doc)
 
     _heading(doc, 'Fase 2 — Prenotazione (dipendente)', 2, color=DARK)
-    _step(doc, 1, 'Accesso all\'applicazione:',
-          "il dipendente apre il browser (PC, tablet o smartphone) e accede "
-          "con email/password oppure con il proprio account Google.")
-    _step(doc, 2, 'Visualizzazione menu:',
-          "nella sezione Pasto Aziendale vede il menu del giorno con portate, "
-          "prezzo e posti ancora disponibili.")
-    _step(doc, 3, 'Selezione e conferma:',
-          "sceglie l'opzione desiderata, il numero di porzioni e l'orario di ritiro "
-          "(se configurato), quindi preme Prenota. "
-          "Il sistema verifica la disponibilità dei posti e registra la prenotazione "
-          "in stato Prenotato.")
-    _step(doc, 4, 'Conferma immediata:',
-          "a schermo compare la conferma con il riepilogo del pasto scelto. "
-          "Se il dipendente ha configurato Telegram, riceve contestualmente "
-          "un messaggio di conferma sul proprio telefono.")
-    _step(doc, 5, 'Annullamento (opzionale):',
-          "il dipendente può annullare la prenotazione in autonomia fino a 30 minuti "
-          "prima dell'orario di ritiro selezionato. "
-          "Oltre tale soglia il sistema blocca l'annullamento.")
-    doc.add_paragraph()
+    _step(doc, 1, 'Accesso:', "il dipendente apre il browser e accede con email/password o account Google.")
+    _step(doc, 2, 'Visualizzazione menu:', "nella sezione Pasto Aziendale vede il menu del giorno "
+          "con portate, prezzo e posti ancora disponibili.")
+    _step(doc, 3, 'Selezione e conferma:', "sceglie l'opzione, le porzioni e l'orario di ritiro "
+          "(se configurato), quindi preme Prenota. Il sistema verifica la disponibilità e registra "
+          "la prenotazione in stato Prenotato.")
+    _step(doc, 4, 'Conferma immediata:', "compare la conferma con il riepilogo del pasto scelto. "
+          "Se il Telegram è configurato, il dipendente riceve un messaggio di conferma in tempo reale.")
+    _step(doc, 5, 'Annullamento (opzionale):', "il dipendente può annullare in autonomia entro "
+          "i termini configurati. Oltre tale soglia il sistema blocca l'annullamento.")
+    _gap(doc)
 
     _heading(doc, 'Fase 3 — Codice di ritiro', 2, color=DARK)
     _body(doc,
-        "Al momento della prenotazione il sistema genera automaticamente un codice "
-        "di ritiro univoco di 6 caratteri (es. A7 K3 M2). "
-        "Questo codice identifica la prenotazione in modo univoco e viene utilizzato "
-        "dallo staff al momento della consegna per verificare l'identità del prenotante "
-        "senza necessità di cercare il nominativo manualmente.")
-    _step(doc, 1, 'Visualizzazione del codice:',
-          "dopo la prenotazione confermata, il codice appare in grande nella pagina "
-          "Pasto Aziendale del dipendente, sempre visibile finché il pasto "
-          "non risulta consegnato.")
-    _step(doc, 2, 'Reminder automatico:',
-          "N minuti prima dell'orario di ritiro (configurabile in Impostazioni) "
-          "il sistema invia al dipendente un reminder Telegram con il codice "
-          "e il nome del pasto prenotato.")
-    _step(doc, 3, 'Utilizzo al banco:',
-          "al momento del ritiro il dipendente mostra il codice sullo schermo "
-          "del proprio dispositivo allo staff del bar.")
-    doc.add_paragraph()
+        "Al momento della prenotazione il sistema genera automaticamente un codice di ritiro "
+        "univoco (es. A7K3M2). Il codice identifica la prenotazione senza necessità di cercare "
+        "il nominativo manualmente e rimane visibile al dipendente fino alla consegna.")
+    _step(doc, 1, 'Visualizzazione:', "il codice appare in grande nella pagina Pasto Aziendale "
+          "del dipendente, sempre accessibile da smartphone.")
+    _step(doc, 2, 'Reminder automatico:', "N minuti prima del ritiro (configurabile in Impostazioni) "
+          "il sistema invia un reminder Telegram con codice e nome del pasto.")
+    _step(doc, 3, 'Utilizzo al banco:', "il dipendente mostra il codice sullo schermo del proprio "
+          "dispositivo allo staff oppure lo comunica verbalmente.")
+    _gap(doc)
 
-    _heading(doc, 'Fase 4 — Consegna al banco (amministratore / staff)', 2, color=DARK)
-    _body(doc,
-        "Lo staff dispone di due modalità equivalenti per registrare la consegna:")
-    _step(doc, 1, 'Ritiro rapido per codice:',
-          "dalla sezione Convenzioni → Ritiro Pasti, lo staff digita il codice "
-          "a 6 caratteri mostrato dal dipendente. "
-          "Il sistema mostra immediatamente nome, pasto e porzioni. "
-          "Un click su Conferma consegna cambia lo stato in Consumato.")
-    _step(doc, 2, 'Consegna dal report giornaliero:',
-          "dalla sezione Convenzioni → Report Giornaliero, ogni riga in stato "
-          "Prenotato riporta un pulsante Consegna. "
+    _heading(doc, 'Fase 4 — Consegna al banco (staff)', 2, color=DARK)
+    _body(doc, "Lo staff dispone di tre modalità equivalenti per registrare la consegna:")
+    _step(doc, 1, 'Pannello Banco POS (novità):',
+          "direttamente dal terminale cassa (schermata Banco), il pannello "
+          "\"Pasto Aziendale\" consente di digitare o scansionare (QR da fotocamera) "
+          "il codice di ritiro. Il sistema mostra immediatamente nome del dipendente, "
+          "pasto, data e orario di slot. Un click su \"Conferma Consegna\" chiude la "
+          "pratica, aggiorna lo stato in Consumato e invia la notifica Telegram al dipendente.")
+    _step(doc, 2, 'Sezione Ritiro Pasti (admin):',
+          "da Convenzioni → Ritiro Pasti, lo staff digita il codice a caratteri mostrato "
+          "dal dipendente. Utile da PC o tablet senza accesso al Banco POS.")
+    _step(doc, 3, 'Report giornaliero:',
+          "da Convenzioni → Report Giornaliero ogni riga Prenotato riporta un pulsante Consegna. "
           "Utile per spuntare più prenotazioni in sequenza o per correzioni a fine servizio.")
-    _step(doc, 3, 'Notifica al dipendente:',
-          "alla registrazione della consegna il sistema invia automaticamente "
-          "al dipendente una notifica Telegram di conferma ritiro.")
-    doc.add_paragraph()
+    _gap(doc)
 
     _heading(doc, 'Fase 5 — Riconciliazione (amministratore)', 2, color=DARK)
-    _step(doc, 1, 'Scarica il report DOCX:',
-          "a fine servizio, dal Report Giornaliero, il pulsante Scarica DOCX "
-          "genera un documento Word per ciascuna azienda con: intestazione "
-          "azienda/data, totale prenotazioni e tabella Nominativo / Pasto / Quantità / Stato.")
-    _step(doc, 2, 'Invio all\'azienda:',
-          "il documento viene inviato al referente aziendale per la verifica "
-          "e la riconciliazione contabile del mese.")
-    _step(doc, 3, 'Storico mensile:',
-          "la sezione Storico Presenze di ciascuna azienda mantiene l'archivio "
-          "completo con i contatori di prenotati, consumati e annullati per ogni giornata.")
-    doc.add_paragraph()
+    _step(doc, 1, 'Scarica il report PDF:', "a fine servizio il pulsante Scarica PDF genera "
+          "un documento per ciascuna azienda con: intestazione azienda/data, totale prenotazioni "
+          "e tabella Nominativo / Pasto / Quantità / Stato.")
+    _step(doc, 2, "Invio all'azienda:", "il documento viene inviato al referente aziendale "
+          "per la verifica e la riconciliazione contabile del mese.")
+    _step(doc, 3, 'Storico mensile:', "la sezione Storico Presenze mantiene l'archivio completo "
+          "con contatori di prenotati, consumati e annullati per ogni giornata.")
+    _gap(doc)
 
     # ── 4. Stati prenotazione ─────────────────────────────────────────────────
     _heading(doc, '4. Stati della prenotazione')
     _divider(doc)
-    _body(doc,
-        "Ogni prenotazione transita attraverso i seguenti stati durante il suo ciclo di vita:")
+    _body(doc, "Ogni prenotazione transita attraverso i seguenti stati:")
     tbl_s = doc.add_table(rows=1, cols=3)
     tbl_s.style = 'Table Grid'
     for i, h in enumerate(['Stato', 'Descrizione', 'Transizione successiva']):
         r = tbl_s.rows[0].cells[i].paragraphs[0].add_run(h)
-        r.bold = True; r.font.name = FONT; r.font.size = Pt(11)
+        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
     for stato, descr, trans in [
         ('Prenotato',
-         'La prenotazione è attiva. Il codice di ritiro è visibile al dipendente.',
-         'Consumato (consegna confermata) oppure Annullato (cancellazione)'),
+         'Prenotazione attiva. Codice di ritiro visibile al dipendente.',
+         'Consumato (consegna confermata) oppure Annullato'),
         ('Consumato',
-         'Il pasto è stato ritirato e confermato dallo staff al banco.',
-         'Stato finale — incluso nel report giornaliero'),
+         'Pasto ritirato e confermato dallo staff al banco.',
+         'Stato finale — incluso nel report'),
         ('Annullato',
-         'Il dipendente ha annullato la prenotazione in autonomia entro i termini.',
+         'Dipendente ha annullato entro i termini.',
          'Stato finale — escluso dal conteggio pasti'),
     ]:
         row = tbl_s.add_row().cells
         for i, val in enumerate([stato, descr, trans]):
-            r = row[i].paragraphs[0].add_run(val)
-            r.font.name = FONT; r.font.size = Pt(11)
-            if i == 0:
-                r.bold = True
-    doc.add_paragraph()
+            p2 = row[i].paragraphs[0]
+            _set_spacing(p2, sa=Pt(2))
+            r = p2.add_run(val)
+            r.font.name = FONT; r.font.size = Pt(10)
+            if i == 0: r.bold = True
+    _gap(doc)
 
     # ── 5. Configurazione ─────────────────────────────────────────────────────
     _heading(doc, '5. Configurazione della convenzione')
@@ -3408,69 +3413,150 @@ def convenzioni_abstract_docx():
     tbl = doc.add_table(rows=1, cols=2)
     tbl.style = 'Table Grid'
     h0, h1 = tbl.rows[0].cells
-    h0.text = 'Parametro'
-    h1.text = 'Descrizione'
-    for cell in [h0, h1]:
-        r = cell.paragraphs[0].runs[0]
-        r.bold = True
-        r.font.name = FONT
-        r.font.size = Pt(11)
+    for cell, txt in [(h0, 'Parametro'), (h1, 'Descrizione')]:
+        r = cell.paragraphs[0].add_run(txt)
+        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
     for pname, pdesc in [
         ('Nome azienda',           "Ragione sociale dell'azienda convenzionata."),
         ('Email di contatto',      'Referente aziendale per le comunicazioni.'),
         ('Prezzo giornaliero (€)', 'Prezzo standard del pasto, sovrascrivibile per singola giornata.'),
         ('Massimo coperti/giorno', 'Numero massimo di prenotazioni accettabili per giornata.'),
         ('Dipendenti associati',   'Utenti registrati associati alla convenzione.'),
-        ('Template menu',          'Configurazioni riutilizzabili per velocizzare la pubblicazione dei menu ricorrenti.'),
+        ('Template menu',          'Configurazioni riutilizzabili per menu ricorrenti.'),
     ]:
         row = tbl.add_row().cells
-        rn = row[0].paragraphs[0].add_run(pname)
-        rn.bold = True
-        rn.font.name = FONT
-        rn.font.size = Pt(11)
-        rd = row[1].paragraphs[0].add_run(pdesc)
-        rd.font.name = FONT
-        rd.font.size = Pt(11)
-    doc.add_paragraph()
+        for cell, txt, bold in [(row[0], pname, True), (row[1], pdesc, False)]:
+            p2 = cell.paragraphs[0]
+            _set_spacing(p2, sa=Pt(2))
+            r = p2.add_run(txt)
+            r.bold = bold; r.font.name = FONT; r.font.size = Pt(10)
+    _gap(doc)
 
-    # ── 5. Report ─────────────────────────────────────────────────────────────
+    # ── 6. Report ─────────────────────────────────────────────────────────────
     _heading(doc, '6. Report e documenti disponibili')
     _divider(doc)
     _heading(doc, 'Report Giornaliero (pagina web)', 2, color=DARK)
-    _body(doc,
-        "Accessibile da Convenzioni → Report Giornaliero: lista dei dipendenti con "
-        "la relativa prenotazione pasto del giorno. Navigazione tra date con tasti freccia "
-        "o selettore calendario.")
-    _heading(doc, 'Report Giornaliero (DOCX scaricabile)', 2, color=DARK)
-    _body(doc,
-        "Il pulsante Scarica DOCX genera un documento Word con intestazione azienda/data, "
-        "totale prenotazioni e tabella: Nominativo, Pasto, Quantità, Stato.")
+    _body(doc, "Accessibile da Convenzioni → Report Giornaliero: lista dipendenti con prenotazione "
+          "del giorno. Navigazione tra date con tasti freccia o selettore calendario.")
+    _heading(doc, 'Report Giornaliero (PDF scaricabile)', 2, color=DARK)
+    _body(doc, "Il pulsante Scarica PDF genera un documento con intestazione azienda/data, "
+          "totale prenotazioni e tabella: Nominativo, Pasto, Quantità, Stato.")
     _heading(doc, 'Storico mensile presenze', 2, color=DARK)
-    _body(doc,
-        "Accessibile da Convenzioni → [Azienda] → Storico Presenze. Mostra mese "
-        "per mese il dettaglio con i contatori di prenotati, consumati e annullati.")
-    doc.add_paragraph()
+    _body(doc, "Accessibile da Convenzioni → [Azienda] → Storico Presenze. Mostra mese per mese "
+          "il dettaglio con contatori di prenotati, consumati e annullati.")
+    _gap(doc)
 
-    # ── 6. Notifiche ──────────────────────────────────────────────────────────
-    _heading(doc, '7. Notifiche automatiche')
+    # ── 7. Notifiche ──────────────────────────────────────────────────────────
+    _heading(doc, '7. Notifiche automatiche (Telegram)')
     _divider(doc)
-    _body(doc,
-        "Il sistema può inviare notifiche Telegram direttamente al dipendente (opzionale; "
-        "richiede Telegram Chat ID configurato nel profilo utente):")
-    _bullet(doc, 'Conferma annullamento prenotazione pasto.', 'Annullamento:')
-    _bullet(doc,
-            "Reminder N minuti prima dell'orario di ritiro (configurabile in Impostazioni → Reminder).",
-            'Reminder:')
-    doc.add_paragraph()
+    _body(doc, "Opzionale — richiede Telegram Chat ID configurato nel profilo utente:")
+    _bullet(doc, 'Messaggio di conferma al momento della prenotazione.', 'Conferma prenotazione:')
+    _bullet(doc, "Reminder N minuti prima del ritiro (configurabile in Impostazioni).", 'Reminder:')
+    _bullet(doc, 'Messaggio di conferma alla registrazione della consegna da parte dello staff.',
+            'Conferma ritiro:')
+    _bullet(doc, 'Messaggio di conferma alla cancellazione della prenotazione.', 'Annullamento:')
+    _gap(doc)
 
-    # ── 7. Sicurezza ──────────────────────────────────────────────────────────
+    # ── 8. Sicurezza ──────────────────────────────────────────────────────────
     _heading(doc, '8. Accesso e sicurezza')
     _divider(doc)
     _bullet(doc, 'Email + password oppure account Google (OAuth 2.0).', 'Autenticazione:')
-    _bullet(doc, 'Supporto opzionale MFA con Google Authenticator.', 'Doppio fattore:')
-    _bullet(doc, 'Ciascun dipendente vede solo le informazioni della propria azienda.', 'Isolamento:')
+    _bullet(doc, 'Autenticazione a due fattori opzionale (TOTP — Google Authenticator).', 'MFA:')
+    _bullet(doc, 'Ciascun dipendente vede solo le informazioni della propria azienda.', 'Isolamento dati:')
     _bullet(doc, 'Tutte le comunicazioni avvengono su connessione cifrata HTTPS.', 'Trasporto:')
-    doc.add_paragraph()
+    _gap(doc)
+
+    # ── 9. GDPR e conservazione dei dati ─────────────────────────────────────
+    _heading(doc, '9. Conformità GDPR e conservazione dei dati')
+    _divider(doc)
+    _body(doc,
+        "Il sistema QuickLunch è progettato per essere conforme al Regolamento Europeo sulla "
+        "protezione dei dati personali (GDPR — Reg. UE 2016/679). Di seguito i principi "
+        "applicati e le misure adottate.")
+    _gap(doc)
+
+    _heading(doc, 'Dati trattati', 2, color=DARK)
+    _body(doc, "Il sistema tratta le seguenti categorie di dati personali dei dipendenti:")
+    _bullet(doc, 'Dati anagrafici: nome, cognome, indirizzo e-mail.')
+    _bullet(doc, 'Dati di autenticazione: password cifrata (bcrypt) — mai memorizzata in chiaro; '
+                 'oppure token OAuth Google.')
+    _bullet(doc, 'Dati operativi: prenotazioni pasto, cronologia acquisti, saldo wallet.')
+    _bullet(doc, 'Identificativi facoltativi: Telegram Chat ID (solo se fornito volontariamente).')
+    _body(doc,
+        "Non vengono raccolti dati sensibili (sanitari, biometrici, politici) né vengono "
+        "effettuate profilazioni automatizzate con effetti giuridici.")
+    _gap(doc)
+
+    _heading(doc, 'Base giuridica del trattamento', 2, color=DARK)
+    _bullet(doc, 'Esecuzione di un contratto (prenotazione pasto, erogazione del servizio).', 'Art. 6.1.b:')
+    _bullet(doc, 'Adempimento di obblighi contabili e fiscali.', 'Art. 6.1.c:')
+    _bullet(doc, 'Notifiche Telegram e funzionalità opzionali attivate dall\'interessato.', 'Art. 6.1.a (consenso):')
+    _gap(doc)
+
+    _heading(doc, 'Diritti degli interessati', 2, color=DARK)
+    _body(doc, "Ogni dipendente può esercitare i seguenti diritti contattando il titolare del trattamento:")
+    _bullet(doc, 'Accesso ai propri dati personali (art. 15).')
+    _bullet(doc, 'Rettifica di dati inesatti (art. 16).')
+    _bullet(doc, 'Cancellazione — «diritto all\'oblio» (art. 17).')
+    _bullet(doc, 'Limitazione del trattamento (art. 18).')
+    _bullet(doc, 'Portabilità dei dati in formato strutturato (art. 20).')
+    _bullet(doc, 'Opposizione al trattamento (art. 21).')
+    _gap(doc)
+
+    _heading(doc, 'Conservazione dei dati', 2, color=DARK)
+    _body(doc,
+        "I dati sono conservati solo per il tempo strettamente necessario alle finalità per cui "
+        "sono stati raccolti, nel rispetto dell'art. 5.1.e GDPR (principio di limitazione della "
+        "conservazione):")
+    tbl_g = doc.add_table(rows=1, cols=3)
+    tbl_g.style = 'Table Grid'
+    for i, h in enumerate(['Categoria dato', 'Periodo di conservazione', 'Motivazione']):
+        r = tbl_g.rows[0].cells[i].paragraphs[0].add_run(h)
+        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
+    for cat, period, reason in [
+        ('Prenotazioni pasto e storico ordini',
+         '5 anni',
+         'Obblighi contabili e fiscali (art. 2220 C.C.)'),
+        ('Movimenti wallet (accrediti/addebiti)',
+         '5 anni',
+         'Documentazione contabile obbligatoria'),
+        ('Log di accesso e autenticazione',
+         '12 mesi',
+         'Sicurezza informatica e audit trail'),
+        ('Account utente attivo',
+         'Fino a richiesta di cancellazione o cessazione convenzione',
+         'Necessità operativa del servizio'),
+        ('Account utente cancellato',
+         'Anonimizzazione immediata',
+         'Diritto all\'oblio — record storici de-identificati'),
+        ('Telegram Chat ID',
+         'Fino a revoca del consenso o cancellazione account',
+         'Consenso revocabile in qualsiasi momento dal profilo utente'),
+    ]:
+        row = tbl_g.add_row().cells
+        for i, (val, bold) in enumerate([(cat, True), (period, False), (reason, False)]):
+            p2 = row[i].paragraphs[0]
+            _set_spacing(p2, sa=Pt(2))
+            r = p2.add_run(val)
+            r.bold = bold; r.font.name = FONT; r.font.size = Pt(10)
+    _gap(doc)
+
+    _heading(doc, 'Misure di sicurezza tecniche e organizzative', 2, color=DARK)
+    _bullet(doc, 'Tutte le comunicazioni su HTTPS (TLS 1.2+) — dati cifrati in transito.', 'Cifratura in transito:')
+    _bullet(doc, 'Password cifrate con bcrypt (fattore di costo adattivo) — mai in chiaro.', 'Password:')
+    _bullet(doc, 'Ogni azienda opera in uno spazio logicamente separato (tenant_id su ogni record).', 'Isolamento multi-tenant:')
+    _bullet(doc, 'Accesso alle funzioni amministrative limitato tramite ruoli RBAC con permessi granulari.', 'Controllo accessi:')
+    _bullet(doc, 'MFA opzionale tramite TOTP (es. Google Authenticator) disponibile per tutti gli utenti.', 'Autenticazione a due fattori:')
+    _bullet(doc, 'Backup giornalieri automatici sull\'infrastruttura di hosting.', 'Backup:')
+    _gap(doc)
+
+    _heading(doc, 'Titolare e responsabile del trattamento', 2, color=DARK)
+    _body(doc,
+        "Il titolare del trattamento è il gestore del bar/caffetteria che ha adottato il sistema "
+        "QuickLunch. L'azienda convenzionata agisce in qualità di responsabile esterno del "
+        "trattamento per i dati dei propri dipendenti, ai sensi dell'art. 28 GDPR. "
+        "È raccomandata la stipula di un apposito DPA (Data Processing Agreement) tra le parti.")
+    _gap(doc)
 
     # ── Colophon ──────────────────────────────────────────────────────────────
     doc.add_page_break()
@@ -3479,11 +3565,9 @@ def convenzioni_abstract_docx():
     _it_m2 = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
               'luglio','agosto','settembre','ottobre','novembre','dicembre']
     _it_d2 = f'{_dt.now().day} {_it_m2[_dt.now().month-1]} {_dt.now().year}'
-    r = cp.add_run(f'QuickLunch Bar Self-Service  -  Documento generato il {_it_d2}')
-    r.font.name  = FONT
-    r.font.size  = Pt(10)
-    r.font.italic = True
-    r.font.color.rgb = _rgb(GRAY)
+    r = cp.add_run(f'QuickLunch Bar Self-Service  —  Documento generato il {_it_d2}')
+    r.font.name = FONT; r.font.size = Pt(9); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    _set_spacing(cp)
 
     buf2 = BytesIO()
     doc.save(buf2)
