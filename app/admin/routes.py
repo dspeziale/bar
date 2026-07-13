@@ -1257,6 +1257,46 @@ def banco_item_delete(iid):
     return redirect(url_for('admin.banco_items'))
 
 
+# ── BANCO: consegna pasto aziendale ──────────────────────────────────────────
+
+@bp.route('/banco/pasto-lookup')
+@staff_required
+def banco_pasto_lookup():
+    token   = request.args.get('token', '').strip().upper()
+    if not token:
+        return jsonify({'error': 'Token mancante'}), 400
+    booking = CorporateMealBooking.query.filter_by(pickup_token=token).first()
+    if not booking:
+        return jsonify({'error': 'Codice non trovato'}), 404
+    label, badge = booking.label()
+    return jsonify({
+        'id':        booking.id,
+        'status':    booking.status,
+        'status_label': label,
+        'status_badge': badge,
+        'user_name': booking.user.full_name or booking.user.username,
+        'meal_name': booking.meal.name,
+        'meal_date': booking.meal.meal_date.strftime('%d/%m/%Y'),
+        'slot':      booking.slot.time_str if booking.slot else None,
+        'quantity':  booking.quantity,
+    })
+
+
+@bp.route('/banco/pasto-consegna', methods=['POST'])
+@staff_required
+def banco_pasto_consegna():
+    bid = request.form.get('booking_id', type=int)
+    booking = CorporateMealBooking.query.get_or_404(bid)
+    if booking.status == 'booked':
+        booking.status = 'consumed'
+        db.session.commit()
+        send_telegram_to_user(
+            booking.user,
+            f'✅ Pasto ritirato: <b>{booking.meal.name}</b>. Buon appetito!')
+        return jsonify({'ok': True, 'message': f'Consegnato a {booking.user.full_name}.'})
+    return jsonify({'ok': False, 'message': f'Stato attuale: {booking.label()[0]}'}), 409
+
+
 # ── CESTO CUCINA ──────────────────────────────────────────────────────────────
 
 @bp.route('/cesto')
