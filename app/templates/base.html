@@ -1138,7 +1138,9 @@ document.querySelectorAll('#QuickLunch-sidebar-nav .nav-item.has-treeview > .nav
   'use strict';
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-  var CSRF = '{{ csrf_token() }}';
+  /* Legge il CSRF token: prima da Jinja2 (se CSRFProtect attivo), poi dal cookie */
+  var CSRF = '{{ csrf_token() if csrf_token is defined else "" }}'
+             || (document.cookie.match(/\bcsrf_token=([^;]+)/) || ['',''])[1];
   var swReg = null;
 
   /* ── Mostra il bottone campanella ──────────────────────────────────────── */
