@@ -175,6 +175,7 @@ var table = $('#usersTable').DataTable({
         var toggleTitle = d.is_active ? 'Sospendi' : 'Riattiva';
         s += '<button class="btn btn-xs btn-' + toggleClass + ' btn-toggle" data-url="' + d.toggle_url + '" title="' + toggleTitle + '"><i class="fas fa-' + toggleIcon + '"></i></button> ';
         s += '<button class="btn btn-xs btn-outline-danger btn-delete" data-username="' + $('<span>').text(d.username || d.email).html() + '" data-url="' + d.delete_url + '" title="Elimina"><i class="fas fa-trash"></i></button>';
+        s += ' <button class="btn btn-xs btn-outline-info btn-push-test" data-url="' + d.push_test_url + '" title="Invia notifica push di test"><i class="fas fa-bell"></i></button>';
         return s;
       }
     }
@@ -221,6 +222,23 @@ $(document).on('click', '.btn-delete', function() {
     confirmButtonText: 'Sì, elimina',
     cancelButtonText: 'Annulla'
   }).then(function(r) { if (r.isConfirmed) submitForm(url); });
+});
+
+$(document).on('click', '.btn-push-test', function() {
+  var btn = $(this);
+  var url = btn.data('url');
+  btn.prop('disabled', true);
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) toastr.success(d.message, 'Push Test', {timeOut: 4000});
+    else       toastr.warning(d.message, 'Push Test', {timeOut: 5000});
+  })
+  .catch(function() { toastr.error('Errore di rete.'); })
+  .finally(function() { btn.prop('disabled', false); });
 });
 </script>
 {% endblock %}

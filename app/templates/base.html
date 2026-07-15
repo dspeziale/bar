@@ -1188,13 +1188,18 @@ document.querySelectorAll('#QuickLunch-sidebar-nav .nav-item.has-treeview > .nav
   navigator.serviceWorker.register('/sw.js').then(function (reg) {
     swReg = reg;
     _updateIcon();
+  }).catch(function (err) {
+    console.error('Service Worker registrazione fallita:', err);
   });
 
   /* ── Toggle: attiva o disattiva ────────────────────────────────────────── */
   window.qlTogglePush = function () {
-    if (!swReg) return;
+    if (!swReg) {
+      toastr.warning('Service Worker non ancora pronto, riprova.');
+      return;
+    }
     if (Notification.permission === 'denied') {
-      alert('Le notifiche sono bloccate dal browser.\nAbilitale dalle impostazioni del sito.');
+      toastr.error('Le notifiche sono bloccate dal browser.<br>Abilitale dalle impostazioni del sito.', '', {timeOut: 5000, escapeHtml: false});
       return;
     }
     swReg.pushManager.getSubscription().then(function (sub) {
@@ -1208,29 +1213,40 @@ document.querySelectorAll('#QuickLunch-sidebar-nav .nav-item.has-treeview > .nav
             body: JSON.stringify({ endpoint: endpoint })
           });
           _updateIcon();
+          toastr.info('Notifiche push disattivate.');
         });
       } else {
         /* non attivo → attiva */
         fetch('/api/push/vapid-key')
-          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (!r.ok) throw new Error('Errore server VAPID key: ' + r.status);
+            return r.json();
+          })
           .then(function (d) {
-            if (!d.publicKey) return;
+            if (!d.publicKey) throw new Error('Chiave VAPID mancante nella risposta');
             return swReg.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey: _b64ToUint8(d.publicKey)
             });
           })
           .then(function (sub) {
-            if (!sub) return;
             var j = sub.toJSON();
             return fetch('/api/push/subscribe', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
               body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys })
+            }).then(function (r) {
+              if (!r.ok) throw new Error('Errore salvataggio subscription: ' + r.status);
             });
           })
-          .then(function () { _updateIcon(); })
-          .catch(function (err) { console.warn('Push subscribe error:', err); });
+          .then(function () {
+            _updateIcon();
+            toastr.success('Notifiche push attivate! Riceverai un avviso quando il tuo ordine è pronto.', '', {timeOut: 4000});
+          })
+          .catch(function (err) {
+            console.error('Push subscribe error:', err);
+            toastr.error('Impossibile attivare le notifiche: ' + err.message, '', {timeOut: 5000});
+          });
       }
     });
   };

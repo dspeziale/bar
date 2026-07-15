@@ -4,15 +4,13 @@
 self.addEventListener('push', function (e) {
     var d = {};
     try { d = e.data.json(); } catch (_) {}
-    var title = d.title || 'QuickLunch';
-    var opts  = {
-        body:  d.body  || '',
-        icon:  '/static/icon-192.png',
-        badge: '/static/icon-72.png',
-        data:  { url: d.url || '/' },
-        vibrate: [200, 100, 200]
-    };
-    e.waitUntil(self.registration.showNotification(title, opts));
+    e.waitUntil(
+        self.registration.showNotification(d.title || 'QuickLunch', {
+            body:    d.body || '',
+            data:    { url: d.url || '/' },
+            vibrate: [200, 100, 200]
+        })
+    );
 });
 
 self.addEventListener('notificationclick', function (e) {

@@ -126,38 +126,61 @@ def _get_or_create_vapid_keys():
 
 def send_web_push_to_user(user, title, body, url='/prenotazioni'):
     """Invia una notifica Web Push a tutti i browser registrati dell'utente."""
+    import os, tempfile, json
+    from flask import current_app
     try:
         from pywebpush import webpush, WebPushException
+    except ImportError:
+        current_app.logger.warning('send_web_push_to_user: pywebpush non installato')
+        return
+    try:
         from app.models import PushSubscription
         from app import db
-        import json
         priv, _ = _get_or_create_vapid_keys()
         if not priv:
+            current_app.logger.warning('send_web_push_to_user: chiavi VAPID non disponibili')
             return
         vapid_email = get_setting('company_email') or 'admin@quicklunch.local'
         subs = PushSubscription.query.filter_by(user_id=user.id).all()
-        dead = []
-        for sub in subs:
+        if not subs:
+            current_app.logger.debug(f'send_web_push_to_user: nessuna subscription per user_id={user.id}')
+            return
+        # pywebpush 2.x vuole un percorso file PEM, non la stringa PEM diretta
+        fd, key_path = tempfile.mkstemp(suffix='.pem')
+        try:
+            os.write(fd, priv.encode('utf-8'))
+            os.close(fd)
+            dead = []
+            for sub in subs:
+                try:
+                    webpush(
+                        subscription_info={
+                            'endpoint': sub.endpoint,
+                            'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}
+                        },
+                        data=json.dumps({'title': title, 'body': body, 'url': url}),
+                        vapid_private_key=key_path,
+                        vapid_claims={'sub': f'mailto:{vapid_email}'}
+                    )
+                    current_app.logger.info(f'Web push OK → user_id={user.id} sub_id={sub.id}')
+                except WebPushException as ex:
+                    current_app.logger.warning(f'WebPushException sub_id={sub.id}: {ex}')
+                    if ex.response and ex.response.status_code in (404, 410):
+                        dead.append(sub.id)
+                except Exception as ex:
+                    current_app.logger.error(f'WebPush errore sub_id={sub.id}: {ex}', exc_info=True)
+        finally:
             try:
-                webpush(
-                    subscription_info={
-                        'endpoint': sub.endpoint,
-                        'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}
-                    },
-                    data=json.dumps({'title': title, 'body': body, 'url': url}),
-                    vapid_private_key=priv,
-                    vapid_claims={'sub': f'mailto:{vapid_email}'}
-                )
-            except WebPushException as ex:
-                if ex.response and ex.response.status_code in (404, 410):
-                    dead.append(sub.id)
+                os.unlink(key_path)
+            except OSError:
+                pass
         if dead:
             PushSubscription.query.filter(
                 PushSubscription.id.in_(dead)
             ).delete(synchronize_session=False)
             db.session.commit()
-    except Exception:
-        pass  # Push non disponibile — non bloccare il flusso principale
+    except Exception as ex:
+        current_app.logger.error(f'send_web_push_to_user: errore generico: {ex}', exc_info=True)
 
 
 def telegram_poll_message(poll, base_url):

@@ -402,10 +402,11 @@ def users_dt():
             'loyalty_points': u.loyalty_points,
             'is_active':     u.is_active,
             'created_at':    u.created_at.strftime('%d/%m/%Y') if u.created_at else '',
-            'toggle_url':    url_for('admin.user_toggle', uid=u.id),
-            'topup_url':     url_for('admin.user_topup',  uid=u.id),
-            'delete_url':    url_for('admin.user_delete', uid=u.id),
-            'roles_url':     url_for('admin.user_roles_assign', uid=u.id),
+            'toggle_url':     url_for('admin.user_toggle',    uid=u.id),
+            'topup_url':      url_for('admin.user_topup',     uid=u.id),
+            'delete_url':     url_for('admin.user_delete',    uid=u.id),
+            'roles_url':      url_for('admin.user_roles_assign', uid=u.id),
+            'push_test_url':  url_for('admin.push_test',     uid=u.id),
         })
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
@@ -759,6 +760,26 @@ def order_notifica_ritiro(oid):
         url='/my-orders'
     )
     return jsonify(ok=True, message=f'Promemoria inviato a {order.user.full_name}.')
+
+
+@bp.route('/push-test/<int:uid>', methods=['POST'])
+@login_required
+def push_test(uid):
+    """Invia una notifica Web Push di test a un utente specifico (solo admin)."""
+    if not current_user.is_admin:
+        return jsonify(ok=False, message='Non autorizzato.'), 403
+    from app.models import User, PushSubscription
+    user = db.get_or_404(User, uid)
+    subs_count = PushSubscription.query.filter_by(user_id=uid).count()
+    if subs_count == 0:
+        return jsonify(ok=False, message=f'{user.full_name} non ha subscription push registrate.')
+    send_web_push_to_user(
+        user,
+        title='🔔 Test QuickLunch',
+        body='Le notifiche push funzionano correttamente!',
+        url='/prenotazioni'
+    )
+    return jsonify(ok=True, message=f'Test push inviato a {user.full_name} ({subs_count} subscription).')
 
 
 # ── Cucina / KDS ──────────────────────────────────────────────────────────────
