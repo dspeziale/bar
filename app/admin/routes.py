@@ -314,6 +314,7 @@ def clients_dt():
             'edit_url':       url_for('admin.client_edit',    uid=c.id),
             'topup_url':      url_for('admin.client_topup',   uid=c.id),
             'delete_url':     url_for('admin.client_delete',  uid=c.id),
+            'push_test_url':  url_for('admin.push_test',      uid=c.id),
         })
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 

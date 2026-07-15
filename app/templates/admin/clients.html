@@ -350,6 +350,7 @@ var table = $('#clientsTable').DataTable({
           s += '<button class="btn btn-xs btn-warning btn-toggle-client" data-id="' + d.id + '" title="Sospendi" onclick="submitForm(\'' + d.toggle_url + '\')"><i class="fas fa-ban"></i></button> ';
         }
         s += '<button class="btn btn-xs btn-danger btn-delete-client" data-id="' + d.id + '" data-name="' + $('<span>').text(d.full_name).html() + '" data-url="' + d.delete_url + '" title="Elimina"><i class="fas fa-trash"></i></button>';
+        s += ' <button class="btn btn-xs btn-outline-info btn-push-test" data-url="' + d.push_test_url + '" title="Invia notifica push di test"><i class="fas fa-bell"></i></button>';
         return s;
       }
     }
@@ -395,6 +396,23 @@ $(document).on('click', '.btn-edit-client', function() {
   $('#editOverdraft').val(parseFloat(d.wallet_overdraft).toFixed(2));
   $('#sharedEditModal input[name="password"]').val('');
   $('#sharedEditModal').modal('show');
+});
+
+/* Test Push */
+$(document).on('click', '.btn-push-test', function() {
+  var btn = $(this);
+  btn.prop('disabled', true);
+  fetch(btn.data('url'), {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.ok) toastr.success(d.message, 'Push Test', {timeOut: 4000});
+    else       toastr.warning(d.message, 'Push Test', {timeOut: 5000});
+  })
+  .catch(function() { toastr.error('Errore di rete.'); })
+  .finally(function() { btn.prop('disabled', false); });
 });
 
 /* Elimina */
