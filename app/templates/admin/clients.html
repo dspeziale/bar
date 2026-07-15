@@ -399,6 +399,10 @@ $(document).on('click', '.btn-edit-client', function() {
 });
 
 /* Test Push */
+function _pushToast(type, msg) {
+  if (typeof toastr !== 'undefined') toastr[type](msg, 'Push Test', {timeOut: 4000});
+  else alert('[Push Test] ' + msg);
+}
 $(document).on('click', '.btn-push-test', function() {
   var btn = $(this);
   btn.prop('disabled', true);
@@ -408,10 +412,9 @@ $(document).on('click', '.btn-push-test', function() {
   })
   .then(function(r) { return r.json(); })
   .then(function(d) {
-    if (d.ok) toastr.success(d.message, 'Push Test', {timeOut: 4000});
-    else       toastr.warning(d.message, 'Push Test', {timeOut: 5000});
+    _pushToast(d.ok ? 'success' : 'warning', d.message);
   })
-  .catch(function() { toastr.error('Errore di rete.'); })
+  .catch(function(e) { _pushToast('error', 'Errore di rete.'); })
   .finally(function() { btn.prop('disabled', false); });
 });
 
