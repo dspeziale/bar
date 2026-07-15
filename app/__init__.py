@@ -370,6 +370,39 @@ def _migrate_tenant_columns():
     # Barcode prodotto (EAN-13/UPC per scansione lattine al cesto)
     _ensure('products', 'barcode', "VARCHAR(32)")
 
+    # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
+    # indipendentemente dall'ordine degli import dei modelli)
+    if 'push_subscriptions' not in existing_tables:
+        try:
+            if is_pg:
+                ddl = """
+                    CREATE TABLE IF NOT EXISTS push_subscriptions (
+                        id         SERIAL PRIMARY KEY,
+                        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        endpoint   TEXT    NOT NULL UNIQUE,
+                        p256dh     VARCHAR(256) NOT NULL,
+                        auth       VARCHAR(64)  NOT NULL,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """
+            else:
+                ddl = """
+                    CREATE TABLE IF NOT EXISTS push_subscriptions (
+                        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        endpoint   TEXT    NOT NULL UNIQUE,
+                        p256dh     VARCHAR(256) NOT NULL,
+                        auth       VARCHAR(64)  NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+            with db.engine.connect() as conn:
+                conn.execute(text(ddl))
+                conn.commit()
+            print('[migration] created table push_subscriptions')
+        except Exception as exc:
+            print(f'[migration] push_subscriptions: {exc}')
+
 
 def _seed_defaults():
     from app.models import (User, Category, TimeSlot, Table,

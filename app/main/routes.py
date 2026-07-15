@@ -1400,23 +1400,31 @@ def push_vapid_key():
 @login_required
 def push_subscribe():
     """Registra la sottoscrizione push del browser corrente."""
+    from flask import current_app
     data     = request.get_json(silent=True) or {}
     endpoint = data.get('endpoint', '').strip()
     keys     = data.get('keys', {})
     p256dh   = keys.get('p256dh', '').strip()
     auth     = keys.get('auth', '').strip()
     if not endpoint or not p256dh or not auth:
+        current_app.logger.warning(f'push_subscribe: dati incompleti user={current_user.id}')
         return jsonify({'ok': False, 'error': 'Dati incompleti'}), 400
-    existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
-    if not existing:
-        db.session.add(PushSubscription(
-            user_id=current_user.id,
-            endpoint=endpoint,
-            p256dh=p256dh,
-            auth=auth
-        ))
-        db.session.commit()
-    return jsonify({'ok': True})
+    try:
+        existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
+        if not existing:
+            db.session.add(PushSubscription(
+                user_id=current_user.id,
+                endpoint=endpoint,
+                p256dh=p256dh,
+                auth=auth
+            ))
+            db.session.commit()
+            current_app.logger.info(f'push_subscribe: nuova subscription user={current_user.id}')
+        return jsonify({'ok': True})
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.error(f'push_subscribe: ERRORE user={current_user.id}: {exc}', exc_info=True)
+        return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
 @bp.route('/api/push/unsubscribe', methods=['POST'])

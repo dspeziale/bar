@@ -1201,7 +1201,10 @@ document.querySelectorAll('#QuickLunch-sidebar-nav .nav-item.has-treeview > .nav
       return;
     }
     if (Notification.permission === 'denied') {
-      toastr.error('Le notifiche sono bloccate dal browser.<br>Abilitale dalle impostazioni del sito.', '', {timeOut: 5000, escapeHtml: false});
+      toastr.error(
+        'Notifiche bloccate.<br><small>Su Chrome: tocca il lucchetto nella barra dell\'indirizzo → Autorizzazioni → Notifiche → Consenti, poi ricarica.</small>',
+        '', {timeOut: 8000, escapeHtml: false, closeButton: true}
+      );
       return;
     }
     swReg.pushManager.getSubscription().then(function (sub) {
