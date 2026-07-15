@@ -101,11 +101,12 @@
             <th>Prodotti richiesti</th>
             <th>Note</th>
             <th>Stato</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
         {% for p in plist %}
-        <tr>
+        <tr id="row-pren-{{ p.id }}">
           <td><code>{{ p.code }}</code></td>
           <td>{{ p.user.full_name }}</td>
           <td>{{ p.slot.time_str if p.slot else '—' }}</td>
@@ -117,11 +118,21 @@
             {% endfor %}
           </td>
           <td><small class="text-muted">{{ p.notes or '—' }}</small></td>
-          <td>
+          <td id="stato-pren-{{ p.id }}">
             {% if p.status == 'pending' %}
               <span class="badge badge-warning">In attesa</span>
             {% elif p.status == 'confirmed' %}
-              <span class="badge badge-success">Confermata</span>
+              <span class="badge badge-info">Confermata</span>
+            {% elif p.status == 'ready' %}
+              <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Pronto</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.status in ('pending', 'confirmed') %}
+            <button class="btn btn-sm btn-success btn-pronto" data-pid="{{ p.id }}"
+                    title="Segna pronto e notifica il cliente via Telegram">
+              <i class="fas fa-bell mr-1"></i>Pronto — Notifica
+            </button>
             {% endif %}
           </td>
         </tr>
@@ -134,4 +145,41 @@
 </div>
 {% endfor %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.btn-pronto').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var pid = this.dataset.pid;
+    var self = this;
+    self.disabled = true;
+    self.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Invio…';
+
+    fetch('/admin/cucina/prenotazioni/' + pid + '/pronto', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() }}', 'Content-Type': 'application/json' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        document.getElementById('stato-pren-' + pid).innerHTML =
+          '<span class="badge badge-success"><i class="fas fa-check mr-1"></i>Pronto</span>';
+        self.outerHTML =
+          '<span class="text-success" style="font-size:.85rem;"><i class="fas fa-paper-plane mr-1"></i>Notifica inviata</span>';
+        toastr.success('Notifica inviata a Telegram!', '', {timeOut: 3000});
+      } else {
+        self.disabled = false;
+        self.innerHTML = '<i class="fas fa-bell mr-1"></i>Pronto — Notifica';
+        toastr.error(data.message || 'Errore.', '', {timeOut: 4000});
+      }
+    })
+    .catch(function() {
+      self.disabled = false;
+      self.innerHTML = '<i class="fas fa-bell mr-1"></i>Pronto — Notifica';
+      toastr.error('Errore di rete.', '', {timeOut: 4000});
+    });
+  });
+});
+</script>
 {% endblock %}

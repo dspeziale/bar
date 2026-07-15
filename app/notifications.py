@@ -87,6 +87,79 @@ def send_telegram_to_user(user, text):
         return False, str(exc)
 
 
+# ── Web Push ──────────────────────────────────────────────────────────────────
+
+def _get_or_create_vapid_keys():
+    """Restituisce (private_pem, public_b64url). Genera le chiavi VAPID al primo utilizzo."""
+    from app.models import AppSetting
+    from app import db
+    priv = get_setting('vapid_private_key')
+    pub  = get_setting('vapid_public_key')
+    if priv and pub:
+        return priv, pub
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import serialization
+        import base64
+        pk = ec.generate_private_key(ec.SECP256R1())
+        priv_pem = pk.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.TraditionalOpenSSL,
+            serialization.NoEncryption()
+        ).decode()
+        pub_bytes = pk.public_key().public_bytes(
+            serialization.Encoding.X962,
+            serialization.PublicFormat.UncompressedPoint
+        )
+        pub_b64 = base64.urlsafe_b64encode(pub_bytes).rstrip(b'=').decode()
+        for key, val in [('vapid_private_key', priv_pem), ('vapid_public_key', pub_b64)]:
+            s = AppSetting.query.filter_by(key=key).first()
+            if s:
+                s.value = val
+            else:
+                db.session.add(AppSetting(key=key, value=val))
+        db.session.commit()
+        return priv_pem, pub_b64
+    except Exception:
+        return None, None
+
+
+def send_web_push_to_user(user, title, body, url='/prenotazioni'):
+    """Invia una notifica Web Push a tutti i browser registrati dell'utente."""
+    try:
+        from pywebpush import webpush, WebPushException
+        from app.models import PushSubscription
+        from app import db
+        import json
+        priv, _ = _get_or_create_vapid_keys()
+        if not priv:
+            return
+        vapid_email = get_setting('company_email') or 'admin@quicklunch.local'
+        subs = PushSubscription.query.filter_by(user_id=user.id).all()
+        dead = []
+        for sub in subs:
+            try:
+                webpush(
+                    subscription_info={
+                        'endpoint': sub.endpoint,
+                        'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}
+                    },
+                    data=json.dumps({'title': title, 'body': body, 'url': url}),
+                    vapid_private_key=priv,
+                    vapid_claims={'sub': f'mailto:{vapid_email}'}
+                )
+            except WebPushException as ex:
+                if ex.response and ex.response.status_code in (404, 410):
+                    dead.append(sub.id)
+        if dead:
+            PushSubscription.query.filter(
+                PushSubscription.id.in_(dead)
+            ).delete(synchronize_session=False)
+            db.session.commit()
+    except Exception:
+        pass  # Push non disponibile — non bloccare il flusso principale
+
+
 def telegram_poll_message(poll, base_url):
     """Formatta il messaggio Telegram per un sondaggio."""
     choices = '\n'.join(

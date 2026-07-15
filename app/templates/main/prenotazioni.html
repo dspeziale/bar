@@ -55,13 +55,17 @@
           {% if p.status == 'pending' %}
             <span class="badge badge-warning">In attesa</span>
           {% elif p.status == 'confirmed' %}
-            <span class="badge badge-success">Confermata</span>
+            <span class="badge badge-info">Confermata</span>
+          {% elif p.status == 'ready' %}
+            <span class="badge badge-success"><i class="fas fa-bell mr-1"></i>Pronto — vieni a ritirare!</span>
+          {% elif p.status == 'cancelled' %}
+            <span class="badge badge-secondary">Cancellata</span>
           {% else %}
-            <span class="badge badge-secondary">{{ p.status }}</span>
+            <span class="badge badge-light border">{{ p.status }}</span>
           {% endif %}
         </td>
         <td>
-          {% if p.status != 'cancelled' and p.pickup_date > today %}
+          {% if p.status in ('pending', 'confirmed') and p.pickup_date > today %}
           <form method="POST" action="{{ url_for('main.prenotazioni_cancella', pid=p.id) }}"
                 onsubmit="return confirm('Cancellare la prenotazione {{ p.code }}?\nVerrà rimborsato {{ '%.2f'|format(p.total_price) }} €.')">
             <button class="btn btn-xs btn-outline-danger" title="Cancella">

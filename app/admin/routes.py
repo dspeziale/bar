@@ -17,7 +17,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         BancoItem, BancoSession, PrepLabel,
                         Prenotazione, PrenotazioneItem,
                         ALLERGENS)
-from app.notifications import (send_telegram, send_telegram_to_user,
+from app.notifications import (send_telegram, send_telegram_to_user, send_web_push_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
                                 telegram_poll_message, email_poll_html, get_setting)
 
@@ -1454,6 +1454,46 @@ def cucina_prenotazioni():
     return render_template('admin/cucina_prenotazioni.html',
                            by_date=by_date, fabbisogno=fabbisogno,
                            today=today, cesto_qty=cesto_qty)
+
+
+@bp.route('/cucina/prenotazioni/<int:pid>/pronto', methods=['POST'])
+@require_permission('manage_cesto')
+def cucina_prenotazione_pronto(pid):
+    """Marca la prenotazione come pronta e notifica il cliente via Telegram."""
+    tid  = _active_tenant_id()
+    pren = Prenotazione.query.filter_by(id=pid, tenant_id=tid).first_or_404()
+    if pren.status not in ('pending', 'confirmed'):
+        return jsonify(ok=False, message='Stato non valido per questa operazione.'), 400
+
+    pren.status = 'ready'
+    db.session.commit()
+
+    prodotti_str = ', '.join(
+        f"{it.quantity}× {it.product.name}" for it in pren.items
+    )
+    slot_str = pren.slot.time_str if pren.slot else ''
+    msg_utente = (
+        f'🔔 <b>Il tuo ordine è pronto!</b>\n'
+        f'👤 {pren.user.full_name}\n'
+        f'🥗 {prodotti_str}\n'
+        + (f'⏰ Ritiro alle {slot_str}\n' if slot_str else '')
+        + f'📌 Codice: <code>{pren.code}</code>\n\n'
+        f'Presentati al banco con il codice per ritirare il tuo pranzo.'
+    )
+    send_telegram_to_user(pren.user, msg_utente)
+    send_web_push_to_user(
+        pren.user,
+        title='🍽️ Il tuo ordine è pronto!',
+        body=f'{prodotti_str} • Presentati al banco con il codice {pren.code}',
+        url='/prenotazioni'
+    )
+
+    send_telegram(
+        f'✅ Ordine pronto — notifica inviata a {pren.user.full_name}\n'
+        f'📌 {pren.code}  |  {prodotti_str}'
+    )
+
+    return jsonify(ok=True, message='Notifica inviata al cliente.')
 
 
 # ── Tavoli ────────────────────────────────────────────────────────────────────
@@ -3129,7 +3169,7 @@ def convenzioni_abstract_docx():
         h = h.lstrip('#')
         return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
-    FONT   = 'Calibri'
+    FONT   = 'PT Sans Narrow'
     LS     = Pt(13)   # interlinea compatta uniforme
     SA     = Pt(3)    # spazio dopo paragrafo ridotto
     SB     = Pt(0)    # spazio prima paragrafo
@@ -3147,13 +3187,39 @@ def convenzioni_abstract_docx():
         pf.space_after   = sa
         pf.space_before  = sb
 
+    def _fnt(run, fname, size_pt=None):
+        """Imposta il font via XML diretto, eliminando i riferimenti al tema."""
+        rPr = run._r.get_or_add_rPr()
+        rFonts = rPr.find(qn('w:rFonts'))
+        if rFonts is None:
+            rFonts = OxmlElement('w:rFonts')
+            rPr.insert(0, rFonts)
+        for attr in ('w:ascii', 'w:hAnsi', 'w:eastAsia', 'w:cs'):
+            rFonts.set(qn(attr), fname)
+        for attr in ('w:asciiTheme', 'w:hAnsiTheme', 'w:eastAsiaTheme', 'w:cstheme'):
+            rFonts.attrib.pop(qn(attr), None)
+        if size_pt is not None:
+            run.font.size = size_pt
+
+    def _fix_style_font(style, fname):
+        """Imposta il font sul rPr dello stile tramite XML."""
+        rPr = style.element.get_or_add_rPr()
+        rFonts = rPr.find(qn('w:rFonts'))
+        if rFonts is None:
+            rFonts = OxmlElement('w:rFonts')
+            rPr.insert(0, rFonts)
+        for attr in ('w:ascii', 'w:hAnsi', 'w:eastAsia', 'w:cs'):
+            rFonts.set(qn(attr), fname)
+        for attr in ('w:asciiTheme', 'w:hAnsiTheme', 'w:eastAsiaTheme', 'w:cstheme'):
+            rFonts.attrib.pop(qn(attr), None)
+
     def _heading(doc, text, level=1, color=BRAND):
         p = doc.add_heading(text, level)
         pf = p.paragraph_format
         pf.space_before = Pt(6) if level == 1 else Pt(4)
         pf.space_after  = Pt(2)
         for run in p.runs:
-            run.font.name      = FONT
+            _fnt(run, FONT)
             run.font.color.rgb = _rgb(color)
         return p
 
@@ -3161,8 +3227,7 @@ def convenzioni_abstract_docx():
         p = doc.add_paragraph(text)
         _set_spacing(p)
         for run in p.runs:
-            run.font.name = FONT
-            run.font.size = Pt(11)
+            _fnt(run, FONT, Pt(11))
         return p
 
     def _bullet(doc, text, bold_prefix=None):
@@ -3171,12 +3236,10 @@ def convenzioni_abstract_docx():
         if bold_prefix:
             r = p.add_run(bold_prefix + ' ')
             r.bold = True
-            r.font.name      = FONT
-            r.font.size      = Pt(11)
+            _fnt(r, FONT, Pt(11))
             r.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(text)
-        r2.font.name = FONT
-        r2.font.size = Pt(11)
+        _fnt(r2, FONT, Pt(11))
 
     def _step(doc, num, title, body):
         p = doc.add_paragraph()
@@ -3184,12 +3247,10 @@ def convenzioni_abstract_docx():
         p.paragraph_format.left_indent = Inches(0.15)
         r1 = p.add_run(f'{num}. {title}  ')
         r1.bold = True
-        r1.font.name      = FONT
-        r1.font.size      = Pt(11)
+        _fnt(r1, FONT, Pt(11))
         r1.font.color.rgb = _rgb(BRAND)
         r2 = p.add_run(body)
-        r2.font.name = FONT
-        r2.font.size = Pt(11)
+        _fnt(r2, FONT, Pt(11))
 
     def _gap(doc, h=Pt(4)):
         p = doc.add_paragraph()
@@ -3218,12 +3279,20 @@ def convenzioni_abstract_docx():
 
     doc = Document()
 
-    # Interlinea compatta sul stile Normal di default
-    normal = doc.styles['Normal']
-    normal.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    normal.paragraph_format.line_spacing  = LS
-    normal.paragraph_format.space_after   = SA
-    normal.paragraph_format.space_before  = SB
+    # Font + interlinea su tutti gli stili principali (via XML per bypassare il tema)
+    for sname in ('Normal', 'Heading 1', 'Heading 2', 'Heading 3',
+                  'List Bullet', 'List Bullet 2'):
+        try:
+            st = doc.styles[sname]
+            _fix_style_font(st, FONT)
+            st.font.name = FONT
+            if sname == 'Normal':
+                st.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+                st.paragraph_format.line_spacing  = LS
+                st.paragraph_format.space_after   = SA
+                st.paragraph_format.space_before  = SB
+        except Exception:
+            pass
 
     for section in doc.sections:
         section.top_margin    = Inches(0.9)
@@ -3237,29 +3306,29 @@ def convenzioni_abstract_docx():
     tp = doc.add_paragraph()
     tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = tp.add_run('QuickLunch — Bar Self-Service')
-    r.font.name = FONT; r.font.size = Pt(26); r.font.bold = True; r.font.color.rgb = _rgb(BRAND)
+    _fnt(r, FONT, Pt(26)); r.bold = True; r.font.color.rgb = _rgb(BRAND)
     _set_spacing(tp, sa=Pt(4))
     sp = doc.add_paragraph()
     sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = sp.add_run('Modulo Pasti Aziendali')
-    r.font.name = FONT; r.font.size = Pt(18); r.font.color.rgb = _rgb(DARK)
+    _fnt(r, FONT, Pt(18)); r.font.color.rgb = _rgb(DARK)
     _set_spacing(sp, sa=Pt(6))
     dp = doc.add_paragraph()
     dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = dp.add_run('Documento descrittivo per le aziende convenzionate')
-    r.font.name = FONT; r.font.size = Pt(12); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    _fnt(r, FONT, Pt(12)); r.italic = True; r.font.color.rgb = _rgb(GRAY)
     _set_spacing(dp, sa=Pt(8))
     datp = doc.add_paragraph()
     datp.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = datp.add_run(_it_mese_anno(_dt.now()))
-    r.font.name = FONT; r.font.size = Pt(11); r.font.color.rgb = _rgb(GRAY)
+    _fnt(r, FONT, Pt(11)); r.font.color.rgb = _rgb(GRAY)
     _set_spacing(datp)
     if _co_name:
         _gap(doc, Pt(6))
         cop = doc.add_paragraph()
         cop.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = cop.add_run(_co_name)
-        r.font.name = FONT; r.font.size = Pt(11); r.bold = True
+        _fnt(r, FONT, Pt(11)); r.bold = True
         _set_spacing(cop, sa=Pt(2))
         co_details = []
         if _co_address: co_details.append(_co_address)
@@ -3271,7 +3340,7 @@ def convenzioni_abstract_docx():
             co_dp = doc.add_paragraph()
             co_dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
             r = co_dp.add_run('  |  '.join(co_details))
-            r.font.name = FONT; r.font.size = Pt(9); r.font.color.rgb = _rgb(GRAY)
+            _fnt(r, FONT, Pt(9)); r.font.color.rgb = _rgb(GRAY)
             _set_spacing(co_dp)
     doc.add_page_break()
 
@@ -3385,7 +3454,7 @@ def convenzioni_abstract_docx():
     tbl_s.style = 'Table Grid'
     for i, h in enumerate(['Stato', 'Descrizione', 'Transizione successiva']):
         r = tbl_s.rows[0].cells[i].paragraphs[0].add_run(h)
-        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
+        r.bold = True; _fnt(r, FONT, Pt(10))
     for stato, descr, trans in [
         ('Prenotato',
          'Prenotazione attiva. Codice di ritiro visibile al dipendente.',
@@ -3402,7 +3471,7 @@ def convenzioni_abstract_docx():
             p2 = row[i].paragraphs[0]
             _set_spacing(p2, sa=Pt(2))
             r = p2.add_run(val)
-            r.font.name = FONT; r.font.size = Pt(10)
+            _fnt(r, FONT, Pt(10))
             if i == 0: r.bold = True
     _gap(doc)
 
@@ -3415,7 +3484,7 @@ def convenzioni_abstract_docx():
     h0, h1 = tbl.rows[0].cells
     for cell, txt in [(h0, 'Parametro'), (h1, 'Descrizione')]:
         r = cell.paragraphs[0].add_run(txt)
-        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
+        r.bold = True; _fnt(r, FONT, Pt(10))
     for pname, pdesc in [
         ('Nome azienda',           "Ragione sociale dell'azienda convenzionata."),
         ('Email di contatto',      'Referente aziendale per le comunicazioni.'),
@@ -3429,7 +3498,7 @@ def convenzioni_abstract_docx():
             p2 = cell.paragraphs[0]
             _set_spacing(p2, sa=Pt(2))
             r = p2.add_run(txt)
-            r.bold = bold; r.font.name = FONT; r.font.size = Pt(10)
+            r.bold = bold; _fnt(r, FONT, Pt(10))
     _gap(doc)
 
     # ── 6. Report ─────────────────────────────────────────────────────────────
@@ -3512,7 +3581,7 @@ def convenzioni_abstract_docx():
     tbl_g.style = 'Table Grid'
     for i, h in enumerate(['Categoria dato', 'Periodo di conservazione', 'Motivazione']):
         r = tbl_g.rows[0].cells[i].paragraphs[0].add_run(h)
-        r.bold = True; r.font.name = FONT; r.font.size = Pt(10)
+        r.bold = True; _fnt(r, FONT, Pt(10))
     for cat, period, reason in [
         ('Prenotazioni pasto e storico ordini',
          '5 anni',
@@ -3538,7 +3607,7 @@ def convenzioni_abstract_docx():
             p2 = row[i].paragraphs[0]
             _set_spacing(p2, sa=Pt(2))
             r = p2.add_run(val)
-            r.bold = bold; r.font.name = FONT; r.font.size = Pt(10)
+            r.bold = bold; _fnt(r, FONT, Pt(10))
     _gap(doc)
 
     _heading(doc, 'Misure di sicurezza tecniche e organizzative', 2, color=DARK)
@@ -3566,7 +3635,7 @@ def convenzioni_abstract_docx():
               'luglio','agosto','settembre','ottobre','novembre','dicembre']
     _it_d2 = f'{_dt.now().day} {_it_m2[_dt.now().month-1]} {_dt.now().year}'
     r = cp.add_run(f'QuickLunch Bar Self-Service  —  Documento generato il {_it_d2}')
-    r.font.name = FONT; r.font.size = Pt(9); r.font.italic = True; r.font.color.rgb = _rgb(GRAY)
+    _fnt(r, FONT, Pt(9)); r.italic = True; r.font.color.rgb = _rgb(GRAY)
     _set_spacing(cp)
 
     buf2 = BytesIO()

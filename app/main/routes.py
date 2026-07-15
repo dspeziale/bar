@@ -5,14 +5,15 @@ from flask import render_template, redirect, url_for, flash, request, session, j
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
-from app.notifications import send_telegram, send_telegram_to_user, get_numeric_setting
+from app.notifications import (send_telegram, send_telegram_to_user,
+                               get_numeric_setting, _get_or_create_vapid_keys)
 from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Transaction, DailyStock, IngredientCategory, Ingredient,
                         CustomOrderItem, CustomOrderItemIngredient,
                         Table, TableReservation, Poll, PollVote, PollChoice,
                         DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
                         CorporateMembership, PrepLabel, User,
-                        Prenotazione, PrenotazioneItem)
+                        Prenotazione, PrenotazioneItem, PushSubscription)
 from config import Config
 
 
@@ -1355,14 +1356,74 @@ def prenotazioni_cancella(pid):
     if pren.status == 'cancelled':
         flash('Prenotazione già cancellata.', 'warning')
         return redirect(url_for('main.prenotazioni_list'))
+    if pren.status == 'ready':
+        flash('Il tuo ordine è già pronto per il ritiro, non è più possibile cancellarlo.', 'danger')
+        return redirect(url_for('main.prenotazioni_list'))
     if pren.pickup_date <= date.today():
         flash('Non è possibile cancellare una prenotazione del giorno stesso o passata.', 'danger')
         return redirect(url_for('main.prenotazioni_list'))
     pren.status = 'cancelled'
-    # Rimborso wallet
     if pren.total_price and pren.total_price > 0:
         current_user.credit_wallet(pren.total_price, f'Rimborso {pren.code}')
     db.session.commit()
     flash(f'Prenotazione {pren.code} cancellata. Rimborso di {pren.total_price:.2f} € accreditato.', 'info')
     return redirect(url_for('main.prenotazioni_list'))
+
+
+# ── Web Push ──────────────────────────────────────────────────────────────────
+
+@bp.route('/sw.js')
+def service_worker():
+    """Serve il Service Worker dalla radice del sito (scope obbligatorio per Push API)."""
+    from flask import current_app, send_from_directory, make_response
+    resp = make_response(send_from_directory(current_app.static_folder, 'sw.js'))
+    resp.headers['Content-Type']  = 'application/javascript'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+
+@bp.route('/api/push/vapid-key')
+def push_vapid_key():
+    """Restituisce la chiave pubblica VAPID per la sottoscrizione push del browser."""
+    _, pub = _get_or_create_vapid_keys()
+    if not pub:
+        return jsonify({'error': 'Web Push non disponibile'}), 503
+    return jsonify({'publicKey': pub})
+
+
+@bp.route('/api/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    """Registra la sottoscrizione push del browser corrente."""
+    data     = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint', '').strip()
+    keys     = data.get('keys', {})
+    p256dh   = keys.get('p256dh', '').strip()
+    auth     = keys.get('auth', '').strip()
+    if not endpoint or not p256dh or not auth:
+        return jsonify({'ok': False, 'error': 'Dati incompleti'}), 400
+    existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
+    if not existing:
+        db.session.add(PushSubscription(
+            user_id=current_user.id,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth
+        ))
+        db.session.commit()
+    return jsonify({'ok': True})
+
+
+@bp.route('/api/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    """Rimuove la sottoscrizione push del browser corrente."""
+    data     = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint', '').strip()
+    if endpoint:
+        PushSubscription.query.filter_by(
+            user_id=current_user.id, endpoint=endpoint
+        ).delete()
+        db.session.commit()
+    return jsonify({'ok': True})
 
