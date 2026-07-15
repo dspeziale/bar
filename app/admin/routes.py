@@ -710,10 +710,19 @@ def order_status(oid):
         send_telegram(
             f'🔔 Ordine <b>{order_ref}</b> PRONTO — {order.user.full_name}'
         )
+        _items_str = ', '.join(
+            f'{i.quantity}× {i.product.name}' for i in order.items
+        ) or 'panino custom'
         send_telegram_to_user(
             order.user,
             f'🔔 Il tuo ordine <b>{order_ref}</b> è <b>PRONTO</b> per il ritiro!\n'
             f'Vieni a ritirarlo entro qualche minuto.'
+        )
+        send_web_push_to_user(
+            order.user,
+            title='🔔 Il tuo ordine è pronto!',
+            body=f'{order_ref} • {_items_str} — Vieni al banco!',
+            url='/my-orders'
         )
     elif new_status == 'cancelled':
         send_telegram_to_user(
@@ -725,6 +734,31 @@ def order_status(oid):
     if 'cucina' in referer:
         return redirect(url_for('admin.cucina'))
     return redirect(url_for('admin.orders'))
+
+
+@bp.route('/ordini/<int:oid>/notifica-ritiro', methods=['POST'])
+@require_permission('manage_orders')
+def order_notifica_ritiro(oid):
+    """Invia un promemoria (Telegram + Web Push) al cliente per ritirare l'ordine pronto."""
+    order = db.get_or_404(Order, oid)
+    if order.status != 'ready':
+        return jsonify(ok=False, message='Ordine non in stato pronto.'), 400
+    order_ref  = order.order_code or f'#{order.id}'
+    items_str  = ', '.join(f'{i.quantity}× {i.product.name}' for i in order.items)
+    if order.custom_items:
+        items_str = (items_str + ', ' if items_str else '') + 'panino custom'
+    send_telegram_to_user(
+        order.user,
+        f'⏰ <b>Promemoria</b>: il tuo ordine <b>{order_ref}</b> è ancora al banco!\n'
+        f'🥗 {items_str}\nVieni a ritirarlo.'
+    )
+    send_web_push_to_user(
+        order.user,
+        title='⏰ Il tuo ordine ti aspetta!',
+        body=f'{order_ref} • {items_str}',
+        url='/my-orders'
+    )
+    return jsonify(ok=True, message=f'Promemoria inviato a {order.user.full_name}.')
 
 
 # ── Cucina / KDS ──────────────────────────────────────────────────────────────

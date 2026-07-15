@@ -1375,10 +1375,15 @@ def prenotazioni_cancella(pid):
 @bp.route('/sw.js')
 def service_worker():
     """Serve il Service Worker dalla radice del sito (scope obbligatorio per Push API)."""
-    from flask import current_app, send_from_directory, make_response
-    resp = make_response(send_from_directory(current_app.static_folder, 'sw.js'))
-    resp.headers['Content-Type']  = 'application/javascript'
-    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    from flask import current_app, make_response
+    import os
+    sw_path = os.path.join(current_app.static_folder, 'sw.js')
+    with open(sw_path, encoding='utf-8') as f:
+        content = f.read()
+    resp = make_response(content)
+    resp.headers['Content-Type']        = 'application/javascript'
+    resp.headers['Cache-Control']       = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
     return resp
 
 

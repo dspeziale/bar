@@ -267,13 +267,19 @@
             {% endfor %}
           </ul>
         </div>
-        <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
-          <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+        <div class="card-footer py-2 px-3 d-flex flex-wrap" style="gap:.4rem;">
+          <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;min-width:120px;">
             <input type="hidden" name="status" value="completed">
             <button type="submit" class="kds-action-btn" style="background:#7f8c8d;color:#fff;">
               <i class="fas fa-check-double mr-1"></i>Consegnato
             </button>
           </form>
+          <button class="btn btn-sm btn-warning btn-notifica-ritiro"
+                  data-oid="{{ o.id }}"
+                  title="Invia promemoria al cliente (Telegram + Push)"
+                  style="min-width:38px;">
+            <i class="fas fa-bell"></i>
+          </button>
           <a href="{{ url_for('admin.order_slip', oid=o.id) }}" target="_blank"
              class="btn btn-sm btn-outline-secondary" title="Stampa scontrino"
              style="min-width:38px;display:flex;align-items:center;justify-content:center;">
@@ -335,5 +341,43 @@ if (stored.length > 0) {
     } catch(e) {}
   }
 }
+
+// Bottone "Notifica cliente" nella colonna Pronti per ritiro
+document.querySelectorAll('.btn-notifica-ritiro').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var oid  = this.dataset.oid;
+    var self = this;
+    self.disabled = true;
+    self.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    fetch('/admin/ordini/' + oid + '/notifica-ritiro', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}',
+                 'Content-Type': 'application/json' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        self.innerHTML = '<i class="fas fa-check"></i>';
+        self.style.background = '#27ae60';
+        self.style.color = '#fff';
+        self.title = d.message;
+        setTimeout(function() {
+          self.disabled = false;
+          self.innerHTML = '<i class="fas fa-bell"></i>';
+          self.style.background = '';
+          self.style.color = '';
+        }, 4000);
+      } else {
+        self.disabled = false;
+        self.innerHTML = '<i class="fas fa-bell"></i>';
+        alert(d.message || 'Errore invio notifica.');
+      }
+    })
+    .catch(function() {
+      self.disabled = false;
+      self.innerHTML = '<i class="fas fa-bell"></i>';
+    });
+  });
+});
 </script>
 {% endblock %}
