@@ -10,3 +10,6 @@ Display Cucina KDS	cucina@bar.local	Cucina2024!	cuoco
 Tablet Staff Sala	sala@bar.local	Sala2024!	manager
 Smartphone Cliente 1	cliente1@bar.local	Cliente1!	utente · wallet 30€
 Smartphone Cliente 2	cliente2@bar.local	Cliente2!	utente · wallet 15€
+
+
+ciao
