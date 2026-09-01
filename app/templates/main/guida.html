@@ -314,14 +314,14 @@
   <section id="g-tenant" class="guida-section card card-outline card-info mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-sitemap mr-2 text-info"></i>Tenant</h2></div>
     <div class="card-body">
-      <p>Da <a href="{{ url_for('admin.tenants') }}">Tenant</a> gestisci le diverse attività indipendenti ospitate sulla stessa piattaforma (multi-tenant): ognuna con i propri prodotti, utenti e dati.</p>
+      <p>La piattaforma è multi-tenant: ospita attività indipendenti, ognuna con i propri prodotti, utenti e dati. I clienti di ogni attività si registrano dal link dedicato del tenant.</p>
     </div>
   </section>
 
   <section id="g-demo" class="guida-section card card-outline card-secondary mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-sync-alt mr-2"></i>Dati demo</h2></div>
     <div class="card-body">
-      <p>Il pulsante <strong>Reset &amp; Carica Demo</strong> nella pagina Tenant elimina prima tutti i dati dei 3 tenant demo e poi li ricrea da zero (clienti, prodotti, ordini di esempio). Non tocca mai i tenant reali.</p>
+      <p>Il pulsante <strong>Carica Demo Completa</strong> nella pagina <a href="{{ url_for('admin.maintenance') }}">Manutenzione</a> elimina prima tutti i dati dei 3 tenant demo e poi li ricrea da zero (clienti, prodotti, ordini di esempio). Non tocca mai i tenant reali.</p>
     </div>
   </section>
   {% endif %}
