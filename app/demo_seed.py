@@ -894,25 +894,39 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
     Table.query.filter(
         Table.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 
-    # etichette del cesto e prenotazioni future: puntano a prodotti e utenti,
-    # quindi vanno rimosse prima del catalogo (altrimenti la delete dei
-    # prodotti viola prep_labels_product_id_fkey / prenotazione_items).
-    PrepLabel.query.filter(
-        PrepLabel.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
-    pren_ids = [r[0] for r in db.session.query(Prenotazione.id).filter(
-        Prenotazione.tenant_id.in_(tenant_ids)).all()]
+    # Etichette del cesto e prenotazioni future puntano a prodotti e utenti e
+    # vanno rimosse prima del catalogo. Il filtro e' sul PRODOTTO, non sul
+    # tenant: una riga con tenant_id NULL o di un altro tenant che punta a un
+    # prodotto in cancellazione bloccherebbe la delete con
+    # prep_labels_product_id_fkey. Le tabelle con FK verso products sono
+    # order_items, daily_stocks, prenotazione_items e prep_labels.
+    PrepLabel.query.filter(db.or_(
+        PrepLabel.tenant_id.in_(tenant_ids),
+        PrepLabel.product_id.in_(product_ids) if product_ids else db.false(),
+    )).delete(synchronize_session=False)
+
+    pren_ids = {r[0] for r in db.session.query(Prenotazione.id).filter(
+        Prenotazione.tenant_id.in_(tenant_ids)).all()}
+    if product_ids:
+        pren_ids |= {r[0] for r in
+                     db.session.query(PrenotazioneItem.prenotazione_id).filter(
+                         PrenotazioneItem.product_id.in_(product_ids)).all()}
     if pren_ids:
+        pren_ids = list(pren_ids)
         PrenotazioneItem.query.filter(
             PrenotazioneItem.prenotazione_id.in_(pren_ids)).delete(
             synchronize_session=False)
-    Prenotazione.query.filter(
-        Prenotazione.tenant_id.in_(tenant_ids)).delete(
-        synchronize_session=False)
+        Prenotazione.query.filter(
+            Prenotazione.id.in_(pren_ids)).delete(synchronize_session=False)
 
     # catalogo
     if product_ids:
         DailyStock.query.filter(
             DailyStock.product_id.in_(product_ids)).delete(
+            synchronize_session=False)
+        # Voci d'ordine rimaste appese a ordini di altri tenant o senza tenant
+        OrderItem.query.filter(
+            OrderItem.product_id.in_(product_ids)).delete(
             synchronize_session=False)
     Product.query.filter(
         Product.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)

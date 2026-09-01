@@ -24,6 +24,11 @@
         {% if not corp.is_active %}<span class="badge badge-secondary ml-2">Inattiva</span>{% endif %}
       </h3>
       <div class="d-flex" style="gap:.3rem;">
+        <a href="{{ url_for('admin.convenzione_report_mensile_pdf', cid=corp.id, m=mese_corrente) }}"
+           class="btn btn-xs btn-outline-danger" title="PDF del mese corrente"
+           target="_blank" rel="noopener">
+          <i class="fas fa-file-pdf"></i>
+        </a>
         <a href="{{ url_for('admin.convenzione_presenze', cid=corp.id) }}"
            class="btn btn-xs btn-outline-info" title="Registro presenze">
           <i class="fas fa-list-check"></i>
@@ -93,6 +98,25 @@
           </a>
         </div>
         {% endif %}
+
+        {# ── Riepilogo mensile da allegare alla fattura ── #}
+        <div class="border-top mt-2 pt-2">
+          <form method="GET" target="_blank" rel="noopener"
+                action="{{ url_for('admin.convenzione_report_mensile_pdf', cid=corp.id) }}"
+                class="form-inline">
+            <label class="text-muted mr-2" style="font-size:.82rem;">
+              <i class="fas fa-file-pdf mr-1 text-danger"></i>Riepilogo mensile
+            </label>
+            <input type="month" name="m" value="{{ mese_corrente }}"
+                   class="form-control form-control-sm mr-2" style="width:145px;">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="fas fa-download mr-1"></i>Scarica PDF
+            </button>
+          </form>
+          <small class="form-text text-muted" style="font-size:.78rem;">
+            Pasti per dipendente e per giorno, con il totale fatturabile del mese.
+          </small>
+        </div>
       </div>
     </div>
   </div>

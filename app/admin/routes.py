@@ -2389,7 +2389,10 @@ def convenzioni():
     today_meals: dict = _dd(list)
     for m in DailyFixedMeal.query.filter_by(meal_date=date.today(), **tf).all():
         today_meals[m.corporate_id].append(m)
-    return render_template('admin/convenzioni.html', corps=corps, today_meals=today_meals)
+    oggi = date.today()
+    return render_template('admin/convenzioni.html', corps=corps,
+                           today_meals=today_meals,
+                           mese_corrente='%04d-%02d' % (oggi.year, oggi.month))
 
 
 @bp.route('/convenzioni/nuovo', methods=['GET', 'POST'])
@@ -4312,3 +4315,305 @@ def dati_restore():
         msg += ' ' + ' '.join(note) + '.'
     flash(msg, 'success')
     return redirect(url_for('auth.login'))
+
+
+@bp.route('/convenzioni/<int:cid>/report-mensile-pdf')
+@require_permission('manage_products')
+def convenzione_report_mensile_pdf(cid):
+    """Riepilogo mensile dei pasti di una convenzione, pronto da allegare alla fattura."""
+    import os
+    from calendar import monthrange
+    from io import BytesIO
+    from pathlib import Path
+    from flask import send_file
+    from fpdf import FPDF
+
+    BRAND  = (233,  69,  96)
+    DARK   = ( 26,  26,  46)
+    DGRAY  = ( 80,  80,  95)
+    LGRAY  = (200, 200, 210)
+    VLIGHT = (248, 248, 252)
+    WHITE  = (255, 255, 255)
+    GREEN  = ( 39, 174,  96)
+    FONT   = 'PTSansNarrow'
+
+    _IT_MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                  'luglio', 'agosto', 'settembre', 'ottobre', 'novembre',
+                  'dicembre']
+    _IT_DAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+
+    corp = CorporateAccount.query.get_or_404(cid)
+
+    # Mese richiesto: 'YYYY-MM', con il mese corrente come ripiego
+    raw = (request.args.get('m') or '').strip()
+    try:
+        anno, mese = int(raw[:4]), int(raw[5:7])
+        if not (1 <= mese <= 12):
+            raise ValueError
+    except (ValueError, IndexError):
+        oggi = date.today()
+        anno, mese = oggi.year, oggi.month
+
+    primo = date(anno, mese, 1)
+    ultimo = date(anno, mese, monthrange(anno, mese)[1])
+
+    meals = (DailyFixedMeal.query
+             .filter(DailyFixedMeal.corporate_id == corp.id,
+                     DailyFixedMeal.meal_date >= primo,
+                     DailyFixedMeal.meal_date <= ultimo)
+             .order_by(DailyFixedMeal.meal_date).all())
+
+    # Aggregazione per dipendente e per giorno
+    per_persona = {}
+    per_giorno = {}
+    n_totale = 0
+    importo_totale = 0.0
+    for meal in meals:
+        for b in meal.bookings:
+            if b.status == 'cancelled' or not b.user:
+                continue
+            qty = b.quantity or 1
+            prezzo = float(meal.price or 0.0)
+            # Cognome prima del nome, come nel report a schermo: e' un
+            # allegato alla fattura, va ordinato per cognome.
+            cog = (b.user.last_name or '').strip()
+            nom = (b.user.first_name or '').strip()
+            nome = (f'{cog} {nom}'.strip() or b.user.username or '')[:38]
+            riga = per_persona.setdefault(
+                nome, {'qty': 0, 'importo': 0.0, 'giorni': set(),
+                       'ordine': (cog.lower(), nom.lower())})
+            riga['qty'] += qty
+            riga['importo'] += qty * prezzo
+            riga['giorni'].add(meal.meal_date)
+            g = per_giorno.setdefault(meal.meal_date,
+                                      {'qty': 0, 'importo': 0.0, 'persone': set()})
+            g['qty'] += qty
+            g['importo'] += qty * prezzo
+            g['persone'].add(nome)
+            n_totale += qty
+            importo_totale += qty * prezzo
+
+    persone = sorted(per_persona.items(),
+                     key=lambda kv: (kv[1]['ordine'], kv[0]))
+    giorni = sorted(per_giorno.items())
+    n_giorni = len(giorni)
+    media = (n_totale / n_giorni) if n_giorni else 0
+
+    _co_name    = get_setting('company_name')    or 'QuickLunch Bar'
+    _co_address = get_setting('company_address') or ''
+    _co_city    = get_setting('company_city')    or ''
+    _co_vat     = get_setting('company_vat')     or ''
+    _co_phone   = get_setting('company_phone')   or ''
+    _co_email   = get_setting('company_email')   or ''
+
+    periodo = f'{_IT_MONTHS[mese - 1].capitalize()} {anno}'
+    _font_dir = Path(os.path.abspath(__file__)).parent.parent / 'static' / 'fonts'
+
+    class ReportPDF(FPDF):
+        def header(self):
+            self.set_fill_color(*BRAND)
+            self.rect(0, 0, 210, 11, 'F')
+            self.set_fill_color(*DARK)
+            self.rect(0, 0, 8, 11, 'F')
+            self.set_font(FONT, 'B', 9)
+            self.set_text_color(*WHITE)
+            self.set_xy(12, 1.5)
+            self.cell(130, 8,
+                      f'RIEPILOGO MENSILE  \xb7  {corp.name.upper()}', ln=0)
+            self.set_font(FONT, '', 9)
+            self.set_x(-58)
+            self.cell(46, 8, periodo.upper(), align='R')
+            self.set_text_color(*DARK)
+            self.ln(14)
+
+        def footer(self):
+            self.set_y(-14)
+            self.set_font(FONT, '', 8)
+            self.set_text_color(*LGRAY)
+            self.set_draw_color(*LGRAY)
+            self.set_line_width(0.25)
+            self.line(12, self.get_y(), 198, self.get_y())
+            self.ln(1.5)
+            now_str = _dt.now().strftime('%d/%m/%Y  %H:%M')
+            self.set_x(12)
+            self.cell(155, 5,
+                      f'Generato il {now_str}  \xb7  Documento riservato  \xb7  {_co_name}',
+                      ln=0)
+            self.set_x(-25)
+            self.cell(13, 5, f'Pag. {self.page_no()}', align='R')
+
+    pdf = ReportPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_margins(12, 16, 12)
+    pdf.set_auto_page_break(True, margin=20)
+    pdf.add_font(FONT, '',  str(_font_dir / 'PTSansNarrow-Regular.ttf'))
+    pdf.add_font(FONT, 'B', str(_font_dir / 'PTSansNarrow-Bold.ttf'))
+    pdf.add_page()
+
+    # ── Intestazione del bar ─────────────────────────────────────────────
+    pdf.set_font(FONT, 'B', 13)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 7, _co_name, ln=True)
+    co_parts = [x for x in [_co_address, _co_city, _co_phone, _co_email,
+                            (f'P.IVA {_co_vat}' if _co_vat else '')] if x]
+    if co_parts:
+        pdf.set_font(FONT, '', 9)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 5, '  \xb7  '.join(co_parts), ln=True)
+    pdf.ln(4)
+    pdf.set_draw_color(*BRAND)
+    pdf.set_line_width(0.8)
+    pdf.line(12, pdf.get_y(), 198, pdf.get_y())
+    pdf.ln(6)
+
+    # ── Destinatario e oggetto ───────────────────────────────────────────
+    pdf.set_font(FONT, '', 9)
+    pdf.set_text_color(*DGRAY)
+    pdf.cell(0, 5, 'A:', ln=True)
+    pdf.set_font(FONT, 'B', 18)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 9, corp.name, ln=True)
+    pdf.set_font(FONT, 'B', 10)
+    pdf.set_text_color(*BRAND)
+    pdf.cell(0, 6, f'RIEPILOGO PASTI  \xb7  {periodo.upper()}', ln=True)
+    pdf.set_font(FONT, '', 9)
+    pdf.set_text_color(*DGRAY)
+    pdf.cell(0, 5, f'Periodo dal {primo.strftime("%d/%m/%Y")} '
+                   f'al {ultimo.strftime("%d/%m/%Y")}', ln=True)
+    pdf.ln(5)
+
+    # ── Riquadri di sintesi ──────────────────────────────────────────────
+    kpi_y = pdf.get_y()
+
+    def _kpi(x, label, value, color):
+        pdf.set_fill_color(*VLIGHT)
+        pdf.set_draw_color(*LGRAY)
+        pdf.set_line_width(0.3)
+        pdf.rect(x, kpi_y, 43.5, 26, 'FD')
+        pdf.set_fill_color(*color)
+        pdf.rect(x, kpi_y, 43.5, 4, 'F')
+        pdf.set_font(FONT, 'B', 20)
+        pdf.set_text_color(*color)
+        pdf.set_xy(x, kpi_y + 5)
+        pdf.cell(43.5, 12, str(value), align='C')
+        pdf.set_font(FONT, '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_xy(x, kpi_y + 17)
+        pdf.cell(43.5, 6, label, align='C')
+
+    _kpi(12,    'Pasti erogati',    n_totale,            BRAND)
+    _kpi(58.2,  'Giorni di servizio', n_giorni,          DARK)
+    _kpi(104.4, 'Media al giorno',  f'{media:.1f}',      GREEN)
+    _kpi(150.6, 'Dipendenti',       len(persone),        DGRAY)
+    pdf.set_y(kpi_y + 32)
+
+    if not persone:
+        pdf.set_font(FONT, '', 11)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 8, f'Nessun pasto registrato in {periodo}.', ln=True)
+    else:
+        # ── Tabella per dipendente ───────────────────────────────────────
+        pdf.set_font(FONT, 'B', 11)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 7, 'Dettaglio per dipendente', ln=True)
+        pdf.ln(1)
+
+        CW = [86, 28, 30, 42]
+        TH = 7
+        pdf.set_font(FONT, 'B', 9)
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        for w, t, al in zip(CW, ['DIPENDENTE', 'GIORNI', 'PASTI', 'IMPORTO'],
+                            ['L', 'C', 'C', 'R']):
+            pdf.cell(w, TH, t, align=al, fill=True)
+        pdf.ln()
+
+        pdf.set_font(FONT, '', 9)
+        for i, (nome, r) in enumerate(persone):
+            if pdf.get_y() > 250:
+                pdf.add_page()
+                pdf.set_font(FONT, 'B', 9)
+                pdf.set_fill_color(*DARK)
+                pdf.set_text_color(*WHITE)
+                for w, t, al in zip(CW, ['DIPENDENTE', 'GIORNI', 'PASTI',
+                                         'IMPORTO'], ['L', 'C', 'C', 'R']):
+                    pdf.cell(w, TH, t, align=al, fill=True)
+                pdf.ln()
+                pdf.set_font(FONT, '', 9)
+            pdf.set_fill_color(*(VLIGHT if i % 2 == 0 else WHITE))
+            pdf.set_text_color(*DGRAY)
+            pdf.cell(CW[0], TH, nome, fill=True)
+            pdf.cell(CW[1], TH, str(len(r['giorni'])), align='C', fill=True)
+            pdf.cell(CW[2], TH, str(r['qty']), align='C', fill=True)
+            pdf.set_text_color(*DARK)
+            pdf.cell(CW[3], TH, f'\u20ac {r["importo"]:.2f}', align='R', fill=True)
+            pdf.ln()
+
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        pdf.set_font(FONT, 'B', 9)
+        pdf.cell(CW[0], TH, f'TOTALE  ({len(persone)} dipendenti)', fill=True)
+        pdf.cell(CW[1], TH, str(n_giorni), align='C', fill=True)
+        pdf.cell(CW[2], TH, str(n_totale), align='C', fill=True)
+        pdf.cell(CW[3], TH, f'\u20ac {importo_totale:.2f}', align='R', fill=True)
+        pdf.ln(11)
+
+        # ── Tabella per giorno ───────────────────────────────────────────
+        if pdf.get_y() > 210:
+            pdf.add_page()
+        pdf.set_font(FONT, 'B', 11)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 7, 'Dettaglio per giorno', ln=True)
+        pdf.ln(1)
+
+        DW = [46, 40, 40, 60]
+        pdf.set_font(FONT, 'B', 9)
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        for w, t, al in zip(DW, ['GIORNO', 'DIPENDENTI', 'PASTI', 'IMPORTO'],
+                            ['L', 'C', 'C', 'R']):
+            pdf.cell(w, TH, t, align=al, fill=True)
+        pdf.ln()
+
+        pdf.set_font(FONT, '', 9)
+        for i, (g, r) in enumerate(giorni):
+            if pdf.get_y() > 250:
+                pdf.add_page()
+                pdf.set_font(FONT, 'B', 9)
+                pdf.set_fill_color(*DARK)
+                pdf.set_text_color(*WHITE)
+                for w, t, al in zip(DW, ['GIORNO', 'DIPENDENTI', 'PASTI',
+                                         'IMPORTO'], ['L', 'C', 'C', 'R']):
+                    pdf.cell(w, TH, t, align=al, fill=True)
+                pdf.ln()
+                pdf.set_font(FONT, '', 9)
+            pdf.set_fill_color(*(VLIGHT if i % 2 == 0 else WHITE))
+            pdf.set_text_color(*DGRAY)
+            pdf.cell(DW[0], TH,
+                     f'{_IT_DAYS[g.weekday()]} {g.strftime("%d/%m/%Y")}',
+                     fill=True)
+            pdf.cell(DW[1], TH, str(len(r['persone'])), align='C', fill=True)
+            pdf.cell(DW[2], TH, str(r['qty']), align='C', fill=True)
+            pdf.set_text_color(*DARK)
+            pdf.cell(DW[3], TH, f'\u20ac {r["importo"]:.2f}', align='R', fill=True)
+            pdf.ln()
+
+        # ── Totale fatturabile ───────────────────────────────────────────
+        pdf.ln(4)
+        pdf.set_font(FONT, '', 10)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_x(12)
+        pdf.cell(50, 6, 'Totale fatturabile:', ln=0)
+        pdf.set_font(FONT, 'B', 12)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 6, f'\u20ac {importo_totale:.2f}', ln=True)
+        pdf.set_font(FONT, '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 5, 'Importi al netto di IVA di legge. Sono esclusi i pasti '
+                       'annullati.', ln=True)
+
+    buf = BytesIO(bytes(pdf.output()))
+    buf.seek(0)
+    nome_file = (f'pasti_{corp.name.replace(" ", "_")}_'
+                 f'{anno}-{mese:02d}.pdf')
+    return send_file(buf, as_attachment=True, download_name=nome_file,
+                     mimetype='application/pdf')

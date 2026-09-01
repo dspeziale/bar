@@ -4,7 +4,8 @@
 La giornata del gestore con orari limite: dal pomeriggio precedente fino al
 primo ordine servito. Gli orari sono tarati su un servizio di ritiro
 11:45-13:30 (gli slot predefiniti dell'applicazione): se cambiano gli slot,
-vanno ritarati anche qui, spostando ORA_PRIMO_SLOT e ORA_FINE_SERVIZIO.
+vanno ritarati anche qui, spostando ORA_PRIMO_SLOT, ORA_FINE_SERVIZIO e
+ORA_CHIUSURA (chiusura del banco, che determina la scaletta del pomeriggio).
 
     python docs/generate_manuale_gestore.py
 """
@@ -290,8 +291,9 @@ def table_grid(doc, headers, rows, widths, head_fill=HEX_NAVY):
 
 
 # ── Riferimenti temporali del servizio ───────────────────────────────────────
-ORA_PRIMO_SLOT = '11:45'
-ORA_FINE_SERVIZIO = '13:30'
+ORA_PRIMO_SLOT = '11:45'        # primo slot di ritiro
+ORA_FINE_SERVIZIO = '13:30'    # ultimo slot di ritiro
+ORA_CHIUSURA = '17:30'         # chiusura del banco: fine della giornata
 
 
 # ── Blocco con ora limite ────────────────────────────────────────────────────
@@ -388,10 +390,11 @@ def build():
     rich(doc, [
         ('Gli orari indicati sono ', False), ('limiti, non appuntamenti', True),
         (': "16:00" significa "entro le 16:00, prima e meglio". Sono tarati su '
-         'un servizio di ritiro dalle ', False), (ORA_PRIMO_SLOT, True),
+         'un ritiro dei pasti dalle ', False), (ORA_PRIMO_SLOT, True),
         (' alle ', False), (ORA_FINE_SERVIZIO, True),
-        (', gli orari predefiniti dell\'applicazione. Se cambiate gli slot di '
-         'ritiro, spostate di conseguenza tutta la scaletta.', False),
+        (' e su un banco che chiude alle ', False), (ORA_CHIUSURA, True),
+        ('. Se cambiate gli slot o l\'orario di chiusura, spostate di '
+         'conseguenza tutta la scaletta.', False),
     ])
     rich(doc, [
         ('Le voci contrassegnate ', False), ('NON OLTRE', True),
@@ -422,8 +425,6 @@ def build():
     table_grid(doc,
                ['Entro', 'Attivita', 'Dove'],
                [
-                   [('14:30', DARK, True), 'Lettura dei numeri del giorno',
-                    'Report'],
                    [('15:00', DARK, True), 'Fabbisogno dei giorni successivi',
                     'Cucina › Prenotazioni'],
                    [('15:30', DARK, True), 'Giacenze e ordini ai fornitori',
@@ -436,8 +437,12 @@ def build():
                     'Clienti'],
                    [('17:00', DARK, True), 'Ricariche e fidi sistemati',
                     'Clienti › Ricarica'],
-                   [('17:30', DARK, True), 'Quantita giornaliere dei prodotti',
+                   [('17:15', DARK, True), 'Listino e quantita di domani',
                     'Prodotti'],
+                   [(ORA_CHIUSURA, RED, True), 'Chiusura del banco e ritiro '
+                    'dell\'invenduto', 'Cesto Cucina'],
+                   [('17:45', DARK, True), 'Lettura dei numeri del giorno',
+                    'Report'],
                    [('18:00', DARK, True), 'Postazioni spente e in carica', '—'],
                ],
                widths=[2.2, 8.6, 5.2], head_fill=HEX_PURPLE)
@@ -474,20 +479,13 @@ def build():
 
     # ══ PARTE 1 ═══════════════════════════════════════════════════════════
     heading(doc, 'Parte 1 — Il pomeriggio precedente', 1, color=PURPLE, before=0)
-    body(doc, 'Quattro ore di lavoro tranquillo che valgono piu di un\'ora di '
-              'corsa la mattina dopo. Qui si decide cosa il cliente potra '
-              'ordinare domani, e si sbloccano i clienti che altrimenti domani '
-              'non potrebbero ordinare affatto.', color=GRAY)
+    body(doc, 'Il banco resta aperto fino alle %s: le attivita di questa parte '
+              'si svolgono quasi tutte a servizio ancora in corso, negli spazi '
+              'fra un cliente e l\'altro. Solo le ultime due richiedono la '
+              'chiusura. Qui si decide cosa il cliente potra ordinare domani, e '
+              'si sbloccano i clienti che altrimenti domani non potrebbero '
+              'ordinare affatto.' % ORA_CHIUSURA, color=GRAY)
     rule(doc)
-
-    fascia(doc, '14:30', 'Leggi i numeri del giorno che si chiude', [
-        [('Report', True),
-         (': incasso, ordini per prodotto, andamento. A servizio chiuso i dati '
-          'sono definitivi.', False)],
-        [('Guarda cosa e rimasto invenduto nel cesto: e la correzione piu utile '
-          'per le quantita di domani.', False)],
-    ], motivo='il servizio e finito da un\'ora, i numeri non cambiano piu.',
-        accent=HEX_PURPLE)
 
     fascia(doc, '15:00', 'Calcola il fabbisogno dei giorni successivi', [
         [('Cucina › Prenotazioni', True),
@@ -557,16 +555,40 @@ def build():
               'nell\'ora di punta, e in quel momento non hai tempo.',
         accent=HEX_PURPLE)
 
-    fascia(doc, '17:30', 'Aggiorna il listino e le quantita', [
+    fascia(doc, '17:15', 'Aggiorna il listino e le quantita di domani', [
         [('Prodotti', True),
          (': correggi la quantita giornaliera di quello che produrrai domani, e '
-          'disattiva i prodotti che non farai. Un prodotto disattivato spariste '
+          'disattiva i prodotti che non farai. Un prodotto disattivato sparisce '
           'dal menu; uno con quantita a zero resta visibile ma non ordinabile.',
           False)],
-        [('Ritocca i prezzi ora, non a servizio aperto: il prezzo viene '
-          'fotografato sull\'ordine al momento della conferma.', False)],
-    ], motivo='il menu di domani deve essere quello definitivo prima che i '
-              'primi clienti lo guardino, la sera.',
+        [('Ritocca i prezzi ora, negli ultimi minuti di servizio: il prezzo '
+          'viene fotografato sull\'ordine al momento della conferma, quindi '
+          'cambiarlo a carrelli aperti crea discussioni al banco.', False)],
+    ], motivo='il menu di domani deve essere definitivo prima che i primi '
+              'clienti lo guardino, la sera.',
+        accent=HEX_PURPLE)
+
+    fascia(doc, ORA_CHIUSURA, 'Chiudi il banco e ritira l\'invenduto', [
+        [('Fine del servizio. Ritira dal cesto i pezzi rimasti e annulla le '
+          'loro etichette una per una da ', False),
+         ('Cucina › Cesto Cucina', True),
+         (': un\'etichetta lasciata attiva resta acquistabile fino alle 24 ore '
+          'dalla generazione.', False)],
+        [('Non usare "Annulla tutto": cancella dal registro anche le vendite '
+          'della giornata.', False)],
+    ], motivo='e l\'orario di chiusura del banco: prima di questo momento i '
+              'pezzi nel cesto sono ancora in vendita.',
+        accent=HEX_PURPLE, critico=True)
+
+    fascia(doc, '17:45', 'Leggi i numeri della giornata', [
+        [('Report', True),
+         (': incasso, ordini per prodotto, andamento. Ora che il servizio e '
+          'chiuso i dati sono definitivi.', False)],
+        [('Confronta l\'invenduto ritirato dal cesto con i pezzi generati la '
+          'mattina: e la correzione piu utile per le quantita di domani.',
+          False)],
+    ], motivo='subito dopo la chiusura, con i numeri fermi e la giornata '
+              'ancora in mente.',
         accent=HEX_PURPLE)
 
     fascia(doc, '18:00', 'Chiudi le postazioni', [
@@ -817,14 +839,15 @@ def build():
 
     for titolo, colore, righe in [
         ('Pomeriggio precedente', HEX_PURPLE, [
-            ('14:30', 'Numeri del giorno letti'),
             ('15:00', 'Fabbisogno dei giorni successivi calcolato'),
             ('15:30', 'Giacenze controllate e ordini inviati'),
             ('16:00', 'Pasto aziendale di domani pubblicato'),
             ('16:15', 'Sondaggio inviato (se usato)'),
             ('16:45', 'Clienti in attesa attivati'),
             ('17:00', 'Ricariche e fidi sistemati'),
-            ('17:30', 'Listino e quantita aggiornati'),
+            ('17:15', 'Listino e quantita di domani aggiornati'),
+            (ORA_CHIUSURA, 'Banco chiuso, invenduto ritirato dal cesto'),
+            ('17:45', 'Numeri della giornata letti'),
             ('18:00', 'Postazioni in carica, carta rifornita'),
         ]),
         ('Mattina', HEX_BLUE, [
@@ -869,10 +892,11 @@ def build():
         spacer(doc, 12)
 
     rule(doc, color=HEX_NAVY)
-    body(doc, 'QuickLunch · La giornata del gestore · Orari tarati su un servizio '
-              'di ritiro %s-%s: se cambiano gli slot, va ritarata la scaletta.'
-              % (ORA_PRIMO_SLOT, ORA_FINE_SERVIZIO), size=8.5, color=GRAY,
-         after=2)
+    body(doc, 'QuickLunch · La giornata del gestore · Orari tarati su ritiro '
+              'pasti %s-%s e chiusura del banco alle %s: se cambiano, va '
+              'ritarata la scaletta.'
+              % (ORA_PRIMO_SLOT, ORA_FINE_SERVIZIO, ORA_CHIUSURA),
+         size=8.5, color=GRAY, after=2)
     body(doc, '© 2024–26 DS Consulting', size=8.5, color=GRAY)
 
     return doc
@@ -883,8 +907,9 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc.save(OUT)
     print(f'[OK] Documento salvato in: {OUT}')
-    print('     Servizio %s-%s · 9 attivita il pomeriggio, 12 la mattina'
-          % (ORA_PRIMO_SLOT, ORA_FINE_SERVIZIO))
+    print('     Ritiro %s-%s, chiusura %s'
+          % (ORA_PRIMO_SLOT, ORA_FINE_SERVIZIO, ORA_CHIUSURA))
+    print('     10 attivita il pomeriggio, 12 la mattina')
 
 
 if __name__ == '__main__':
