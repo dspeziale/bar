@@ -105,6 +105,7 @@
             <th>Tenant</th>
             <th class="text-right">Ordini completati</th>
             <th class="text-right">Banco (QR)</th>
+            <th class="text-right">Cesto (QR)</th>
             <th class="text-right">Pasti aziendali</th>
             <th class="text-right"><strong>Totale IVA incl.</strong></th>
             <th class="text-right text-warning">Imponibile (÷1.10)</th>
@@ -123,6 +124,7 @@
             </td>
             <td class="text-right">{{ "%.2f"|format(r.orders) }} €</td>
             <td class="text-right">{{ "%.2f"|format(r.banco) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(r.cesto) }} €</td>
             <td class="text-right">{{ "%.2f"|format(r.meals) }} €</td>
             <td class="text-right"><strong>{{ "%.2f"|format(r.total) }} €</strong></td>
             <td class="text-right text-warning">{{ "%.2f"|format(r.excl_vat) }} €</td>
@@ -144,6 +146,7 @@
             <td>TOTALE</td>
             <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='orders')) }} €</td>
             <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='banco')) }} €</td>
+            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='cesto')) }} €</td>
             <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='meals')) }} €</td>
             <td class="text-right">{{ "%.2f"|format(grand_total) }} €</td>
             <td class="text-right" style="color:#ffc107;">{{ "%.2f"|format(rows|sum(attribute='excl_vat')) }} €</td>

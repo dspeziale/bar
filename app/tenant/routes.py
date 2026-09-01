@@ -7,17 +7,6 @@ from app.models import Tenant, User
 from app.notifications import get_setting, send_telegram
 
 
-def _apply_registration_bonus(user):
-    """Accredita il bonus di benvenuto se configurato nelle impostazioni."""
-    try:
-        val = float(get_setting('registration_bonus') or 0)
-    except (ValueError, TypeError):
-        val = 0.0
-    if val > 0:
-        user.credit_wallet(val, 'Bonus benvenuto')
-        db.session.commit()
-
-
 def _get_tenant_or_404(slug):
     t = Tenant.query.filter_by(slug=slug, is_active=True).first()
     if not t:
@@ -78,7 +67,7 @@ def register(slug):
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            _apply_registration_bonus(user)
+            user.apply_registration_bonus()
             send_telegram(
                 f'🆕 <b>Nuovo utente registrato</b> — {tenant.name}\n'
                 f'📧 {email}'
@@ -183,7 +172,7 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
-        _apply_registration_bonus(user)
+        user.apply_registration_bonus()
         send_telegram(
             f'🆕 <b>Nuovo utente Google</b> — {tenant.name}\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'

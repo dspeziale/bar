@@ -7,16 +7,6 @@ from app.models import User
 from app.notifications import get_setting, send_telegram
 
 
-def _apply_registration_bonus(user):
-    try:
-        val = float(get_setting('registration_bonus') or 0)
-    except (ValueError, TypeError):
-        val = 0.0
-    if val > 0:
-        user.credit_wallet(val, 'Bonus benvenuto')
-        db.session.commit()
-
-
 def _make_username(email):
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0].lower()).strip('.') or 'utente'
     base = base[:30]
@@ -82,6 +72,7 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            user.apply_registration_bonus()
             send_telegram(
                 f'🆕 <b>Nuovo cliente in attesa</b>\n'
                 f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
@@ -164,7 +155,7 @@ def google_callback():
         )
         db.session.add(user)
         db.session.commit()
-        _apply_registration_bonus(user)
+        user.apply_registration_bonus()
         send_telegram(
             f'🆕 <b>Nuovo utente (Google)</b> — in attesa di attivazione\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'

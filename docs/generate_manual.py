@@ -24,7 +24,8 @@ HEX_LIGHT = 'F8F9FA'
 HEX_WHITE = 'FFFFFF'
 
 FONT = 'PT Sans Narrow'
-OUT  = os.path.join(os.path.dirname(__file__), 'manuale_proprietario.docx')
+OUT  = os.path.join(os.path.dirname(__file__), 'manuali',
+                    'manuale_proprietario.docx')
 
 
 # ── XML helpers ───────────────────────────────────────────────────────────────

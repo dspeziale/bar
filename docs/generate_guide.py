@@ -43,7 +43,7 @@ HEX_TEAL  = '16A085'
 HEX_ORNG  = 'E67E22'
 
 FONT = 'PT Sans Narrow'
-OUT  = os.path.join(os.path.dirname(__file__), 'guida_utente.docx')
+OUT  = os.path.join(os.path.dirname(__file__), 'manuali', 'guida_utente.docx')
 
 
 # ── XML helpers ───────────────────────────────────────────────────────────────
@@ -1695,6 +1695,19 @@ def s_appendice(doc):
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+def _footer_copyright(doc):
+    """Nota di copyright in chiusura del documento."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH as _AL
+    p = doc.add_paragraph()
+    p.alignment = _AL.CENTER
+    p.paragraph_format.space_before = Pt(18)
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run('QuickLunch  \u00b7  © 2024–26 DS Consulting')
+    r.font.size = Pt(8)
+    r.font.color.rgb = GRAY
+    r.font.name = FONT
+
 def main():
     doc = Document()
     set_document_defaults(doc)
@@ -1731,6 +1744,9 @@ def main():
 
     s_appendice(doc)
 
+    _footer_copyright(doc)
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc.save(OUT)
     print(f'OK  Guida utente salvata in: {OUT}')
     print(f'    Sezioni: Super Admin · Admin Tenant · Cassiere · Cucina/KDS · Sala · Cliente · Dipendente · Appendice')

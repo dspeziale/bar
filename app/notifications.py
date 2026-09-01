@@ -268,6 +268,57 @@ def send_supplier_low_stock_alert(item):
     return ok, msg
 
 
+def send_account_activated_email(user, login_url=''):
+    """Avvisa il cliente per email che il suo account e' stato attivato.
+
+    L'avviso Telegram richiede che l'utente abbia collegato il proprio chat id,
+    cosa che un cliente appena registrato non ha ancora fatto: l'email e' quindi
+    l'unico canale che lo raggiunge davvero.
+    """
+    if not getattr(user, 'email', ''):
+        return False, 'Utente senza email'
+
+    co_name = get_setting('company_name') or 'QuickLunch'
+    nome    = (getattr(user, 'first_name', '') or '').strip() or user.username
+    subject = f'[{co_name}] Il tuo account e\' attivo'
+
+    cta = ''
+    if login_url:
+        cta = f"""
+    <div style="margin:26px 0 6px;">
+      <a href="{login_url}"
+         style="background:#e94560;color:#fff;padding:12px 28px;border-radius:6px;
+                text-decoration:none;font-weight:bold;font-size:16px;">
+        Accedi ora &rarr;
+      </a>
+    </div>"""
+
+    html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
+  <div style="background:#e94560;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:20px;">Account attivato</h2>
+  </div>
+  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
+    <p>Ciao <strong>{nome}</strong>,</p>
+    <p>il tuo account su <strong>{co_name}</strong> e' stato attivato: da adesso puoi
+       accedere, consultare il menu e ordinare.</p>
+    <p style="margin-top:16px;"><strong>Come iniziare</strong></p>
+    <ol style="padding-left:20px;margin:8px 0;font-size:14px;">
+      <li>Accedi con l'email con cui ti sei registrato.</li>
+      <li>Ricarica il credito in cassa: il portafoglio e' prepagato e serve per ordinare.</li>
+      <li>Scegli dal menu, indica l'orario di ritiro e conferma.</li>
+    </ol>{cta}
+    <p style="margin-top:24px;color:#aaa;font-size:11px;">
+      Messaggio automatico generato da {co_name}
+    </p>
+  </div>
+</div>"""
+
+    text = (f"Ciao {nome}, il tuo account su {co_name} e' stato attivato: "
+            f"puoi accedere e ordinare. Ricorda di ricaricare il credito in cassa.")
+    return send_email(user.email, subject, html, text)
+
+
 def send_email_to_all_users(subject, html_body):
     """Invia a tutti gli utenti attivi con email."""
     from app.models import User

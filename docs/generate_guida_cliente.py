@@ -20,7 +20,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from generate_guide import (
     set_document_defaults, _page_break, h1, h2, h3, body_para,
     info_box, info_box_color, step_row, data_table, role_badge,
-    workflow_table, spacer, divider,
+    workflow_table, spacer, divider, _footer_copyright,
     _no_borders, _table_width, _row_height, _cell_shd, _cell_margins,
     _cell_vAlign, _run_font, _p_spacing, _cell_border, _set_col_width,
     HEX_RED, HEX_NAVY, HEX_DARK, HEX_LIGHT, HEX_WHITE, HEX_GREEN,
@@ -28,7 +28,7 @@ from generate_guide import (
     RED, NAVY, DARK, DGRAY, GRAY, WHITE, GREEN, PURPL, TEAL, ORNG,
 )
 
-OUT = os.path.join(os.path.dirname(__file__), 'guida_cliente.docx')
+OUT = os.path.join(os.path.dirname(__file__), 'manuali', 'guida_cliente.docx')
 
 
 # ── Cover page dedicata al cliente ──────────────────────────────────────────
@@ -1107,6 +1107,7 @@ def s13_riassunto(doc):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main():
     doc = Document()
     set_document_defaults(doc)
@@ -1155,6 +1156,9 @@ def main():
 
     s13_riassunto(doc)
 
+    _footer_copyright(doc)
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc.save(OUT)
     print(f'OK  Guida cliente salvata in: {OUT}')
 

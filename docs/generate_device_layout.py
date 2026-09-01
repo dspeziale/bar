@@ -33,7 +33,7 @@ HEX_LGRAY  = 'F5F6FA'
 HEX_LIGHT  = 'F8F9FC'
 
 FONT = 'Calibri'
-OUT  = os.path.join(os.path.dirname(__file__), 'device_layout.docx')
+OUT  = os.path.join(os.path.dirname(__file__), 'manuali', 'device_layout.docx')
 
 
 # ── XML helpers ───────────────────────────────────────────────────────────────
@@ -183,80 +183,107 @@ def spacer(doc, before=100, after=0):
 
 DEVICES = [
     {
-        'icon': '📱', 'name': 'Tablet Banco POS', 'color': HEX_GREEN, 'rgb': GREEN,
-        'pos': 'Sul bancone, davanti allo staff',
+        'icon': '🖥️', 'name': 'Display Cucina (KDS)', 'color': HEX_GOLD, 'rgb': GOLD,
+        'pos': 'Appeso o appoggiato in cucina, visibile dalla postazione di lavoro',
         'required': 'Necessario',
-        'screen': '10"+ consigliato',
-        'os': 'Android o iOS',
+        'screen': '10" minimo, 15–24" consigliato',
+        'os': 'Qualsiasi browser (/admin/cucina a schermo pieno)',
         'functions': [
-            'Seleziona articoli (caffè, brioche, ecc.)',
-            'Genera il QR di pagamento per il cliente',
-            'Visualizza la conferma quando il cliente ha pagato',
-            'Accesso al pannello admin (ordini, turni)',
+            'Mostra gli ordini in tre colonne: da preparare, in preparazione, pronti',
+            'Si ricarica da sola ogni 20 secondi e segnala i nuovi ordini con un suono',
+            'Da qui si stampa lo scontrino da allegare al prodotto',
+            'Genera e stampa le etichette QR del cesto (/admin/cesto)',
         ],
     },
     {
-        'icon': '📲', 'name': 'Smartphone Cliente', 'color': HEX_RED, 'rgb': RED,
-        'pos': 'In possesso del cliente (sala o fila al banco)',
+        'icon': '📱', 'name': 'Tablet Banco POS', 'color': HEX_GREEN, 'rgb': GREEN,
+        'pos': 'Sul bancone, schermo orientabile verso il cliente',
         'required': 'Necessario',
+        'screen': '10"+ consigliato',
+        'os': 'Android o iOS — richiede fotocamera posteriore',
+        'functions': [
+            'Compone la vendita al banco (caffè, brioche, bevande) e genera il QR',
+            'Mostra il QR di pagamento: il cliente lo inquadra dal display',
+            'Consegna i pasti aziendali leggendo il codice di ritiro, a mano o con la camera',
+            'Chiude gli ordini ritirati con "Consegnato"',
+        ],
+    },
+    {
+        'icon': '🧾', 'name': 'Registratore di cassa', 'color': HEX_RED, 'rgb': RED,
+        'pos': 'Alla cassa — dispositivo esterno a QuickLunch',
+        'required': 'Necessario',
+        'screen': '—',
+        'os': 'Indipendente dall\'applicazione',
+        'functions': [
+            'Emette lo scontrino fiscale della vendita',
+            'È lo scontrino che va allegato al prodotto insieme all\'etichetta',
+            'Non si integra con QuickLunch: i due sistemi restano separati',
+        ],
+    },
+    {
+        'icon': '🖨️', 'name': 'Stampante termica 80 mm', 'color': HEX_GRAY, 'rgb': GRAY,
+        'pos': 'In cucina, accanto al display ordini',
+        'required': 'Consigliato',
+        'screen': 'Rotolo 80 mm',
+        'os': 'Di rete con AirPrint/Mopria se si stampa da tablet',
+        'functions': [
+            'Stampa il tagliando dell\'ordine: documento interno di preparazione',
+            'Il tagliando è impostato su 80 mm di larghezza, contenuto a 74 mm',
+            'Porta codice ordine, orario di ritiro e composizione completa',
+            'Non sostituisce lo scontrino fiscale del registratore di cassa',
+        ],
+    },
+    {
+        'icon': '🖨️', 'name': 'Stampante A4 comune', 'color': HEX_GRAY, 'rgb': GRAY,
+        'pos': 'In cucina; l\'ufficio vi stampa attraverso la rete',
+        'required': 'Necessario',
+        'screen': 'A4',
+        'os': 'Di rete con AirPrint/Mopria se si stampa da tablet',
+        'functions': [
+            'Stampa le etichette QR del cesto: griglia a 3 colonne su foglio, da tagliare',
+            'Stampa la lista di produzione dei pasti aziendali',
+            'Non sostituibile con la termica: la griglia non entra in 80 mm',
+        ],
+    },
+    {
+        'icon': '🖥️', 'name': 'PC Backoffice', 'color': HEX_PURPLE, 'rgb': PURPLE,
+        'pos': 'Ufficio del responsabile',
+        'required': 'Necessario',
+        'screen': '13"+, sconsigliato sotto 11"',
+        'os': 'Qualsiasi PC/Mac con browser',
+        'functions': [
+            'Configura menu, prodotti, prezzi, slot di ritiro e impostazioni',
+            'Pubblica il menu del giorno delle convenzioni e i suoi allergeni',
+            'Stampa la lista di produzione dei pasti aziendali',
+            'Gestisce utenti, ricariche wallet, ruoli e permessi; legge i report',
+        ],
+    },
+    {
+        'icon': '📲', 'name': 'Smartphone del cliente', 'color': HEX_RED, 'rgb': RED,
+        'pos': 'In possesso del cliente — non è hardware da acquistare',
+        'required': 'Prerequisito',
         'screen': '4.5"+ qualsiasi',
         'os': 'Browser moderno + account QuickLunch',
         'functions': [
-            'Ordina dal menu digitale',
-            'Prenota un tavolo per la fascia oraria desiderata',
-            'Inquadra il QR del banco con la fotocamera',
-            'Conferma il pagamento e visualizza il saldo wallet',
+            'Ordina dal menu e compone panini, insalate e poke dal builder',
+            'Acquista dal cesto inquadrando il QR dell\'etichetta',
+            'Paga al banco inquadrando il QR mostrato dal tablet cassa',
+            'Mostra il codice di ritiro del pasto aziendale',
         ],
     },
-    {
-        'icon': '🖥️', 'name': 'Display Cucina (KDS)', 'color': HEX_GOLD, 'rgb': GOLD,
-        'pos': 'Appeso o posizionato in cucina, visibile ai cuochi',
-        'required': 'Consigliato',
-        'screen': '15–24"',
-        'os': 'Qualsiasi browser (pagina /admin/ordini in full screen)',
-        'functions': [
-            'Visualizza ordini in tempo reale appena arrivano',
-            'Mostra slot orario e dettaglio articoli',
-            'Permette di marcare ordini come "pronti"',
-        ],
-    },
-    {
-        'icon': '🖨️', 'name': 'Stampante Scontrini', 'color': HEX_GRAY, 'rgb': GRAY,
-        'pos': 'In cucina oppure al banco',
-        'required': 'Opzionale',
-        'screen': '—',
-        'os': 'Termica ESC/POS (USB o Wi-Fi)',
-        'functions': [
-            'Stampa ticket ordine alla conferma',
-            'Facilita la distribuzione dei piatti in sala',
-            'Il sistema funziona correttamente anche senza stampante',
-        ],
-    },
-    {
-        'icon': '🖥️', 'name': 'PC Amministratore', 'color': HEX_PURPLE, 'rgb': PURPLE,
-        'pos': 'Ufficio del responsabile / back office',
-        'required': 'Necessario',
-        'screen': '13"+ sconsigliato sotto 11"',
-        'os': 'Qualsiasi PC/Mac con browser',
-        'functions': [
-            'Configura menu, slot orari, prezzi e categorie',
-            'Gestisce utenti, ricariche wallet e permessi',
-            'Visualizza report, statistiche e storico ordini',
-            'Configura pasti aziendali e menu del giorno',
-        ],
-    },
-    {
-        'icon': '📋', 'name': 'Tablet Staff Sala', 'color': HEX_TEAL, 'rgb': TEAL,
-        'pos': 'Portato dallo staff in sala (opzionale)',
-        'required': 'Opzionale',
-        'screen': '8"+ consigliato',
-        'os': 'Android o iOS con browser',
-        'functions': [
-            'Check-in clienti ai tavoli prenotati',
-            'Visione delle prenotazioni attive per fascia',
-            'Accesso rapido al pannello admin da sala',
-        ],
-    },
+]
+
+# Conteggio riassuntivo: è la risposta alla domanda "quanti device servono".
+COUNT_MIN = [
+    ('1', 'Display o tablet in cucina', 'cucina@bar.local  ·  ruolo cuoco'),
+    ('2', 'Tablet al banco / cassa', 'banco@bar.local  ·  ruolo cassiere'),
+    ('3', 'PC backoffice', 'admin@bar.local oppure sala@bar.local'),
+    ('4', 'Registratore di cassa', 'esterno a QuickLunch, nessun account'),
+]
+
+COUNT_PRINTERS = [
+    ('Termica 80 mm', 'Tagliandi ordine per la cucina', 'In cucina'),
+    ('A4 comune', 'Etichette cesto e liste pasti', 'In cucina, condivisa in rete'),
 ]
 
 QR_STEPS = [
@@ -273,23 +300,26 @@ QR_STEPS = [
 ]
 
 REQS = [
-    ('📱 Tablet Banco POS',   'Wi-Fi',         'Staff / Admin',          '10"',  'Sì'),
-    ('📲 Smartphone Cliente', 'Wi-Fi / 4G',    'Cliente registrato',     '4.5"', 'Sì'),
-    ('🖥️ Display Cucina',    'Wi-Fi',         'Staff / Admin',          '15"',  'Consigliato'),
-    ('🖨️ Stampante Scontrini','USB / Wi-Fi',  '—',                      '—',    'Opzionale'),
-    ('🖥️ PC Amministratore', 'Wi-Fi / LAN',   'Admin',                  '13"',  'Sì'),
-    ('📋 Tablet Staff Sala',  'Wi-Fi',         'Staff',                  '8"',   'Opzionale'),
+    ('🖥️ Display Cucina',      'Wi-Fi',        'Cuoco',            '10"',  'Sì'),
+    ('📱 Tablet Banco POS',    'Wi-Fi',        'Cassiere',         '10"',  'Sì'),
+    ('🧾 Registratore cassa',  '—',            '—',                '—',    'Sì'),
+    ('🖨️ Termica 80 mm',       'Wi-Fi / USB',  '—',                '—',    'Consigliato'),
+    ('🖨️ Stampante A4',        'Wi-Fi / USB',  '—',                '—',    'Sì'),
+    ('🖥️ PC Backoffice',       'Wi-Fi / LAN',  'Admin o manager',  '13"',  'Sì'),
+    ('📲 Smartphone cliente',  'Wi-Fi / 4G',   'Cliente',          '4.5"', 'Prerequisito'),
+    ('📱 Secondo tablet banco', 'Wi-Fi',       'Cassiere',         '8"',   'Consigliato'),
 ]
 
 FLOOR_AREAS = [
-    ('🍳 CUCINA',        'Preparazione ordini',
-     ['Display Cucina (KDS)', 'Stampante Scontrini']),
-    ('☕ BANCO',         'Cassa rapida QR',
-     ['Tablet Banco POS']),
-    ('🪑 SALA / TAVOLI', 'Clienti — prenotazioni',
-     ['Smartphone Cliente (in mano al cliente)', 'Tablet Staff Sala (opzionale)']),
-    ('🖥️ UFFICIO/ADMIN', 'Gestione sistema',
-     ['PC Amministratore']),
+    ('🍳 CUCINA',        'Preparazione, cesto, stampa',
+     ['Display Cucina (KDS)', 'Stampante termica 80 mm', 'Stampante A4']),
+    ('☕ BANCO',         'Cassa QR, scontrini e consegne',
+     ['Tablet Banco POS', 'Registratore di cassa',
+      'Eventuale secondo tablet di riserva']),
+    ('🍽️ SALA',          'Clienti',
+     ['Smartphone del cliente (in mano al cliente)']),
+    ('🖥️ UFFICIO',       'Configurazione e report',
+     ['PC Backoffice']),
 ]
 
 
@@ -321,13 +351,145 @@ def build():
     p2 = cell.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _para_spacing(p2, before=60, after=0)
-    r2 = p2.add_run('Layout Dispositivi — Guida al Setup del Sistema')
+    r2 = p2.add_run('Layout Dispositivi — Quanti device servono e dove')
     run_fmt(r2, size=13, color=RGBColor(0xb2, 0xc2, 0xd9))
 
     spacer(doc, 300)
 
-    # ── SEZIONE 1: Posizionamento nel locale ─────────────────────────────────
-    heading(doc, '1 — Posizionamento dispositivi nel locale', 1, NAVY)
+    # ── SEZIONE 1: Quanti dispositivi servono ────────────────────────────────
+    heading(doc, '1 — Quanti dispositivi servono', 1, NAVY)
+    body(doc,
+         'Configurazione minima per coprire tutti i flussi attivi: vendita al banco, '
+         'cesto self-service, pasti aziendali e ordini dal builder visuale.',
+         size=10, color=GRAY)
+    spacer(doc, 80)
+
+    # Tre device + account
+    tbl_c = doc.add_table(rows=1 + len(COUNT_MIN), cols=3)
+    _remove_all_borders(tbl_c)
+    for ci, w in enumerate([1.4, 7.4, 8.2]):
+        _set_col_width(tbl_c, ci, w)
+    for ci, lbl in enumerate(['#', 'Dispositivo', 'Account dedicato']):
+        cell = tbl_c.cell(0, ci)
+        _cell_shd(cell, HEX_NAVY)
+        _cell_margins(cell, top=100, bottom=100, left=113, right=113)
+        _cell_vAlign(cell)
+        run_fmt(cell.paragraphs[0].add_run(lbl), bold=True, size=9, color=WHITE)
+    for ri, (num, name, account) in enumerate(COUNT_MIN):
+        bg = HEX_LIGHT if ri % 2 == 0 else HEX_WHITE
+        cells = tbl_c.rows[ri + 1].cells
+        for ci, val in enumerate([num, name, account]):
+            cell = cells[ci]
+            _cell_shd(cell, bg)
+            _cell_margins(cell, top=90, bottom=90, left=113, right=113)
+            _cell_vAlign(cell, 'center')
+            pp = cell.paragraphs[0]
+            if ci == 0:
+                pp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                add_run(pp, val, bold=True, size=11, color=RED)
+            else:
+                add_run(pp, val, bold=(ci == 1), size=9.5, color=DARK)
+
+    spacer(doc, 160)
+
+    # Due stampanti
+    body(doc, 'Piu due stampanti, con formati non interscambiabili:',
+         size=10, color=DARK, bold=True)
+    spacer(doc, 60)
+
+    tbl_p = doc.add_table(rows=1 + len(COUNT_PRINTERS), cols=3)
+    _remove_all_borders(tbl_p)
+    for ci, w in enumerate([4.6, 6.4, 6.0]):
+        _set_col_width(tbl_p, ci, w)
+    for ci, lbl in enumerate(['Stampante', 'Serve per', 'Posizione']):
+        cell = tbl_p.cell(0, ci)
+        _cell_shd(cell, HEX_GRAY)
+        _cell_margins(cell, top=100, bottom=100, left=113, right=113)
+        _cell_vAlign(cell)
+        run_fmt(cell.paragraphs[0].add_run(lbl), bold=True, size=9, color=WHITE)
+    for ri, row in enumerate(COUNT_PRINTERS):
+        bg = HEX_LIGHT if ri % 2 == 0 else HEX_WHITE
+        cells = tbl_p.rows[ri + 1].cells
+        for ci, val in enumerate(row):
+            cell = cells[ci]
+            _cell_shd(cell, bg)
+            _cell_margins(cell, top=90, bottom=90, left=113, right=113)
+            _cell_vAlign(cell, 'center')
+            add_run(cell.paragraphs[0], val, bold=(ci == 0), size=9.5, color=DARK)
+
+    spacer(doc, 180)
+
+    # Scontrino fiscale vs tagliando dell'applicazione
+    tbl_sc = doc.add_table(rows=1, cols=1)
+    _remove_all_borders(tbl_sc)
+    sc = tbl_sc.cell(0, 0)
+    _cell_shd(sc, 'FDEEF0')
+    _cell_border(sc, left=HEX_RED, sz='20')
+    _cell_margins(sc, top=120, bottom=120, left=170, right=140)
+    psc = sc.paragraphs[0]
+    add_run(psc, '🧾  Due documenti diversi: ', bold=True, size=10, color=RED)
+    add_run(psc, 'lo scontrino da allegare al prodotto è quello fiscale del '
+                 'registratore di cassa, che resta un dispositivo esterno e non '
+                 'comunica con QuickLunch. Il foglio che l\'applicazione stampa è '
+                 'il tagliando dell\'ordine, utile alla cucina per preparare ma '
+                 'privo di valore fiscale: per questo la stampante termica è '
+                 'consigliata, non necessaria.',
+            size=9, color=DARK)
+
+    spacer(doc, 100)
+
+    # Vincolo di stampa da tablet
+    tbl_w = doc.add_table(rows=1, cols=1)
+    _remove_all_borders(tbl_w)
+    wc = tbl_w.cell(0, 0)
+    _cell_shd(wc, 'FDF6E7')
+    _cell_border(wc, left=HEX_GOLD, sz='20')
+    _cell_margins(wc, top=120, bottom=120, left=170, right=140)
+    pw = wc.paragraphs[0]
+    add_run(pw, '⚠️  Stampa da tablet: ', bold=True, size=10, color=GOLD)
+    add_run(pw, 'la stampa parte dal browser, quindi da Android o iOS funziona solo con '
+                'stampanti di rete AirPrint / Mopria. Una termica USB ESC/POS non si pilota '
+                'dal browser di un tablet: in quel caso il dispositivo in cucina deve essere '
+                'un mini-PC, con le stampanti collegate via USB.',
+            size=9, color=DARK)
+
+    spacer(doc, 100)
+
+    # Ridondanza
+    tbl_rd = doc.add_table(rows=1, cols=1)
+    _remove_all_borders(tbl_rd)
+    rc = tbl_rd.cell(0, 0)
+    _cell_shd(rc, 'EAF0FB')
+    _cell_border(rc, left=HEX_TEAL, sz='20')
+    _cell_margins(rc, top=120, bottom=120, left=170, right=140)
+    pr_ = rc.paragraphs[0]
+    add_run(pr_, 'ℹ️  Un quarto dispositivo per sicurezza: ', bold=True, size=10, color=TEAL)
+    add_run(pr_, 'il tablet al banco è l\'unico senza alternativa — se si guasta si fermano '
+                 'insieme i pagamenti QR e le consegne dei pasti. Un secondo tablet, anche '
+                 'piccolo, o uno smartphone di servizio copre il rischio. La cucina in '
+                 'emergenza può invece lavorare dal PC backoffice.',
+            size=9, color=DARK)
+
+    spacer(doc, 100)
+
+    # Cosa non serve
+    tbl_nn = doc.add_table(rows=1, cols=1)
+    _remove_all_borders(tbl_nn)
+    nnc = tbl_nn.cell(0, 0)
+    _cell_shd(nnc, HEX_LIGHT)
+    _cell_border(nnc, left=HEX_GRAY, sz='20')
+    _cell_margins(nnc, top=120, bottom=120, left=170, right=140)
+    pnn = nnc.paragraphs[0]
+    add_run(pnn, '—  Cosa non serve: ', bold=True, size=10, color=GRAY)
+    add_run(pnn, 'nessun tablet in sala, perché la gestione tavoli è disattivata dalle '
+                 'Impostazioni; e nessun lettore barcode fisso, perché la scansione la fa '
+                 'sempre il telefono del cliente o la fotocamera del tablet cassa.',
+            size=9, color=DARK)
+
+    spacer(doc, 200)
+
+    # ── SEZIONE 2: Posizionamento nel locale ─────────────────────────────────
+    heading(doc, '2 — Posizionamento dispositivi nel locale', 1, NAVY)
     body(doc,
          'La tabella seguente indica le aree fisiche del locale e i dispositivi '
          'che devono essere presenti in ciascuna di esse.',
@@ -379,8 +541,8 @@ def build():
 
     spacer(doc, 200)
 
-    # ── SEZIONE 2: Schede dispositivi ────────────────────────────────────────
-    heading(doc, '2 — Schede dispositivi', 1, NAVY)
+    # ── SEZIONE 3: Schede dispositivi ────────────────────────────────────────
+    heading(doc, '3 — Schede dispositivi', 1, NAVY)
     body(doc, 'Per ogni dispositivo: posizione fisica, sistema operativo richiesto e funzioni nell\'app.',
          size=10, color=GRAY)
     spacer(doc, 80)
@@ -435,8 +597,8 @@ def build():
 
         spacer(doc, 120)
 
-    # ── SEZIONE 3: Flusso QR ─────────────────────────────────────────────────
-    heading(doc, '3 — Flusso pagamento QR banco', 1, NAVY)
+    # ── SEZIONE 4: Flusso QR ─────────────────────────────────────────────────
+    heading(doc, '4 — Flusso pagamento QR banco', 1, NAVY)
     body(doc, 'Sequenza completa dall\'inizio della transazione alla conferma di pagamento.',
          size=10, color=GRAY)
     spacer(doc, 80)
@@ -482,8 +644,8 @@ def build():
 
         spacer(doc, 100)
 
-    # ── SEZIONE 4: Requisiti tecnici ─────────────────────────────────────────
-    heading(doc, '4 — Requisiti tecnici', 1, NAVY)
+    # ── SEZIONE 5: Requisiti tecnici ─────────────────────────────────────────
+    heading(doc, '5 — Requisiti tecnici', 1, NAVY)
     body(doc, 'Riepilogo connessione, credenziali e dimensione schermo per ogni dispositivo.',
          size=10, color=GRAY)
     spacer(doc, 80)
@@ -505,10 +667,12 @@ def build():
         run_fmt(r, bold=True, size=9, color=WHITE)
 
     req_badge_colors = {
-        'Sì': HEX_GREEN, 'Consigliato': HEX_GOLD, 'Opzionale': HEX_GRAY
+        'Sì': HEX_GREEN, 'Consigliato': HEX_GOLD,
+        'Prerequisito': HEX_TEAL, 'Opzionale': HEX_GRAY
     }
     req_badge_rgb = {
-        'Sì': GREEN, 'Consigliato': GOLD, 'Opzionale': GRAY
+        'Sì': GREEN, 'Consigliato': GOLD,
+        'Prerequisito': TEAL, 'Opzionale': GRAY
     }
     for ri, (device, conn, account, screen, req) in enumerate(REQS):
         bg = HEX_LIGHT if ri % 2 == 0 else HEX_WHITE
@@ -548,8 +712,9 @@ def build():
     p_foot = doc.add_paragraph()
     _para_spacing(p_foot, before=200, after=0)
     p_foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_run(p_foot, 'QuickLunch — Documento tecnico — 2026', size=8, color=GRAY)
+    add_run(p_foot, 'QuickLunch — Documento tecnico — © 2024–26 DS Consulting', size=8, color=GRAY)
 
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc.save(OUT)
     print(f'[OK] salvato in: {OUT}')
 

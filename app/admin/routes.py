@@ -19,6 +19,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user, send_web_push_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
+                                send_account_activated_email,
                                 telegram_poll_message, email_poll_html, get_setting)
 
 
@@ -886,6 +887,7 @@ def client_new():
         u.set_password(pwd)
     db.session.add(u)
     db.session.commit()
+    u.apply_registration_bonus()
     flash(f'Cliente "{u.full_name}" creato.', 'success')
     return redirect(url_for('admin.clients'))
 
@@ -948,6 +950,10 @@ def client_toggle(uid):
         send_telegram_to_user(u,
             '✅ Il tuo account è stato attivato!\n'
             'Puoi ora accedere al servizio.')
+        # L'email e' l'unico canale che raggiunge un cliente appena registrato,
+        # che non ha ancora collegato Telegram.
+        send_account_activated_email(
+            u, login_url=url_for('auth.login', _external=True))
     else:
         send_telegram_to_user(u,
             '🔒 Il tuo account è stato sospeso.\n'
@@ -2151,6 +2157,25 @@ def ds_guadagni():
             db.func.date(BancoSession.created_at) <= end_date,
         ).scalar() or 0.0
 
+        # Cesto: la vendita non crea un ordine ne' una sessione banco, e gli
+        # eventuali extra (lattine, snack) sono legati solo al movimento di
+        # wallet. L'importo realmente incassato si legge quindi dalle
+        # transazioni, che portano il prezzo applicato al momento della vendita.
+        # Attenzione: dipende dal testo delle descrizioni scritte in
+        # main.cesto_acquista ('Cesto: ...' e 'Cesto extra: ...').
+        cesto_sum = db.session.query(
+            db.func.coalesce(db.func.sum(-Transaction.amount), 0.0)
+        ).select_from(Transaction).join(
+            User, Transaction.user_id == User.id
+        ).filter(
+            User.tenant_id == t.id,
+            Transaction.ttype == 'payment',
+            db.or_(Transaction.description.like('Cesto: %'),
+                   Transaction.description.like('Cesto extra: %')),
+            db.func.date(Transaction.created_at) >= start_date,
+            db.func.date(Transaction.created_at) <= end_date,
+        ).scalar() or 0.0
+
         meals_sum = 0.0
         for ca in CorporateAccount.query.filter_by(tenant_id=t.id).all():
             for meal in ca.daily_meals:
@@ -2159,7 +2184,7 @@ def ds_guadagni():
                         if b.status != 'cancelled':
                             meals_sum += meal.price * (b.quantity or 1)
 
-        t_total       = ord_sum + banco_sum + meals_sum
+        t_total       = ord_sum + banco_sum + cesto_sum + meals_sum
         t_excl_vat    = round(t_total / 1.10, 2)   # imponibile (scorporo IVA 10%)
         t_fee         = round(t_excl_vat * fee_pct + monthly_fee, 2)
 
@@ -2167,6 +2192,7 @@ def ds_guadagni():
             'tenant':    t,
             'orders':    round(ord_sum,   2),
             'banco':     round(banco_sum, 2),
+            'cesto':     round(cesto_sum, 2),
             'meals':     round(meals_sum, 2),
             'total':     round(t_total,   2),
             'excl_vat':  t_excl_vat,

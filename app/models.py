@@ -191,6 +191,25 @@ class User(UserMixin, db.Model):
                                    ttype='reward',
                                    description=f'Premio: {points} punti → +{reward_amount:.2f}€'))
 
+    def apply_registration_bonus(self):
+        """Accredita il bonus di benvenuto configurato in Impostazioni.
+
+        Va chiamato per ogni nuovo cliente, da qualunque via arrivi
+        (registrazione pubblica, Google, link del tenant, creazione da
+        backoffice): il bonus deve valere per tutti allo stesso modo.
+        Non fa nulla se il bonus non e' configurato o e' zero.
+        """
+        from app.notifications import get_setting
+        try:
+            val = float(get_setting('registration_bonus') or 0)
+        except (ValueError, TypeError):
+            val = 0.0
+        if val <= 0:
+            return 0.0
+        self.credit_wallet(val, 'Bonus benvenuto')
+        db.session.commit()
+        return val
+
 
 @login_manager.user_loader
 def load_user(user_id):

@@ -91,7 +91,7 @@ Per ogni prodotto inserire:
 - Il cassiere accede ad Admin → Utenti → seleziona → Ricarica Wallet
 
 ### 3.3 Comunicazione ai clienti
-Stampare e affiggere (vedi `device_layout.html` per layout suggerito):
+Stampare e affiggere (vedi `manuali/device_layout.docx` per layout suggerito):
 - QR code dell'URL dell'app con istruzioni di registrazione
 - Spiegazione del wallet (si ricarica in cassa o online)
 - Istruzioni per ordinare e per il Cesto Cucina
