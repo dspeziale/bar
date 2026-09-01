@@ -1,7 +1,8 @@
 ﻿import secrets as _secrets
 from datetime import date, timedelta, datetime as _dt
 from functools import wraps
-from flask import render_template, redirect, url_for, flash, request, abort, jsonify
+from flask import (render_template, redirect, url_for, flash, request, abort,
+                   jsonify, current_app)
 from flask_login import login_required, current_user
 from app import db, tables_enabled
 from app.admin import bp
@@ -16,6 +17,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
                         BancoItem, BancoSession, PrepLabel,
                         Prenotazione, PrenotazioneItem,
+                        CaricoMensile,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user, send_web_push_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
@@ -1927,9 +1929,19 @@ def settings():
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
         'tables_enabled',
+        'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
+        'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
     ]
     cfg = {k: get_setting(k) for k in all_keys}
-    return render_template('admin/settings.html', cfg=cfg)
+
+    # Sezione "Dati": elenco dei carichi generati, solo per il super admin
+    carichi = []
+    if current_user.is_admin:
+        carichi = (CaricoMensile.query
+                   .order_by(CaricoMensile.creato_il.desc()).all())
+    oggi = date.today()
+    return render_template('admin/settings.html', cfg=cfg, carichi=carichi,
+                           mese_corrente='%04d-%02d' % (oggi.year, oggi.month))
 
 
 @bp.route('/settings/save', methods=['POST'])
@@ -4164,3 +4176,139 @@ def tavoli_ping_alerts():
         db.session.commit()
     return json.dumps({'alerts': alerts}), 200, {'Content-Type': 'application/json'}
 
+
+# ── Strumenti sui dati: carico mensile, reset totale, backup ──────────────────
+
+@bp.route('/dati/carico', methods=['POST'])
+@_superadmin_required
+def dati_carico_genera():
+    """Genera dati di prova su un mese intero."""
+    from app.data_tools import genera_carico, leggi_intervalli, DatiInsufficienti
+
+    raw = (request.form.get('mese') or '').strip()      # atteso 'YYYY-MM'
+    try:
+        anno, mese = int(raw[:4]), int(raw[5:7])
+        if not (1 <= mese <= 12) or not (2000 <= anno <= 2100):
+            raise ValueError
+    except (ValueError, IndexError):
+        flash('Mese non valido. Formato atteso: anno-mese.', 'danger')
+        return redirect(url_for('admin.settings'))
+
+    tid = _active_tenant_id()
+    solo_lav = 'solo_lavorativi' in request.form
+
+    try:
+        carico = genera_carico(anno, mese, tid, utente_id=current_user.id,
+                               intervalli=leggi_intervalli(),
+                               solo_lavorativi=solo_lav)
+    except DatiInsufficienti as exc:
+        flash(f'Impossibile generare: {exc}.', 'danger')
+        return redirect(url_for('admin.settings'))
+    except Exception as exc:
+        db.session.rollback()
+        flash(f'Generazione interrotta: {exc}', 'danger')
+        return redirect(url_for('admin.settings'))
+
+    flash(f'Carico di {carico.etichetta} creato: {carico.n_pasti} pasti, '
+          f'{carico.n_snack} panini, {carico.n_caffe} caffe, '
+          f'{carico.n_builder} builder su {carico.giorni} giorni '
+          f'({carico.incasso:.2f} € di incassi).', 'success')
+    return redirect(url_for('admin.settings'))
+
+
+@bp.route('/dati/carico/<int:cid>/elimina', methods=['POST'])
+@_superadmin_required
+def dati_carico_elimina(cid):
+    """Annulla un carico eliminando ogni riga che aveva creato."""
+    from app.data_tools import elimina_carico
+
+    carico = db.get_or_404(CaricoMensile, cid)
+    etichetta = carico.etichetta
+    try:
+        n = elimina_carico(carico)
+    except Exception as exc:
+        db.session.rollback()
+        flash(f'Eliminazione interrotta: {exc}', 'danger')
+        return redirect(url_for('admin.settings'))
+    flash(f'Carico di {etichetta} eliminato: {n} righe rimosse.', 'info')
+    return redirect(url_for('admin.settings'))
+
+
+@bp.route('/dati/reset', methods=['POST'])
+@_superadmin_required
+def dati_reset_totale():
+    """Svuota tutte le tabelle e ricrea i dati di base."""
+    from app.data_tools import reset_totale
+
+    if (request.form.get('conferma') or '').strip().upper() != 'AZZERA':
+        flash('Reset annullato: per procedere scrivi AZZERA nel campo di '
+              'conferma.', 'warning')
+        return redirect(url_for('admin.settings'))
+    try:
+        n = reset_totale()
+    except Exception as exc:
+        db.session.rollback()
+        flash(f'Reset interrotto: {exc}', 'danger')
+        return redirect(url_for('admin.settings'))
+    flash(f'Database azzerato: {n} righe eliminate e dati di base ricreati. '
+          f'Le credenziali del super admin sono tornate a quelle predefinite.',
+          'success')
+    return redirect(url_for('auth.login'))
+
+
+@bp.route('/dati/backup')
+@_superadmin_required
+def dati_backup():
+    """Scarica una copia integrale del database in formato JSON."""
+    import json as _json
+    from flask import Response
+    from app.data_tools import esporta_backup
+
+    dati = esporta_backup()
+    nome = f'quicklunch-backup-{_dt.now().strftime("%Y%m%d-%H%M")}.json'
+    corpo = _json.dumps(dati, ensure_ascii=False, indent=1)
+    righe = sum(len(v) for v in dati['tabelle'].values())
+    current_app.logger.info('Backup scaricato: %d righe, %d tabelle',
+                            righe, len(dati['tabelle']))
+    return Response(
+        corpo, mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename="{nome}"'})
+
+
+@bp.route('/dati/restore', methods=['POST'])
+@_superadmin_required
+def dati_restore():
+    """Sostituisce il contenuto del database con quello di un file di backup."""
+    import json as _json
+    from app.data_tools import importa_backup
+
+    if (request.form.get('conferma') or '').strip().upper() != 'RIPRISTINA':
+        flash('Ripristino annullato: per procedere scrivi RIPRISTINA nel campo '
+              'di conferma.', 'warning')
+        return redirect(url_for('admin.settings'))
+
+    f = request.files.get('backup')
+    if not f or not f.filename:
+        flash('Nessun file selezionato.', 'danger')
+        return redirect(url_for('admin.settings'))
+    try:
+        dati = _json.loads(f.read().decode('utf-8'))
+    except (ValueError, UnicodeDecodeError) as exc:
+        flash(f'File non leggibile: {exc}', 'danger')
+        return redirect(url_for('admin.settings'))
+
+    try:
+        n, note = importa_backup(dati)
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+        return redirect(url_for('admin.settings'))
+    except Exception as exc:
+        db.session.rollback()
+        flash(f'Ripristino interrotto: {exc}', 'danger')
+        return redirect(url_for('admin.settings'))
+
+    msg = f'Ripristino completato: {n} righe caricate.'
+    if note:
+        msg += ' ' + ' '.join(note) + '.'
+    flash(msg, 'success')
+    return redirect(url_for('auth.login'))

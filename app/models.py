@@ -892,3 +892,64 @@ class PollVote(db.Model):
     __table_args__ = (
         db.UniqueConstraint('poll_id', 'user_id', name='uq_poll_user'),
     )
+
+
+# ── Carichi di dati generati ───────────────────────────────────────────────────
+
+class CaricoMensile(db.Model):
+    """Un caricamento di dati di prova su un mese.
+
+    Serve a rendere l'operazione reversibile: ogni riga creata viene annotata in
+    CaricoMensileRiga, e l'eliminazione del carico ripercorre quell'elenco.
+    """
+    __tablename__ = 'carichi_mensili'
+    id        = db.Column(db.Integer, primary_key=True)
+    anno      = db.Column(db.Integer, nullable=False)
+    mese      = db.Column(db.Integer, nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    creato_il = db.Column(db.DateTime, default=datetime.utcnow)
+    creato_da = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    parametri = db.Column(db.Text, default='')      # JSON degli intervalli usati
+    giorni    = db.Column(db.Integer, default=0)
+    n_pasti   = db.Column(db.Integer, default=0)
+    n_snack   = db.Column(db.Integer, default=0)
+    n_caffe   = db.Column(db.Integer, default=0)
+    n_builder = db.Column(db.Integer, default=0)
+    incasso   = db.Column(db.Float,   default=0.0)
+
+    righe = db.relationship('CaricoMensileRiga', back_populates='carico',
+                            cascade='all, delete-orphan', lazy='dynamic')
+    autore = db.relationship('User', foreign_keys='CaricoMensile.creato_da')
+
+    MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+            'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
+
+    @property
+    def etichetta(self):
+        nome = self.MESI[self.mese - 1] if 1 <= self.mese <= 12 else str(self.mese)
+        return f'{nome} {self.anno}'
+
+    @property
+    def totale_righe(self):
+        return self.righe.count()
+
+    @property
+    def parametri_dict(self):
+        import json as _json
+        try:
+            return _json.loads(self.parametri or '{}')
+        except (ValueError, TypeError):
+            return {}
+
+
+class CaricoMensileRiga(db.Model):
+    """Registro delle righe create da un carico: entita e chiave primaria."""
+    __tablename__ = 'carichi_mensili_righe'
+    id        = db.Column(db.Integer, primary_key=True)
+    carico_id = db.Column(db.Integer,
+                          db.ForeignKey('carichi_mensili.id', ondelete='CASCADE'),
+                          nullable=False, index=True)
+    entita    = db.Column(db.String(64), nullable=False)   # __tablename__
+    riga_id   = db.Column(db.Integer, nullable=False)
+
+    carico = db.relationship('CaricoMensile', back_populates='righe')

@@ -20,7 +20,8 @@ from app.models import (
     CustomOrderItemIngredient, Table, TableReservation, TableTimeBand,
     Transaction, ConsumableMovement, CorporateAccount, CorporateMembership,
     DailyFixedMeal, CorporateMealBooking, PollVote, user_roles,
-    BancoSession,
+    BancoSession, PrepLabel, Prenotazione, PrenotazioneItem,
+    PushSubscription, MealConfiguration,
 )
 from config import Config
 
@@ -837,12 +838,18 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
         CorporateMembership.query.filter(
             CorporateMembership.user_id.in_(user_ids)).delete(
             synchronize_session=False)
+    MealConfiguration.query.filter(
+        MealConfiguration.tenant_id.in_(tenant_ids)).delete(
+        synchronize_session=False)
     CorporateAccount.query.filter(
         CorporateAccount.tenant_id.in_(tenant_ids)).delete(
         synchronize_session=False)
 
     # sondaggi e transazioni clienti
     if user_ids:
+        PushSubscription.query.filter(
+            PushSubscription.user_id.in_(user_ids)).delete(
+            synchronize_session=False)
         PollVote.query.filter(
             PollVote.user_id.in_(user_ids)).delete(synchronize_session=False)
         Transaction.query.filter(
@@ -886,6 +893,21 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
         synchronize_session=False)
     Table.query.filter(
         Table.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+
+    # etichette del cesto e prenotazioni future: puntano a prodotti e utenti,
+    # quindi vanno rimosse prima del catalogo (altrimenti la delete dei
+    # prodotti viola prep_labels_product_id_fkey / prenotazione_items).
+    PrepLabel.query.filter(
+        PrepLabel.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+    pren_ids = [r[0] for r in db.session.query(Prenotazione.id).filter(
+        Prenotazione.tenant_id.in_(tenant_ids)).all()]
+    if pren_ids:
+        PrenotazioneItem.query.filter(
+            PrenotazioneItem.prenotazione_id.in_(pren_ids)).delete(
+            synchronize_session=False)
+    Prenotazione.query.filter(
+        Prenotazione.tenant_id.in_(tenant_ids)).delete(
+        synchronize_session=False)
 
     # catalogo
     if product_ids:

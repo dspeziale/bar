@@ -163,6 +163,32 @@ prenotazioni). Per aggiungerne un altro servono cinque punti:
    con redirect diverso — su **tutte** le rotte del modulo, non solo sulle viste: nascondere
    la voce di menu non basta a rendere una pagina irraggiungibile.
 
+### Strumenti sui dati (`app/data_tools.py`)
+
+Tre procedure per il solo super admin, esposte dal tab **Dati** di `/admin/settings`:
+
+- **Carico mensile**: `genera_carico()` crea un mese di attività (pasti aziendali, ordini
+  panino/bevanda, caffè al banco, prodotti builder) con quantità giornaliere configurabili
+  dalle impostazioni `sim_*_min` / `sim_*_max`. Ogni riga creata viene annotata in
+  `CaricoMensileRiga` (entità + chiave primaria): è quel registro che rende l'operazione
+  annullabile. Non tocca i saldi dei wallet, così l'eliminazione è un annullamento completo.
+- **Reset totale**: `reset_totale()` svuota tutte le tabelle e riesegue `_seed_defaults()`.
+  Diverso dal `reset_all` della pagina Manutenzione, che è **parziale**.
+- **Backup/restore**: `esporta_backup()` / `importa_backup()`, JSON tabella per tabella,
+  indipendente dal motore. Su PostgreSQL il restore riallinea le sequenze
+  (`_sistema_sequenze()`), altrimenti i nuovi inserimenti collidono sugli id.
+
+**L'ordine di cancellazione si ricava dai metadati**, non a mano:
+`reversed(db.metadata.sorted_tables)` rispetta le chiavi esterne e si adatta ai modelli
+nuovi. Usalo ogni volta che serve svuotare più tabelle.
+
+Il contro-esempio è `_delete_tenant_data()` in `demo_seed.py`, che ha l'ordine scritto a
+mano: quando sono stati aggiunti `prep_labels`, `prenotazioni`, `push_subscriptions` e
+`meal_configurations` nessuno l'ha aggiornata, e in produzione il reset demo è morto con
+`ForeignKeyViolation` su `prep_labels_product_id_fkey`. **Se aggiungi un modello con una FK
+verso prodotti, utenti o convenzioni, aggiorna anche quella funzione** — o meglio, portala
+sull'ordinamento da metadati.
+
 ### Wallet e fedeltà
 
 Il saldo si muove **solo** attraverso i metodi di `User` (`credit_wallet`, `debit_wallet`,

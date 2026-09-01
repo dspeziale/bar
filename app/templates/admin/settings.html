@@ -52,6 +52,14 @@
       <i class="fas fa-toggle-on mr-1"></i>Funzionalità
     </a>
   </li>
+  {% if current_user.is_admin %}
+  <li class="nav-item">
+    <a class="nav-link" id="t-dati" data-toggle="tab"
+       href="#tab-dati" role="tab">
+      <i class="fas fa-database mr-1"></i>Dati
+    </a>
+  </li>
+  {% endif %}
 </ul>
 
 {# ── Tab content ─────────────────────────────────────────────────────────── #}
@@ -627,6 +635,258 @@
       </div>
     </div>
   </div>{# /tab-funzioni #}
+
+  {% if current_user.is_admin %}
+  {# ══ DATI ═══════════════════════════════════════════════════════════════ #}
+  <div class="tab-pane fade" id="tab-dati" role="tabpanel">
+
+    {# ── Carico mensile di dati di prova ── #}
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-calendar-plus mr-2 text-primary"></i>Carico mensile di dati di prova
+        </h3>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size:.9rem;">
+          Genera un mese intero di attività realistica: pasti aziendali, ordini di
+          panini e bevande, caffè al banco e prodotti del builder. Serve per
+          provare report, andamenti e calcolo del canone su dati verosimili.
+          Ogni riga creata viene registrata, quindi il carico si può eliminare
+          per intero in un secondo momento.
+        </p>
+
+        <form method="POST" action="{{ url_for('admin.dati_carico_genera') }}">
+          {{ csrf_field() }}
+          <div class="form-row">
+            <div class="form-group col-md-3">
+              <label>Mese da caricare</label>
+              <input type="month" name="mese" class="form-control"
+                     value="{{ mese_corrente }}" required>
+            </div>
+            <div class="form-group col-md-9 d-flex align-items-end">
+              <div class="custom-control custom-checkbox mb-2">
+                <input type="checkbox" class="custom-control-input"
+                       id="chk-solo-lav" name="solo_lavorativi" checked>
+                <label class="custom-control-label" for="chk-solo-lav">
+                  Solo giorni lavorativi (lunedì–venerdì)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="mt-2 mb-2" style="font-weight:700;">Quantità al giorno</h6>
+          <div class="form-row">
+            {% for etichetta, k_min, k_max in [
+                 ('Pasti aziendali', 'sim_pasti_min', 'sim_pasti_max'),
+                 ('Panini, tramezzini e bevande', 'sim_snack_min', 'sim_snack_max'),
+                 ('Caffè al banco', 'sim_caffe_min', 'sim_caffe_max'),
+                 ('Prodotti del builder', 'sim_builder_min', 'sim_builder_max')] %}
+            <div class="form-group col-md-3">
+              <label style="font-size:.85rem;">{{ etichetta }}</label>
+              <div class="input-group input-group-sm">
+                <input type="number" name="{{ k_min }}" class="form-control"
+                       value="{{ cfg[k_min] }}" min="0" max="999" form="formIntervalli">
+                <div class="input-group-prepend input-group-append">
+                  <span class="input-group-text">a</span>
+                </div>
+                <input type="number" name="{{ k_max }}" class="form-control"
+                       value="{{ cfg[k_max] }}" min="0" max="999" form="formIntervalli">
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-play mr-1"></i>Genera il mese
+          </button>
+          <small class="form-text text-muted mt-2">
+            Su un mese di soli giorni lavorativi si creano tipicamente alcune
+            migliaia di righe: l'operazione può richiedere qualche minuto.
+            I saldi dei portafogli non vengono toccati.
+          </small>
+        </form>
+
+        <form method="POST" action="{{ url_for('admin.settings_save') }}"
+              id="formIntervalli" class="mt-2">
+          {{ csrf_field() }}
+          <input type="hidden" name="keys"
+                 value="sim_pasti_min,sim_pasti_max,sim_snack_min,sim_snack_max,sim_caffe_min,sim_caffe_max,sim_builder_min,sim_builder_max">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-save mr-1"></i>Salva gli intervalli
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# ── Carichi esistenti ── #}
+    <div class="card card-outline card-secondary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-list mr-2"></i>Carichi generati
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        {% if carichi %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>Mese</th>
+                <th class="text-right">Giorni</th>
+                <th class="text-right">Pasti</th>
+                <th class="text-right">Panini</th>
+                <th class="text-right">Caffè</th>
+                <th class="text-right">Builder</th>
+                <th class="text-right">Incassi</th>
+                <th class="text-right">Righe</th>
+                <th>Creato</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in carichi %}
+              <tr>
+                <td><strong>{{ c.etichetta }}</strong></td>
+                <td class="text-right">{{ c.giorni }}</td>
+                <td class="text-right">{{ c.n_pasti }}</td>
+                <td class="text-right">{{ c.n_snack }}</td>
+                <td class="text-right">{{ c.n_caffe }}</td>
+                <td class="text-right">{{ c.n_builder }}</td>
+                <td class="text-right">{{ '%.2f'|format(c.incasso) }} €</td>
+                <td class="text-right text-muted">{{ c.totale_righe }}</td>
+                <td class="text-muted" style="font-size:.85rem;">
+                  {{ c.creato_il|dt_rome }}
+                </td>
+                <td class="text-right">
+                  <form method="POST" class="mb-0"
+                        action="{{ url_for('admin.dati_carico_elimina', cid=c.id) }}"
+                        data-confirm="Eliminare il carico di {{ c.etichetta }}? Verranno rimosse {{ c.totale_righe }} righe.">
+                    {{ csrf_field() }}
+                    <button type="submit" class="btn btn-xs btn-outline-danger">
+                      <i class="fas fa-trash"></i> Elimina
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-muted">Nessun carico generato.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row">
+      {# ── Backup ── #}
+      <div class="col-lg-6">
+        <div class="card card-outline card-success">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-download mr-2 text-success"></i>Backup
+            </h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted" style="font-size:.9rem;">
+              Scarica una copia integrale del database in un unico file JSON:
+              tutte le tabelle, riga per riga. Funziona sia sul database locale
+              sia su quello di produzione.
+            </p>
+            <div class="alert alert-warning py-2 px-3" style="font-size:.85rem;">
+              <i class="fas fa-exclamation-triangle mr-1"></i>
+              Il file contiene <strong>dati personali dei clienti e credenziali
+              di servizio</strong> (token Telegram, password applicativa Gmail,
+              chiavi delle notifiche). Conservalo come conserveresti un
+              archivio contabile.
+            </div>
+            <a href="{{ url_for('admin.dati_backup') }}"
+               class="btn btn-success">
+              <i class="fas fa-download mr-1"></i>Scarica il backup
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {# ── Restore ── #}
+      <div class="col-lg-6">
+        <div class="card card-outline card-warning">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-upload mr-2 text-warning"></i>Ripristino
+            </h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted" style="font-size:.9rem;">
+              Carica un file di backup: il contenuto attuale del database viene
+              <strong>sostituito</strong> da quello del file. Al termine si viene
+              disconnessi, perché anche gli utenti sono stati sostituiti.
+            </p>
+            <form method="POST" action="{{ url_for('admin.dati_restore') }}"
+                  enctype="multipart/form-data">
+              {{ csrf_field() }}
+              <div class="form-group">
+                <input type="file" name="backup" accept=".json,application/json"
+                       class="form-control-file" required>
+              </div>
+              <div class="form-group">
+                <label style="font-size:.85rem;">
+                  Scrivi <code>RIPRISTINA</code> per confermare
+                </label>
+                <input type="text" name="conferma" class="form-control"
+                       placeholder="RIPRISTINA" autocomplete="off" required>
+              </div>
+              <button type="submit" class="btn btn-warning">
+                <i class="fas fa-upload mr-1"></i>Ripristina dal file
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Reset totale ── #}
+    <div class="card card-outline card-danger">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-radiation mr-2 text-danger"></i>Azzeramento completo
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-danger py-2 px-3" style="font-size:.9rem;">
+          <strong>Operazione irreversibile.</strong> Svuota <em>tutte</em> le
+          tabelle — clienti, ordini, movimenti, catalogo, convenzioni, etichette,
+          impostazioni — e ricrea i soli dati di base: permessi, ruoli, super
+          admin, categorie, slot, articoli del banco e impostazioni predefinite.
+          <br>
+          Le credenziali del super admin tornano a quelle
+          <strong>predefinite</strong>, e verrai disconnesso.
+          <br>
+          Scarica un backup prima di procedere.
+        </div>
+        <p class="text-muted" style="font-size:.85rem;">
+          Diverso dal reset della pagina Manutenzione, che è parziale: quello
+          lascia in piedi tavoli, convenzioni, prenotazioni e impostazioni.
+        </p>
+        <form method="POST" action="{{ url_for('admin.dati_reset_totale') }}">
+          {{ csrf_field() }}
+          <div class="form-group" style="max-width:320px;">
+            <label style="font-size:.85rem;">
+              Scrivi <code>AZZERA</code> per confermare
+            </label>
+            <input type="text" name="conferma" class="form-control"
+                   placeholder="AZZERA" autocomplete="off" required>
+          </div>
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-radiation mr-1"></i>Azzera tutto il database
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>{# /tab-dati #}
+  {% endif %}
 
 </div>{# /tab-content #}
 {% endblock %}

@@ -880,6 +880,15 @@ def _seed_defaults():
         ('builder_price_panino',   '3.50',  'Prezzo base panino personalizzato €'),
         ('builder_price_insalata', '3.00',  'Prezzo base insalata personalizzata €'),
         ('builder_price_poke',     '4.00',  'Prezzo base poke personalizzato €'),
+        # Intervalli del carico mensile di dati di prova (righe al giorno)
+        ('sim_pasti_min',    '20',  'Carico mensile: pasti aziendali minimi/giorno'),
+        ('sim_pasti_max',    '50',  'Carico mensile: pasti aziendali massimi/giorno'),
+        ('sim_snack_min',    '10',  'Carico mensile: panini e bevande minimi/giorno'),
+        ('sim_snack_max',    '20',  'Carico mensile: panini e bevande massimi/giorno'),
+        ('sim_caffe_min',    '80',  'Carico mensile: caffe minimi/giorno'),
+        ('sim_caffe_max',    '120', 'Carico mensile: caffe massimi/giorno'),
+        ('sim_builder_min',  '10',  'Carico mensile: prodotti builder minimi/giorno'),
+        ('sim_builder_max',  '20',  'Carico mensile: prodotti builder massimi/giorno'),
         # Funzionalita' attivabili ('0' = disattivata)
         ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
         # Reminder
