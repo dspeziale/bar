@@ -319,7 +319,7 @@ var table = $('#clientsTable').DataTable({
       data: null,
       render: function(d) {
         var cls = d.wallet_balance > 0 ? 'text-success' : (d.wallet_balance < 0 ? 'text-danger' : 'text-muted');
-        var s = '<strong class="' + cls + '">' + parseFloat(d.wallet_balance).toFixed(2) + '€</strong>';
+        var s = '<strong class="' + cls + '">' + qlNum(parseFloat(d.wallet_balance)) + '€</strong>';
         if (d.wallet_overdraft > 0) {
           s += ' <span class="badge badge-warning ml-1">fido ' + parseFloat(d.wallet_overdraft).toFixed(0) + '€</span>';
         }
@@ -371,7 +371,7 @@ $(document).on('click', '.btn-topup-client', function() {
   var d = table.row($(this).closest('tr')).data();
   $('#topupForm').attr('action', d.topup_url);
   $('#topupName').text(d.full_name);
-  $('#topupBalance').text(parseFloat(d.wallet_balance).toFixed(2) + '€');
+  $('#topupBalance').text(qlNum(parseFloat(d.wallet_balance)) + '€');
   $('#sharedTopupModal input[name="amount"]').val('');
   $('#sharedTopupModal').modal('show');
 });

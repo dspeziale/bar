@@ -89,7 +89,7 @@
         </div>
         <div class="text-right ml-2" style="flex-shrink:0;">
           <div style="font-size:1.1rem;font-weight:700;color:var(--QuickLunch-primary, #e94560);">
-            {{ '%.2f'|format(meal.price) }}€
+            {{ meal.price|num_it }}€
           </div>
           <small class="{{ 'text-success' if meal.slots_left > 5 else ('text-warning' if meal.slots_left > 0 else 'text-danger') }}">
             {{ meal.slots_left }} post{{ 'o' if meal.slots_left == 1 else 'i' }}

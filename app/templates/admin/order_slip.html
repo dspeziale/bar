@@ -127,7 +127,7 @@
   {% for item in order.items %}
   <div class="item-row">
     <span class="item-name">{{ item.quantity }}x {{ item.product.name }}</span>
-    <span class="item-price">{{ '%.2f'|format(item.unit_price * item.quantity) }}€</span>
+    <span class="item-price">{{ (item.unit_price * item.quantity)|num_it }}€</span>
   </div>
   {% endfor %}
 
@@ -138,10 +138,10 @@
       <span class="builder-title item-name">
         {{ 'PANINO' if ci.builder_type == 'panino' else 'INSALATA' }} CUSTOM
       </span>
-      <span class="item-price bold">{{ '%.2f'|format(ci.unit_price) }}€</span>
+      <span class="item-price bold">{{ ci.unit_price|num_it }}€</span>
     </div>
     {% for ing in ci.ingredients %}
-    <div class="builder-ing">{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} +{{ '%.2f'|format(ing.price_extra) }}€{% endif %}</div>
+    <div class="builder-ing">{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} +{{ ing.price_extra|num_it }}€{% endif %}</div>
     {% endfor %}
   </div>
   {% endfor %}
@@ -151,7 +151,7 @@
   <!-- Totale -->
   <div class="total-row">
     <span>TOTALE</span>
-    <span>{{ '%.2f'|format(order.total_price) }}€</span>
+    <span>{{ order.total_price|num_it }}€</span>
   </div>
 
   <div class="div-solid"></div>

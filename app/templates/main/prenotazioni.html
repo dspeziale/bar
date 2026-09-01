@@ -50,7 +50,7 @@
           {% endfor %}
           {% if p.notes %}<br><small class="text-muted"><i class="fas fa-sticky-note mr-1"></i>{{ p.notes }}</small>{% endif %}
         </td>
-        <td class="text-right"><strong>{{ '%.2f'|format(p.total_price) }} €</strong></td>
+        <td class="text-right"><strong>{{ p.total_price|num_it }} €</strong></td>
         <td>
           {% if p.status == 'pending' %}
             <span class="badge badge-warning">In attesa</span>
@@ -67,7 +67,7 @@
         <td>
           {% if p.status in ('pending', 'confirmed') and p.pickup_date > today %}
           <form method="POST" action="{{ url_for('main.prenotazioni_cancella', pid=p.id) }}"
-                onsubmit="return confirm('Cancellare la prenotazione {{ p.code }}?\nVerrà rimborsato {{ '%.2f'|format(p.total_price) }} €.')">
+                onsubmit="return confirm('Cancellare la prenotazione {{ p.code }}?\nVerrà rimborsato {{ p.total_price|num_it }} €.')">
             {{ csrf_field() }}
             <button class="btn btn-xs btn-outline-danger" title="Cancella">
               <i class="fas fa-times"></i>
@@ -109,7 +109,7 @@
         <td><code style="font-size:.8rem;">{{ p.code }}</code></td>
         <td>{{ p.pickup_date.strftime('%d/%m/%Y') }}</td>
         <td>{% for item in p.items %}<small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}{% endfor %}</td>
-        <td class="text-right">{{ '%.2f'|format(p.total_price) }} €</td>
+        <td class="text-right">{{ p.total_price|num_it }} €</td>
         <td>
           {% if p.status == 'cancelled' %}<span class="badge badge-secondary">Cancellata</span>
           {% else %}<span class="badge badge-light border">{{ p.status }}</span>{% endif %}

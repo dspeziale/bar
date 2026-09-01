@@ -3,7 +3,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
-from app import db, tables_enabled
+from app import db, tables_enabled, numero_italiano
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -219,8 +219,8 @@ def place_order():
 
     _overdraft = current_user.wallet_overdraft or 0.0
     if current_user.wallet_balance + _overdraft < total:
-        flash(f'Saldo wallet insufficiente ({current_user.wallet_balance:.2f}€). '
-              f'Servono {total:.2f}€.', 'danger')
+        flash(f'Saldo wallet insufficiente ({numero_italiano(current_user.wallet_balance)}€). '
+              f'Servono {numero_italiano(total)}€.', 'danger')
         return redirect(url_for('main.wallet'))
 
     # Crea ordine
@@ -281,13 +281,13 @@ def place_order():
     send_telegram_to_user(
         current_user,
         f'✅ Ordine <b>{order.order_code}</b> confermato!\n'
-        f'Ritiro {slot_label}. Totale: <b>{total:.2f}€</b>'
+        f'Ritiro {slot_label}. Totale: <b>{numero_italiano(total)}€</b>'
     )
 
     # notifica admin / cucina
     lines = [f'🛒 <b>Nuovo ordine</b> — {order.order_code}',
              f'👤 {current_user.full_name}  •  ritiro: <b>{slot_label}</b>',
-             f'💶 Totale: <b>{total:.2f}€</b>', '']
+             f'💶 Totale: <b>{numero_italiano(total)}€</b>', '']
     for item in order.items:
         lines.append(f'  • {item.quantity}× {item.product.name}')
     for ci in order.custom_items:
@@ -377,11 +377,11 @@ def cancel_order(order_id):
             stock.quantity_reserved = max(0, stock.quantity_reserved - item.quantity)
 
     db.session.commit()
-    flash(f'Ordine #{order.id} annullato. Rimborso {order.total_price:.2f}€.', 'info')
+    flash(f'Ordine #{order.id} annullato. Rimborso {numero_italiano(order.total_price)}€.', 'info')
     send_telegram_to_user(
         current_user,
         f'❌ Ordine <b>#{order.id}</b> annullato.\n'
-        f'Rimborso di <b>{order.total_price:.2f}€</b> sul tuo wallet.'
+        f'Rimborso di <b>{numero_italiano(order.total_price)}€</b> sul tuo wallet.'
     )
     return redirect(url_for('main.my_orders'))
 
@@ -440,12 +440,12 @@ def redeem_points():
     earned = blocks * reward
     current_user.redeem_points(blocks * threshold, earned)
     db.session.commit()
-    flash(f'+{earned:.2f}€ aggiunti al wallet!', 'success')
+    flash(f'+{numero_italiano(earned)}€ aggiunti al wallet!', 'success')
     send_telegram_to_user(
         current_user,
         f'🎁 Hai riscattato i tuoi punti fedeltà!\n'
-        f'<b>+{earned:.2f}€</b> aggiunti al wallet.\n'
-        f'💰 Saldo attuale: <b>{current_user.wallet_balance:.2f}€</b>'
+        f'<b>+{numero_italiano(earned)}€</b> aggiunti al wallet.\n'
+        f'💰 Saldo attuale: <b>{numero_italiano(current_user.wallet_balance)}€</b>'
     )
     return redirect(url_for('main.wallet'))
 
@@ -1029,7 +1029,7 @@ def banco_pay_confirm(token):
         return redirect(url_for('main.index'))
     _overdraft = current_user.wallet_overdraft or 0.0
     if current_user.wallet_balance + _overdraft < sess.total:
-        flash(f'Saldo insufficiente ({current_user.wallet_balance:.2f}€). Ricarica il wallet.', 'danger')
+        flash(f'Saldo insufficiente ({numero_italiano(current_user.wallet_balance)}€). Ricarica il wallet.', 'danger')
         return redirect(url_for('main.banco_pay', token=token))
     try:
         items = json.loads(sess.items_json)
@@ -1046,11 +1046,11 @@ def banco_pay_confirm(token):
     sess.status      = 'paid'
     sess.customer_id = current_user.id
     db.session.commit()
-    flash(f'Pagamento di {sess.total:.2f}€ confermato!', 'success')
+    flash(f'Pagamento di {numero_italiano(sess.total)}€ confermato!', 'success')
     send_telegram_to_user(
         current_user,
-        f'☕ Pagamento banco confermato: <b>{sess.total:.2f}€</b>\n'
-        f'💰 Saldo residuo: <b>{current_user.wallet_balance:.2f}€</b>'
+        f'☕ Pagamento banco confermato: <b>{numero_italiano(sess.total)}€</b>\n'
+        f'💰 Saldo residuo: <b>{numero_italiano(current_user.wallet_balance)}€</b>'
     )
     return redirect(url_for('main.index'))
 
@@ -1115,7 +1115,7 @@ def account_delete():
     if current_user.wallet_balance and current_user.wallet_balance > 0:
         flash(
             f'Impossibile cancellare l\'account: hai ancora '
-            f'{current_user.wallet_balance:.2f}€ nel wallet. '
+            f'{numero_italiano(current_user.wallet_balance)}€ nel wallet. '
             f'Contatta l\'amministratore per il rimborso prima di procedere.',
             'danger',
         )
@@ -1230,7 +1230,7 @@ def cesto_acquista(code):
     balance = current_user.wallet_balance or 0
     if balance < total:
         flash(
-            f'Saldo insufficiente. Hai {balance:.2f} €, serve {total:.2f} €.',
+            f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.',
             'danger',
         )
         return redirect(url_for('main.cesto_scan', code=code))
@@ -1343,7 +1343,7 @@ def prenotazioni_crea():
     total = sum(p.price * q for p, q in items_data)
     balance = current_user.wallet_balance or 0
     if balance < total:
-        flash(f'Saldo insufficiente. Hai {balance:.2f} €, serve {total:.2f} €.', 'danger')
+        flash(f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.', 'danger')
         return redirect(url_for('main.prenotazioni_nuova'))
 
     # Crea prenotazione
@@ -1386,7 +1386,7 @@ def prenotazioni_cancella(pid):
     if pren.total_price and pren.total_price > 0:
         current_user.credit_wallet(pren.total_price, f'Rimborso {pren.code}')
     db.session.commit()
-    flash(f'Prenotazione {pren.code} cancellata. Rimborso di {pren.total_price:.2f} € accreditato.', 'info')
+    flash(f'Prenotazione {pren.code} cancellata. Rimborso di {numero_italiano(pren.total_price)} € accreditato.', 'info')
     return redirect(url_for('main.prenotazioni_list'))
 
 

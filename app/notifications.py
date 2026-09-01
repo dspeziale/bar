@@ -227,6 +227,8 @@ def send_email(to_addr, subject, html_body, text_body=None):
 
 def send_supplier_low_stock_alert(item):
     """Invia email al fornitore quando la giacenza scende sotto la soglia minima."""
+    from app import numero_italiano
+
     if not item.supplier or not item.supplier.email:
         return False, 'Fornitore senza email configurata'
     subject = f'[QuickLunch] ⚠️ Riordino necessario: {item.name}'
@@ -245,11 +247,11 @@ def send_supplier_low_stock_alert(item):
       </tr>
       <tr>
         <td style="padding:8px 12px;font-weight:bold;border:1px solid #eee;">Giacenza attuale</td>
-        <td style="padding:8px 12px;border:1px solid #eee;color:#e94560;font-weight:bold;">{item.quantity:.1f} {item.unit}</td>
+        <td style="padding:8px 12px;border:1px solid #eee;color:#e94560;font-weight:bold;">{numero_italiano(item.quantity, 1)} {item.unit}</td>
       </tr>
       <tr style="background:#f5f5f5;">
         <td style="padding:8px 12px;font-weight:bold;border:1px solid #eee;">Soglia minima</td>
-        <td style="padding:8px 12px;border:1px solid #eee;">{item.min_threshold:.1f} {item.unit}</td>
+        <td style="padding:8px 12px;border:1px solid #eee;">{numero_italiano(item.min_threshold, 1)} {item.unit}</td>
       </tr>
     </table>
     <p>Si prega di procedere con il rifornimento al più presto.</p>

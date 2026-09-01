@@ -65,7 +65,7 @@ var BANCO_SESSION_URL = "{{ url_for('admin.banco_session_new') }}";
                  onclick="toggleItem({{ item.id }})" id="btn-{{ item.id }}">
               <i class="fas {{ item.icon }} item-icon text-{{ item.color }}"></i>
               <div class="item-name">{{ item.name }}</div>
-              <div class="item-price">{{ '%.2f'|format(item.price) }}€</div>
+              <div class="item-price">{{ item.price|num_it }}€</div>
             </div>
             <span class="item-qty" id="qty-{{ item.id }}">0</span>
           </div>
@@ -379,7 +379,7 @@ function updateUI() {
   });
 
   total = Math.round(total * 100) / 100;
-  document.getElementById('totalDisplay').textContent = total.toFixed(2) + '€';
+  document.getElementById('totalDisplay').textContent = qlNum(total) + '€';
 
   var summary = document.getElementById('cartSummary');
   if (lines.length === 0) {
@@ -389,7 +389,7 @@ function updateUI() {
       return '<div class="cart-line d-flex justify-content-between align-items-center mb-1">'
            + '<span><strong>' + l.qty + '×</strong> ' + l.name + '</span>'
            + '<span class="d-flex align-items-center" style="gap:.3rem;">'
-           + '<strong>' + (l.price * l.qty).toFixed(2) + '€</strong>'
+           + '<strong>' + qlNum((l.price * l.qty)) + '€</strong>'
            + '<button type="button" class="btn btn-xs btn-outline-danger" onclick="removeItem(' + l.id + ')">'
            + '<i class="fas fa-minus"></i></button>'
            + '</span></div>';
@@ -432,7 +432,7 @@ function openQRModal(token, payUrl, total, expiresIn) {
   _expiresIn = expiresIn;
 
   // Mostra totale
-  document.getElementById('qr-total-label').textContent = total.toFixed(2) + '€';
+  document.getElementById('qr-total-label').textContent = qlNum(total) + '€';
 
   // Reset status
   document.getElementById('qr-status-msg').innerHTML =

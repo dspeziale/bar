@@ -753,7 +753,7 @@
                 <td class="text-right">{{ c.n_snack }}</td>
                 <td class="text-right">{{ c.n_caffe }}</td>
                 <td class="text-right">{{ c.n_builder }}</td>
-                <td class="text-right">{{ '%.2f'|format(c.incasso) }} €</td>
+                <td class="text-right">{{ c.incasso|num_it }} €</td>
                 <td class="text-right text-muted">{{ c.totale_righe }}</td>
                 <td class="text-muted" style="font-size:.85rem;">
                   {{ c.creato_il|dt_rome }}

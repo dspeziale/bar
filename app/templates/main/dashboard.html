@@ -8,7 +8,7 @@
 <div class="row">
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-info">
-      <div class="inner"><h3>{{ '%.2f'|format(current_user.wallet_balance) }}€</h3><p>Saldo Wallet</p></div>
+      <div class="inner"><h3>{{ current_user.wallet_balance|num_it }}€</h3><p>Saldo Wallet</p></div>
       <div class="icon"><i class="fas fa-wallet"></i></div>
       <a href="{{ url_for('main.wallet') }}" class="small-box-footer">Dettagli <i class="fas fa-arrow-circle-right"></i></a>
     </div>
@@ -147,7 +147,7 @@
               </code>
             </td>
             <td><i class="fas fa-clock mr-1 text-muted"></i>{{ o.slot.time_str }}</td>
-            <td><strong>{{ '%.2f'|format(o.total_price) }}€</strong></td>
+            <td><strong>{{ o.total_price|num_it }}€</strong></td>
             <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
             <td>
               {% if o.status in ('pending','confirmed') %}
@@ -221,7 +221,7 @@
             </div>
             {% if t.amount != 0 %}
             <span class="badge badge-{{ 'success' if t.amount > 0 else 'danger' }}">
-              {{ '+' if t.amount > 0 }}{{ '%.2f'|format(t.amount) }}€
+              {{ '+' if t.amount > 0 }}{{ t.amount|num_it }}€
             </span>
             {% endif %}
           </li>
@@ -245,7 +245,7 @@
           <div class="progress-bar" style="width:{{ progress }}%;background:linear-gradient(90deg,#6f42c1,#e94560);"></div>
         </div>
         <small class="text-muted">
-          {{ current_user.loyalty_points % loyalty_threshold }}/{{ loyalty_threshold }} pt → +{{ '%.2f'|format(reward_amount) }}€
+          {{ current_user.loyalty_points % loyalty_threshold }}/{{ loyalty_threshold }} pt → +{{ reward_amount|num_it }}€
         </small>
         {% if current_user.loyalty_points >= loyalty_threshold %}
         <form method="POST" action="{{ url_for('main.redeem_points') }}" class="mt-2">
@@ -334,7 +334,7 @@
       <div class="card-body">
         {% if current_user.wallet_balance and current_user.wallet_balance > 0 %}
         <p class="text-muted" style="font-size:.87rem;">
-          Hai ancora <strong>{{ '%.2f'|format(current_user.wallet_balance) }}€</strong> nel wallet.
+          Hai ancora <strong>{{ current_user.wallet_balance|num_it }}€</strong> nel wallet.
           Per cancellare l'account contatta l'amministratore per il rimborso.
         </p>
         <button class="btn btn-sm btn-outline-danger btn-block" disabled>

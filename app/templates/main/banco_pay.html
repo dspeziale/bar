@@ -34,13 +34,13 @@
       {% for item in items %}
       <div class="item-row">
         <span><strong>{{ item.qty }}&times;</strong> {{ item.name }}</span>
-        <span class="text-muted">{{ '%.2f'|format(item.price * item.qty) }}€</span>
+        <span class="text-muted">{{ (item.price * item.qty)|num_it }}€</span>
       </div>
       {% endfor %}
 
       <div class="item-row total-row mt-2">
         <span>Totale</span>
-        <span>{{ '%.2f'|format(sess.total) }}€</span>
+        <span>{{ sess.total|num_it }}€</span>
       </div>
 
       <hr class="my-3">
@@ -48,21 +48,21 @@
       <div class="wallet-row d-flex justify-content-between mb-3">
         <span><i class="fas fa-wallet mr-1"></i>Il tuo saldo</span>
         <span class="font-weight-bold {% if current_user.wallet_balance >= sess.total %}text-success{% else %}text-danger{% endif %}">
-          {{ '%.2f'|format(current_user.wallet_balance) }}€
+          {{ current_user.wallet_balance|num_it }}€
         </span>
       </div>
 
       {% if current_user.wallet_balance < sess.total %}
       <div class="alert alert-danger">
         <i class="fas fa-exclamation-triangle mr-1"></i>
-        Saldo insufficiente. Mancano {{ '%.2f'|format(sess.total - current_user.wallet_balance) }}€.
+        Saldo insufficiente. Mancano {{ (sess.total - current_user.wallet_balance)|num_it }}€.
         <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica il wallet</a>.
       </div>
       {% else %}
       <form method="POST" action="{{ url_for('main.banco_pay_confirm', token=sess.token) }}">
         {{ csrf_field() }}
         <button type="submit" class="btn btn-success btn-lg btn-block">
-          <i class="fas fa-check-circle mr-2"></i>Paga {{ '%.2f'|format(sess.total) }}€
+          <i class="fas fa-check-circle mr-2"></i>Paga {{ sess.total|num_it }}€
         </button>
       </form>
       {% endif %}

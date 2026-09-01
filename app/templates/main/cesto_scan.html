@@ -156,11 +156,11 @@
     <span class="badge badge-success">Disponibile</span>
     <h2>Conferma acquisto</h2>
     <div class="product">{{ lb.product.name }}</div>
-    <div class="price" id="main-price">{{ '%.2f'|format(lb.product.price) }} €</div>
+    <div class="price" id="main-price">{{ lb.product.price|num_it }} €</div>
 
     <div class="wallet-row">
       <span>Saldo wallet</span>
-      <strong>{{ '%.2f'|format(current_user.wallet_balance or 0) }} €</strong>
+      <strong>{{ current_user.wallet_balance or 0|num_it }} €</strong>
     </div>
 
     {% set balance = current_user.wallet_balance or 0 %}
@@ -212,14 +212,14 @@
         <i class="fas fa-wallet mr-2"></i>Acquista ora
       </button>
       <div class="sub" id="after-balance" style="margin-top:10px;">
-        Saldo dopo acquisto: <strong id="after-val">{{ '%.2f'|format(balance - lb.product.price) }} €</strong>
+        Saldo dopo acquisto: <strong id="after-val">{{ (balance - lb.product.price)|num_it }} €</strong>
       </div>
       {% else %}
       <button class="btn-buy" id="btn-buy" disabled style="margin-top:14px;">
         <i class="fas fa-wallet mr-2"></i>Saldo insufficiente
       </button>
       <div class="sub" style="color:#e94560;margin-top:8px;">
-        Ti mancano {{ '%.2f'|format(lb.product.price - balance) }} €.
+        Ti mancano {{ (lb.product.price - balance)|num_it }} €.
         <a href="{{ url_for('main.wallet') }}" style="color:var(--accent);">Ricarica il wallet</a>
       </div>
       {% endif %}
@@ -365,7 +365,7 @@
       li.innerHTML =
         '<span>' + escHtml(item.name) + '</span>' +
         '<span style="display:flex;align-items:center;gap:8px;">' +
-          '<strong style="color:var(--accent);">' + item.price.toFixed(2) + ' €</strong>' +
+          '<strong style="color:var(--accent);">' + Number(item.price).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €</strong>' +
           '<button type="button" onclick="window._rmExtra(' + i + ')" title="Rimuovi">' +
             '<i class="fas fa-times"></i></button>' +
         '</span>';
@@ -374,10 +374,10 @@
     var total = MAIN_PRICE + cart.reduce(function(s,x){ return s+x.price; }, 0);
     extrasField.value = JSON.stringify(cart.map(function(x){ return x.id; }));
     totalRow.style.display = cart.length ? 'flex' : 'none';
-    if (cart.length) totalDisp.textContent = total.toFixed(2) + ' €';
+    if (cart.length) totalDisp.textContent = Number(total).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
     if (btnBuy && afterVal) {
       btnBuy.disabled = BALANCE < total;
-      afterVal.textContent = (BALANCE - total).toFixed(2) + ' €';
+      afterVal.textContent = Number((BALANCE - total)).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
     }
   }
 

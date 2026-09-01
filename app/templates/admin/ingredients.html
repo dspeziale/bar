@@ -42,7 +42,7 @@
           {% set low_stock = ing.stock_qty is not none and ing.grams_per_serving and ing.stock_qty < ing.grams_per_serving * 10 %}
           <tr class="{{ '' if ing.is_active else 'text-muted' }}">
             <td><strong>{{ ing.name }}</strong></td>
-            <td>{% if ing.price_extra > 0 %}<span class="badge badge-warning">+{{ '%.2f'|format(ing.price_extra) }}€</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+            <td>{% if ing.price_extra > 0 %}<span class="badge badge-warning">+{{ ing.price_extra|num_it }}€</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
             <td>{% if ing.is_vegetarian %}<span class="badge badge-success">🌿</span>{% endif %}</td>
             <td><small class="text-muted">{{ ing.allergens or '–' }}</small></td>
             <td>

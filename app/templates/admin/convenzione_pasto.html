@@ -171,7 +171,7 @@
         </div>
         {% endif %}
         <div class="text-muted" style="font-size:.8rem;">
-          Prezzo: <strong>{{ '%.2f'|format(meal.price) }}€</strong>
+          Prezzo: <strong>{{ meal.price|num_it }}€</strong>
         </div>
       </div>
 
@@ -214,7 +214,7 @@
               <td colspan="5" class="px-3 py-1" style="font-size:.8rem;">
                 <span class="badge badge-success mr-1">{{ ns.consumed }} consumate</span>
                 <span class="badge badge-info mr-1">{{ ns.booked }} in attesa</span>
-                <strong>Fatturabile: {{ '%.2f'|format((ns.consumed + ns.booked) * meal.price) }}€</strong>
+                <strong>Fatturabile: {{ ((ns.consumed + ns.booked) * meal.price)|num_it }}€</strong>
               </td>
             </tr>
           </tfoot>
@@ -274,7 +274,7 @@
     set('name', cfg.name); set('primo', cfg.primo); set('secondo', cfg.secondo);
     set('contorno', cfg.contorno); set('bevanda', cfg.bevanda); set('caffe', cfg.caffe);
     set('description', cfg.description);
-    if (cfg.price        !== null) set('price',        cfg.price.toFixed(2));
+    if (cfg.price        !== null) set('price',        qlNum(cfg.price));
     if (cfg.max_bookings !== null) set('max_bookings', cfg.max_bookings);
     form.querySelectorAll('[name="allergens"]').forEach(function (cb) {
       cb.checked = cfg.allergens.indexOf(cb.value) !== -1;

@@ -158,7 +158,7 @@ var table = $('#usersTable').DataTable({
       data: 'wallet_balance',
       render: function(d) {
         var cls = d > 0 ? 'text-success' : 'text-danger';
-        return '<strong class="' + cls + '">' + parseFloat(d).toFixed(2) + '€</strong>';
+        return '<strong class="' + cls + '">' + qlNum(parseFloat(d)) + '€</strong>';
       }
     },
     {
@@ -193,7 +193,7 @@ $(document).on('click', '.btn-topup', function() {
   var d = table.row($(this).closest('tr')).data();
   $('#topupForm').attr('action', d.topup_url);
   $('#topupUsername').text(d.username || d.email);
-  $('#topupBalance').text(parseFloat(d.wallet_balance).toFixed(2) + '€');
+  $('#topupBalance').text(qlNum(parseFloat(d.wallet_balance)) + '€');
   $('#sharedTopupModal input[name="amount"]').val('');
   $('#sharedTopupModal').modal('show');
 });

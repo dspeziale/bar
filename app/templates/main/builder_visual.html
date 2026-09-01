@@ -357,7 +357,7 @@
       <span class="mc-type-emoji">🥪</span>
       <div class="mc-type-name">Panino</div>
       <div class="mc-type-desc">Pane, farcitura, contorni e salse</div>
-      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['panino']) }}€</span>
+      <span class="mc-type-pill">da {{ config.BUILDER_PRICES['panino']|num_it }}€</span>
     </div>
   </a>
   <a href="{{ url_for('main.builder_visual', type='insalata') }}" class="mc-type-card t-insalata">
@@ -366,7 +366,7 @@
       <span class="mc-type-emoji">🥗</span>
       <div class="mc-type-name">Insalata</div>
       <div class="mc-type-desc">Base, proteine, verdure e condimento</div>
-      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['insalata']) }}€</span>
+      <span class="mc-type-pill">da {{ config.BUILDER_PRICES['insalata']|num_it }}€</span>
     </div>
   </a>
   <a href="{{ url_for('main.builder_visual', type='poke') }}" class="mc-type-card t-poke">
@@ -375,7 +375,7 @@
       <span class="mc-type-emoji">🍱</span>
       <div class="mc-type-name">Poke Bowl</div>
       <div class="mc-type-desc">Riso, proteine, verdure e salsa fusion</div>
-      <span class="mc-type-pill">da {{ '%.2f'|format(config.BUILDER_PRICES['poke']) }}€</span>
+      <span class="mc-type-pill">da {{ config.BUILDER_PRICES['poke']|num_it }}€</span>
     </div>
   </a>
 </div>
@@ -431,7 +431,7 @@
         <span class="mc-card-emoji" id="mce{{ ing.id }}">🍽️</span>
         <div class="mc-card-name">{{ ing.name }}</div>
         {% if ing.price_extra > 0 %}
-        <div class="mc-card-price">+{{ '%.2f'|format(ing.price_extra) }}€</div>
+        <div class="mc-card-price">+{{ ing.price_extra|num_it }}€</div>
         {% endif %}
       </div>
       {% endfor %}
@@ -462,7 +462,7 @@
     {% endif %}
     <div id="mc-total-block" class="mc-total-block">
       <div class="mc-total-lbl">Totale</div>
-      <div class="mc-total-num" id="mc-total-num">{{ '%.2f'|format(base_price) }}€</div>
+      <div class="mc-total-num" id="mc-total-num">{{ base_price|num_it }}€</div>
     </div>
     <form method="POST" action="{{ url_for('main.builder_add') }}" id="mc-form" style="padding:0 1.5rem 1.5rem;">
       {{ csrf_field() }}
@@ -484,7 +484,7 @@
     </button>
     <div class="mc-price-badge">
       <div class="mc-price-lbl">Totale</div>
-      <div class="mc-price-val" id="mc-nav-price">{{ '%.2f'|format(base_price) }}€</div>
+      <div class="mc-price-val" id="mc-nav-price">{{ base_price|num_it }}€</div>
     </div>
   </div>
   <div class="mc-bottom-right">
@@ -665,7 +665,7 @@ function mcCalcTotal(){
   return Math.round(t * 100) / 100;
 }
 function mcUpdatePrice(){
-  var v = mcCalcTotal().toFixed(2) + '€';
+  var v = qlNum(mcCalcTotal()) + '€';
   document.getElementById('mc-nav-price').textContent = v;
   var tn = document.getElementById('mc-total-num');
   if(tn) tn.textContent = v;
@@ -686,7 +686,7 @@ function mcRenderSummary(){
     + '<div class="mc-sum-cat">Base</div>'
     + '<span class="mc-sum-emoji">{{ "🥪" if builder_type == "panino" else ("🥗" if builder_type == "insalata" else "🍱") }}</span>'
     + '<div class="mc-sum-name">{{ "Panino" if builder_type == "panino" else ("Insalata" if builder_type == "insalata" else "Poke Bowl") }}</div>'
-    + '<div class="mc-sum-price">{{ "%.2f"|format(base_price) }}€</div>'
+    + '<div class="mc-sum-price">{{ base_price|num_it }}€</div>'
     + '</div>';
 
   all.forEach(function(i){
@@ -694,13 +694,13 @@ function mcRenderSummary(){
       + '<div class="mc-sum-cat">' + (MC_CAT_NAMES[i.cid] || '') + '</div>'
       + '<span class="mc-sum-emoji">' + i.emoji + '</span>'
       + '<div class="mc-sum-name">' + i.name + '</div>'
-      + (i.price > 0 ? '<div class="mc-sum-price">+' + i.price.toFixed(2) + '€</div>' : '')
+      + (i.price > 0 ? '<div class="mc-sum-price">+' + qlNum(i.price) + '€</div>' : '')
       + '</div>';
   });
 
   document.getElementById('mc-sum-grid').innerHTML = html;
   var tn = document.getElementById('mc-total-num');
-  if(tn) tn.textContent = mcCalcTotal().toFixed(2) + '€';
+  if(tn) tn.textContent = qlNum(mcCalcTotal()) + '€';
 
   var hd = document.getElementById('mc-hidden-ings');
   hd.innerHTML = '';

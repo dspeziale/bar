@@ -54,6 +54,11 @@ def create_app(config_object='config.Config'):
             return ''
         return d.strftime('%d/%m/%Y')
 
+    # ── Numeri in italiano: virgola sui decimali, punto sulle migliaia ────
+    @app.template_filter('num_it')
+    def _num_it(v, decimali=2):
+        return numero_italiano(v, decimali)
+
     # ── Date in italiano: strftime userebbe i nomi inglesi del locale ─────
     @app.template_filter('data_it')
     def _data_it(d, stile='lunga'):
@@ -156,6 +161,34 @@ GIORNI_IT = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì',
              'sabato', 'domenica']
 MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
            'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
+
+def numero_italiano(v, decimali=2):
+    """Numero in formato italiano: punto per le migliaia, virgola per i decimali.
+
+    1234.5 -> '1.234,50'    0.4 -> '0,40'    12000 -> '12.000,00'
+
+    Da usare per i valori mostrati. NON per il contenuto di un
+    `<input type="number">`: lì il browser pretende il punto decimale e
+    scarterebbe il valore.
+    """
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return ''
+    segno = '-' if n < 0 else ''
+    testo = f'{abs(n):.{decimali}f}'
+    if '.' in testo:
+        interi, dec = testo.split('.')
+    else:
+        interi, dec = testo, ''
+    gruppi = []
+    while len(interi) > 3:
+        gruppi.insert(0, interi[-3:])
+        interi = interi[:-3]
+    gruppi.insert(0, interi)
+    out = segno + '.'.join(gruppi)
+    return f'{out},{dec}' if dec else out
 
 
 def data_italiana(d, stile='lunga'):
@@ -273,7 +306,7 @@ def _check_order_reminders():
             inviato, _canale = send_reminder_to_user(
                 order.user,
                 f'🍽️ Reminder: il tuo ordine è pronto per il ritiro alle <b>{order.slot.time_str}</b>!\n'
-                f'📦 Ordine #{order.order_code or order.id} — <b>{order.total_price:.2f}€</b>\n'
+                f'📦 Ordine #{order.order_code or order.id} — <b>{numero_italiano(order.total_price)}€</b>\n'
                 f'⏱️ Mancano circa <b>{int(diff)} minuti</b>',
                 subject='Promemoria ritiro ordine',
             )

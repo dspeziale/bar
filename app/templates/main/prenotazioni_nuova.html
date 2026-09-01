@@ -64,7 +64,7 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3 text-muted" style="font-size:.85rem;">
           <span>Saldo wallet</span>
-          <span>{{ '%.2f'|format(current_user.wallet_balance or 0) }} €</span>
+          <span>{{ current_user.wallet_balance or 0|num_it }} €</span>
         </div>
 
         <div id="balance-warn" class="alert alert-danger py-2 d-none" style="font-size:.85rem;">
@@ -104,7 +104,7 @@
                 </div>
                 {% endif %}
                 <div class="mt-2 d-flex align-items-center justify-content-between">
-                  <span class="text-danger font-weight-bold">{{ '%.2f'|format(prod.price) }} €</span>
+                  <span class="text-danger font-weight-bold">{{ prod.price|num_it }} €</span>
                   <div class="input-group input-group-sm" style="width:100px;">
                     <div class="input-group-prepend">
                       <button type="button" class="btn btn-outline-secondary btn-minus px-2">−</button>
@@ -173,9 +173,9 @@
     for (var id in cart) {
       var item = cart[id];
       total += item.price * item.qty;
-      lines.push(item.qty + '× ' + item.name + ' (' + (item.price * item.qty).toFixed(2) + ' €)');
+      lines.push(item.qty + '× ' + item.name + ' (' + qlNum((item.price * item.qty)) + ' €)');
     }
-    totalDisp.textContent = total.toFixed(2) + ' €';
+    totalDisp.textContent = qlNum(total) + ' €';
 
     var hasItems = lines.length > 0;
     emptyMsg.style.display  = hasItems ? 'none' : '';

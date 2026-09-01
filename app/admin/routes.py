@@ -4,7 +4,7 @@ from functools import wraps
 from flask import (render_template, redirect, url_for, flash, request, abort,
                    jsonify, current_app)
 from flask_login import login_required, current_user
-from app import db, tables_enabled
+from app import db, tables_enabled, numero_italiano
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -744,7 +744,7 @@ def order_status(oid):
         send_telegram_to_user(
             order.user,
             f'❌ Ordine <b>{order_ref}</b> annullato dall\'amministratore.\n'
-            f'Rimborso di <b>{order.total_price:.2f}€</b> sul tuo wallet.'
+            f'Rimborso di <b>{numero_italiano(order.total_price)}€</b> sul tuo wallet.'
         )
     referer = request.referrer or ''
     if 'cucina' in referer:
@@ -990,10 +990,10 @@ def client_topup(uid):
         return redirect(url_for('admin.clients'))
     u.credit_wallet(amount, note)
     db.session.commit()
-    flash(f'+{amount:.2f}€ aggiunti al wallet di {u.full_name}.', 'success')
+    flash(f'+{numero_italiano(amount)}€ aggiunti al wallet di {u.full_name}.', 'success')
     send_telegram_to_user(u,
-        f'💳 Ricarica wallet: <b>+{amount:.2f}€</b>\n'
-        f'💰 Saldo attuale: <b>{u.wallet_balance:.2f}€</b>\n'
+        f'💳 Ricarica wallet: <b>+{numero_italiano(amount)}€</b>\n'
+        f'💰 Saldo attuale: <b>{numero_italiano(u.wallet_balance)}€</b>\n'
         f'📝 {note}'
     )
     return redirect(url_for('admin.clients'))
@@ -1034,7 +1034,7 @@ def user_topup(uid):
         return redirect(url_for('admin.users'))
     user.credit_wallet(amount, note)
     db.session.commit()
-    flash(f'+{amount:.2f}€ aggiunti al wallet di {user.username}.', 'success')
+    flash(f'+{numero_italiano(amount)}€ aggiunti al wallet di {user.username}.', 'success')
     return redirect(url_for('admin.users'))
 
 
@@ -1766,7 +1766,7 @@ def ingredient_stock(iid):
     else:
         ing.stock_qty = qty if qty >= 0 else None
     db.session.commit()
-    flash(f'Giacenza "{ing.name}" aggiornata: {ing.stock_qty:.0f}g.', 'success')
+    flash(f'Giacenza "{ing.name}" aggiornata: {numero_italiano(ing.stock_qty, 0)}g.', 'success')
     return redirect(url_for('admin.ingredients'))
 
 
@@ -3174,7 +3174,7 @@ def convenzione_report_pdf(cid):
             pdf.set_font(FONT, '', 9)
             pdf.set_text_color(*DGRAY)
             pdf.cell(43, 6,
-                     f'{n_bk} pren.  \xb7  € {meal.price:.2f}',
+                     f'{n_bk} pren.  \xb7  € {numero_italiano(meal.price)}',
                      align='R', ln=True)
             if meal.courses:
                 pdf.set_font(FONT, '', 8.5)
@@ -3261,7 +3261,7 @@ def convenzione_report_pdf(cid):
         pdf.cell(50, 6, 'Totale fatturabile:', ln=0)
         pdf.set_font(FONT, 'B', 10)
         pdf.set_text_color(*DARK)
-        pdf.cell(0, 6, f'€ {total_fat:.2f}', ln=True)
+        pdf.cell(0, 6, f'€ {numero_italiano(total_fat)}', ln=True)
 
     buf = BytesIO(bytes(pdf.output()))
     buf.seek(0)
@@ -4215,7 +4215,7 @@ def dati_carico_genera():
     flash(f'Carico di {carico.etichetta} creato: {carico.n_pasti} pasti, '
           f'{carico.n_snack} panini, {carico.n_caffe} caffe, '
           f'{carico.n_builder} builder su {carico.giorni} giorni '
-          f'({carico.incasso:.2f} € di incassi).', 'success')
+          f'({numero_italiano(carico.incasso)} € di incassi).', 'success')
     return redirect(url_for('admin.settings'))
 
 
@@ -4502,7 +4502,7 @@ def convenzione_report_mensile_pdf(cid):
 
     _kpi(12,    'Pasti erogati',    n_totale,            BRAND)
     _kpi(58.2,  'Giorni di servizio', n_giorni,          DARK)
-    _kpi(104.4, 'Media al giorno',  f'{media:.1f}',      GREEN)
+    _kpi(104.4, 'Media al giorno',  numero_italiano(media, 1),      GREEN)
     _kpi(150.6, 'Dipendenti',       len(persone),        DGRAY)
     pdf.set_y(kpi_y + 32)
 
@@ -4545,7 +4545,7 @@ def convenzione_report_mensile_pdf(cid):
             pdf.cell(CW[1], TH, str(len(r['giorni'])), align='C', fill=True)
             pdf.cell(CW[2], TH, str(r['qty']), align='C', fill=True)
             pdf.set_text_color(*DARK)
-            pdf.cell(CW[3], TH, f'\u20ac {r["importo"]:.2f}', align='R', fill=True)
+            pdf.cell(CW[3], TH, f'\u20ac {numero_italiano(r["importo"])}', align='R', fill=True)
             pdf.ln()
 
         pdf.set_fill_color(*DARK)
@@ -4554,7 +4554,7 @@ def convenzione_report_mensile_pdf(cid):
         pdf.cell(CW[0], TH, f'TOTALE  ({len(persone)} dipendenti)', fill=True)
         pdf.cell(CW[1], TH, str(n_giorni), align='C', fill=True)
         pdf.cell(CW[2], TH, str(n_totale), align='C', fill=True)
-        pdf.cell(CW[3], TH, f'\u20ac {importo_totale:.2f}', align='R', fill=True)
+        pdf.cell(CW[3], TH, f'\u20ac {numero_italiano(importo_totale)}', align='R', fill=True)
         pdf.ln(11)
 
         # ── Tabella per giorno ───────────────────────────────────────────
@@ -4594,7 +4594,7 @@ def convenzione_report_mensile_pdf(cid):
             pdf.cell(DW[1], TH, str(len(r['persone'])), align='C', fill=True)
             pdf.cell(DW[2], TH, str(r['qty']), align='C', fill=True)
             pdf.set_text_color(*DARK)
-            pdf.cell(DW[3], TH, f'\u20ac {r["importo"]:.2f}', align='R', fill=True)
+            pdf.cell(DW[3], TH, f'\u20ac {numero_italiano(r["importo"])}', align='R', fill=True)
             pdf.ln()
 
         # ── Totale fatturabile ───────────────────────────────────────────
@@ -4605,7 +4605,7 @@ def convenzione_report_mensile_pdf(cid):
         pdf.cell(50, 6, 'Totale fatturabile:', ln=0)
         pdf.set_font(FONT, 'B', 12)
         pdf.set_text_color(*DARK)
-        pdf.cell(0, 6, f'\u20ac {importo_totale:.2f}', ln=True)
+        pdf.cell(0, 6, f'\u20ac {numero_italiano(importo_totale)}', ln=True)
         pdf.set_font(FONT, '', 8.5)
         pdf.set_text_color(*DGRAY)
         pdf.cell(0, 5, 'Importi al netto di IVA di legge. Sono esclusi i pasti '
@@ -4617,3 +4617,132 @@ def convenzione_report_mensile_pdf(cid):
                  f'{anno}-{mese:02d}.pdf')
     return send_file(buf, as_attachment=True, download_name=nome_file,
                      mimetype='application/pdf')
+
+
+@bp.route('/superadmin/guadagni/scontrini')
+@_superadmin_required
+def ds_scontrini():
+    """Elenco dei singoli incassi del mese con la provvigione di ciascuno."""
+    from calendar import monthrange
+    from app.notifications import get_numeric_setting
+
+    try:
+        year = int(request.args.get('year', _dt.now().year))
+        month = int(request.args.get('month', _dt.now().month))
+        if not (1 <= month <= 12):
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = _dt.now().year, _dt.now().month
+
+    start_date = date(year, month, 1)
+    end_date = date(year, month, monthrange(year, month)[1])
+
+    fee_pct = get_numeric_setting('platform_fee_percentage', 0.0) / 100.0
+    monthly_fee = get_numeric_setting('tenant_monthly_fee', 0.0)
+
+    tenant_id = request.args.get('t', type=int)
+    tenants = Tenant.query.order_by(Tenant.name).all()
+    selezionati = [x for x in tenants if (tenant_id is None or x.id == tenant_id)]
+
+    def _riga(quando, tipo, riferimento, cliente, lordo, tenant):
+        """Una riga di incasso con imponibile e provvigione."""
+        imponibile = round(lordo / 1.10, 2)
+        return {
+            'quando': quando, 'tipo': tipo, 'riferimento': riferimento,
+            'cliente': cliente, 'lordo': round(lordo, 2),
+            'imponibile': imponibile,
+            'provvigione': round(imponibile * fee_pct, 2),
+            'tenant': tenant,
+        }
+
+    righe = []
+    for tn in selezionati:
+        # Ordini completati
+        for o in (Order.query
+                  .filter(Order.tenant_id == tn.id,
+                          Order.status == 'completed',
+                          Order.order_date >= start_date,
+                          Order.order_date <= end_date)
+                  .order_by(Order.order_date, Order.id).all()):
+            righe.append(_riga(
+                o.created_at or _dt.combine(o.order_date, _dt.min.time()),
+                'Ordine', o.order_code or ('#%d' % o.id),
+                (o.user.full_name if o.user else '—'), o.total_price or 0.0, tn))
+
+        # Sessioni banco pagate
+        for s in (BancoSession.query
+                  .filter(BancoSession.tenant_id == tn.id,
+                          BancoSession.status == 'paid',
+                          db.func.date(BancoSession.created_at) >= start_date,
+                          db.func.date(BancoSession.created_at) <= end_date)
+                  .order_by(BancoSession.created_at).all()):
+            righe.append(_riga(
+                s.created_at, 'Banco QR', s.token[:10].upper(),
+                (s.customer.full_name if s.customer else '—'),
+                s.total or 0.0, tn))
+
+        # Vendite dal cesto: stanno nei movimenti di wallet
+        for tx in (Transaction.query
+                   .join(User, Transaction.user_id == User.id)
+                   .filter(User.tenant_id == tn.id,
+                           Transaction.ttype == 'payment',
+                           db.or_(Transaction.description.like('Cesto: %'),
+                                  Transaction.description.like('Cesto extra: %')),
+                           db.func.date(Transaction.created_at) >= start_date,
+                           db.func.date(Transaction.created_at) <= end_date)
+                   .order_by(Transaction.created_at).all()):
+            righe.append(_riga(
+                tx.created_at, 'Cesto QR', tx.description[:40],
+                (tx.user.full_name if tx.user else '—'),
+                abs(tx.amount or 0.0), tn))
+
+        # Pasti aziendali prenotati
+        for ca in CorporateAccount.query.filter_by(tenant_id=tn.id).all():
+            for meal in ca.daily_meals:
+                if not (start_date <= meal.meal_date <= end_date):
+                    continue
+                for b in meal.bookings:
+                    if b.status == 'cancelled':
+                        continue
+                    qta = b.quantity or 1
+                    righe.append(_riga(
+                        _dt.combine(meal.meal_date, _dt.min.time()),
+                        'Pasto aziendale',
+                        '%s (%s)' % (meal.name[:24], ca.name[:18]),
+                        (b.user.full_name if b.user else '—'),
+                        (meal.price or 0.0) * qta, tn))
+
+    righe.sort(key=lambda r: (r['quando'] or _dt.min, r['tipo']))
+
+    # I totali seguono la stessa formula della pagina Guadagni: imponibile e
+    # provvigione si calcolano sull'importo complessivo, non sommando i valori
+    # arrotondati riga per riga. Altrimenti le due pagine divergerebbero di
+    # qualche centesimo e il conteggio non riconcilierebbe.
+    tot_lordo = round(sum(r['lordo'] for r in righe), 2)
+    tot_imponibile = round(tot_lordo / 1.10, 2)
+    tot_provvigioni = round(tot_imponibile * fee_pct, 2)
+    somma_righe = round(sum(r['provvigione'] for r in righe), 2)
+    scarto_arrotondamento = round(somma_righe - tot_provvigioni, 2)
+    canoni = round(monthly_fee * len(selezionati), 2)
+
+    per_tipo = {}
+    for r in righe:
+        d = per_tipo.setdefault(r['tipo'], {'n': 0, 'lordo': 0.0, 'prov': 0.0})
+        d['n'] += 1
+        d['lordo'] = round(d['lordo'] + r['lordo'], 2)
+        d['prov'] = round(d['prov'] + r['provvigione'], 2)
+
+    _it_m = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+             'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
+
+    return render_template(
+        'admin/superadmin_scontrini.html',
+        righe=righe, per_tipo=per_tipo, tenants=tenants,
+        tenant_sel=tenant_id, year=year, month=month,
+        month_label=_it_m[month - 1],
+        fee_pct=round(fee_pct * 100, 2), monthly_fee=monthly_fee,
+        tot_lordo=tot_lordo, tot_imponibile=tot_imponibile,
+        tot_provvigioni=tot_provvigioni, canoni=canoni,
+        somma_righe=somma_righe, scarto=scarto_arrotondamento,
+        tot_dovuto=round(tot_provvigioni + canoni, 2),
+        n_tenant=len(selezionati))

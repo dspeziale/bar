@@ -30,12 +30,12 @@
       <a href="{{ url_for('main.builder', type='panino') }}"
          class="builder-type-btn {{ 'active' if builder_type=='panino' }}" style="text-align:center;text-decoration:none;">
         <i class="fas fa-burger mr-2"></i>Panino
-        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ '%.2f'|format(config.BUILDER_PRICES.panino) }}€</div>
+        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ config.BUILDER_PRICES.panino|num_it }}€</div>
       </a>
       <a href="{{ url_for('main.builder', type='insalata') }}"
          class="builder-type-btn {{ 'active' if builder_type=='insalata' }}" style="text-align:center;text-decoration:none;">
         <i class="fas fa-leaf mr-2"></i>Insalata
-        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ '%.2f'|format(config.BUILDER_PRICES.insalata) }}€</div>
+        <div style="font-size:.75rem;font-weight:400;opacity:.8;">Base {{ config.BUILDER_PRICES.insalata|num_it }}€</div>
       </a>
     </div>
   </div>
@@ -66,7 +66,7 @@
                      value="{{ ing.id }}" style="display:none;">
               {% if ing.is_vegetarian %}<span class="veg-dot" title="Vegetariano"></span>{% endif %}
               {{ ing.name }}
-              {% if ing.price_extra > 0 %}<span class="extra-badge">+{{ '%.2f'|format(ing.price_extra) }}€</span>{% endif %}
+              {% if ing.price_extra > 0 %}<span class="extra-badge">+{{ ing.price_extra|num_it }}€</span>{% endif %}
             </label>
             {% endif %}
             {% endfor %}
@@ -90,7 +90,7 @@
           <hr>
           <div class="d-flex justify-content-between align-items-center">
             <span>Prezzo base:</span>
-            <strong>{{ '%.2f'|format(base_price) }}€</strong>
+            <strong>{{ base_price|num_it }}€</strong>
           </div>
           <div class="d-flex justify-content-between align-items-center">
             <span>Extra:</span>
@@ -98,7 +98,7 @@
           </div>
           <div class="d-flex justify-content-between align-items-center mt-2" style="font-size:1.2rem;">
             <span><strong>Totale:</strong></span>
-            <strong id="total-price-desk" style="color:#e94560;">{{ '%.2f'|format(base_price) }}€</strong>
+            <strong id="total-price-desk" style="color:#e94560;">{{ base_price|num_it }}€</strong>
           </div>
           <button type="submit" class="btn btn-block mt-3"
                   style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;font-size:1rem;font-weight:700;">
@@ -113,7 +113,7 @@
   <div class="builder-sticky d-lg-none">
     <div>
       <div style="font-size:.75rem;color:var(--QuickLunch-text-muted);">Totale</div>
-      <div id="price-bar">{{ '%.2f'|format(base_price) }}€</div>
+      <div id="price-bar">{{ base_price|num_it }}€</div>
       <div id="summary-list" class="text-muted"></div>
     </div>
     <button type="submit" class="btn"
@@ -197,15 +197,15 @@ function updateSummary() {
   // Mobile
   var pb = document.getElementById('price-bar');
   var sl = document.getElementById('summary-list');
-  if (pb) pb.textContent = total.toFixed(2) + '€';
+  if (pb) pb.textContent = qlNum(total) + '€';
   if (sl) sl.textContent = names.join(', ') || '–';
 
   // Desktop
   var ep = document.getElementById('extra-price-desk');
   var tp = document.getElementById('total-price-desk');
   var sd = document.getElementById('summary-list-desk');
-  if (ep) ep.textContent = '+' + extras.toFixed(2) + '€';
-  if (tp) tp.textContent = total.toFixed(2) + '€';
+  if (ep) ep.textContent = '+' + qlNum(extras) + '€';
+  if (tp) tp.textContent = qlNum(total) + '€';
   if (sd) sd.innerHTML = names.length
     ? names.map(function(n){ return '<span class="badge badge-light border mr-1 mb-1">'+n+'</span>'; }).join('')
     : '<span class="text-muted">Nessun ingrediente selezionato</span>';

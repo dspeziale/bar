@@ -200,7 +200,7 @@ var table = $('#productsTable').DataTable({
     },
     {
       data: 'price',
-      render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; }
+      render: function(d) { return '<strong>' + qlNum(parseFloat(d)) + '€</strong>'; }
     },
     { data: 'daily_quantity' },
     {

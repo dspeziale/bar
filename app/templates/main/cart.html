@@ -36,13 +36,13 @@
                 <strong>{{ item.product.name }}</strong><br>
                 <small class="text-muted">{{ item.product.category.name }}</small>
               </td>
-              <td>{{ '%.2f'|format(item.product.price) }}€</td>
+              <td>{{ item.product.price|num_it }}€</td>
               <td>
                 <input type="number" name="qty_{{ item.product.id }}" value="{{ item.qty }}"
                        min="1" max="{{ item.product.available_today() }}"
                        class="form-control form-control-sm">
               </td>
-              <td><strong>{{ '%.2f'|format(item.subtotal) }}€</strong></td>
+              <td><strong>{{ item.subtotal|num_it }}€</strong></td>
               <td>
                 <form method="POST" action="{{ url_for('main.cart_remove', product_id=item.product.id) }}">
                   {{ csrf_field() }}
@@ -94,9 +94,9 @@
                 {% endfor %}
               </small>
             </td>
-            <td><strong>{{ '%.2f'|format(ci.total_price) }}€</strong>
+            <td><strong>{{ ci.total_price|num_it }}€</strong>
               {% if ci.extra_price > 0 %}
-              <br><small class="text-muted">Base {{ '%.2f'|format(ci.base_price) }}€ + extra {{ '%.2f'|format(ci.extra_price) }}€</small>
+              <br><small class="text-muted">Base {{ ci.base_price|num_it }}€ + extra {{ ci.extra_price|num_it }}€</small>
               {% endif %}
             </td>
             <td>
@@ -181,18 +181,18 @@
           <hr>
           <div class="d-flex justify-content-between mb-1">
             <span>Totale ordine:</span>
-            <strong class="text-success">{{ '%.2f'|format(total) }}€</strong>
+            <strong class="text-success">{{ total|num_it }}€</strong>
           </div>
           <div class="d-flex justify-content-between mb-3">
             <span>Saldo wallet:</span>
             <span class="{{ 'text-success' if wallet >= total else 'text-danger' }} font-weight-bold">
-              {{ '%.2f'|format(wallet) }}€
+              {{ wallet|num_it }}€
             </span>
           </div>
           {% if wallet < total %}
           <div class="alert alert-danger py-2 mb-3">
             <i class="fas fa-exclamation-triangle mr-1"></i>
-            Saldo insufficiente (–{{ '%.2f'|format(total - wallet) }}€).
+            Saldo insufficiente (–{{ (total - wallet)|num_it }}€).
             <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica</a>.
           </div>
           {% endif %}

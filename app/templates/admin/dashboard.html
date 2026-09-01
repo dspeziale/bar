@@ -22,7 +22,7 @@
   </div>
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-success">
-      <div class="inner"><h3>{{ '%.2f'|format(revenue_today) }}€</h3><p>Incasso Oggi</p></div>
+      <div class="inner"><h3>{{ revenue_today|num_it }}€</h3><p>Incasso Oggi</p></div>
       <div class="icon"><i class="fas fa-euro-sign"></i></div>
       <a href="{{ url_for('admin.report') }}" class="small-box-footer">Report <i class="fas fa-arrow-circle-right"></i></a>
     </div>
@@ -41,7 +41,7 @@
   <div class="col-lg-3 col-6">
     <div class="small-box" style="background:linear-gradient(135deg,#6c3483,#9b59b6);color:#fff;">
       <div class="inner">
-        <h3>{{ '%.2f'|format(total_wallet) }}€</h3>
+        <h3>{{ total_wallet|num_it }}€</h3>
         <p>Wallet totale clienti</p>
       </div>
       <div class="icon"><i class="fas fa-wallet"></i></div>
@@ -171,7 +171,7 @@
               <small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}
               {% endfor %}
             </td>
-            <td>{{ '%.2f'|format(o.total_price) }}€</td>
+            <td>{{ o.total_price|num_it }}€</td>
             <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
             <td>
               <div class="d-flex gap-1">

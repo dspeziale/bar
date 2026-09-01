@@ -71,7 +71,7 @@
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
           <div class="mt-auto">
-            <div class="price-badge mb-2">{{ '%.2f'|format(p.price) }}€</div>
+            <div class="price-badge mb-2">{{ p.price|num_it }}€</div>
             {% if avail > 0 %}
             <form method="POST" action="{{ url_for('main.cart_add', product_id=p.id) }}" class="d-flex gap-2 align-items-center">
               {{ csrf_field() }}
@@ -123,7 +123,7 @@
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
           <div class="mt-auto">
-            <div class="price-badge mb-2">{{ '%.2f'|format(p.price) }}€</div>
+            <div class="price-badge mb-2">{{ p.price|num_it }}€</div>
             {% if avail > 0 %}
             <form method="POST" action="{{ url_for('main.cart_add', product_id=p.id) }}" class="d-flex gap-2 align-items-center">
               {{ csrf_field() }}

@@ -54,7 +54,7 @@ $('#myOrdersTable').DataTable({
     { data: 'date' },
     { data: 'slot', render: function(d) { return '<span class="badge badge-info">' + $('<span>').text(d).html() + '</span>'; } },
     { data: 'items', render: function(d) { return d ? $('<span>').text(d).html() : '—'; }, orderable: false },
-    { data: 'total_price', render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; } },
+    { data: 'total_price', render: function(d) { return '<strong>' + qlNum(parseFloat(d)) + '€</strong>'; } },
     { data: null, render: function(d) { return '<span class="badge badge-' + d.status_color + ' px-2 py-1">' + d.status_label + '</span>'; } },
     {
       data: null,

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Dettaglio scontrini{% endblock %}
+{% block page_title %}Dettaglio scontrini e provvigioni{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.ds_guadagni', year=year, month=month) }}">Guadagni</a></li>
+<li class="breadcrumb-item active">Scontrini</li>
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtri ─────────────────────────────────────────────────────────────── #}
+<div class="card card-outline card-dark">
+  <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+    <h3 class="card-title mb-0">
+      <i class="fas fa-receipt mr-2"></i>{{ month_label }} {{ year }}
+    </h3>
+    <form method="GET" class="form-inline">
+      <select name="month" class="form-control form-control-sm mr-2">
+        {% for m in range(1, 13) %}
+        <option value="{{ m }}" {{ 'selected' if m == month }}>
+          {{ ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio',
+              'Agosto','Settembre','Ottobre','Novembre','Dicembre'][m-1] }}
+        </option>
+        {% endfor %}
+      </select>
+      <select name="year" class="form-control form-control-sm mr-2">
+        {% for y in range(year - 2, year + 2) %}
+        <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <select name="t" class="form-control form-control-sm mr-2">
+        <option value="">Tutti i tenant</option>
+        {% for tn in tenants %}
+        <option value="{{ tn.id }}" {{ 'selected' if tenant_sel == tn.id }}>
+          {{ tn.name }}
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-dark">
+        <i class="fas fa-filter mr-1"></i>Filtra
+      </button>
+      <a href="{{ url_for('admin.ds_guadagni', year=year, month=month) }}"
+         class="btn btn-sm btn-outline-secondary ml-2">
+        <i class="fas fa-arrow-left mr-1"></i>Torna ai guadagni
+      </a>
+    </form>
+  </div>
+</div>
+
+{# ── Riquadri di sintesi ────────────────────────────────────────────────── #}
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-secondary">
+      <div class="inner">
+        <h3 style="font-size:1.7rem;">{{ righe|length }}</h3>
+        <p>Scontrini nel mese</p>
+      </div>
+      <div class="icon"><i class="fas fa-receipt"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-dark">
+      <div class="inner">
+        <h3 style="font-size:1.7rem;">{{ tot_lordo|num_it }} €</h3>
+        <p>Incassato (IVA incl.)</p>
+      </div>
+      <div class="icon"><i class="fas fa-cash-register"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-warning">
+      <div class="inner">
+        <h3 style="font-size:1.7rem;">{{ tot_imponibile|num_it }} €</h3>
+        <p>Imponibile</p>
+      </div>
+      <div class="icon"><i class="fas fa-percent"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:#e94560;color:#fff;">
+      <div class="inner">
+        <h3 style="font-size:1.7rem;">{{ tot_dovuto|num_it }} €</h3>
+        <p>Dovuto a DS Consulting</p>
+      </div>
+      <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+    </div>
+  </div>
+</div>
+
+{# ── Come si compone il dovuto ──────────────────────────────────────────── #}
+<div class="callout callout-info">
+  <p class="mb-1" style="font-size:.92rem;">
+    <strong>Provvigioni</strong> {{ tot_provvigioni|num_it }} €
+    ({{ fee_pct }}% di {{ tot_imponibile|num_it }} € di imponibile)
+    &nbsp;+&nbsp;
+    <strong>canoni</strong> {{ canoni|num_it }} €
+    ({{ n_tenant }} × {{ monthly_fee|num_it }} €)
+    &nbsp;=&nbsp;
+    <strong style="color:#e94560;">{{ tot_dovuto|num_it }} €</strong>
+  </p>
+  <small class="text-muted">
+    La provvigione di ogni riga è calcolata sull'imponibile, ottenuto scorporando
+    l'IVA al 10% dall'incassato. Il canone è fisso per tenant e non dipende dal
+    numero di scontrini.
+    {% if scarto %}
+    <br>
+    Il totale è calcolato sull'imponibile complessivo, come nella pagina
+    Guadagni: la somma delle singole provvigioni ({{ somma_righe|num_it }} €)
+    differisce di {{ scarto|num_it }} € per soli arrotondamenti di riga.
+    {% endif %}
+  </small>
+</div>
+
+{# ── Riepilogo per tipo ─────────────────────────────────────────────────── #}
+{% if per_tipo %}
+<div class="card card-outline card-secondary">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-layer-group mr-2"></i>Per tipo di incasso</h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>Tipo</th>
+            <th class="text-right">Scontrini</th>
+            <th class="text-right">Incassato</th>
+            <th class="text-right">Provvigioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tipo, d in per_tipo.items() %}
+          <tr>
+            <td><strong>{{ tipo }}</strong></td>
+            <td class="text-right">{{ d.n }}</td>
+            <td class="text-right">{{ d.lordo|num_it }} €</td>
+            <td class="text-right" style="color:#e94560;font-weight:600;">
+              {{ d.prov|num_it }} €
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Dettaglio riga per riga ────────────────────────────────────────────── #}
+<div class="card card-outline card-danger">
+  <div class="card-header">
+    <h3 class="card-title">
+      <i class="fas fa-list-ol mr-2"></i>Dettaglio degli scontrini
+    </h3>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover table-striped mb-0" id="tblScontrini">
+        <thead class="thead-dark">
+          <tr>
+            <th>Data e ora</th>
+            <th>Tipo</th>
+            <th>Riferimento</th>
+            <th>Cliente</th>
+            {% if not tenant_sel %}<th>Tenant</th>{% endif %}
+            <th class="text-right">Incassato</th>
+            <th class="text-right">Imponibile</th>
+            <th class="text-right" style="color:#e94560;">Provvigione</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in righe %}
+          <tr>
+            <td style="white-space:nowrap;">{{ r.quando|dt_rome }}</td>
+            <td>
+              {% set colori = {'Ordine': 'primary', 'Banco QR': 'info',
+                               'Cesto QR': 'success', 'Pasto aziendale': 'purple'} %}
+              <span class="badge badge-{{ colori.get(r.tipo, 'secondary') }}">
+                {{ r.tipo }}
+              </span>
+            </td>
+            <td><code style="font-size:.82rem;">{{ r.riferimento }}</code></td>
+            <td>{{ r.cliente }}</td>
+            {% if not tenant_sel %}
+            <td><small class="text-muted">{{ r.tenant.name }}</small></td>
+            {% endif %}
+            <td class="text-right">{{ r.lordo|num_it }} €</td>
+            <td class="text-right text-warning">{{ r.imponibile|num_it }} €</td>
+            <td class="text-right" style="color:#e94560;font-weight:600;">
+              {{ r.provvigione|num_it }} €
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">
+              <i class="fas fa-info-circle mr-1"></i>
+              Nessun incasso registrato in {{ month_label }} {{ year }}.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if righe %}
+        <tfoot>
+          <tr style="background:#1a1a2e;color:#fff;font-weight:700;">
+            <td colspan="{{ 5 if not tenant_sel else 4 }}">
+              TOTALE ({{ righe|length }} scontrini)
+            </td>
+            <td class="text-right">{{ tot_lordo|num_it }} €</td>
+            <td class="text-right" style="color:#ffc107;">{{ tot_imponibile|num_it }} €</td>
+            <td class="text-right" style="color:#ff8fa0;">{{ tot_provvigioni|num_it }} €</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  if (!$('#tblScontrini tbody tr td[colspan]').length) {
+    $('#tblScontrini').DataTable({
+      paging: true, pageLength: 50, order: [],
+      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json' }
+    });
+  }
+});
+</script>
+{% endblock %}

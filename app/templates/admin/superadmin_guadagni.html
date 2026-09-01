@@ -38,7 +38,7 @@
   <div class="col-lg-3 col-6">
     <div class="small-box" style="background:#1a1a2e;color:#fff;">
       <div class="inner">
-        <h3>{{ "%.2f"|format(grand_total) }} €</h3>
+        <h3>{{ grand_total|num_it }} €</h3>
         <p>Volume totale piattaforma</p>
       </div>
       <div class="icon"><i class="fas fa-chart-line"></i></div>
@@ -51,7 +51,7 @@
   <div class="col-lg-3 col-6">
     <div class="small-box bg-danger">
       <div class="inner">
-        <h3>{{ "%.2f"|format(grand_fee) }} €</h3>
+        <h3>{{ grand_fee|num_it }} €</h3>
         <p>Guadagno DS Consulting</p>
       </div>
       <div class="icon"><i class="fas fa-euro-sign"></i></div>
@@ -92,6 +92,10 @@
 {# ── Tabella per tenant ────────────────────────────────────────────────────── #}
 <div class="card card-outline" style="border-top:3px solid #e94560;" id="tenant-table">
   <div class="card-header">
+    <a href="{{ url_for('admin.ds_scontrini', year=year, month=month) }}"
+       class="btn btn-sm btn-danger float-right">
+      <i class="fas fa-receipt mr-1"></i>Dettaglio scontrini e provvigioni
+    </a>
     <h3 class="card-title">
       <i class="fas fa-table mr-2" style="color:#e94560;"></i>
       Dettaglio per tenant — {{ month_label }} {{ year }}
@@ -110,6 +114,7 @@
             <th class="text-right"><strong>Totale IVA incl.</strong></th>
             <th class="text-right text-warning">Imponibile (÷1.10)</th>
             <th class="text-right" style="color:#e94560;">Fee DS</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -122,14 +127,20 @@
               <strong>{{ r.tenant.name }}</strong>
               <small class="text-muted ml-1">/{{ r.tenant.slug }}</small>
             </td>
-            <td class="text-right">{{ "%.2f"|format(r.orders) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(r.banco) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(r.cesto) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(r.meals) }} €</td>
-            <td class="text-right"><strong>{{ "%.2f"|format(r.total) }} €</strong></td>
-            <td class="text-right text-warning">{{ "%.2f"|format(r.excl_vat) }} €</td>
+            <td class="text-right">{{ r.orders|num_it }} €</td>
+            <td class="text-right">{{ r.banco|num_it }} €</td>
+            <td class="text-right">{{ r.cesto|num_it }} €</td>
+            <td class="text-right">{{ r.meals|num_it }} €</td>
+            <td class="text-right"><strong>{{ r.total|num_it }} €</strong></td>
+            <td class="text-right text-warning">{{ r.excl_vat|num_it }} €</td>
             <td class="text-right" style="color:#e94560;font-weight:700;">
-              {{ "%.2f"|format(r.fee) }} €
+              {{ r.fee|num_it }} €
+            </td>
+            <td class="text-right">
+              <a href="{{ url_for('admin.ds_scontrini', year=year, month=month, t=r.tenant.id) }}"
+                 class="btn btn-xs btn-outline-danger" title="Scontrini di {{ r.tenant.name }}">
+                <i class="fas fa-receipt"></i>
+              </a>
             </td>
           </tr>
           {% else %}
@@ -144,13 +155,14 @@
         <tfoot>
           <tr style="background:#1a1a2e;color:#fff;font-weight:700;">
             <td>TOTALE</td>
-            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='orders')) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='banco')) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='cesto')) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(rows|sum(attribute='meals')) }} €</td>
-            <td class="text-right">{{ "%.2f"|format(grand_total) }} €</td>
-            <td class="text-right" style="color:#ffc107;">{{ "%.2f"|format(rows|sum(attribute='excl_vat')) }} €</td>
-            <td class="text-right" style="color:#e94560;">{{ "%.2f"|format(grand_fee) }} €</td>
+            <td class="text-right">{{ rows|sum(attribute='orders')|num_it }} €</td>
+            <td class="text-right">{{ rows|sum(attribute='banco')|num_it }} €</td>
+            <td class="text-right">{{ rows|sum(attribute='cesto')|num_it }} €</td>
+            <td class="text-right">{{ rows|sum(attribute='meals')|num_it }} €</td>
+            <td class="text-right">{{ grand_total|num_it }} €</td>
+            <td class="text-right" style="color:#ffc107;">{{ rows|sum(attribute='excl_vat')|num_it }} €</td>
+            <td class="text-right" style="color:#e94560;">{{ grand_fee|num_it }} €</td>
+            <td></td>
           </tr>
         </tfoot>
         {% endif %}
@@ -216,7 +228,7 @@
       <p class="mb-0" style="font-size:.85rem;">
         <strong>Formula:</strong>
         Imponibile = Totale IVA inclusa ÷ 1,10 &nbsp;·&nbsp;
-        Fee tenant = (<em>Imponibile</em> × {{ fee_pct }}%) + {{ "%.2f"|format(monthly_fee) }} €
+        Fee tenant = (<em>Imponibile</em> × {{ fee_pct }}%) + {{ monthly_fee|num_it }} €
         &nbsp;·&nbsp;
         <strong>Guadagno DS Consulting</strong> = somma delle fee di tutti i tenant
       </p>

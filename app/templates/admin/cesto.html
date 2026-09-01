@@ -27,7 +27,7 @@
             <select name="product_id" class="form-control" required>
               <option value="">Seleziona...</option>
               {% for p in products %}
-              <option value="{{ p.id }}">{{ p.name }} — {{ '%.2f'|format(p.price) }} €</option>
+              <option value="{{ p.id }}">{{ p.name }} — {{ p.price|num_it }} €</option>
               {% endfor %}
             </select>
           </div>
@@ -78,7 +78,7 @@
           {% for pid, s in summary.items() %}
           {% set tot = s.ready + s.sold + s.expired %}
           <tr>
-            <td><strong>{{ s.name }}</strong><br><small class="text-muted">{{ '%.2f'|format(s.price) }} €</small></td>
+            <td><strong>{{ s.name }}</strong><br><small class="text-muted">{{ s.price|num_it }} €</small></td>
             <td class="text-center">{{ tot }}</td>
             <td class="text-center"><span class="badge badge-success">{{ s.sold }}</span></td>
             <td class="text-center"><span class="badge badge-warning">{{ s.ready }}</span></td>

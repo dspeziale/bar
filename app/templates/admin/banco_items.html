@@ -161,7 +161,7 @@ var table = $('#bancoItemsTable').DataTable({
         return '<i class="fas ' + d.icon + ' text-' + d.color + ' mr-1"></i><strong>' + $('<span>').text(d.name).html() + '</strong>';
       }
     },
-    { data: 'price', render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; } },
+    { data: 'price', render: function(d) { return '<strong>' + qlNum(parseFloat(d)) + '€</strong>'; } },
     { data: 'sort_order' },
     {
       data: 'is_active',

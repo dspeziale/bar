@@ -171,7 +171,7 @@
       <div class="lbl-left">
         <div class="lbl-qr" id="qr-{{ lb.id }}"></div>
         <div class="lbl-name">{{ lb.product.name }}</div>
-        <div class="lbl-price">{{ '%.2f'|format(lb.product.price) }} €</div>
+        <div class="lbl-price">{{ lb.product.price|num_it }} €</div>
       </div>
 
       {% if allergens %}

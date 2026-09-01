@@ -53,7 +53,7 @@
     <div class="card-body py-2">
       <div class="row text-center">
         <div class="col-4">
-          <div style="font-size:1.5rem;font-weight:700;color:#e94560;">{{ '%.2f'|format(corp.daily_price) }}€</div>
+          <div style="font-size:1.5rem;font-weight:700;color:#e94560;">{{ corp.daily_price|num_it }}€</div>
           <small class="text-muted">prezzo/pasto</small>
         </div>
         <div class="col-4">
@@ -81,7 +81,7 @@
             <div class="{{ 'mb-1' if not loop.last }}">
               <i class="fas fa-utensils {{ 'text-success' if m.is_active else 'text-muted' }} mr-1"></i>
               <strong>{{ m.name }}</strong>
-              <small class="text-muted ml-1">{{ '%.2f'|format(m.price) }}€ — {{ m.booking_count }}/{{ m.max_bookings }}</small>
+              <small class="text-muted ml-1">{{ m.price|num_it }}€ — {{ m.booking_count }}/{{ m.max_bookings }}</small>
               {% if not m.is_active %}<span class="badge badge-secondary" style="font-size:.65rem;">inattiva</span>{% endif %}
             </div>
             {% endfor %}

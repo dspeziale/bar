@@ -29,7 +29,7 @@
               </span>
               <div class="info-box-content" style="padding:8px 10px;">
                 <span class="info-box-text text-truncate" style="font-size:.82rem;" title="{{ prod.name }}">{{ prod.name }}</span>
-                <span class="info-box-number" style="font-size:1.1rem;">{{ '%.2f'|format(prod.price) }} €</span>
+                <span class="info-box-number" style="font-size:1.1rem;">{{ prod.price|num_it }} €</span>
                 <span class="progress-description" style="font-size:.78rem; color:#555;">
                   <strong>{{ items|length }}</strong> disponibil{{ 'e' if items|length == 1 else 'i' }}
                 </span>

@@ -52,7 +52,7 @@
         <span class="info-box-text">Fatturato mese</span>
         {% set tot_eur = namespace(v=0) %}
         {% for d in days %}{% set tot_eur.v = tot_eur.v + d.consumed|length * d.meal.price %}{% endfor %}
-        <span class="info-box-number">{{ '%.2f'|format(tot_eur.v) }}€</span>
+        <span class="info-box-number">{{ tot_eur.v|num_it }}€</span>
       </div>
     </div>
   </div>
@@ -89,7 +89,7 @@
         {% if d.cancelled %}
         <span class="badge badge-danger">{{ d.cancelled|length }} annullati</span>
         {% endif %}
-        <strong style="font-size:.85rem;">{{ '%.2f'|format(d.consumed|length * d.meal.price) }}€</strong>
+        <strong style="font-size:.85rem;">{{ (d.consumed|length * d.meal.price)|num_it }}€</strong>
         <i class="fas fa-chevron-down text-muted" style="font-size:.8rem;"></i>
       </div>
     </button>
@@ -156,8 +156,8 @@
 
       <div class="card-footer d-flex justify-content-between align-items-center py-1" style="font-size:.82rem;">
         <span class="text-muted">
-          Totale fatturabile: <strong>{{ '%.2f'|format(d.consumed|length * d.meal.price) }}€</strong>
-          ({{ d.consumed|length }} × {{ '%.2f'|format(d.meal.price) }}€)
+          Totale fatturabile: <strong>{{ (d.consumed|length * d.meal.price)|num_it }}€</strong>
+          ({{ d.consumed|length }} × {{ d.meal.price|num_it }}€)
         </span>
         <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id, d=d.meal.meal_date.isoformat()) }}"
            class="btn btn-xs btn-outline-secondary">

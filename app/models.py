@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-from app import db, login_manager
+from app import db, login_manager, numero_italiano
 
 # ── RBAC association tables ────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ class User(UserMixin, db.Model):
         self.wallet_balance = round(self.wallet_balance + reward_amount, 2)
         db.session.add(Transaction(user_id=self.id, amount=reward_amount,
                                    ttype='reward',
-                                   description=f'Premio: {points} punti → +{reward_amount:.2f}€'))
+                                   description=f'Premio: {points} punti → +{numero_italiano(reward_amount)}€'))
 
     def apply_registration_bonus(self):
         """Accredita il bonus di benvenuto configurato in Impostazioni.

@@ -103,7 +103,7 @@ var table = $('#ordersTable').DataTable({
     { data: 'slot', render: function(d) { return '<span class="badge badge-info">' + $('<span>').text(d).html() + '</span>'; } },
     { data: 'items', render: function(d) { return d ? $('<span>').text(d).html() : '—'; }, orderable: false },
     { data: 'notes', render: function(d) { return d ? '<small class="text-muted">' + $('<span>').text(d).html() + '</small>' : '<span class="text-muted">—</span>'; }, orderable: false },
-    { data: 'total_price', render: function(d) { return '<strong>' + parseFloat(d).toFixed(2) + '€</strong>'; } },
+    { data: 'total_price', render: function(d) { return '<strong>' + qlNum(parseFloat(d)) + '€</strong>'; } },
     {
       data: null,
       render: function(d) {

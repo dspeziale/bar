@@ -177,6 +177,23 @@
     .main-sidebar,
     .main-sidebar .sidebar      { background: var(--QuickLunch-sidebar-bg) !important; }
     .main-sidebar               { border-right: 1px solid var(--QuickLunch-brand-border, rgba(0,0,0,.08)) !important; box-shadow: var(--QuickLunch-sidebar-shadow) !important; }
+
+    /* Menu chiuso: la sidebar sparisce del tutto. Senza queste regole il bordo
+       e l'ombra personalizzati resterebbero visibili sul filo dello schermo. */
+    body.sidebar-collapse .main-sidebar {
+      margin-left: -250px !important;
+      border-right: 0 !important;
+      box-shadow: none !important;
+    }
+    /* Il contenuto occupa la larghezza liberata (solo da tablet in su: sotto,
+       AdminLTE gestisce già la sidebar a comparsa). */
+    @media (min-width: 992px) {
+      body.sidebar-collapse .content-wrapper,
+      body.sidebar-collapse .main-header,
+      body.sidebar-collapse .main-footer {
+        margin-left: 0 !important;
+      }
+    }
     .brand-link                 { background: var(--QuickLunch-brand-bg) !important; border-bottom: 1px solid var(--QuickLunch-brand-border) !important; }
     .brand-text                 { color: var(--QuickLunch-brand-text) !important; }
     .user-panel                 { border-color: var(--QuickLunch-user-border) !important; }
@@ -399,7 +416,7 @@
   {% block extra_css %}{% endblock %}
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition layout-fixed">
 <div class="wrapper">
 
   <!-- Navbar -->
@@ -419,7 +436,7 @@
       {% if current_user.is_authenticated and not current_user.is_admin %}
       <li class="nav-item mr-2">
         <a href="{{ url_for('main.wallet') }}" class="wallet-badge">
-          <i class="fas fa-wallet mr-1"></i>{{ '%.2f'|format(current_user.wallet_balance) }}€
+          <i class="fas fa-wallet mr-1"></i>{{ current_user.wallet_balance|num_it }}€
         </a>
       </li>
       <li class="nav-item mr-2">
@@ -1001,6 +1018,16 @@
    I form renderizzati da Jinja2 ricevono il token da {{ '{{ csrf_field() }}' }}.
    Questi helper servono ai form costruiti a runtime da JavaScript.           */
 window.QL_CSRF = '{{ csrf_token() }}';
+
+/* Numero in formato italiano per i testi generati da JavaScript.
+   Per i valori da mettere in un <input type="number"> serve invece toFixed. */
+function qlNum(v, dec) {
+  var n = Number(v);
+  if (!isFinite(n)) n = 0;
+  var d = (dec === undefined) ? 2 : dec;
+  return n.toLocaleString('it-IT', { minimumFractionDigits: d,
+                                     maximumFractionDigits: d });
+}
 
 /* Input nascosto come oggetto jQuery */
 function qlCsrfInput() {

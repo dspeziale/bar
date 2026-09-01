@@ -141,7 +141,7 @@
               </strong>
               <ul class="ing-list" style="padding-left:10px;">
                 {% for ing in ci.ingredients %}
-                <li>{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} <small class="text-muted">(+{{ '%.2f'|format(ing.price_extra) }}€)</small>{% endif %}</li>
+                <li>{{ ing.ingredient_name }}{% if ing.price_extra > 0 %} <small class="text-muted">(+{{ ing.price_extra|num_it }}€)</small>{% endif %}</li>
                 {% endfor %}
               </ul>
             </li>

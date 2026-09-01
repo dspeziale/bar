@@ -44,7 +44,7 @@
                 </div>
                 {% endif %}
                 <div class="mt-1 text-muted" style="font-size:.8rem;">
-                  {% if cfg.price %}Prezzo: <strong>{{ '%.2f'|format(cfg.price) }}€</strong>{% else %}<em>Prezzo dalla convenzione</em>{% endif %}
+                  {% if cfg.price %}Prezzo: <strong>{{ cfg.price|num_it }}€</strong>{% else %}<em>Prezzo dalla convenzione</em>{% endif %}
                   {% if cfg.max_bookings %} &nbsp;·&nbsp; Max: <strong>{{ cfg.max_bookings }}</strong>{% endif %}
                   {% if cfg.sort_order %} &nbsp;·&nbsp; Ordine: {{ cfg.sort_order }}{% endif %}
                 </div>
