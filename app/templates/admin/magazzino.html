@@ -63,7 +63,7 @@
 {% block extra_js %}
 <script>
 function submitForm(url) {
-  var f = $('<form method="POST">').attr('action', url); $('body').append(f); f.submit();
+  var f = qlPostForm().attr('action', url); $('body').append(f); f.submit();
 }
 
 var table = $('#magazzinoTable').DataTable({
@@ -113,6 +113,7 @@ var table = $('#magazzinoTable').DataTable({
       orderable: false,
       render: function(d) {
         return '<form method="POST" action="' + d.movement_url + '" class="d-flex" style="gap:.3rem;">'
+             + qlCsrfInputHtml()
              + '<input type="number" name="delta" step="0.5" placeholder="±qty" class="form-control form-control-sm" style="width:80px;" required>'
              + '<input type="text" name="notes" placeholder="Note" class="form-control form-control-sm" style="width:100px;">'
              + '<button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-save"></i></button>'
@@ -133,7 +134,7 @@ var table = $('#magazzinoTable').DataTable({
 function confirmDel(url, name) {
   Swal.fire({ title:'Eliminare "'+name+'"?', icon:'warning', showCancelButton:true,
     confirmButtonColor:'#e3342f', confirmButtonText:'Elimina', cancelButtonText:'Annulla'
-  }).then(function(r){ if(r.isConfirmed){ var f=$('<form method="POST">').attr('action',url);$('body').append(f);f.submit(); }});
+  }).then(function(r){ if(r.isConfirmed){ var f=qlPostForm().attr('action',url);$('body').append(f);f.submit(); }});
 }
 </script>
 {% endblock %}

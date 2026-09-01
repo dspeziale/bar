@@ -60,6 +60,7 @@
       </div>
       {% else %}
       <form method="POST" action="{{ url_for('main.banco_pay_confirm', token=sess.token) }}">
+        {{ csrf_field() }}
         <button type="submit" class="btn btn-success btn-lg btn-block">
           <i class="fas fa-check-circle mr-2"></i>Paga {{ '%.2f'|format(sess.total) }}€
         </button>

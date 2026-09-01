@@ -142,6 +142,7 @@
         </div>
         {% else %}
         <form method="POST" action="{{ url_for('main.poll_vote', pid=poll.id) }}" id="vote-form">
+          {{ csrf_field() }}
           <div class="row" id="choices-grid">
             {% for c in poll.choices %}
             <div class="col-sm-6 col-md-4 mb-3">

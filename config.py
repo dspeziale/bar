@@ -27,6 +27,10 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
 
+    # CSRF: il token scade con la sessione (default Flask-WTF: 1h, troppo corto
+    # per una schermata POS/KDS lasciata aperta tutto il turno)
+    WTF_CSRF_TIME_LIMIT = None
+
     # Pool ottimizzato per serverless (Vercel) con PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,

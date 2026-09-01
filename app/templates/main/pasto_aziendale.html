@@ -131,6 +131,7 @@
           </div>
         </div>
         <form method="POST" action="{{ url_for('main.pasto_aziendale_prenota') }}">
+          {{ csrf_field() }}
           <input type="hidden" name="meal_id" value="{{ meal.id }}">
           <div class="form-row align-items-end">
             <div class="col-5">
@@ -186,6 +187,7 @@
         {% else %}
         {# Form prenotazione normale #}
         <form method="POST" action="{{ url_for('main.pasto_aziendale_prenota') }}">
+          {{ csrf_field() }}
           <input type="hidden" name="meal_id" value="{{ meal.id }}">
           <div class="form-row align-items-end">
             <div class="col-5">
@@ -235,6 +237,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">No</button>
         <form method="POST" action="{{ url_for('main.pasto_aziendale_cancella') }}">
+          {{ csrf_field() }}
           <input type="hidden" name="booking_id" value="{{ my_booking.id }}">
           <button type="submit" class="btn btn-danger btn-sm">Sì, annulla</button>
         </form>

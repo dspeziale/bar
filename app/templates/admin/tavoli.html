@@ -253,6 +253,7 @@
             <form method="POST"
                   action="{{ url_for('admin.reservation_checkin', rid=r.id) }}"
                   style="display:inline;">
+              {{ csrf_field() }}
               <button class="btn btn-xs btn-success" title="Registra check-in">
                 <i class="fas fa-sign-in-alt"></i>
               </button>
@@ -263,6 +264,7 @@
                   action="{{ url_for('admin.reservation_cancel', rid=r.id) }}"
                   style="display:inline;"
                   data-confirm="{{ cancel_msg }}">
+              {{ csrf_field() }}
               <button class="btn btn-xs btn-outline-danger" title="Annulla">
                 <i class="fas fa-times"></i>
               </button>
@@ -319,6 +321,7 @@
               <form method="POST" action="{{ url_for('admin.table_delete', tid=t.id) }}"
                     style="display:inline;"
                     data-confirm="{{ del_confirm }}">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-outline-danger" title="Elimina">
                   <i class="fas fa-trash"></i>
                 </button>
@@ -331,6 +334,7 @@
             <div class="modal-dialog modal-sm">
               <div class="modal-content">
                 <form method="POST" action="{{ url_for('admin.table_edit', tid=t.id) }}">
+                  {{ csrf_field() }}
                   <div class="modal-header bg-info text-white py-2">
                     <h6 class="modal-title mb-0">Modifica Tavolo {{ t.number }}</h6>
                     <button type="button" class="close text-white" data-dismiss="modal">
@@ -381,6 +385,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.table_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Numero <span class="text-danger">*</span></label>
             <input type="number" name="number" class="form-control"
@@ -456,6 +461,7 @@
                     action="{{ url_for('admin.band_delete', bid=band.id) }}"
                     style="display:inline;"
                     data-confirm="{{ del_band_confirm }}">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-outline-danger"
                         {{ 'disabled title=Impossibile: ha prenotazioni collegate' if band.reservations }}>
                   <i class="fas fa-trash"></i>
@@ -483,6 +489,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.band_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Inizio <span class="text-danger">*</span></label>
             <input type="time" name="start_time" class="form-control" required
@@ -524,6 +531,7 @@
   </div>
   <form method="POST" action="{{ url_for('admin.slot_new') }}"
         class="d-flex align-items-center" style="gap:.4rem;flex-shrink:0;">
+    {{ csrf_field() }}
     <input type="time" name="time_str" class="form-control form-control-sm"
            style="width:110px;" required placeholder="HH:MM">
     <input type="number" name="max_orders" class="form-control form-control-sm"
@@ -551,6 +559,7 @@
       <div class="mt-2 mb-1" style="font-size:.82rem;"><strong>Capacità ordini</strong></div>
       <form method="POST" action="{{ url_for('admin.slot_capacity', sid=slot.id) }}"
             class="d-flex mb-1" style="gap:.3rem;">
+        {{ csrf_field() }}
         <input type="number" name="max_orders" value="{{ slot.max_orders }}"
                min="1" class="form-control form-control-sm text-center">
         <button class="btn btn-sm btn-outline-info" title="Salva capacità">
@@ -570,6 +579,7 @@
       <div class="mt-2 mb-1" style="font-size:.82rem;"><strong>Durata seduta (min)</strong></div>
       <form method="POST" action="{{ url_for('admin.slot_durata', sid=slot.id) }}"
             class="d-flex mb-2" style="gap:.3rem;">
+        {{ csrf_field() }}
         <input type="number" name="seat_duration_minutes"
                value="{{ slot.seat_duration_minutes or '' }}"
                min="0" placeholder="0=∞" class="form-control form-control-sm text-center">
@@ -579,6 +589,7 @@
       </form>
 
       <form method="POST" action="{{ url_for('admin.slot_toggle', sid=slot.id) }}">
+        {{ csrf_field() }}
         <button class="btn btn-sm btn-block btn-{{ 'warning' if slot.is_active else 'success' }}">
           <i class="fas fa-{{ 'eye-slash' if slot.is_active else 'eye' }} mr-1"></i>
           {{ 'Disattiva' if slot.is_active else 'Attiva' }}
@@ -586,6 +597,7 @@
       </form>
       <form method="POST" action="{{ url_for('admin.slot_delete', sid=slot.id) }}" class="mt-1"
             data-confirm="Eliminare lo slot {{ slot.time_str }}?">
+        {{ csrf_field() }}
         <button class="btn btn-xs btn-block btn-outline-danger">
           <i class="fas fa-trash mr-1"></i>Elimina
         </button>

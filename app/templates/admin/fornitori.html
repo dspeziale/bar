@@ -38,7 +38,7 @@
 {% block extra_js %}
 <script>
 function submitForm(url) {
-  var f = $('<form method="POST">').attr('action', url); $('body').append(f); f.submit();
+  var f = qlPostForm().attr('action', url); $('body').append(f); f.submit();
 }
 
 $('#fornitoriTable').DataTable({

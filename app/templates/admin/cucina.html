@@ -153,6 +153,7 @@
         </div>
         <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
           <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+            {{ csrf_field() }}
             <input type="hidden" name="status" value="preparing">
             <button type="submit" class="kds-action-btn" style="background:#3498db;color:#fff;">
               <i class="fas fa-fire mr-1"></i>Inizia preparazione
@@ -217,6 +218,7 @@
         </div>
         <div class="card-footer py-2 px-3 d-flex" style="gap:.4rem;">
           <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;">
+            {{ csrf_field() }}
             <input type="hidden" name="status" value="ready">
             <button type="submit" class="kds-action-btn" style="background:#27ae60;color:#fff;">
               <i class="fas fa-bell mr-1"></i>Pronto per ritiro
@@ -269,6 +271,7 @@
         </div>
         <div class="card-footer py-2 px-3 d-flex flex-wrap" style="gap:.4rem;">
           <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}" style="flex:1;min-width:120px;">
+            {{ csrf_field() }}
             <input type="hidden" name="status" value="completed">
             <button type="submit" class="kds-action-btn" style="background:#7f8c8d;color:#fff;">
               <i class="fas fa-check-double mr-1"></i>Consegnato

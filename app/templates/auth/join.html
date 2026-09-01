@@ -217,6 +217,7 @@
     <!-- Email tab -->
     <div id="panel-email" style="display:none;">
       <form method="POST" action="{{ url_for('auth.register') }}">
+        {{ csrf_field() }}
         <div class="form-row-2" style="margin-bottom:.65rem;">
           <input type="text" name="first_name" class="form-input" placeholder="Nome" required>
           <input type="text" name="last_name"  class="form-input" placeholder="Cognome" required>

@@ -42,6 +42,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.product_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Nome *</label>
             <input type="text" name="name" class="form-control" placeholder="Es: Panino Tonno" required>
@@ -98,6 +99,7 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form method="POST" id="editForm" action="#">
+        {{ csrf_field() }}
         <div class="modal-header bg-info text-white">
           <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Modifica prodotto</h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -259,7 +261,7 @@ $(document).on('click', '.btn-edit-prod', function() {
 // Toggle attivo/inattivo
 $(document).on('click', '.btn-toggle-prod', function() {
   var pid = $(this).data('id');
-  var f = $('<form method="POST">').attr('action', productUrl(pid, 'toggle'));
+  var f = qlPostForm().attr('action', productUrl(pid, 'toggle'));
   $('body').append(f);
   f.submit();
 });
@@ -278,7 +280,7 @@ $(document).on('click', '.btn-delete-prod', function() {
     cancelButtonText: 'Annulla'
   }).then(function(r) {
     if (r.isConfirmed) {
-      var f = $('<form method="POST">').attr('action', productUrl(pid, 'delete'));
+      var f = qlPostForm().attr('action', productUrl(pid, 'delete'));
       $('body').append(f);
       f.submit();
     }

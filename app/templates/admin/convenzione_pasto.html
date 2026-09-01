@@ -51,6 +51,7 @@
         <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Aggiungi opzione</h3>
       </div>
       <form method="POST" id="addForm">
+        {{ csrf_field() }}
         <input type="hidden" name="action" value="add">
         {% if sel_date != today %}
         <input type="hidden" name="d" value="{{ sel_date.isoformat() }}">
@@ -124,6 +125,7 @@
           <i class="fas fa-edit"></i>
         </button>
         <form method="POST" style="display:inline;">
+          {{ csrf_field() }}
           <input type="hidden" name="action"  value="toggle">
           <input type="hidden" name="meal_id" value="{{ meal.id }}">
           {% if sel_date != today %}
@@ -136,6 +138,7 @@
         </form>
         <form method="POST" style="display:inline;"
               data-confirm="Eliminare l'opzione «{{ meal.name }}»?">
+          {{ csrf_field() }}
           <input type="hidden" name="action"  value="delete">
           <input type="hidden" name="meal_id" value="{{ meal.id }}">
           {% if sel_date != today %}
@@ -195,6 +198,7 @@
                 <form method="POST"
                       action="{{ url_for('admin.convenzione_consuma', cid=corp.id, bid=b.id,
                                         d=sel_date.isoformat() if sel_date != today else '') }}">
+                  {{ csrf_field() }}
                   <button class="btn btn-xs btn-success">
                     <i class="fas fa-check"></i>
                   </button>
@@ -224,6 +228,7 @@
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form method="POST">
+            {{ csrf_field() }}
             <input type="hidden" name="action"  value="edit">
             <input type="hidden" name="meal_id" value="{{ meal.id }}">
             {% if sel_date != today %}

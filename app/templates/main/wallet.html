@@ -46,6 +46,7 @@
         </small>
         {% if current_user.loyalty_points >= loyalty_threshold %}
         <form method="POST" action="{{ url_for('main.redeem_points') }}" class="mt-3">
+          {{ csrf_field() }}
           {% set blocks = current_user.loyalty_points // loyalty_threshold %}
           <button class="btn btn-block btn-warning font-weight-bold">
             <i class="fas fa-gift me-1"></i>

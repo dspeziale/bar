@@ -212,7 +212,8 @@ def place_order():
 
     # Crea ordine
     order = Order(user_id=current_user.id, slot_id=slot_id,
-                  order_date=date.today(), notes=notes, status='confirmed')
+                  order_date=date.today(), notes=notes, status='confirmed',
+                  tenant_id=_effective_tenant_id())
     db.session.add(order)
     db.session.flush()
 
@@ -648,7 +649,8 @@ def table_book():
         band_id=band_id, session_start=session_start,
         slot_id=slot_sentinel,
         reservation_date=res_date,
-        party_size=party_size, notes=notes, status='confirmed'
+        party_size=party_size, notes=notes, status='confirmed',
+        tenant_id=_effective_tenant_id()
     )
     db.session.add(res)
     db.session.commit()

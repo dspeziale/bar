@@ -24,6 +24,7 @@
       </div>
       <div class="card-body p-0">
         <form method="POST" action="{{ url_for('main.cart_update') }}">
+          {{ csrf_field() }}
           <table class="table table-hover mb-0">
             <thead class="thead-light">
               <tr><th>Prodotto</th><th>Prezzo</th><th style="width:100px;">Qtà</th><th>Sub</th><th></th></tr>
@@ -44,6 +45,7 @@
               <td><strong>{{ '%.2f'|format(item.subtotal) }}€</strong></td>
               <td>
                 <form method="POST" action="{{ url_for('main.cart_remove', product_id=item.product.id) }}">
+                  {{ csrf_field() }}
                   <button class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
                 </form>
               </td>
@@ -99,6 +101,7 @@
             </td>
             <td>
               <form method="POST" action="{{ url_for('main.cart_remove_custom', uid=ci.uid) }}">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
               </form>
             </td>
@@ -135,6 +138,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('main.place_order') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label><i class="fas fa-clock mr-1"></i><strong>Orario di ritiro</strong></label>
 

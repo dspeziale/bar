@@ -20,6 +20,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.meal_ritiro') }}">
+          {{ csrf_field() }}
           <div class="input-group input-group-lg">
             <input type="text" name="token" id="tokenInput"
                    class="form-control text-center font-weight-bold"
@@ -89,6 +90,7 @@
         </table>
 
         <form method="POST" action="{{ url_for('admin.meal_consegna') }}">
+          {{ csrf_field() }}
           <input type="hidden" name="booking_id" value="{{ booking.id }}">
           <input type="hidden" name="next" value="{{ url_for('admin.meal_ritiro') }}">
           <button type="submit" class="btn btn-success btn-lg btn-block">

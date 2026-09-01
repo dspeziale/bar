@@ -149,6 +149,7 @@
               {% if o.status in ('pending','confirmed') %}
               <form method="POST" action="{{ url_for('main.cancel_order', order_id=o.id) }}"
                     data-confirm="Annullare ordine #{{ o.id }}?">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
               </form>
               {% endif %}
@@ -183,6 +184,7 @@
             <td>
               <form method="POST" action="{{ url_for('main.cancel_reservation', rid=r.id) }}"
                     data-confirm="Annullare prenotazione tavolo {{ r.table.number }}?">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
               </form>
             </td>
@@ -243,6 +245,7 @@
         </small>
         {% if current_user.loyalty_points >= loyalty_threshold %}
         <form method="POST" action="{{ url_for('main.redeem_points') }}" class="mt-2">
+          {{ csrf_field() }}
           <button class="btn btn-sm btn-block btn-warning">
             <i class="fas fa-gift mr-1"></i>Riscatta punti
           </button>
@@ -296,6 +299,7 @@
             <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
           </div>
           <form method="POST" action="{{ url_for('auth.mfa_disable') }}" autocomplete="off">
+            {{ csrf_field() }}
             <div class="modal-body">
               <p class="text-muted" style="font-size:.88rem;">
                 Inserisci il codice attuale di Google Authenticator per confermare.
@@ -365,6 +369,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
             <form method="POST" action="{{ url_for('main.account_delete') }}" style="display:inline;">
+              {{ csrf_field() }}
               <button type="submit" class="btn btn-danger">
                 <i class="fas fa-trash-alt mr-1"></i>Sì, cancella il mio account
               </button>

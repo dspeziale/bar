@@ -175,11 +175,13 @@
               <div class="d-flex gap-1">
                 {% if o.status == 'confirmed' %}
                 <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                  {{ csrf_field() }}
                   <input type="hidden" name="status" value="ready">
                   <button class="btn btn-xs btn-success" title="Pronto"><i class="fas fa-check"></i></button>
                 </form>
                 {% elif o.status == 'ready' %}
                 <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                  {{ csrf_field() }}
                   <input type="hidden" name="status" value="completed">
                   <button class="btn btn-xs btn-secondary" title="Consegnato"><i class="fas fa-check-double"></i></button>
                 </form>

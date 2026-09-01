@@ -36,6 +36,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.category_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Nome *</label>
             <input type="text" name="name" class="form-control" placeholder="Es: Zuppe" required>
@@ -67,6 +68,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <form id="editCatForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Modifica categoria</h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -146,7 +148,7 @@ $(document).on('click', '.btn-del-cat', function() {
   var name = $(this).data('name'), url = $(this).data('url');
   Swal.fire({ title:'Eliminare "'+name+'"?', icon:'warning', showCancelButton:true,
     confirmButtonColor:'#e3342f', confirmButtonText:'Elimina', cancelButtonText:'Annulla'
-  }).then(function(r){ if(r.isConfirmed){ var f=$('<form method="POST">').attr('action',url);$('body').append(f);f.submit(); }});
+  }).then(function(r){ if(r.isConfirmed){ var f=qlPostForm().attr('action',url);$('body').append(f);f.submit(); }});
 });
 </script>
 {% endblock %}

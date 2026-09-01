@@ -83,7 +83,7 @@ $(document).on('click', '.btn-cancel-res', function() {
     cancelButtonText: 'No'
   }).then(function(r) {
     if (r.isConfirmed) {
-      var f = $('<form method="POST">').attr('action', url);
+      var f = qlPostForm().attr('action', url);
       $('body').append(f); f.submit();
     }
   });

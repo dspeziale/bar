@@ -29,6 +29,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('admin.slot_capacity', sid=slot.id) }}" class="d-flex gap-2 mb-2">
+          {{ csrf_field() }}
           <input type="number" name="max_orders" value="{{ slot.max_orders }}"
                  min="1" class="form-control form-control-sm">
           <button class="btn btn-sm btn-outline-info" title="Salva capacità">
@@ -37,6 +38,7 @@
         </form>
 
         <form method="POST" action="{{ url_for('admin.slot_toggle', sid=slot.id) }}">
+          {{ csrf_field() }}
           <button class="btn btn-sm btn-block btn-{{ 'warning' if slot.is_active else 'success' }}">
             <i class="fas fa-{{ 'eye-slash' if slot.is_active else 'eye' }} me-1"></i>
             {{ 'Disattiva' if slot.is_active else 'Attiva' }}

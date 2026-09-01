@@ -4,7 +4,9 @@ from zoneinfo import ZoneInfo
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 from authlib.integrations.flask_client import OAuth
+from markupsafe import Markup
 
 _ROME = ZoneInfo('Europe/Rome')
 
@@ -17,6 +19,7 @@ login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Devi effettuare il login per accedere a questa pagina.'
 login_manager.login_message_category = 'warning'
 oauth = OAuth()
+csrf = CSRFProtect()
 
 
 def create_app(config_object='config.Config'):
@@ -30,6 +33,7 @@ def create_app(config_object='config.Config'):
     db.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+    csrf.init_app(app)
 
     # ── Filtri Jinja2 per fuso orario Europe/Rome ─────────────────────────
     from datetime import datetime, timezone
@@ -49,6 +53,14 @@ def create_app(config_object='config.Config'):
         if d is None:
             return ''
         return d.strftime('%d/%m/%Y')
+
+    # ── CSRF: campo nascosto da inserire in ogni form POST ────────────────
+    @app.template_global()
+    def csrf_field():
+        from flask_wtf.csrf import generate_csrf
+        return Markup(
+            '<input type="hidden" name="csrf_token" value="%s">' % generate_csrf()
+        )
 
     # Registra Google OAuth (se configurato)
     oauth.register(
@@ -89,6 +101,7 @@ def create_app(config_object='config.Config'):
         db.create_all()
         _migrate_tenant_columns()
         _seed_defaults()
+        _backfill_tenant_ids()
 
     # ── CLI: flask seed-demo ───────────────────────────────────────────────
     @app.cli.command('seed-demo')
@@ -101,6 +114,40 @@ def create_app(config_object='config.Config'):
             print(('[OK]' if ok else '[SKIP]'), msg)
 
     return app
+
+
+def _backfill_tenant_ids():
+    """Assegna il tenant_id a ordini e prenotazioni tavolo creati prima che venisse
+    impostato alla creazione. Senza di esso le righe non compaiono nel backoffice,
+    che filtra per tenant. Idempotente: agisce solo dove tenant_id e' NULL."""
+    from sqlalchemy import inspect as sa_inspect, text
+    from app.models import Tenant
+
+    default_t = Tenant.query.filter_by(slug='default').first()
+    if not default_t:
+        return
+
+    insp = sa_inspect(db.engine)
+    existing_tables = set(insp.get_table_names())
+
+    for table in ('orders', 'table_reservations'):
+        if table not in existing_tables:
+            continue
+        if 'tenant_id' not in {c['name'] for c in insp.get_columns(table)}:
+            continue
+        try:
+            with db.engine.connect() as conn:
+                res = conn.execute(text(
+                    'UPDATE ' + table + ' SET tenant_id = COALESCE('
+                    '    (SELECT u.tenant_id FROM users u WHERE u.id = ' + table + '.user_id),'
+                    '    :default_tid)'
+                    ' WHERE tenant_id IS NULL'
+                ), {'default_tid': default_t.id})
+                conn.commit()
+            if res.rowcount:
+                print('[migration] backfill %s.tenant_id: %d righe' % (table, res.rowcount))
+        except Exception as exc:
+            print('[migration] ERROR backfill %s.tenant_id: %s' % (table, exc))
 
 
 def _check_table_reminders():

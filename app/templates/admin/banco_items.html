@@ -42,6 +42,7 @@
         <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Nuovo articolo</h3>
       </div>
       <form method="POST" action="{{ url_for('admin.banco_item_new') }}">
+        {{ csrf_field() }}
         <div class="card-body">
           <div class="form-group mb-2">
             <label class="mb-1">Nome</label>
@@ -90,6 +91,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <form id="editForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Modifica — <span id="editModalTitle"></span></h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -195,7 +197,7 @@ $(document).on('click', '.btn-del-item', function() {
   var name = $(this).data('name'), url = $(this).data('url');
   Swal.fire({ title:'Eliminare «'+name+'»?', icon:'warning', showCancelButton:true,
     confirmButtonColor:'#e3342f', confirmButtonText:'Elimina', cancelButtonText:'Annulla'
-  }).then(function(r){ if(r.isConfirmed){ var f=$('<form method="POST">').attr('action',url);$('body').append(f);f.submit(); }});
+  }).then(function(r){ if(r.isConfirmed){ var f=qlPostForm().attr('action',url);$('body').append(f);f.submit(); }});
 });
 </script>
 {% endblock %}

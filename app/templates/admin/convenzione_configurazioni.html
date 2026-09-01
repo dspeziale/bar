@@ -58,6 +58,7 @@
                 <form method="POST"
                       action="{{ url_for('admin.configurazione_delete', cid=corp.id, cfg_id=cfg.id) }}"
                       data-confirm="Eliminare la configurazione «{{ cfg.name }}»?">
+                  {{ csrf_field() }}
                   <button class="btn btn-xs btn-outline-danger" title="Elimina">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -72,6 +73,7 @@
               <div class="modal-content">
                 <form method="POST"
                       action="{{ url_for('admin.configurazione_edit', cid=corp.id, cfg_id=cfg.id) }}">
+                  {{ csrf_field() }}
                   <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Modifica configurazione</h5>
                     <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -111,6 +113,7 @@
         <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Nuova configurazione</h3>
       </div>
       <form method="POST">
+        {{ csrf_field() }}
         <div class="card-body">
           {% set cfg = none %}
           {% include 'admin/_cfg_form_fields.html' with context %}

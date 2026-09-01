@@ -66,11 +66,11 @@ var currentDate   = '{{ filter_date }}';
 var currentStatus = '{{ status_filter }}';
 
 function submitForm(url) {
-  var f = $('<form method="POST">').attr('action', url);
+  var f = qlPostForm().attr('action', url);
   $('body').append(f); f.submit();
 }
 function submitFormField(url, name, val) {
-  var f = $('<form method="POST">').attr('action', url);
+  var f = qlPostForm().attr('action', url);
   f.append($('<input type="hidden">').attr('name', name).val(val));
   $('body').append(f); f.submit();
 }

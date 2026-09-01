@@ -66,6 +66,7 @@
               Questi dati vengono utilizzati nelle intestazioni dei report e dei documenti generati dal sistema.
             </p>
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys"
                      value="company_name,company_address,company_city,company_vat,company_phone,company_email">
               <div class="form-group">
@@ -134,6 +135,7 @@
           </div>
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys" value="telegram_bot_token,telegram_chat_id">
               <div class="form-group">
                 <label>Token Bot</label>
@@ -159,6 +161,7 @@
               </button>
             </form>
             <form method="POST" action="{{ url_for('admin.settings_test_telegram') }}" class="mt-2">
+              {{ csrf_field() }}
               <button class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-paper-plane mr-1"></i>Invia messaggio di test
               </button>
@@ -186,6 +189,7 @@
               </ol>
             </div>
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys" value="gmail_user,gmail_app_password">
               <div class="form-group">
                 <label>Account Gmail mittente</label>
@@ -204,6 +208,7 @@
               </button>
             </form>
             <form method="POST" action="{{ url_for('admin.settings_test_email') }}" class="mt-2">
+              {{ csrf_field() }}
               <button class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-paper-plane mr-1"></i>Invia email di test a se stessi
               </button>
@@ -256,6 +261,7 @@
             </div>
             {% endif %}
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys" value="google_client_id,google_client_secret">
               <div class="form-group">
                 <label>Client ID <small class="text-muted">(...apps.googleusercontent.com)</small></label>
@@ -293,6 +299,7 @@
           </div>
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys"
                      value="loyalty_points_per_euro,loyalty_reward_points,loyalty_reward_amount">
               <div class="form-group">
@@ -348,6 +355,7 @@
           </div>
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys" value="registration_bonus">
               <div class="form-group">
                 <label>Importo accreditato alla registrazione (€)</label>
@@ -391,6 +399,7 @@
               Gli ingredienti extra si sommano al prezzo base.
             </p>
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys"
                      value="builder_price_panino,builder_price_insalata,builder_price_poke">
               <div class="form-group">
@@ -452,6 +461,7 @@
               Il check avviene automaticamente ad ogni accesso (max 1 volta/minuto).
             </p>
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
               <input type="hidden" name="keys"
                      value="table_reminder_minutes,order_reminder_minutes,meal_reminder_minutes">
               <div class="form-group">
@@ -519,6 +529,7 @@
           </div>
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.broadcast_telegram') }}">
+              {{ csrf_field() }}
               <div class="form-group">
                 <label>Messaggio (HTML supportato)</label>
                 <textarea name="message" class="form-control" rows="5"
@@ -544,6 +555,7 @@
           </div>
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.broadcast_email') }}">
+              {{ csrf_field() }}
               <div class="form-group">
                 <label>Oggetto</label>
                 <input type="text" name="subject" class="form-control"

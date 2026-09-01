@@ -13,6 +13,7 @@
             <i class="fas fa-building mr-2" style="color:#e94560;"></i>Tenant registrati
           </h3>
           <form action="{{ url_for('admin.seed_demo') }}" method="POST" class="mb-0">
+            {{ csrf_field() }}
             <button type="submit" class="btn btn-sm btn-outline-secondary"
                     data-confirm-click="Resettare e ricaricare i dati demo? Verranno PRIMA eliminati i 3 tenant demo esistenti (e tutti i dati collegati), poi ricreati da zero con 36 clienti e circa 90 prodotti alimentari."
                     title="Resetta e ripopola con dati di demo">
@@ -56,6 +57,7 @@
                   {% else %}
                     <form action="{{ url_for('admin.tenant_create_admin', tid=t.id) }}"
                           method="POST" class="d-inline">
+                      {{ csrf_field() }}
                       <button type="submit" class="btn btn-xs btn-outline-warning"
                               title="Crea admin per questo tenant"
                               data-confirm-click="Creare l\'admin per {{ t.name }}? La password verrà mostrata una sola volta.">
@@ -94,6 +96,7 @@
                   <form action="{{ url_for('admin.tenant_delete', tid=t.id) }}" method="POST"
                         class="d-inline"
                         data-confirm="Eliminare il tenant {{ t.name }}?">
+                    {{ csrf_field() }}
                     <button type="submit" class="btn btn-xs btn-outline-danger">
                       <i class="fas fa-trash"></i>
                     </button>
@@ -118,6 +121,7 @@
         </div>
         <div class="card-body">
           <form action="{{ url_for('admin.tenant_new') }}" method="POST">
+            {{ csrf_field() }}
             <div class="form-group">
               <label>Nome azienda <span class="text-danger">*</span></label>
               <input type="text" name="name" class="form-control" placeholder="Es. Bar Rossi" required>
@@ -164,6 +168,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <form action="{{ url_for('admin.tenant_edit', tid=t.id) }}" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header">
           <h5 class="modal-title"><i class="fas fa-pen mr-1"></i> Modifica: {{ t.name }}</h5>
           <button type="button" class="close" data-dismiss="modal">&times;</button>

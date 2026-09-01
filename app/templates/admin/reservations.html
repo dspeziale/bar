@@ -50,6 +50,7 @@
           {% if r.status == 'confirmed' %}
           <form method="POST" action="{{ url_for('admin.reservation_cancel', rid=r.id) }}"
                 data-confirm="Annullare prenotazione #{{ r.id }}?">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-danger"><i class="fas fa-times"></i></button>
           </form>
           {% endif %}

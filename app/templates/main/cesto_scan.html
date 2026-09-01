@@ -166,6 +166,7 @@
     {% set balance = current_user.wallet_balance or 0 %}
 
     <form method="POST" action="{{ url_for('main.cesto_acquista', code=lb.code) }}" id="buy-form">
+      {{ csrf_field() }}
       <input type="hidden" name="extras" id="extras-field" value="[]">
 
       {# ── Aggiungi bevanda/snack ── #}

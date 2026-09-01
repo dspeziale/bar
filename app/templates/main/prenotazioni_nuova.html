@@ -9,6 +9,7 @@
 
 {% block content %}
 <form method="POST" action="{{ url_for('main.prenotazioni_crea') }}" id="pren-form">
+  {{ csrf_field() }}
 
 <div class="row">
 

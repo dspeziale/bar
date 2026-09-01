@@ -19,6 +19,7 @@
   </div>
   <div class="card-body" style="display:none;">
     <form method="POST" action="{{ url_for('admin.user_new') }}" class="form-inline" style="gap:.5rem;flex-wrap:wrap;">
+      {{ csrf_field() }}
       <div class="form-group mr-2">
         <label class="mr-1">Email</label>
         <input type="email" name="email" class="form-control" placeholder="mario@ufficio.it" required>
@@ -60,6 +61,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <form id="topupForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title"><i class="fas fa-wallet mr-2"></i>Ricarica Wallet</h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -92,6 +94,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <form id="rolesForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header" style="background:linear-gradient(135deg,#e94560,#0f3460);">
           <h5 class="modal-title text-white">
             <i class="fas fa-user-tag mr-2"></i>Ruoli — <span id="rolesUsername"></span>
@@ -183,7 +186,7 @@ var table = $('#usersTable').DataTable({
 });
 
 function submitForm(url) {
-  var f = $('<form method="POST">').attr('action', url); $('body').append(f); f.submit();
+  var f = qlPostForm().attr('action', url); $('body').append(f); f.submit();
 }
 
 $(document).on('click', '.btn-topup', function() {

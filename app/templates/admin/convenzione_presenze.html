@@ -144,6 +144,7 @@
           <form method="POST"
                 action="{{ url_for('admin.convenzione_consuma', cid=corp.id, bid=b.id) }}"
                 class="d-inline">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-outline-success" title="Segna come consumato">
               <i class="fas fa-user mr-1"></i>{{ b.user.username }} <i class="fas fa-check ml-1"></i>
             </button>

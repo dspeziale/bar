@@ -42,6 +42,7 @@
 </div>
 
 <form method="POST" action="{{ url_for('main.builder_add') }}" id="builderForm">
+  {{ csrf_field() }}
   <input type="hidden" name="builder_type" value="{{ builder_type }}">
 
   <div class="row">

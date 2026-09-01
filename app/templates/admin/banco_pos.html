@@ -314,6 +314,7 @@ function renderPastoResult(b) {
 function consegnaPasto(bid) {
   var fd = new FormData();
   fd.append('booking_id', bid);
+  fd.append('csrf_token', window.QL_CSRF);
   fetch('{{ url_for("admin.banco_pasto_consegna") }}', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -415,6 +416,7 @@ function generaQR() {
 
   var fd = new FormData();
   fd.append('cart_json', JSON.stringify(lines));
+  fd.append('csrf_token', window.QL_CSRF);
 
   fetch(BANCO_SESSION_URL, {method: 'POST', body: fd})
     .then(function(r) { return r.json(); })
@@ -528,6 +530,7 @@ function cancelSession() {
   if (!_currentToken) return;
   var cancelUrl = BANCO_SESSION_URL + '/' + _currentToken + '/cancel';
   var fd = new FormData();
+  fd.append('csrf_token', window.QL_CSRF);
   fetch(cancelUrl, {method: 'POST', body: fd})
     .then(function() {
       stopPolling();

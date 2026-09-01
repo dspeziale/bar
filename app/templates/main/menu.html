@@ -74,6 +74,7 @@
             <div class="price-badge mb-2">{{ '%.2f'|format(p.price) }}€</div>
             {% if avail > 0 %}
             <form method="POST" action="{{ url_for('main.cart_add', product_id=p.id) }}" class="d-flex gap-2 align-items-center">
+              {{ csrf_field() }}
               <input type="number" name="qty" value="1" min="1" max="{{ avail }}"
                      class="form-control form-control-sm qty-input">
               <button class="btn btn-primary btn-sm flex-grow-1">
@@ -125,6 +126,7 @@
             <div class="price-badge mb-2">{{ '%.2f'|format(p.price) }}€</div>
             {% if avail > 0 %}
             <form method="POST" action="{{ url_for('main.cart_add', product_id=p.id) }}" class="d-flex gap-2 align-items-center">
+              {{ csrf_field() }}
               <input type="number" name="qty" value="1" min="1" max="{{ avail }}"
                      class="form-control form-control-sm qty-input">
               <button class="btn btn-primary btn-sm flex-grow-1">

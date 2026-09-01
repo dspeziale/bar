@@ -38,6 +38,7 @@
         <div class="d-flex flex-wrap" style="gap:.3rem;">
           <!-- Notifica Telegram -->
           <form method="POST" action="{{ url_for('admin.poll_notify_telegram', pid=p.id) }}">
+            {{ csrf_field() }}
             <button class="btn btn-xs" style="background:#229ED9;color:#fff;" title="Invia link su Telegram">
               <i class="fab fa-telegram mr-1"></i>Telegram
             </button>
@@ -45,12 +46,14 @@
           <!-- Notifica Email -->
           <form method="POST" action="{{ url_for('admin.poll_notify_email', pid=p.id) }}"
                 data-confirm="Inviare email a tutti gli utenti?">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-danger" title="Invia link via email">
               <i class="fas fa-envelope mr-1"></i>Email
             </button>
           </form>
           <!-- Toggle -->
           <form method="POST" action="{{ url_for('admin.poll_toggle', pid=p.id) }}">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-{{ 'warning' if p.is_active else 'success' }}">
               <i class="fas fa-{{ 'lock' if p.is_active else 'lock-open' }} mr-1"></i>
               {{ 'Chiudi' if p.is_active else 'Riapri' }}
@@ -59,6 +62,7 @@
           <!-- Elimina -->
           <form method="POST" action="{{ url_for('admin.poll_delete', pid=p.id) }}"
                 data-confirm="Eliminare il sondaggio e tutti i voti?">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-outline-danger">
               <i class="fas fa-trash"></i>
             </button>
@@ -111,6 +115,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.poll_new') }}" id="poll-form">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Titolo del sondaggio</label>
             <input type="text" name="title" class="form-control" required

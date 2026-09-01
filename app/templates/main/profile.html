@@ -109,6 +109,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('main.profile') }}">
+          {{ csrf_field() }}
           <input type="hidden" name="action" value="info">
           <div class="form-row">
             <div class="form-group col-md-6">
@@ -169,6 +170,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('main.profile') }}" autocomplete="off">
+          {{ csrf_field() }}
           <input type="hidden" name="action" value="password">
           <div class="form-group">
             <label>Password attuale</label>
@@ -216,6 +218,7 @@
         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <form method="POST" action="{{ url_for('auth.mfa_disable') }}" autocomplete="off">
+        {{ csrf_field() }}
         <div class="modal-body">
           <p class="text-muted" style="font-size:.88rem;">
             Inserisci il codice attuale di Google Authenticator per confermare la disattivazione.

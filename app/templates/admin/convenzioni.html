@@ -38,6 +38,7 @@
         </a>
         <form method="POST" action="{{ url_for('admin.convenzione_delete', cid=corp.id) }}"
               data-confirm="Eliminare {{ corp.name }}?" style="display:inline;">
+          {{ csrf_field() }}
           <button class="btn btn-xs btn-outline-danger" title="Elimina">
             <i class="fas fa-trash"></i>
           </button>

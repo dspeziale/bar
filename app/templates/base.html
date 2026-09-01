@@ -993,6 +993,37 @@
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
+
+<script>
+/* ── CSRF ────────────────────────────────────────────────────────────────────
+   I form renderizzati da Jinja2 ricevono il token da {{ '{{ csrf_field() }}' }}.
+   Questi helper servono ai form costruiti a runtime da JavaScript.           */
+window.QL_CSRF = '{{ csrf_token() }}';
+
+/* Input nascosto come oggetto jQuery */
+function qlCsrfInput() {
+  return $('<input type="hidden" name="csrf_token">').val(window.QL_CSRF);
+}
+
+/* Input nascosto come stringa HTML (per i renderer DataTables) */
+function qlCsrfInputHtml() {
+  return qlCsrfInput().prop('outerHTML');
+}
+
+/* Form POST vuoto con il token già dentro: rimpiazza $('<form method="POST">') */
+function qlPostForm() {
+  return $('<form method="POST">').append(qlCsrfInput());
+}
+
+/* Rete di sicurezza: se un form POST arriva in pagina senza token (markup nuovo,
+   HTML iniettato da una libreria), lo aggiunge al momento dell'invio. */
+$(document).on('submit', 'form', function () {
+  if ((this.method || '').toLowerCase() !== 'post') return;
+  if (!this.querySelector('input[name="csrf_token"]')) {
+    $(this).append(qlCsrfInput());
+  }
+});
+</script>
 <script>
 function bsrApplyTheme(t) {
   document.documentElement.setAttribute('data-QuickLunch-theme', t);

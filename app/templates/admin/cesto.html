@@ -21,6 +21,7 @@
           Il sistema genera i QR da stampare e applicare agli involucri.
         </p>
         <form method="POST" action="{{ url_for('admin.cesto_genera') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Prodotto</label>
             <select name="product_id" class="form-control" required>
@@ -54,6 +55,7 @@
         {% if labels|selectattr('status','equalto','ready')|list %}
         <form method="POST" action="{{ url_for('admin.cesto_annulla_tutto') }}"
               onsubmit="return confirm('Annullare tutte le etichette ancora disponibili?')">
+          {{ csrf_field() }}
           <button class="btn btn-sm btn-outline-danger">
             <i class="fas fa-trash-alt mr-1"></i>Cancella tutte
           </button>
@@ -131,6 +133,7 @@
               {% if lb.status == 'ready' %}
               <form method="POST" action="{{ url_for('admin.cesto_annulla', code=lb.code) }}"
                     onsubmit="return confirm('Annullare etichetta {{ lb.code }}?')">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-outline-danger">
                   <i class="fas fa-times"></i>
                 </button>

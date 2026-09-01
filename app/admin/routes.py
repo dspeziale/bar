@@ -2666,7 +2666,6 @@ def maintenance():
                     ).delete(synchronize_session=False)
                     CustomOrderItem.query.filter(CustomOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
                     OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
-                    CorporateMealBooking.query.filter(CorporateMealBooking.order_id.in_(order_ids)).delete(synchronize_session=False)
                     Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
                 # other tables directly linked to client users
                 PollVote.query.filter(PollVote.user_id.in_(client_ids)).delete(synchronize_session=False)

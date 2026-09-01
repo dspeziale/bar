@@ -126,6 +126,7 @@
               {% if b.status == 'booked' %}
               <form method="POST" action="{{ url_for('admin.meal_consegna') }}"
                     style="display:inline;">
+                {{ csrf_field() }}
                 <input type="hidden" name="booking_id" value="{{ b.id }}">
                 <input type="hidden" name="next"
                        value="{{ url_for('admin.convenzioni_report', d=sel_date.isoformat()) }}">

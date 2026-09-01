@@ -75,6 +75,7 @@
             <td style="white-space:nowrap;">
               <button class="btn btn-xs btn-info" data-toggle="modal" data-target="#editIng{{ ing.id }}"><i class="fas fa-pen"></i></button>
               <form method="POST" action="{{ url_for('admin.ingredient_toggle', iid=ing.id) }}" style="display:inline;">
+                {{ csrf_field() }}
                 <button class="btn btn-xs btn-{{ 'warning' if ing.is_active else 'success' }}">
                   <i class="fas fa-{{ 'eye-slash' if ing.is_active else 'eye' }}"></i>
                 </button>
@@ -87,6 +88,7 @@
             <div class="modal-dialog modal-sm">
               <div class="modal-content">
                 <form method="POST" action="{{ url_for('admin.ingredient_edit', iid=ing.id) }}">
+                  {{ csrf_field() }}
                   <div class="modal-header bg-info text-white">
                     <h5 class="modal-title">Modifica: {{ ing.name }}</h5>
                     <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -143,6 +145,7 @@
                     {% if ing.grams_per_serving %}· {{ (ing.stock_qty / ing.grams_per_serving)|int if ing.stock_qty else 0 }} porzioni{% endif %}
                   </p>
                   <form method="POST" action="{{ url_for('admin.ingredient_stock', iid=ing.id) }}">
+                    {{ csrf_field() }}
                     <div class="form-group mb-2">
                       <label style="font-size:.85rem;">Operazione</label>
                       <select name="op" class="form-control form-control-sm">
@@ -184,6 +187,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.ingredient_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Nome *</label>
             <input type="text" name="name" class="form-control" placeholder="Es: Avocado" required>

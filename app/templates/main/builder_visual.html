@@ -465,6 +465,7 @@
       <div class="mc-total-num" id="mc-total-num">{{ '%.2f'|format(base_price) }}€</div>
     </div>
     <form method="POST" action="{{ url_for('main.builder_add') }}" id="mc-form" style="padding:0 1.5rem 1.5rem;">
+      {{ csrf_field() }}
       <input type="hidden" name="builder_type" value="{{ builder_type }}">
       {% if builder_type == 'panino' %}
       <input type="hidden" name="grill_requested" id="mc-grill-input" value="0">

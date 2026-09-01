@@ -26,6 +26,7 @@
   </div>
   <div class="card-body" style="display:none;">
     <form method="POST" action="{{ url_for('admin.client_new') }}">
+      {{ csrf_field() }}
       <div class="row">
         <div class="col-sm-3">
           <div class="form-group">
@@ -111,6 +112,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <form id="topupForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title"><i class="fas fa-wallet mr-2"></i>Ricarica Wallet</h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -146,6 +148,7 @@
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
       <form id="activateForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i>Attiva Cliente</h5>
           <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -186,6 +189,7 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form id="editForm" method="POST">
+        {{ csrf_field() }}
         <div class="modal-header" style="background:linear-gradient(135deg,#e94560,#0f3460);">
           <h5 class="modal-title text-white">
             <i class="fas fa-user-edit mr-2"></i>Modifica — <span id="editModalTitle"></span>
@@ -358,7 +362,7 @@ var table = $('#clientsTable').DataTable({
 });
 
 function submitForm(url) {
-  var f = $('<form method="POST">').attr('action', url);
+  var f = qlPostForm().attr('action', url);
   $('body').append(f); f.submit();
 }
 

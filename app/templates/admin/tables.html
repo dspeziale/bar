@@ -101,6 +101,7 @@
             <div class="modal-dialog modal-sm">
               <div class="modal-content">
                 <form method="POST" action="{{ url_for('admin.table_edit', tid=t.id) }}">
+                  {{ csrf_field() }}
                   <div class="modal-header bg-info text-white">
                     <h5 class="modal-title">Tavolo {{ t.number }}</h5>
                     <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -143,6 +144,7 @@
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('admin.table_new') }}">
+          {{ csrf_field() }}
           <div class="form-group">
             <label>Numero *</label>
             <input type="number" name="number" class="form-control" placeholder="11" min="1" required>

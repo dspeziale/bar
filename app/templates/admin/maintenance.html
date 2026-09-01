@@ -73,6 +73,7 @@
                 <td class="align-middle">
                   <form method="POST"
                         data-confirm="Sei sicuro di voler eliminare: {{ label }}?\nQuesta operazione è irreversibile.">
+                    {{ csrf_field() }}
                     <input type="hidden" name="operation" value="{{ op }}">
                     <button type="submit" class="btn btn-sm btn-outline-danger w-100"
                             {{ 'disabled' if count == 0 }}>
@@ -89,6 +90,7 @@
         <div class="card-footer">
           <form method="POST"
                 data-confirm="RESET COMPLETO: verranno eliminati ordini, prenotazioni, transazioni, sondaggi, stock, prodotti, categorie, ingredienti, consumabili, fornitori e tutti i clienti.\n\nConfermi?">
+            {{ csrf_field() }}
             <input type="hidden" name="operation" value="reset_all">
             <button type="submit" class="btn btn-danger btn-block">
               <i class="fas fa-bomb mr-1"></i> RESET COMPLETO (tutto tranne impostazioni e admin)
@@ -133,6 +135,7 @@
           </div>
           <form method="POST"
                 data-confirm="Caricare la demo completa?\n\nVERRÀ ESEGUITO UN RESET prima di ricaricare i dati.\nOrdini, clienti, prodotti, prenotazioni e sessioni banco verranno eliminati e ricreati.\n\nConfermi?">
+            {{ csrf_field() }}
             <input type="hidden" name="operation" value="run_demo_seed">
             <button type="submit" class="btn btn-block btn-lg"
                     style="background:#e94560;color:#fff;font-weight:700;letter-spacing:.03rem;">
@@ -189,6 +192,7 @@
           </p>
           <form method="POST"
                 data-confirm="Creare/aggiornare l\'admin con questa email?">
+            {{ csrf_field() }}
             <input type="hidden" name="operation" value="reset_admin">
             <div class="form-group">
               <label class="font-weight-bold">Email <span class="text-danger">*</span></label>

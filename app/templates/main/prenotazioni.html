@@ -68,6 +68,7 @@
           {% if p.status in ('pending', 'confirmed') and p.pickup_date > today %}
           <form method="POST" action="{{ url_for('main.prenotazioni_cancella', pid=p.id) }}"
                 onsubmit="return confirm('Cancellare la prenotazione {{ p.code }}?\nVerrà rimborsato {{ '%.2f'|format(p.total_price) }} €.')">
+            {{ csrf_field() }}
             <button class="btn btn-xs btn-outline-danger" title="Cancella">
               <i class="fas fa-times"></i>
             </button>
