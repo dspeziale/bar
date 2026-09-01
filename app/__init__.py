@@ -62,6 +62,11 @@ def create_app(config_object='config.Config'):
             '<input type="hidden" name="csrf_token" value="%s">' % generate_csrf()
         )
 
+    # ── Funzionalita' attivabili: flag disponibile in ogni template ───────
+    @app.context_processor
+    def _inject_feature_flags():
+        return {'tables_enabled': tables_enabled()}
+
     # Registra Google OAuth (se configurato)
     oauth.register(
         name='google',
@@ -91,7 +96,8 @@ def create_app(config_object='config.Config'):
             return
         _reminder_last_run[0] = now
         try:
-            _check_table_reminders()
+            if tables_enabled():
+                _check_table_reminders()
             _check_order_reminders()
             _check_meal_reminders()
         except Exception:
@@ -113,6 +119,27 @@ def create_app(config_object='config.Config'):
             print(('[OK]' if ok else '[SKIP]'), msg)
 
     return app
+
+
+def tables_enabled():
+    """True se la gestione tavoli e prenotazioni e' attiva (Impostazioni).
+
+    Il valore viene letto a ogni render di base.html, quindi lo teniamo in cache
+    per richiesta. In assenza dell'impostazione la funzione resta attiva, per non
+    cambiare il comportamento delle installazioni esistenti.
+    """
+    from flask import g, has_request_context
+
+    if has_request_context() and hasattr(g, '_ql_tables_enabled'):
+        return g._ql_tables_enabled
+    try:
+        from app.notifications import get_setting
+        val = (get_setting('tables_enabled', '1') or '1') != '0'
+    except Exception:
+        val = True
+    if has_request_context():
+        g._ql_tables_enabled = val
+    return val
 
 
 def _check_table_reminders():
@@ -825,6 +852,8 @@ def _seed_defaults():
         ('builder_price_panino',   '3.50',  'Prezzo base panino personalizzato €'),
         ('builder_price_insalata', '3.00',  'Prezzo base insalata personalizzata €'),
         ('builder_price_poke',     '4.00',  'Prezzo base poke personalizzato €'),
+        # Funzionalita' attivabili ('0' = disattivata)
+        ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
         # Reminder
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
         ('order_reminder_minutes', '15',    'Minuti anticipo reminder ritiro ordine'),

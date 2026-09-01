@@ -143,6 +143,26 @@ quegli helper: lì il token deve arrivare da `{{ csrf_field() }}`.
 `WTF_CSRF_TIME_LIMIT = None` in `config.py`: il token vive quanto la sessione (8h), perché
 il default di un'ora scadeva sulle schermate POS/KDS lasciate aperte per tutto il turno.
 
+### Funzionalità attivabili (feature flag)
+
+I moduli disattivabili sono `AppSetting` con valore `'1'`/`'0'`, gestiti dal tab
+**Funzionalità** di `/admin/settings`. Oggi ce n'è uno: `tables_enabled` (gestione tavoli e
+prenotazioni). Per aggiungerne un altro servono cinque punti:
+
+1. la chiave in `default_settings` dentro `_seed_defaults()`, con default `'1'` per non
+   cambiare il comportamento delle installazioni esistenti;
+2. la chiave in `all_keys` della vista `admin.settings`;
+3. una card con checkbox nel tab Funzionalità — **serve un `<input type="hidden" name="X"
+   value="0">` prima della checkbox**, altrimenti una casella deselezionata non invia nulla
+   e `get_setting()` restituirebbe il default (cioè "attivo"). `settings_save` legge
+   `getlist(k)[-1]`, quindi vince il valore della checkbox quando è selezionata;
+4. un helper tipo `tables_enabled()` in `app/__init__.py` (cache per richiesta su `g`) e il
+   flag nel context processor `_inject_feature_flags`, così i template lo vedono senza che
+   ogni vista lo passi;
+5. il decoratore `@tables_required` — definito in `admin/routes.py` e in `main/routes.py`,
+   con redirect diverso — su **tutte** le rotte del modulo, non solo sulle viste: nascondere
+   la voce di menu non basta a rendere una pagina irraggiungibile.
+
 ### Wallet e fedeltà
 
 Il saldo si muove **solo** attraverso i metodi di `User` (`credit_wallet`, `debit_wallet`,

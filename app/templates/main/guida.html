@@ -29,7 +29,9 @@
       <a class="nav-link" href="#g-ordinare"><i class="fas fa-utensils mr-1"></i>Ordinare</a>
       <a class="nav-link" href="#g-ordini"><i class="fas fa-receipt mr-1"></i>I miei ordini</a>
       <a class="nav-link" href="#g-wallet"><i class="fas fa-wallet mr-1"></i>Wallet e punti</a>
+      {% if tables_enabled %}
       <a class="nav-link" href="#g-tavoli"><i class="fas fa-chair mr-1"></i>Prenotare un tavolo</a>
+      {% endif %}
       <a class="nav-link" href="#g-sondaggio"><i class="fas fa-square-poll-vertical mr-1"></i>Vota il menu</a>
       {% if has_corp %}
       <a class="nav-link" href="#g-pasto-aziendale"><i class="fas fa-building mr-1"></i>Pasto aziendale</a>
@@ -53,7 +55,9 @@
       <a class="nav-link" href="#g-prodotti"><i class="fas fa-box mr-1"></i>Prodotti e categorie</a>
       <a class="nav-link" href="#g-magazzino"><i class="fas fa-warehouse mr-1"></i>Magazzino</a>
       <a class="nav-link" href="#g-convenzioni"><i class="fas fa-building mr-1"></i>Convenzioni aziendali</a>
+      {% if tables_enabled %}
       <a class="nav-link" href="#g-tavoli-admin"><i class="fas fa-chair mr-1"></i>Tavoli, prenotazioni, slot</a>
+      {% endif %}
       <a class="nav-link" href="#g-utenti"><i class="fas fa-users mr-1"></i>Utenti e ruoli</a>
       <a class="nav-link" href="#g-comunicazioni"><i class="fas fa-bullhorn mr-1"></i>Sondaggi e impostazioni</a>
       <a class="nav-link" href="#g-report"><i class="fas fa-chart-bar mr-1"></i>Report</a>
@@ -126,6 +130,7 @@
     </div>
   </section>
 
+  {% if tables_enabled %}
   <section id="g-tavoli" class="guida-section card card-outline card-info mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Prenotare un tavolo</h2></div>
     <div class="card-body">
@@ -141,6 +146,7 @@
       <p class="mb-0">In <a href="{{ url_for('main.my_reservations') }}">Tavoli → Le Mie Prenotazioni</a> rivedi o annulli le prenotazioni future. Non puoi annullare una prenotazione dopo il check-in.</p>
     </div>
   </section>
+  {% endif %}
 
   <section id="g-sondaggio" class="guida-section card card-outline card-primary mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-square-poll-vertical mr-2 text-primary"></i>Vota il menu</h2></div>
@@ -231,6 +237,7 @@
     </div>
   </section>
 
+  {% if tables_enabled %}
   <section id="g-tavoli-admin" class="guida-section card card-outline card-info mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-chair mr-2 text-info"></i>Gestione Tavoli</h2></div>
     <div class="card-body">
@@ -287,6 +294,7 @@
       </div>
     </div>
   </section>
+  {% endif %}
 
   <section id="g-utenti" class="guida-section card card-outline card-secondary mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-users mr-2"></i>Utenti e ruoli</h2></div>

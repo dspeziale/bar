@@ -3,7 +3,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
-from app import db
+from app import db, tables_enabled
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -15,6 +15,19 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         CorporateMembership, PrepLabel, User,
                         Prenotazione, PrenotazioneItem, PushSubscription)
 from config import Config
+
+
+def tables_required(f):
+    """Blocca la rotta se la gestione tavoli e' disattivata da Impostazioni."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not tables_enabled():
+            flash('La prenotazione dei tavoli non e\' attiva.', 'warning')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 def _effective_tenant_id():
@@ -565,6 +578,7 @@ def builder_visual():
 
 @bp.route('/tables')
 @login_required
+@tables_required
 def tables():
     from app.models import TableTimeBand
     res_date_str = request.args.get('d', str(date.today()))
@@ -602,6 +616,7 @@ def tables():
 
 @bp.route('/tables/book', methods=['POST'])
 @login_required
+@tables_required
 def table_book():
     from app.models import TableTimeBand
     table_id      = request.form.get('table_id', type=int)
@@ -677,12 +692,14 @@ def table_book():
 
 @bp.route('/reservations')
 @login_required
+@tables_required
 def my_reservations():
     return render_template('main/my_reservations.html', today_date=date.today())
 
 
 @bp.route('/reservations/dt')
 @login_required
+@tables_required
 def my_reservations_dt():
     draw   = request.args.get('draw', 1, type=int)
     start  = request.args.get('start', 0, type=int)
@@ -727,6 +744,7 @@ def my_reservations_dt():
 
 @bp.route('/reservations/<int:rid>/cancel', methods=['POST'])
 @login_required
+@tables_required
 def cancel_reservation(rid):
     res = db.get_or_404(TableReservation, rid)
     if res.user_id != current_user.id:

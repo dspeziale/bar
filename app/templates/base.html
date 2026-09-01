@@ -690,7 +690,7 @@
             {% endif %}
 
             {# ── TAVOLI & PRENOTAZIONI ── #}
-            {% if p('manage_tables_admin') or p('manage_reservations_admin') or p('manage_slots') %}
+            {% if tables_enabled and (p('manage_tables_admin') or p('manage_reservations_admin') or p('manage_slots')) %}
             <li class="nav-item">
               <a href="{{ url_for('admin.tavoli') }}"
                  class="nav-link {{ 'active' if in_tavoli }}">
@@ -878,6 +878,7 @@
             </li>
 
             {# TAVOLI #}
+            {% if tables_enabled %}
             <li class="nav-item has-treeview {{ 'menu-open' if in_tavoli }}">
               <a href="#" class="nav-link {{ 'active' if in_tavoli }}">
                 <i class="nav-icon fas fa-chair"></i>
@@ -900,6 +901,7 @@
                 </li>
               </ul>
             </li>
+            {% endif %}
 
             {# Wallet #}
             <li class="nav-item">

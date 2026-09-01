@@ -27,6 +27,7 @@
       <a href="{{ url_for('main.my_orders') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
+  {% if tables_enabled %}
   <div class="col-lg-3 col-6">
     <div class="small-box" style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;">
       <div class="inner"><h3>{{ today_reservations|length }}</h3><p>Tavoli Prenotati</p></div>
@@ -36,6 +37,7 @@
       </a>
     </div>
   </div>
+  {% endif %}
 </div>
 
 {% if today_meal_booking %}
@@ -104,9 +106,11 @@
           <a href="{{ url_for('main.builder', type='insalata') }}" class="btn btn-outline-success">
             <i class="fas fa-leaf mr-1"></i>Componi Insalata
           </a>
+          {% if tables_enabled %}
           <a href="{{ url_for('main.tables') }}" class="btn btn-outline-info">
             <i class="fas fa-chair mr-1"></i>Prenota Tavolo
           </a>
+          {% endif %}
           <a href="{{ url_for('main.banco_scan') }}" class="btn btn-outline-dark">
             <i class="fas fa-qrcode mr-1"></i>Paga al Banco
           </a>
@@ -168,7 +172,7 @@
     </div>
 
     <!-- Prenotazioni oggi -->
-    {% if today_reservations %}
+    {% if tables_enabled and today_reservations %}
     <div class="card card-outline" style="border-top:3px solid #e94560 !important;">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-chair mr-2" style="color:#e94560;"></i>Tavoli prenotati oggi</h3>

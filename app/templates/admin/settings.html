@@ -46,6 +46,12 @@
       <i class="fas fa-bullhorn mr-1"></i>Broadcast
     </a>
   </li>
+  <li class="nav-item">
+    <a class="nav-link" id="t-funzioni" data-toggle="tab"
+       href="#tab-funzioni" role="tab">
+      <i class="fas fa-toggle-on mr-1"></i>Funzionalità
+    </a>
+  </li>
 </ul>
 
 {# ── Tab content ─────────────────────────────────────────────────────────── #}
@@ -577,6 +583,50 @@
 
     </div>
   </div>{# /tab-broadcast #}
+
+  {# ══ FUNZIONALITÀ ═══════════════════════════════════════════════════════ #}
+  <div class="tab-pane fade" id="tab-funzioni" role="tabpanel">
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card card-outline card-info">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-toggle-on mr-2 text-info"></i>Moduli attivi
+            </h3>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
+              <input type="hidden" name="keys" value="tables_enabled">
+              <div class="form-group mb-2">
+                {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
+                <input type="hidden" name="tables_enabled" value="0">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input"
+                         id="chk-tables-enabled" name="tables_enabled" value="1"
+                         {{ 'checked' if cfg.tables_enabled != '0' }}>
+                  <label class="custom-control-label" for="chk-tables-enabled"
+                         style="cursor:pointer;">
+                    <i class="fas fa-chair mr-1 text-info"></i>
+                    <strong>Gestione tavoli e prenotazioni</strong>
+                  </label>
+                </div>
+                <small class="form-text text-muted">
+                  Se disattivata, spariscono dal menu (staff e clienti) la gestione
+                  tavoli, le fasce orarie e le prenotazioni, e le relative pagine
+                  non sono più raggiungibili. I dati già registrati non vengono
+                  eliminati: riattivando l'opzione tornano disponibili.
+                </small>
+              </div>
+              <button type="submit" class="btn btn-info">
+                <i class="fas fa-save mr-1"></i>Salva
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>{# /tab-funzioni #}
 
 </div>{# /tab-content #}
 {% endblock %}

@@ -3,7 +3,7 @@ from datetime import date, timedelta, datetime as _dt
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_required, current_user
-from app import db
+from app import db, tables_enabled
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -100,6 +100,17 @@ def staff_required(f):
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return login_required(decorated)
+
+
+def tables_required(f):
+    """Blocca la rotta se la gestione tavoli e' disattivata da Impostazioni."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not tables_enabled():
+            flash('La gestione tavoli e\' disattivata nelle Impostazioni.', 'warning')
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 def require_permission(perm_name):
@@ -1556,12 +1567,14 @@ def cucina_prenotazione_pronto(pid):
 
 @bp.route('/tables')
 @require_permission('manage_tables_admin')
+@tables_required
 def tables():
     return redirect(url_for('admin.tavoli', tab='tavoli'))
 
 
 @bp.route('/tables/new', methods=['POST'])
 @require_permission('manage_tables_admin')
+@tables_required
 def table_new():
     number = request.form.get('number', type=int)
     seats = request.form.get('seats', type=int, default=4)
@@ -1580,6 +1593,7 @@ def table_new():
 
 @bp.route('/tables/<int:tid>/edit', methods=['POST'])
 @require_permission('manage_tables_admin')
+@tables_required
 def table_edit(tid):
     t = db.get_or_404(Table, tid)
     t.seats = request.form.get('seats', type=int) or t.seats
@@ -1594,6 +1608,7 @@ def table_edit(tid):
 
 @bp.route('/reservations')
 @require_permission('manage_reservations_admin')
+@tables_required
 def reservations():
     d = request.args.get('date', '')
     return redirect(url_for('admin.tavoli', date=d or None))
@@ -1601,6 +1616,7 @@ def reservations():
 
 @bp.route('/reservations/<int:rid>/cancel', methods=['POST'])
 @require_permission('manage_reservations_admin')
+@tables_required
 def reservation_cancel(rid):
     res = db.get_or_404(TableReservation, rid)
     res.status = 'cancelled'
@@ -1619,6 +1635,7 @@ def reservation_cancel(rid):
 
 @bp.route('/tavoli')
 @require_permission('manage_tables_admin')
+@tables_required
 def tavoli():
     from datetime import datetime as dt
     tab = request.args.get('tab', 'panoramica')
@@ -1664,6 +1681,7 @@ def tavoli():
 
 @bp.route('/tavoli/bande/new', methods=['POST'])
 @require_permission('manage_tables_admin')
+@tables_required
 def band_new():
     start = request.form.get('start_time', '').strip()
     end   = request.form.get('end_time',   '').strip()
@@ -1685,6 +1703,7 @@ def band_new():
 
 @bp.route('/tavoli/bande/<int:bid>/delete', methods=['POST'])
 @require_permission('manage_tables_admin')
+@tables_required
 def band_delete(bid):
     band = TableTimeBand.query.get_or_404(bid)
     label = band.label
@@ -1699,6 +1718,7 @@ def band_delete(bid):
 
 @bp.route('/tables/<int:tid>/delete', methods=['POST'])
 @require_permission('manage_tables_admin')
+@tables_required
 def table_delete(tid):
     t = Table.query.get_or_404(tid)
     active_res = TableReservation.query.filter_by(
@@ -1900,6 +1920,7 @@ def settings():
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
+        'tables_enabled',
     ]
     cfg = {k: get_setting(k) for k in all_keys}
     return render_template('admin/settings.html', cfg=cfg)
@@ -1915,7 +1936,10 @@ def settings_save():
         flash('Nessun campo da salvare.', 'warning')
         return redirect(url_for('admin.settings'))
     for k in keys:
-        val = request.form.get(k, '').strip()
+        # getlist + ultimo valore: le checkbox inviano un hidden '0' seguito da '1'
+        # quando sono selezionate, e deve vincere lo stato effettivo della casella.
+        _vals = request.form.getlist(k)
+        val = (_vals[-1] if _vals else '').strip()
         s   = AppSetting.query.filter_by(key=k).first()
         if s:
             s.value = val
@@ -4055,6 +4079,7 @@ def convenzioni_presentazione_pdf():
 
 @bp.route('/slots/<int:sid>/durata', methods=['POST'])
 @require_permission('manage_slots')
+@tables_required
 def slot_durata(sid):
     slot = TimeSlot.query.get_or_404(sid)
     slot.seat_duration_minutes = int(request.form.get('seat_duration_minutes', 0) or 0)
@@ -4067,6 +4092,7 @@ def slot_durata(sid):
 
 @bp.route('/prenotazioni/<int:rid>/checkin', methods=['POST'])
 @require_permission('manage_reservations_admin')
+@tables_required
 def reservation_checkin(rid):
     from datetime import datetime as _dt
     res = TableReservation.query.get_or_404(rid)
@@ -4086,6 +4112,7 @@ def reservation_checkin(rid):
 
 @bp.route('/tavoli/ping-alerts')
 @staff_required
+@tables_required
 def tavoli_ping_alerts():
     import json
     from app.notifications import send_telegram
