@@ -9,7 +9,7 @@
 {% block content %}
 <div class="alert alert-info">
   <i class="fas fa-calendar-day me-2"></i>
-  Gestione scorte per <strong>{{ today.strftime('%A %d %B %Y') }}</strong>.
+  Gestione scorte per <strong>{{ today|data_it }}</strong>.
   Modifica le quantità disponibili per oggi.
 </div>
 

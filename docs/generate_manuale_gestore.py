@@ -411,6 +411,9 @@ def build():
          (': si mette in condizione la macchina di funzionare.', False)],
         [('Parte 3 — Il primo ordine', True),
          (': la verifica che tutto sia davvero a posto.', False)],
+        [('Parte 4 — Oltre la giornata', True),
+         (': quello che non si fa ogni giorno ma va fatto — fine mese, backup, '
+          'dati di prova.', False)],
     ], accent=HEX_NAVY, fill=HEX_LIGHT, label_color=NAVY)
 
     _page_break(doc)
@@ -782,6 +785,86 @@ def build():
 
     _page_break(doc)
 
+    # ══ PARTE 4 · OLTRE LA GIORNATA ═══════════════════════════════════════
+    heading(doc, 'Parte 4 — Oltre la giornata', 1, color=NAVY, before=0)
+    body(doc, 'Tre attivita che non appartengono al ciclo quotidiano ma che, se '
+              'trascurate, si fanno sentire: la chiusura del mese con le aziende '
+              'convenzionate, la copia di sicurezza dei dati e gli strumenti per '
+              'provare il sistema.', color=GRAY)
+    rule(doc)
+
+    heading(doc, 'A fine mese: la fattura alle aziende', 3, color=DARK)
+    fascia(doc, 'Fine\nmese', 'Scarica il riepilogo mensile in PDF', [
+        [('Convenzioni Aziendali', True),
+         (': su ogni scheda azienda, in fondo, scegli il mese e premi ', False),
+         ('Scarica PDF', True),
+         ('. L\'icona rossa in alto nella scheda fa lo stesso per il mese in '
+          'corso.', False)],
+        [('Il documento riporta i pasti per ogni dipendente con i giorni di '
+          'presenza, il dettaglio giorno per giorno e il ', False),
+         ('totale fatturabile', True),
+         (': e pensato per essere allegato alla fattura. I pasti annullati sono '
+          'esclusi, gli importi sono al netto di IVA.', False)],
+        [('Scaricalo a mese chiuso: fino all\'ultimo giorno i numeri possono '
+          'ancora cambiare.', False)],
+    ], motivo='il conteggio e definitivo solo dopo l\'ultimo servizio del mese.',
+        accent=HEX_NAVY)
+
+    heading(doc, 'Ogni settimana: la copia di sicurezza', 3, color=DARK)
+    fascia(doc, 'Ogni\nvenerdì', 'Scarica il backup del database', [
+        [('Impostazioni › Dati › ', False), ('Scarica il backup', True),
+         (': ottieni un unico file con tutto il contenuto del database — '
+          'clienti, ordini, movimenti, catalogo, convenzioni, impostazioni.',
+          False)],
+        [('Il file contiene ', False),
+         ('dati personali dei clienti e credenziali di servizio', True),
+         (' (token Telegram, password applicativa Gmail): conservalo come '
+          'conserveresti un registro contabile, non su un disco condiviso.',
+          False)],
+        [('Tienine almeno le ultime quattro copie: un errore ci si accorge '
+          'spesso con qualche giorno di ritardo.', False)],
+    ], motivo='a fine settimana il lavoro dei cinque giorni e completo e il '
+              'locale e chiuso.',
+        accent=HEX_NAVY)
+
+    fascia(doc, 'Quando\nserve', 'Ripristina da un backup', [
+        [('Impostazioni › Dati › ', False), ('Ripristina dal file', True),
+         (': carica un backup e il contenuto attuale del database viene '
+          'sostituito. Serve digitare RIPRISTINA per confermare, e al termine '
+          'si viene disconnessi perche anche gli utenti sono stati sostituiti.',
+          False)],
+        [('E un\'operazione da fare a locale chiuso: tutto cio che e stato '
+          'registrato dopo il backup va perso.', False)],
+    ], motivo='mai durante il servizio: gli ordini in corso spariscono.',
+        accent=HEX_NAVY, critico=True)
+
+    heading(doc, 'All\'occasione: provare il sistema', 3, color=DARK)
+    fascia(doc, 'Prima\ndell\'avvio', 'Carica un mese di dati di prova', [
+        [('Impostazioni › Dati › ', False),
+         ('Carico mensile di dati di prova', True),
+         (': genera un mese intero di attivita verosimile — pasti aziendali, '
+          'ordini, caffe al banco, prodotti del builder — con le quantita '
+          'giornaliere che decidi tu.', False)],
+        [('Serve per vedere come si comportano report e andamenti prima di '
+          'avere dati veri. Ogni carico resta elencato e si ', False),
+         ('elimina per intero', True),
+         (' con un pulsante: non lascia residui. I saldi dei portafogli non '
+          'vengono toccati.', False)],
+    ], motivo='da fare in fase di avvio o di formazione, non a locale aperto.',
+        accent=HEX_NAVY)
+
+    box(doc, 'Azzeramento completo: da usare una volta sola', [
+        [('Impostazioni › Dati › ', False), ('Azzera tutto il database', True),
+         (' svuota ogni tabella e ricrea i soli dati di base. Serve una volta, '
+          'per passare dalla fase di prova a quella reale.', False)],
+        [('Chiede di scrivere AZZERA, e ', False),
+         ('le credenziali del super admin tornano quelle predefinite', True),
+         (': cambiale subito dopo. Scarica un backup prima di procedere.',
+          False)],
+    ], accent=HEX_RED, fill=HEX_STOP, label_color=RED)
+
+    _page_break(doc)
+
     # ══ Vincoli da conoscere ══════════════════════════════════════════════
     heading(doc, 'I quattro vincoli da conoscere', 1, before=0)
     body(doc, 'Comportamenti verificati dell\'applicazione che spiegano perche '
@@ -890,6 +973,35 @@ def build():
             _p_spacing(ctxt.paragraphs[0], before=0, after=0)
             _run_font(ctxt.paragraphs[0].add_run(testo), size=10, color=DGRAY)
         spacer(doc, 12)
+
+    heading(doc, 'Periodiche', 3, color=DARK)
+    tblp = doc.add_table(rows=4, cols=3)
+    _no_borders(tblp)
+    _set_col_width(tblp, 0, 1.2)
+    _set_col_width(tblp, 1, 3.4)
+    _set_col_width(tblp, 2, 11.4)
+    for i, (quando, testo) in enumerate([
+        ('Fine mese', 'PDF mensile scaricato per ogni convenzione'),
+        ('Ogni venerdì', 'Backup del database scaricato e archiviato'),
+        ('Ogni mese', 'Vecchi backup ruotati, ultime quattro copie tenute'),
+        ('All\'avvio', 'Dati di prova eliminati prima di partire con i clienti'),
+    ]):
+        cbox = tblp.rows[i].cells[0]
+        _cell_border(cbox, top=HEX_RULE, bottom=HEX_RULE, left=HEX_RULE,
+                     right=HEX_RULE, sz='6')
+        _cell_margins(cbox, top=70, bottom=70, left=60, right=60)
+        _p_spacing(cbox.paragraphs[0], before=0, after=0)
+        _run_font(cbox.paragraphs[0].add_run('  '), size=11)
+        cq = tblp.rows[i].cells[1]
+        _cell_margins(cq, top=70, bottom=70, left=100, right=40)
+        _p_spacing(cq.paragraphs[0], before=0, after=0)
+        _run_font(cq.paragraphs[0].add_run(quando), size=10, bold=True,
+                  color=DARK, font=FONT)
+        ct = tblp.rows[i].cells[2]
+        _cell_margins(ct, top=70, bottom=70, left=60, right=60)
+        _p_spacing(ct.paragraphs[0], before=0, after=0)
+        _run_font(ct.paragraphs[0].add_run(testo), size=10, color=DGRAY)
+    spacer(doc, 12)
 
     rule(doc, color=HEX_NAVY)
     body(doc, 'QuickLunch · La giornata del gestore · Orari tarati su ritiro '

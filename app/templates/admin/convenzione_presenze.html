@@ -78,7 +78,7 @@
             data-toggle="collapse" data-target="#col-{{ day_id }}"
             aria-expanded="{{ 'true' if loop.first else 'false' }}">
       <div>
-        <strong>{{ d.meal.meal_date.strftime('%A %d %B') | capitalize }}</strong>
+        <strong>{{ d.meal.meal_date|data_it('giorno_mese') }}</strong>
         <span class="text-muted ml-2" style="font-size:.85rem;">{{ d.meal.name }}</span>
       </div>
       <div class="d-flex align-items-center" style="gap:.5rem;">

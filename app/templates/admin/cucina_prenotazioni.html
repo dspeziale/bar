@@ -28,7 +28,7 @@
         <strong>DOMANI</strong> — {{ d.strftime('%d/%m/%Y') }}
       {% else %}
         <i class="fas fa-calendar mr-2"></i>
-        {{ d.strftime('%A %d/%m/%Y')|capitalize }}
+        {{ d|data_it('numerica') }}
       {% endif %}
       <span class="badge badge-secondary ml-2">{{ plist|length }} prenotazion{{ 'e' if plist|length == 1 else 'i' }}</span>
     </h3>

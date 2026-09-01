@@ -54,6 +54,11 @@ def create_app(config_object='config.Config'):
             return ''
         return d.strftime('%d/%m/%Y')
 
+    # ── Date in italiano: strftime userebbe i nomi inglesi del locale ─────
+    @app.template_filter('data_it')
+    def _data_it(d, stile='lunga'):
+        return data_italiana(d, stile)
+
     # ── Saluto in base alla fascia oraria del locale, non del server ───────
     @app.template_global()
     def saluto():
@@ -145,6 +150,37 @@ def tables_enabled():
     if has_request_context():
         g._ql_tables_enabled = val
     return val
+
+
+GIORNI_IT = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì',
+             'sabato', 'domenica']
+MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+           'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
+
+def data_italiana(d, stile='lunga'):
+    """Data con nomi di giorno e mese in italiano.
+
+    Serve perche' strftime('%A'/'%B') restituisce i nomi del locale del
+    sistema, che sul server e' inglese.
+
+    Stili disponibili:
+      'lunga'       Lunedì 15 settembre 2025
+      'giorno_mese' Lunedì 15 settembre
+      'numerica'    Lunedì 15/09/2025
+      'mese'        Settembre 2025
+    """
+    if d is None:
+        return ''
+    giorno = GIORNI_IT[d.weekday()].capitalize()
+    mese = MESI_IT[d.month - 1]
+    if stile == 'giorno_mese':
+        return f'{giorno} {d.day} {mese}'
+    if stile == 'numerica':
+        return f'{giorno} {d.strftime("%d/%m/%Y")}'
+    if stile == 'mese':
+        return f'{mese.capitalize()} {d.year}'
+    return f'{giorno} {d.day} {mese} {d.year}'
 
 
 def saluto_per_ora(ora):

@@ -89,7 +89,7 @@
   <div class="d-flex align-items-center" style="gap:.75rem;">
     <span class="text-muted" style="font-size:.9rem;">
       <i class="fas fa-calendar-day mr-1"></i>
-      {{ today.strftime('%A %d %B %Y') | capitalize }}
+      {{ today|data_it }}
     </span>
     <span style="display:inline-flex;align-items:center;gap:6px;font-size:.8rem;
                  background:rgba(0,0,0,.06);border-radius:20px;padding:3px 12px;">
