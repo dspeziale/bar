@@ -54,6 +54,11 @@ def create_app(config_object='config.Config'):
             return ''
         return d.strftime('%d/%m/%Y')
 
+    # ── Saluto in base alla fascia oraria del locale, non del server ───────
+    @app.template_global()
+    def saluto():
+        return saluto_per_ora(datetime.now(_ROME).hour)
+
     # ── CSRF: campo nascosto da inserire in ogni form POST ────────────────
     @app.template_global()
     def csrf_field():
@@ -142,13 +147,28 @@ def tables_enabled():
     return val
 
 
+def saluto_per_ora(ora):
+    """Saluto italiano corrispondente all'ora data (0-23).
+
+    Fasce: mattina fino alle 13, pomeriggio fino alle 18, poi sera.
+    """
+    if 5 <= ora < 13:
+        return 'Buongiorno'
+    if 13 <= ora < 18:
+        return 'Buon pomeriggio'
+    return 'Buonasera'
+
+
 def _check_table_reminders():
     from datetime import datetime as _dtt
     from app.models import TableReservation
-    from app.notifications import send_telegram_to_user, get_numeric_setting
+    from app.notifications import send_reminder_to_user, get_numeric_setting
 
     remind = get_numeric_setting('table_reminder_minutes', 10)
-    now    = _dtt.utcnow()
+    # Gli orari degli slot sono ore locali italiane: il confronto deve
+    # avvenire con l'ora di Roma, non con UTC, altrimenti in produzione
+    # (server in UTC) la finestra del promemoria cade 1-2 ore piu' tardi.
+    now    = _dtt.now(_ROME).replace(tzinfo=None)
     today  = now.date()
 
     candidates = (
@@ -159,7 +179,7 @@ def _check_table_reminders():
     )
     changed = False
     for res in candidates:
-        if not res.session_start or not getattr(res.user, 'telegram_chat_id', None):
+        if not res.session_start:
             continue
         try:
             slot_dt = _dtt.strptime(
@@ -169,26 +189,31 @@ def _check_table_reminders():
             continue
         diff = (slot_dt - now).total_seconds() / 60
         if 0 < diff <= remind:
-            send_telegram_to_user(
+            inviato, _canale = send_reminder_to_user(
                 res.user,
                 f'⏰ Reminder: il tuo tavolo è tra <b>{int(diff)} minuti</b>!\n'
                 f'🪑 Tavolo <b>{res.table.number}</b> — ore <b>{res.session_start}</b>\n'
-                f'📅 {res.reservation_date.strftime("%d/%m/%Y")}'
+                f'📅 {res.reservation_date.strftime("%d/%m/%Y")}',
+                subject='Promemoria prenotazione tavolo',
             )
-            res.table_alert_sent = True
-            changed = True
+            if inviato:
+                res.table_alert_sent = True
+                changed = True
     if changed:
         db.session.commit()
 
 
 def _check_order_reminders():
-    from datetime import datetime as _dtt, date as _date
+    from datetime import datetime as _dtt
     from app.models import Order
-    from app.notifications import send_telegram_to_user, get_numeric_setting
+    from app.notifications import send_reminder_to_user, get_numeric_setting
 
     remind = get_numeric_setting('order_reminder_minutes', 15)
-    now    = _dtt.utcnow()
-    today  = _date.today()
+    # Gli orari degli slot sono ore locali italiane: il confronto deve
+    # avvenire con l'ora di Roma, non con UTC, altrimenti in produzione
+    # (server in UTC) la finestra del promemoria cade 1-2 ore piu' tardi.
+    now    = _dtt.now(_ROME).replace(tzinfo=None)
+    today  = now.date()
 
     candidates = (
         Order.query
@@ -199,8 +224,6 @@ def _check_order_reminders():
     )
     changed = False
     for order in candidates:
-        if not getattr(order.user, 'telegram_chat_id', None):
-            continue
         if not order.slot or not order.slot.time_str:
             continue
         try:
@@ -211,26 +234,31 @@ def _check_order_reminders():
             continue
         diff = (slot_dt - now).total_seconds() / 60
         if 0 < diff <= remind:
-            send_telegram_to_user(
+            inviato, _canale = send_reminder_to_user(
                 order.user,
                 f'🍽️ Reminder: il tuo ordine è pronto per il ritiro alle <b>{order.slot.time_str}</b>!\n'
                 f'📦 Ordine #{order.order_code or order.id} — <b>{order.total_price:.2f}€</b>\n'
-                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>'
+                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>',
+                subject='Promemoria ritiro ordine',
             )
-            order.reminder_sent = True
-            changed = True
+            if inviato:
+                order.reminder_sent = True
+                changed = True
     if changed:
         db.session.commit()
 
 
 def _check_meal_reminders():
-    from datetime import datetime as _dtt, date as _date
+    from datetime import datetime as _dtt
     from app.models import CorporateMealBooking
-    from app.notifications import send_telegram_to_user, get_numeric_setting
+    from app.notifications import send_reminder_to_user, get_numeric_setting
 
     remind = get_numeric_setting('meal_reminder_minutes', 15)
-    now    = _dtt.utcnow()
-    today  = _date.today()
+    # Gli orari degli slot sono ore locali italiane: il confronto deve
+    # avvenire con l'ora di Roma, non con UTC, altrimenti in produzione
+    # (server in UTC) la finestra del promemoria cade 1-2 ore piu' tardi.
+    now    = _dtt.now(_ROME).replace(tzinfo=None)
+    today  = now.date()
 
     candidates = (
         CorporateMealBooking.query
@@ -242,8 +270,6 @@ def _check_meal_reminders():
     for booking in candidates:
         if not booking.meal or booking.meal.meal_date != today:
             continue
-        if not getattr(booking.user, 'telegram_chat_id', None):
-            continue
         if not booking.slot or not booking.slot.time_str:
             continue
         try:
@@ -254,14 +280,16 @@ def _check_meal_reminders():
             continue
         diff = (slot_dt - now).total_seconds() / 60
         if 0 < diff <= remind:
-            send_telegram_to_user(
+            inviato, _canale = send_reminder_to_user(
                 booking.user,
                 f'🥗 Reminder: il tuo pasto aziendale è alle <b>{booking.slot.time_str}</b>!\n'
                 f'📋 <b>{booking.meal.name}</b>\n'
-                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>'
+                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>',
+                subject='Promemoria ritiro pasto aziendale',
             )
-            booking.reminder_sent = True
-            changed = True
+            if inviato:
+                booking.reminder_sent = True
+                changed = True
     if changed:
         db.session.commit()
 

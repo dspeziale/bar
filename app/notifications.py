@@ -268,6 +268,47 @@ def send_supplier_low_stock_alert(item):
     return ok, msg
 
 
+def send_reminder_to_user(user, text, subject='Promemoria'):
+    """Promemoria all'utente sul canale disponibile: Telegram, altrimenti email.
+
+    `text` e' nel formato dei messaggi Telegram (HTML minimale con <b> e ritorni
+    a capo): per l'email i ritorni a capo diventano <br>.
+
+    Ritorna (inviato, canale_o_errore). Chi chiama deve alzare il proprio flag
+    "promemoria inviato" solo se il primo valore e' True, altrimenti il
+    promemoria andrebbe perso.
+    """
+    import re as _re
+
+    chat_id = (getattr(user, 'telegram_chat_id', '') or '').strip()
+    if chat_id and get_setting('telegram_bot_token'):
+        ok, msg = send_telegram_to_user(user, text)
+        return (True, 'telegram') if ok else (False, 'telegram: %s' % msg)
+
+    # Telegram non configurato per questo utente: si ripiega sull'email.
+    if not getattr(user, 'email', ''):
+        return False, 'nessun canale disponibile'
+
+    co_name = get_setting('company_name') or 'QuickLunch'
+    corpo   = text.replace('\n', '<br>')
+    testo   = _re.sub(r'<[^>]+>', '', text)
+    html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
+  <div style="background:#e94560;color:#fff;padding:14px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:18px;">{subject}</h2>
+  </div>
+  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
+    <p style="font-size:15px;line-height:1.6;">{corpo}</p>
+    <p style="margin-top:24px;color:#aaa;font-size:11px;">
+      Ricevi questo promemoria per email perche' il tuo Telegram non e' collegato.
+      Puoi collegarlo dal tuo profilo su {co_name}.
+    </p>
+  </div>
+</div>"""
+    ok, msg = send_email(user.email, f'[{co_name}] {subject}', html, testo)
+    return (True, 'email') if ok else (False, 'email: %s' % msg)
+
+
 def send_account_activated_email(user, login_url=''):
     """Avvisa il cliente per email che il suo account e' stato attivato.
 

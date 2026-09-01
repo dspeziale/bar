@@ -624,11 +624,15 @@ def build():
           '"ordine pronto" anche con l\'applicazione chiusa.', False)],
     ], accent=HEX_SLATE)
 
-    step(doc, 2, 'Collega Telegram', [
+    step(doc, 2, 'Collega Telegram, se vuole', [
         [('Nel proprio ', False), ('Profilo', True),
          (' il cliente puo inserire il proprio identificativo Telegram e '
           'ricevere lì conferme d\'ordine, promemoria di ritiro e avvisi di '
           'ricarica.', False)],
+        [('Non e obbligatorio: chi non collega Telegram riceve i promemoria di '
+          'ritiro ', False), ('per email', True),
+         ('. Telegram resta piu immediato, perche arriva come messaggio.',
+          False)],
     ], accent=HEX_SLATE)
 
     step(doc, 3, 'Mostragli la guida', [
