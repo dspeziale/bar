@@ -101,7 +101,6 @@ def create_app(config_object='config.Config'):
         db.create_all()
         _migrate_tenant_columns()
         _seed_defaults()
-        _backfill_tenant_ids()
 
     # ── CLI: flask seed-demo ───────────────────────────────────────────────
     @app.cli.command('seed-demo')
@@ -114,40 +113,6 @@ def create_app(config_object='config.Config'):
             print(('[OK]' if ok else '[SKIP]'), msg)
 
     return app
-
-
-def _backfill_tenant_ids():
-    """Assegna il tenant_id a ordini e prenotazioni tavolo creati prima che venisse
-    impostato alla creazione. Senza di esso le righe non compaiono nel backoffice,
-    che filtra per tenant. Idempotente: agisce solo dove tenant_id e' NULL."""
-    from sqlalchemy import inspect as sa_inspect, text
-    from app.models import Tenant
-
-    default_t = Tenant.query.filter_by(slug='default').first()
-    if not default_t:
-        return
-
-    insp = sa_inspect(db.engine)
-    existing_tables = set(insp.get_table_names())
-
-    for table in ('orders', 'table_reservations'):
-        if table not in existing_tables:
-            continue
-        if 'tenant_id' not in {c['name'] for c in insp.get_columns(table)}:
-            continue
-        try:
-            with db.engine.connect() as conn:
-                res = conn.execute(text(
-                    'UPDATE ' + table + ' SET tenant_id = COALESCE('
-                    '    (SELECT u.tenant_id FROM users u WHERE u.id = ' + table + '.user_id),'
-                    '    :default_tid)'
-                    ' WHERE tenant_id IS NULL'
-                ), {'default_tid': default_t.id})
-                conn.commit()
-            if res.rowcount:
-                print('[migration] backfill %s.tenant_id: %d righe' % (table, res.rowcount))
-        except Exception as exc:
-            print('[migration] ERROR backfill %s.tenant_id: %s' % (table, exc))
 
 
 def _check_table_reminders():

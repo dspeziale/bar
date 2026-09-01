@@ -72,12 +72,30 @@ Lo schema è gestito a mano e **ogni chiamata a `create_app()` esegue**, in ques
 3. `_seed_defaults()` — permessi, ruoli, superadmin, categorie, slot, tavoli, articoli banco,
    impostazioni di default. Ogni blocco è idempotente (`if not X.query.first()` o
    `filter_by(...).first()`).
-4. `_backfill_tenant_ids()` — assegna il `tenant_id` a ordini e prenotazioni tavolo legacy.
 
 **Per aggiungere una colonna**: dichiarala nel modello *e* aggiungi un `_ensure(...)` in
 `_migrate_tenant_columns()`, altrimenti i database esistenti (produzione compresa) non la
 riceveranno mai. Lo stesso vale per nuovi permessi, che vanno aggiunti al blocco
 idempotente `extra_perms` e non alla lista iniziale (eseguita solo su DB vuoto).
+
+Dentro `_seed_defaults()`, subito dopo la creazione del tenant di default, c'è un loop che
+assegna `tenant_id = <default>` a **tutte** le righe orfane di `orphan_tables` (users,
+orders, table_reservations, prodotti, ecc.), silenziosamente e a ogni avvio. Prima di
+scrivere una migrazione o un backfill di `tenant_id`, controlla se quel loop già lo copre.
+Effetto collaterale noto: anche i due superadmin globali, che per progetto hanno
+`tenant_id = None`, si ritrovano agganciati al tenant di default dopo un riavvio.
+
+### Vincolo del pool su Vercel (ha già rotto un deploy)
+
+In produzione `SQLALCHEMY_ENGINE_OPTIONS` impone `pool_size=1, max_overflow=0`. Il codice
+eseguito durante `create_app()` non deve mai chiedere una **seconda** connessione mentre la
+sessione ORM ne tiene una: una query ORM apre una transazione e trattiene la connessione,
+quindi un `db.engine.connect()` o un `inspect(db.engine)` successivi vanno in
+`QueuePool limit of size 1 overflow 0 reached` dopo 30s e l'import di `api/index.py`
+fallisce, con l'intera app offline. In un helper di avvio: o solo ORM, o solo una singola
+connessione esplicita (`db.session.remove()` prima di aprirla), mai i due mescolati. La
+riproduzione locale si ottiene forzando `poolclass=QueuePool, pool_size=1, max_overflow=0`
+sull'engine SQLite.
 
 ### Multi-tenancy
 
