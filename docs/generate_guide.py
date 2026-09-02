@@ -1708,6 +1708,17 @@ def _footer_copyright(doc):
     r.font.color.rgb = GRAY
     r.font.name = FONT
 
+    p2 = doc.add_paragraph()
+    p2.alignment = _AL.CENTER
+    p2.paragraph_format.space_before = Pt(4)
+    p2.paragraph_format.space_after = Pt(0)
+    r2 = p2.add_run('Assistenza:  Daniele Speziale — DS Consulting  \u00b7  '
+                    'dspeziale@gmail.com  \u00b7  +39 352 0150489')
+    r2.font.size = Pt(9.5)
+    r2.font.bold = True
+    r2.font.color.rgb = RED
+    r2.font.name = FONT
+
 def main():
     doc = Document()
     set_document_defaults(doc)

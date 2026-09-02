@@ -709,8 +709,15 @@ def build():
     spacer(doc, 80)
 
     # ── Footer ────────────────────────────────────────────────────────────────
+    p_ass = doc.add_paragraph()
+    _para_spacing(p_ass, before=200, after=40)
+    p_ass.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    add_run(p_ass, 'Assistenza:  Daniele Speziale — DS Consulting   ·   ',
+            size=10, bold=True, color=DARK)
+    add_run(p_ass, 'dspeziale@gmail.com   ·   +39 352 0150489', size=10, bold=True, color=RED)
+
     p_foot = doc.add_paragraph()
-    _para_spacing(p_foot, before=200, after=0)
+    _para_spacing(p_foot, before=0, after=0)
     p_foot.alignment = WD_ALIGN_PARAGRAPH.CENTER
     add_run(p_foot, 'QuickLunch — Documento tecnico — © 2024–26 DS Consulting', size=8, color=GRAY)
 

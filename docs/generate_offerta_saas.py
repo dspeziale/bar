@@ -428,6 +428,14 @@ def build():
         'nessun server da mantenere, aggiornamenti e copie di sicurezza '
         'inclusi nel canone.'), size=12,
         color=RGBColor(0xd6, 0xdf, 0xea))
+
+    p4 = cell.add_paragraph()
+    _p_spacing(p4, before=10, after=0)
+    _run_font(p4.add_run('Il vostro referente:  '), size=11.5, bold=True,
+              color=WHITE, font=FONT)
+    _run_font(p4.add_run('Daniele Speziale  ·  dspeziale@gmail.com  ·  +39 352 0150489'),
+              size=11.5, bold=True, color=RGBColor(0xff, 0xd7, 0xdf),
+              font=FONT)
     spacer(doc, 16)
 
     # ══ Cappello: la tecnologia ═══════════════════════════════════════════
@@ -794,8 +802,9 @@ def build():
          'sulla base dell\'indice ISTAT FOI, con comunicazione scritta almeno '
          '60 giorni prima. La quota percentuale resta quella pattuita.'),
         ('Referenti',
-         'Ciascuna parte indica un referente per gli aspetti operativi e uno '
-         'per gli aspetti amministrativi, comunicati all\'attivazione.'),
+         'Per DS Consulting il referente e\' Daniele Speziale '
+         '(dspeziale@gmail.com, cell. +39 352 0150489). Il cliente indica il proprio referente '
+         'operativo e amministrativo all\'attivazione.'),
     ]
     for titolo, testo in CONDIZIONI:
         rich(doc, [(titolo + '.  ', True), (testo, False)], size=11, after=6)

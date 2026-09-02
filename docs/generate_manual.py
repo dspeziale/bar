@@ -2804,6 +2804,13 @@ def main():
     r = p.add_run('QuickLunch  ·  Sistema di gestione bar e mense  ·  v2.0  ·  Giugno 2026  ·  © 2024–26 DS Consulting')
     _run_font(r, size=9, color=GRAY)
 
+    p = doc.add_paragraph()
+    _p_spacing(p, before=4, after=0)
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = p.add_run('Assistenza:  Daniele Speziale — DS Consulting  ·  '
+                  'dspeziale@gmail.com  ·  +39 352 0150489')
+    _run_font(r, size=9.5, bold=True, color=RED)
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     doc.save(OUT)
     print(f'[OK] Documento salvato in: {OUT}')

@@ -715,6 +715,9 @@ def build():
 
     spacer(doc, 12)
     rule(doc, color=HEX_NAVY)
+    body(doc, 'Assistenza:  Daniele Speziale — DS Consulting', size=11,
+         color=DARK, bold=True, after=1)
+    body(doc, 'dspeziale@gmail.com   ·   +39 352 0150489', size=11, color=RED, bold=True, after=8)
     body(doc, 'QuickLunch · Manuale operativo cucina · Le voci di menu e i percorsi '
               'citati corrispondono all\'applicazione in uso.', size=8.5, color=GRAY,
          after=2)

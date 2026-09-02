@@ -600,6 +600,9 @@ def costruisci(reali):
                    'clienti, il gestore e le aziende convenzionate: per '
                    'ognuna la scheda (chi la riceve, quando, da dove si '
                    'stampa, su che carta) e un esempio completo.')
+    pdf.set_xy(20, 254)
+    pdf.set_font(FONT, 'B', 12)
+    pdf.cell(0, 6, 'Assistenza:  Daniele Speziale  ·  dspeziale@gmail.com  ·  +39 352 0150489')
     pdf.set_xy(20, 262)
     pdf.set_font(FONT, '', 11)
     pdf.cell(0, 6, '© 2024–26 DS Consulting')
