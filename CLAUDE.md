@@ -146,8 +146,11 @@ il default di un'ora scadeva sulle schermate POS/KDS lasciate aperte per tutto i
 ### Funzionalità attivabili (feature flag)
 
 I moduli disattivabili sono `AppSetting` con valore `'1'`/`'0'`, gestiti dal tab
-**Funzionalità** di `/admin/settings`. Oggi ce n'è uno: `tables_enabled` (gestione tavoli e
-prenotazioni). Per aggiungerne un altro servono cinque punti:
+**Funzionalità** di `/admin/settings`. Oggi ce ne sono due: `tables_enabled` (gestione
+tavoli e prenotazioni) e `cesto_enabled` (cesto cucina con etichette QR). Gli helper
+passano tutti da `_funzione_attiva(chiave)` in `app/__init__.py`: un flag nuovo aggiunge
+solo una funzione di una riga, non un'altra copia della cache su `g`. Per aggiungerne un
+altro servono cinque punti:
 
 1. la chiave in `default_settings` dentro `_seed_defaults()`, con default `'1'` per non
    cambiare il comportamento delle installazioni esistenti;
@@ -156,7 +159,7 @@ prenotazioni). Per aggiungerne un altro servono cinque punti:
    value="0">` prima della checkbox**, altrimenti una casella deselezionata non invia nulla
    e `get_setting()` restituirebbe il default (cioè "attivo"). `settings_save` legge
    `getlist(k)[-1]`, quindi vince il valore della checkbox quando è selezionata;
-4. un helper tipo `tables_enabled()` in `app/__init__.py` (cache per richiesta su `g`) e il
+4. un helper di una riga in `app/__init__.py` che chiama `_funzione_attiva('chiave')` e il
    flag nel context processor `_inject_feature_flags`, così i template lo vedono senza che
    ogni vista lo passi;
 5. il decoratore `@tables_required` — definito in `admin/routes.py` e in `main/routes.py`,

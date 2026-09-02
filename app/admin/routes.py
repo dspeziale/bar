@@ -4,7 +4,7 @@ from functools import wraps
 from flask import (render_template, redirect, url_for, flash, request, abort,
                    jsonify, current_app)
 from flask_login import login_required, current_user
-from app import db, tables_enabled, numero_italiano
+from app import db, tables_enabled, cesto_enabled, numero_italiano
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -111,6 +111,18 @@ def tables_required(f):
     def decorated(*args, **kwargs):
         if not tables_enabled():
             flash('La gestione tavoli e\' disattivata nelle Impostazioni.', 'warning')
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def cesto_required(f):
+    """Blocca la rotta se la gestione del cesto e' disattivata da Impostazioni."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not cesto_enabled():
+            flash('La gestione del cesto e\' disattivata nelle Impostazioni.',
+                  'warning')
             return redirect(url_for('admin.dashboard'))
         return f(*args, **kwargs)
     return decorated
@@ -1376,6 +1388,7 @@ def banco_pasto_consegna():
 
 @bp.route('/cesto')
 @require_permission('manage_cesto')
+@cesto_required
 def cesto():
     from collections import defaultdict
     from datetime import datetime as _dtm, timedelta
@@ -1404,6 +1417,7 @@ def cesto():
 
 @bp.route('/cesto/genera', methods=['POST'])
 @require_permission('manage_cesto')
+@cesto_required
 def cesto_genera():
     import secrets as _sec
     CHARS      = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -1431,6 +1445,7 @@ def cesto_genera():
 
 @bp.route('/cesto/stampa/<bid>')
 @require_permission('manage_cesto')
+@cesto_required
 def cesto_stampa(bid):
     tid    = _active_tenant_id()
     labels = (PrepLabel.query
@@ -1447,6 +1462,7 @@ def cesto_stampa(bid):
 
 @bp.route('/cesto/<code>/annulla', methods=['POST'])
 @require_permission('manage_cesto')
+@cesto_required
 def cesto_annulla(code):
     tid = _active_tenant_id()
     lb  = PrepLabel.query.filter_by(code=code, tenant_id=tid).first_or_404()
@@ -1461,6 +1477,7 @@ def cesto_annulla(code):
 
 @bp.route('/cesto/annulla-tutto', methods=['POST'])
 @require_permission('manage_cesto')
+@cesto_required
 def cesto_annulla_tutto():
     from datetime import datetime as _dtm, timedelta
     tid   = _active_tenant_id()
@@ -1928,7 +1945,7 @@ def settings():
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
-        'tables_enabled',
+        'tables_enabled', 'cesto_enabled',
         'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
         'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
     ]
@@ -4619,20 +4636,16 @@ def convenzione_report_mensile_pdf(cid):
                      mimetype='application/pdf')
 
 
-@bp.route('/superadmin/guadagni/scontrini')
-@_superadmin_required
-def ds_scontrini():
-    """Elenco dei singoli incassi del mese con la provvigione di ciascuno."""
+def _raccogli_scontrini(year, month, tenant_id=None):
+    """Raccoglie i singoli incassi del mese con imponibile e provvigione.
+
+    Unica fonte dei numeri: la usano sia la pagina sia il PDF, così i due non
+    possono divergere. I totali seguono la formula della pagina Guadagni —
+    imponibile e provvigione sull'importo complessivo, non somma di valori
+    arrotondati riga per riga.
+    """
     from calendar import monthrange
     from app.notifications import get_numeric_setting
-
-    try:
-        year = int(request.args.get('year', _dt.now().year))
-        month = int(request.args.get('month', _dt.now().month))
-        if not (1 <= month <= 12):
-            raise ValueError
-    except (ValueError, TypeError):
-        year, month = _dt.now().year, _dt.now().month
 
     start_date = date(year, month, 1)
     end_date = date(year, month, monthrange(year, month)[1])
@@ -4640,12 +4653,10 @@ def ds_scontrini():
     fee_pct = get_numeric_setting('platform_fee_percentage', 0.0) / 100.0
     monthly_fee = get_numeric_setting('tenant_monthly_fee', 0.0)
 
-    tenant_id = request.args.get('t', type=int)
     tenants = Tenant.query.order_by(Tenant.name).all()
     selezionati = [x for x in tenants if (tenant_id is None or x.id == tenant_id)]
 
     def _riga(quando, tipo, riferimento, cliente, lordo, tenant):
-        """Una riga di incasso con imponibile e provvigione."""
         imponibile = round(lordo / 1.10, 2)
         return {
             'quando': quando, 'tipo': tipo, 'riferimento': riferimento,
@@ -4714,15 +4725,10 @@ def ds_scontrini():
 
     righe.sort(key=lambda r: (r['quando'] or _dt.min, r['tipo']))
 
-    # I totali seguono la stessa formula della pagina Guadagni: imponibile e
-    # provvigione si calcolano sull'importo complessivo, non sommando i valori
-    # arrotondati riga per riga. Altrimenti le due pagine divergerebbero di
-    # qualche centesimo e il conteggio non riconcilierebbe.
     tot_lordo = round(sum(r['lordo'] for r in righe), 2)
     tot_imponibile = round(tot_lordo / 1.10, 2)
     tot_provvigioni = round(tot_imponibile * fee_pct, 2)
     somma_righe = round(sum(r['provvigione'] for r in righe), 2)
-    scarto_arrotondamento = round(somma_righe - tot_provvigioni, 2)
     canoni = round(monthly_fee * len(selezionati), 2)
 
     per_tipo = {}
@@ -4735,14 +4741,277 @@ def ds_scontrini():
     _it_m = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
              'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
 
-    return render_template(
-        'admin/superadmin_scontrini.html',
-        righe=righe, per_tipo=per_tipo, tenants=tenants,
-        tenant_sel=tenant_id, year=year, month=month,
-        month_label=_it_m[month - 1],
-        fee_pct=round(fee_pct * 100, 2), monthly_fee=monthly_fee,
-        tot_lordo=tot_lordo, tot_imponibile=tot_imponibile,
-        tot_provvigioni=tot_provvigioni, canoni=canoni,
-        somma_righe=somma_righe, scarto=scarto_arrotondamento,
-        tot_dovuto=round(tot_provvigioni + canoni, 2),
-        n_tenant=len(selezionati))
+    return {
+        'righe': righe, 'per_tipo': per_tipo, 'tenants': tenants,
+        'selezionati': selezionati, 'tenant_sel': tenant_id,
+        'year': year, 'month': month, 'month_label': _it_m[month - 1],
+        'start_date': start_date, 'end_date': end_date,
+        'fee_pct': round(fee_pct * 100, 2), 'monthly_fee': monthly_fee,
+        'tot_lordo': tot_lordo, 'tot_imponibile': tot_imponibile,
+        'tot_provvigioni': tot_provvigioni, 'canoni': canoni,
+        'somma_righe': somma_righe,
+        'scarto': round(somma_righe - tot_provvigioni, 2),
+        'tot_dovuto': round(tot_provvigioni + canoni, 2),
+        'n_tenant': len(selezionati),
+    }
+
+
+def _mese_richiesto():
+    """Anno e mese dai parametri, col mese corrente come ripiego."""
+    try:
+        year = int(request.args.get('year', _dt.now().year))
+        month = int(request.args.get('month', _dt.now().month))
+        if not (1 <= month <= 12):
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = _dt.now().year, _dt.now().month
+    return year, month
+
+
+@bp.route('/superadmin/guadagni/scontrini')
+@_superadmin_required
+def ds_scontrini():
+    """Elenco dei singoli incassi del mese con la provvigione di ciascuno."""
+    year, month = _mese_richiesto()
+    dati = _raccogli_scontrini(year, month, request.args.get('t', type=int))
+    return render_template('admin/superadmin_scontrini.html', **dati)
+
+
+@bp.route('/superadmin/guadagni/scontrini/pdf')
+@_superadmin_required
+def ds_scontrini_pdf():
+    """Le transazioni del mese in PDF, con la provvigione di ciascuna."""
+    import os
+    from io import BytesIO
+    from pathlib import Path
+    from flask import send_file
+    from fpdf import FPDF
+
+    BRAND  = (233,  69,  96)
+    DARK   = ( 26,  26,  46)
+    DGRAY  = ( 80,  80,  95)
+    LGRAY  = (200, 200, 210)
+    VLIGHT = (248, 248, 252)
+    WHITE  = (255, 255, 255)
+    GREEN  = ( 39, 174,  96)
+    FONT   = 'PTSansNarrow'
+
+    year, month = _mese_richiesto()
+    d = _raccogli_scontrini(year, month, request.args.get('t', type=int))
+
+    _co_name = get_setting('company_name') or 'QuickLunch'
+    periodo = f"{d['month_label']} {d['year']}"
+    ambito = (d['selezionati'][0].name if d['tenant_sel'] and d['selezionati']
+              else 'Tutti i tenant')
+    _font_dir = Path(os.path.abspath(__file__)).parent.parent / 'static' / 'fonts'
+
+    class ReportPDF(FPDF):
+        def header(self):
+            self.set_fill_color(*BRAND)
+            self.rect(0, 0, 297, 11, 'F')
+            self.set_fill_color(*DARK)
+            self.rect(0, 0, 8, 11, 'F')
+            self.set_font(FONT, 'B', 9)
+            self.set_text_color(*WHITE)
+            self.set_xy(12, 1.5)
+            self.cell(180, 8, f'TRANSAZIONI E PROVVIGIONI  \xb7  {ambito.upper()}',
+                      ln=0)
+            self.set_font(FONT, '', 9)
+            self.set_x(-70)
+            self.cell(58, 8, periodo.upper(), align='R')
+            self.set_text_color(*DARK)
+            self.ln(15)
+
+        def footer(self):
+            self.set_y(-13)
+            self.set_font(FONT, '', 8)
+            self.set_text_color(*LGRAY)
+            self.set_draw_color(*LGRAY)
+            self.set_line_width(0.25)
+            self.line(12, self.get_y(), 285, self.get_y())
+            self.ln(1.5)
+            self.set_x(12)
+            self.cell(240, 5,
+                      f'Generato il {_dt.now().strftime("%d/%m/%Y  %H:%M")}'
+                      f'  \xb7  Documento riservato  \xb7  {_co_name}', ln=0)
+            self.set_x(-28)
+            self.cell(16, 5, f'Pag. {self.page_no()}', align='R')
+
+    pdf = ReportPDF(orientation='L', unit='mm', format='A4')
+    pdf.set_margins(12, 16, 12)
+    pdf.set_auto_page_break(True, margin=18)
+    pdf.add_font(FONT, '',  str(_font_dir / 'PTSansNarrow-Regular.ttf'))
+    pdf.add_font(FONT, 'B', str(_font_dir / 'PTSansNarrow-Bold.ttf'))
+    pdf.add_page()
+
+    # ── Intestazione ─────────────────────────────────────────────────────
+    pdf.set_font(FONT, 'B', 14)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 7, _co_name, ln=True)
+    pdf.set_font(FONT, '', 9.5)
+    pdf.set_text_color(*DGRAY)
+    pdf.cell(0, 5, f"Periodo dal {d['start_date'].strftime('%d/%m/%Y')} "
+                   f"al {d['end_date'].strftime('%d/%m/%Y')}  \xb7  "
+                   f"{ambito}  \xb7  aliquota {numero_italiano(d['fee_pct'], 1)}%",
+             ln=True)
+    pdf.ln(2)
+    pdf.set_draw_color(*BRAND)
+    pdf.set_line_width(0.8)
+    pdf.line(12, pdf.get_y(), 285, pdf.get_y())
+    pdf.ln(5)
+
+    # ── Riquadri di sintesi ──────────────────────────────────────────────
+    ky = pdf.get_y()
+
+    def _kpi(x, etichetta, valore, colore):
+        pdf.set_fill_color(*VLIGHT)
+        pdf.set_draw_color(*LGRAY)
+        pdf.set_line_width(0.3)
+        pdf.rect(x, ky, 65, 22, 'FD')
+        pdf.set_fill_color(*colore)
+        pdf.rect(x, ky, 65, 3.5, 'F')
+        pdf.set_font(FONT, 'B', 17)
+        pdf.set_text_color(*colore)
+        pdf.set_xy(x, ky + 4)
+        pdf.cell(65, 11, valore, align='C')
+        pdf.set_font(FONT, '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.set_xy(x, ky + 14)
+        pdf.cell(65, 6, etichetta, align='C')
+
+    _kpi(12,  'Transazioni', str(len(d['righe'])), DARK)
+    _kpi(81,  'Incassato (IVA incl.)',
+         f"{numero_italiano(d['tot_lordo'])} \u20ac", DGRAY)
+    _kpi(150, 'Imponibile',
+         f"{numero_italiano(d['tot_imponibile'])} \u20ac", GREEN)
+    _kpi(219, 'Dovuto a DS Consulting',
+         f"{numero_italiano(d['tot_dovuto'])} \u20ac", BRAND)
+    pdf.set_y(ky + 27)
+
+    # ── Come si compone il dovuto ────────────────────────────────────────
+    pdf.set_font(FONT, '', 9.5)
+    pdf.set_text_color(*DGRAY)
+    pdf.cell(0, 5,
+             f"Provvigioni {numero_italiano(d['tot_provvigioni'])} \u20ac "
+             f"({numero_italiano(d['fee_pct'], 1)}% dell'imponibile)  +  "
+             f"canoni {numero_italiano(d['canoni'])} \u20ac "
+             f"({d['n_tenant']} \u00d7 {numero_italiano(d['monthly_fee'])} \u20ac)"
+             f"  =  {numero_italiano(d['tot_dovuto'])} \u20ac", ln=True)
+    if d['scarto']:
+        pdf.set_font(FONT, '', 8.5)
+        pdf.cell(0, 4.5,
+                 'Il totale e calcolato sull\'imponibile complessivo: la somma '
+                 'delle provvigioni di riga '
+                 f"({numero_italiano(d['somma_righe'])} \u20ac) differisce di "
+                 f"{numero_italiano(d['scarto'])} \u20ac per arrotondamenti.",
+                 ln=True)
+    pdf.ln(3)
+
+    if not d['righe']:
+        pdf.set_font(FONT, '', 11)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 8, f'Nessuna transazione registrata in {periodo}.', ln=True)
+    else:
+        # ── Riepilogo per tipo ───────────────────────────────────────────
+        pdf.set_font(FONT, 'B', 11)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 6, 'Per tipo di incasso', ln=True)
+        TW = [60, 30, 45, 45]
+        TH = 6.5
+        pdf.set_font(FONT, 'B', 8.5)
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        for w, t, al in zip(TW, ['TIPO', 'N.', 'INCASSATO', 'PROVVIGIONI'],
+                            ['L', 'C', 'R', 'R']):
+            pdf.cell(w, TH, t, align=al, fill=True)
+        pdf.ln()
+        pdf.set_font(FONT, '', 9)
+        for i, (tipo, v) in enumerate(sorted(d['per_tipo'].items())):
+            pdf.set_fill_color(*(VLIGHT if i % 2 == 0 else WHITE))
+            pdf.set_text_color(*DGRAY)
+            pdf.cell(TW[0], TH, tipo, fill=True)
+            pdf.cell(TW[1], TH, str(v['n']), align='C', fill=True)
+            pdf.cell(TW[2], TH, f"{numero_italiano(v['lordo'])} \u20ac",
+                     align='R', fill=True)
+            pdf.set_text_color(*BRAND)
+            pdf.cell(TW[3], TH, f"{numero_italiano(v['prov'])} \u20ac",
+                     align='R', fill=True)
+            pdf.ln()
+        pdf.ln(6)
+
+        # ── Dettaglio delle transazioni ──────────────────────────────────
+        pdf.set_font(FONT, 'B', 11)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 6, 'Dettaglio delle transazioni', ln=True)
+
+        mostra_tenant = not d['tenant_sel']
+        CW = ([32, 30, 62, 52] + ([34] if mostra_tenant else [])
+              + [28, 28, 30])
+        intestazioni = (['DATA E ORA', 'TIPO', 'RIFERIMENTO', 'CLIENTE']
+                        + (['TENANT'] if mostra_tenant else [])
+                        + ['INCASSATO', 'IMPONIBILE', 'PROVVIGIONE'])
+        allinea = (['L', 'L', 'L', 'L'] + (['L'] if mostra_tenant else [])
+                   + ['R', 'R', 'R'])
+
+        def _testata():
+            pdf.set_font(FONT, 'B', 8.5)
+            pdf.set_fill_color(*DARK)
+            pdf.set_text_color(*WHITE)
+            for w, t, al in zip(CW, intestazioni, allinea):
+                pdf.cell(w, TH, t, align=al, fill=True)
+            pdf.ln()
+            pdf.set_font(FONT, '', 8.5)
+
+        _testata()
+        for i, r in enumerate(d['righe']):
+            if pdf.get_y() > 185:
+                pdf.add_page()
+                _testata()
+            pdf.set_fill_color(*(VLIGHT if i % 2 == 0 else WHITE))
+            pdf.set_text_color(*DGRAY)
+            quando = r['quando'].strftime('%d/%m/%Y %H:%M') if r['quando'] else ''
+            valori = ([quando, r['tipo'], str(r['riferimento'])[:34],
+                       str(r['cliente'])[:28]]
+                      + ([r['tenant'].name[:18]] if mostra_tenant else []))
+            for w, v, al in zip(CW, valori, allinea):
+                pdf.cell(w, TH, v, align=al, fill=True)
+            pdf.cell(CW[-3], TH, f"{numero_italiano(r['lordo'])} \u20ac",
+                     align='R', fill=True)
+            pdf.cell(CW[-2], TH, f"{numero_italiano(r['imponibile'])} \u20ac",
+                     align='R', fill=True)
+            pdf.set_text_color(*BRAND)
+            pdf.cell(CW[-1], TH, f"{numero_italiano(r['provvigione'])} \u20ac",
+                     align='R', fill=True)
+            pdf.ln()
+
+        # ── Riga di totale ───────────────────────────────────────────────
+        span = sum(CW[:-3])
+        pdf.set_fill_color(*DARK)
+        pdf.set_text_color(*WHITE)
+        pdf.set_font(FONT, 'B', 9)
+        pdf.cell(span, TH, f"TOTALE  ({len(d['righe'])} transazioni)", fill=True)
+        pdf.cell(CW[-3], TH, f"{numero_italiano(d['tot_lordo'])} \u20ac",
+                 align='R', fill=True)
+        pdf.cell(CW[-2], TH, f"{numero_italiano(d['tot_imponibile'])} \u20ac",
+                 align='R', fill=True)
+        pdf.cell(CW[-1], TH, f"{numero_italiano(d['tot_provvigioni'])} \u20ac",
+                 align='R', fill=True)
+        pdf.ln(10)
+
+        pdf.set_font(FONT, '', 9)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(60, 6, 'Totale dovuto a DS Consulting:', ln=0)
+        pdf.set_font(FONT, 'B', 12)
+        pdf.set_text_color(*DARK)
+        pdf.cell(0, 6, f"{numero_italiano(d['tot_dovuto'])} \u20ac", ln=True)
+        pdf.set_font(FONT, '', 8.5)
+        pdf.set_text_color(*DGRAY)
+        pdf.cell(0, 5, 'Importi al netto di IVA di legge. Sono esclusi gli '
+                       'ordini annullati e le prenotazioni disdette.', ln=True)
+
+    buf = BytesIO(bytes(pdf.output()))
+    buf.seek(0)
+    suffisso = ('_' + ambito.replace(' ', '_') if d['tenant_sel'] else '')
+    nome = f'transazioni{suffisso}_{year}-{month:02d}.pdf'
+    return send_file(buf, as_attachment=True, download_name=nome,
+                     mimetype='application/pdf')

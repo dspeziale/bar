@@ -605,7 +605,7 @@
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
               {{ csrf_field() }}
-              <input type="hidden" name="keys" value="tables_enabled">
+              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled">
               <div class="form-group mb-2">
                 {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
                 <input type="hidden" name="tables_enabled" value="0">
@@ -624,6 +624,26 @@
                   tavoli, le fasce orarie e le prenotazioni, e le relative pagine
                   non sono più raggiungibili. I dati già registrati non vengono
                   eliminati: riattivando l'opzione tornano disponibili.
+                </small>
+              </div>
+              <div class="form-group mb-2">
+                {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
+                <input type="hidden" name="cesto_enabled" value="0">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input"
+                         id="chk-cesto-enabled" name="cesto_enabled" value="1"
+                         {{ 'checked' if cfg.cesto_enabled != '0' }}>
+                  <label class="custom-control-label" for="chk-cesto-enabled"
+                         style="cursor:pointer;">
+                    <i class="fas fa-shopping-basket mr-1" style="color:#fd7e14;"></i>
+                    <strong>Gestione cesto cucina (QR)</strong>
+                  </label>
+                </div>
+                <small class="form-text text-muted">
+                  Se disattivata, spariscono la pagina del cesto in cucina e
+                  l'acquisto self-service dei clienti: le etichette QR già
+                  stampate non sono più acquistabili finché non la riattivi.
+                  Lo storico delle vendite resta nei report e nei guadagni.
                 </small>
               </div>
               <button type="submit" class="btn btn-info">

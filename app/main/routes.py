@@ -3,7 +3,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
-from app import db, tables_enabled, numero_italiano
+from app import db, tables_enabled, cesto_enabled, numero_italiano
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -25,6 +25,19 @@ def tables_required(f):
     def decorated(*args, **kwargs):
         if not tables_enabled():
             flash('La prenotazione dei tavoli non e\' attiva.', 'warning')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def cesto_required(f):
+    """Blocca la rotta se la gestione del cesto e' disattivata da Impostazioni."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not cesto_enabled():
+            flash('Il cesto non e\' attivo.', 'warning')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return decorated
@@ -1159,6 +1172,7 @@ def account_delete():
 
 @bp.route('/api/product/barcode/<ean>')
 @login_required
+@cesto_required
 def api_product_by_barcode(ean):
     tid = current_user.tenant_id
     p = Product.query.filter_by(
@@ -1173,6 +1187,7 @@ def api_product_by_barcode(ean):
 
 @bp.route('/cesto')
 @login_required
+@cesto_required
 def cesto_lista():
     from collections import defaultdict
     tid    = current_user.tenant_id
@@ -1190,6 +1205,7 @@ def cesto_lista():
 
 @bp.route('/cesto/<code>')
 @login_required
+@cesto_required
 def cesto_scan(code):
     from datetime import datetime as _dtm, timezone
     lb = PrepLabel.query.filter_by(code=code.upper()).first_or_404()
@@ -1204,6 +1220,7 @@ def cesto_scan(code):
 
 @bp.route('/cesto/<code>/acquista', methods=['POST'])
 @login_required
+@cesto_required
 def cesto_acquista(code):
     lb = PrepLabel.query.filter_by(code=code.upper()).first_or_404()
     if lb.status != 'ready':

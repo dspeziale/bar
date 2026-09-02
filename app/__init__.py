@@ -80,7 +80,8 @@ def create_app(config_object='config.Config'):
     # ── Funzionalita' attivabili: flag disponibile in ogni template ───────
     @app.context_processor
     def _inject_feature_flags():
-        return {'tables_enabled': tables_enabled()}
+        return {'tables_enabled': tables_enabled(),
+                'cesto_enabled': cesto_enabled()}
 
     # Registra Google OAuth (se configurato)
     oauth.register(
@@ -136,25 +137,36 @@ def create_app(config_object='config.Config'):
     return app
 
 
-def tables_enabled():
-    """True se la gestione tavoli e prenotazioni e' attiva (Impostazioni).
+def _funzione_attiva(chiave):
+    """True se il flag di funzionalita' e' attivo ('0' = spento).
 
-    Il valore viene letto a ogni render di base.html, quindi lo teniamo in cache
-    per richiesta. In assenza dell'impostazione la funzione resta attiva, per non
+    Il valore viene letto a ogni render di base.html, quindi sta in cache per
+    richiesta. In assenza dell'impostazione la funzione resta attiva, per non
     cambiare il comportamento delle installazioni esistenti.
     """
     from flask import g, has_request_context
 
-    if has_request_context() and hasattr(g, '_ql_tables_enabled'):
-        return g._ql_tables_enabled
+    attr = '_ql_flag_' + chiave
+    if has_request_context() and hasattr(g, attr):
+        return getattr(g, attr)
     try:
         from app.notifications import get_setting
-        val = (get_setting('tables_enabled', '1') or '1') != '0'
+        val = (get_setting(chiave, '1') or '1') != '0'
     except Exception:
         val = True
     if has_request_context():
-        g._ql_tables_enabled = val
+        setattr(g, attr, val)
     return val
+
+
+def tables_enabled():
+    """True se la gestione tavoli e prenotazioni e' attiva (Impostazioni)."""
+    return _funzione_attiva('tables_enabled')
+
+
+def cesto_enabled():
+    """True se la gestione del cesto cucina e' attiva (Impostazioni)."""
+    return _funzione_attiva('cesto_enabled')
 
 
 GIORNI_IT = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì',
@@ -960,6 +972,7 @@ def _seed_defaults():
         ('sim_builder_max',  '20',  'Carico mensile: prodotti builder massimi/giorno'),
         # Funzionalita' attivabili ('0' = disattivata)
         ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
+        ('cesto_enabled',          '1',     'Abilita gestione cesto cucina (QR)'),
         # Reminder
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
         ('order_reminder_minutes', '15',    'Minuti anticipo reminder ritiro ordine'),

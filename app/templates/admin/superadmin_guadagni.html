@@ -92,6 +92,11 @@
 {# ── Tabella per tenant ────────────────────────────────────────────────────── #}
 <div class="card card-outline" style="border-top:3px solid #e94560;" id="tenant-table">
   <div class="card-header">
+    <a href="{{ url_for('admin.ds_scontrini_pdf', year=year, month=month) }}"
+       class="btn btn-sm btn-outline-danger float-right ml-2"
+       target="_blank" rel="noopener">
+      <i class="fas fa-file-pdf mr-1"></i>PDF transazioni
+    </a>
     <a href="{{ url_for('admin.ds_scontrini', year=year, month=month) }}"
        class="btn btn-sm btn-danger float-right">
       <i class="fas fa-receipt mr-1"></i>Dettaglio scontrini e provvigioni

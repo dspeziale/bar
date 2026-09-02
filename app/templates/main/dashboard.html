@@ -114,9 +114,11 @@
           <a href="{{ url_for('main.banco_scan') }}" class="btn btn-outline-dark">
             <i class="fas fa-qrcode mr-1"></i>Paga al Banco
           </a>
+          {% if cesto_enabled %}
           <a href="{{ url_for('main.cesto_lista') }}" class="btn btn-outline-success">
             <i class="fas fa-shopping-basket mr-1"></i>Cesto
           </a>
+          {% endif %}
           <a href="{{ url_for('main.prenotazioni_nuova') }}" class="btn btn-outline-primary">
             <i class="fas fa-calendar-plus mr-1"></i>Prenota
           </a>
