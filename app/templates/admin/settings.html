@@ -605,7 +605,7 @@
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
               {{ csrf_field() }}
-              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled">
+              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled,wallet_enabled">
               <div class="form-group mb-2">
                 {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
                 <input type="hidden" name="tables_enabled" value="0">
@@ -644,6 +644,28 @@
                   l'acquisto self-service dei clienti: le etichette QR già
                   stampate non sono più acquistabili finché non la riattivi.
                   Lo storico delle vendite resta nei report e nei guadagni.
+                </small>
+              </div>
+              <div class="form-group mb-2">
+                {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
+                <input type="hidden" name="wallet_enabled" value="0">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input"
+                         id="chk-wallet-enabled" name="wallet_enabled" value="1"
+                         {{ 'checked' if cfg.wallet_enabled != '0' }}>
+                  <label class="custom-control-label" for="chk-wallet-enabled"
+                         style="cursor:pointer;">
+                    <i class="fas fa-wallet mr-1" style="color:#17a2b8;"></i>
+                    <strong>Portafoglio prepagato e punti fedeltà</strong>
+                  </label>
+                </div>
+                <small class="form-text text-muted">
+                  Se disattivato, l'applicazione non muove denaro: niente
+                  saldi, ricariche, bonus di benvenuto o punti — si paga alla
+                  cassa. Ordini, banco e cesto continuano a registrare le
+                  vendite, quindi report e guadagni restano completi. I saldi
+                  esistenti non vengono toccati: riattivando il portafoglio
+                  tornano visibili.
                 </small>
               </div>
               <button type="submit" class="btn btn-info">

@@ -179,6 +179,17 @@ class User(UserMixin, db.Model):
         db.session.add(Transaction(user_id=self.id, amount=-amount,
                                    ttype='payment', description=description, order_id=order_id))
 
+    def registra_consumo(self, amount, description, order_id=None):
+        """Registra la vendita senza muovere il saldo.
+
+        E' la via usata quando il portafoglio prepagato e' disattivato: il
+        cliente paga alla cassa, ma la transazione resta nel registro cosi'
+        report e guadagni continuano a quadrare.
+        """
+        db.session.add(Transaction(user_id=self.id, amount=-amount,
+                                   ttype='payment', description=description,
+                                   order_id=order_id))
+
     def add_points(self, points):
         self.loyalty_points += points
         db.session.add(Transaction(user_id=self.id, amount=0,
@@ -199,6 +210,9 @@ class User(UserMixin, db.Model):
         backoffice): il bonus deve valere per tutti allo stesso modo.
         Non fa nulla se il bonus non e' configurato o e' zero.
         """
+        from app import wallet_enabled
+        if not wallet_enabled():
+            return 0.0
         from app.notifications import get_setting
         try:
             val = float(get_setting('registration_bonus') or 0)

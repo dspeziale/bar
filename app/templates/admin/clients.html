@@ -323,7 +323,9 @@ var table = $('#clientsTable').DataTable({
         if (d.wallet_overdraft > 0) {
           s += ' <span class="badge badge-warning ml-1">fido ' + parseFloat(d.wallet_overdraft).toFixed(0) + '€</span>';
         }
+        {% if wallet_enabled %}
         s += ' <button class="btn btn-xs btn-outline-success ml-1 btn-topup-client" data-id="' + d.id + '" title="Ricarica"><i class="fas fa-plus"></i></button>';
+        {% endif %}
         return s;
       }
     },

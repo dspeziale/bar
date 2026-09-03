@@ -4,7 +4,7 @@ from functools import wraps
 from flask import (render_template, redirect, url_for, flash, request, abort,
                    jsonify, current_app)
 from flask_login import login_required, current_user
-from app import db, tables_enabled, cesto_enabled, numero_italiano
+from app import db, tables_enabled, cesto_enabled, wallet_enabled, numero_italiano
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -122,6 +122,18 @@ def cesto_required(f):
     def decorated(*args, **kwargs):
         if not cesto_enabled():
             flash('La gestione del cesto e\' disattivata nelle Impostazioni.',
+                  'warning')
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def wallet_required(f):
+    """Blocca la rotta se il portafoglio prepagato e' disattivato."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not wallet_enabled():
+            flash('Il portafoglio prepagato e\' disattivato nelle Impostazioni.',
                   'warning')
             return redirect(url_for('admin.dashboard'))
         return f(*args, **kwargs)
@@ -702,8 +714,9 @@ def order_status(oid):
         flash('Stato non valido.', 'danger')
         return redirect(url_for('admin.orders'))
     if new_status == 'cancelled' and order.status != 'cancelled':
-        order.user.credit_wallet(order.total_price,
-                                 f'Rimborso ordine #{order.id} (admin)', order_id=order.id)
+        if wallet_enabled():
+            order.user.credit_wallet(order.total_price,
+                                     f'Rimborso ordine #{order.id} (admin)', order_id=order.id)
         for item in order.items:
             s = DailyStock.query.filter_by(product_id=item.product_id,
                                            stock_date=date.today()).first()
@@ -991,6 +1004,7 @@ def client_delete(uid):
 
 @bp.route('/clients/<int:uid>/topup', methods=['POST'])
 @require_permission('manage_clients')
+@wallet_required
 def client_topup(uid):
     u = db.get_or_404(User, uid)
     if not u.is_client:
@@ -1037,6 +1051,7 @@ def user_new():
 
 @bp.route('/users/<int:uid>/topup', methods=['POST'])
 @require_permission('manage_users')
+@wallet_required
 def user_topup(uid):
     user = db.get_or_404(User, uid)
     amount = request.form.get('amount', type=float)
@@ -1945,7 +1960,7 @@ def settings():
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
-        'tables_enabled', 'cesto_enabled',
+        'tables_enabled', 'cesto_enabled', 'wallet_enabled',
         'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
         'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
     ]

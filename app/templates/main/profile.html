@@ -75,11 +75,13 @@
 
     {# Link rapidi #}
     <div class="list-group mt-3">
+      {% if wallet_enabled %}
       <a href="{{ url_for('main.wallet') }}" class="list-group-item list-group-item-action d-flex align-items-center">
         <i class="fas fa-wallet mr-2 text-info"></i>
         Wallet & Transazioni
         <span class="badge badge-info ml-auto">{{ current_user.wallet_balance|num_it }}€</span>
       </a>
+      {% endif %}
       {% if current_user.totp_enabled %}
       <a href="#" class="list-group-item list-group-item-action d-flex align-items-center"
          data-toggle="modal" data-target="#disableMfaModal">

@@ -45,24 +45,32 @@
 
       <hr class="my-3">
 
+      {% if wallet_enabled %}
       <div class="wallet-row d-flex justify-content-between mb-3">
         <span><i class="fas fa-wallet mr-1"></i>Il tuo saldo</span>
         <span class="font-weight-bold {% if current_user.wallet_balance >= sess.total %}text-success{% else %}text-danger{% endif %}">
           {{ current_user.wallet_balance|num_it }}€
         </span>
       </div>
+      {% endif %}
 
-      {% if current_user.wallet_balance < sess.total %}
+      {% if wallet_enabled and current_user.wallet_balance < sess.total %}
       <div class="alert alert-danger">
         <i class="fas fa-exclamation-triangle mr-1"></i>
         Saldo insufficiente. Mancano {{ (sess.total - current_user.wallet_balance)|num_it }}€.
         <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica il wallet</a>.
       </div>
       {% else %}
+      {% if not wallet_enabled %}
+      <div class="alert alert-info py-2">
+        <i class="fas fa-cash-register mr-1"></i>
+        Confermando registri la consumazione: il pagamento avviene alla cassa.
+      </div>
+      {% endif %}
       <form method="POST" action="{{ url_for('main.banco_pay_confirm', token=sess.token) }}">
         {{ csrf_field() }}
         <button type="submit" class="btn btn-success btn-lg btn-block">
-          <i class="fas fa-check-circle mr-2"></i>Paga {{ sess.total|num_it }}€
+          <i class="fas fa-check-circle mr-2"></i>{{ 'Paga' if wallet_enabled else 'Conferma' }} {{ sess.total|num_it }}€
         </button>
       </form>
       {% endif %}

@@ -81,7 +81,8 @@ def create_app(config_object='config.Config'):
     @app.context_processor
     def _inject_feature_flags():
         return {'tables_enabled': tables_enabled(),
-                'cesto_enabled': cesto_enabled()}
+                'cesto_enabled': cesto_enabled(),
+                'wallet_enabled': wallet_enabled()}
 
     # Registra Google OAuth (se configurato)
     oauth.register(
@@ -167,6 +168,16 @@ def tables_enabled():
 def cesto_enabled():
     """True se la gestione del cesto cucina e' attiva (Impostazioni)."""
     return _funzione_attiva('cesto_enabled')
+
+
+def wallet_enabled():
+    """True se il portafoglio prepagato (e la fedelta') e' attivo.
+
+    A flag spento l'applicazione non muove denaro: niente controlli di
+    saldo, addebiti, ricariche o punti. Le vendite restano registrate e il
+    pagamento avviene alla cassa, fuori da QuickLunch.
+    """
+    return _funzione_attiva('wallet_enabled')
 
 
 GIORNI_IT = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì',
@@ -973,6 +984,7 @@ def _seed_defaults():
         # Funzionalita' attivabili ('0' = disattivata)
         ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
         ('cesto_enabled',          '1',     'Abilita gestione cesto cucina (QR)'),
+        ('wallet_enabled',         '1',     'Abilita portafoglio prepagato e punti'),
         # Reminder
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
         ('order_reminder_minutes', '15',    'Minuti anticipo reminder ritiro ordine'),

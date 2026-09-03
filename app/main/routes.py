@@ -3,7 +3,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
-from app import db, tables_enabled, cesto_enabled, numero_italiano
+from app import db, tables_enabled, cesto_enabled, wallet_enabled, numero_italiano
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -38,6 +38,19 @@ def cesto_required(f):
     def decorated(*args, **kwargs):
         if not cesto_enabled():
             flash('Il cesto non e\' attivo.', 'warning')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def wallet_required(f):
+    """Blocca la rotta se il portafoglio prepagato e' disattivato."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not wallet_enabled():
+            flash('Il portafoglio prepagato non e\' attivo.', 'warning')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return decorated
@@ -230,11 +243,12 @@ def place_order():
 
     total = round(total, 2)
 
-    _overdraft = current_user.wallet_overdraft or 0.0
-    if current_user.wallet_balance + _overdraft < total:
-        flash(f'Saldo wallet insufficiente ({numero_italiano(current_user.wallet_balance)}€). '
-              f'Servono {numero_italiano(total)}€.', 'danger')
-        return redirect(url_for('main.wallet'))
+    if wallet_enabled():
+        _overdraft = current_user.wallet_overdraft or 0.0
+        if current_user.wallet_balance + _overdraft < total:
+            flash(f'Saldo wallet insufficiente ({numero_italiano(current_user.wallet_balance)}€). '
+                  f'Servono {numero_italiano(total)}€.', 'danger')
+            return redirect(url_for('main.wallet'))
 
     # Crea ordine
     order = Order(user_id=current_user.id, slot_id=slot_id,
@@ -280,15 +294,18 @@ def place_order():
             f"-{order.id:04d}"
         )
     order.compute_total()
-    current_user.debit_wallet(total, f'Ordine {order.order_code}', order_id=order.id)
-    points = int(total * get_numeric_setting('loyalty_points_per_euro', 10))
-    if points:
-        current_user.add_points(points)
+    if wallet_enabled():
+        current_user.debit_wallet(total, f'Ordine {order.order_code}', order_id=order.id)
+        points = int(total * get_numeric_setting('loyalty_points_per_euro', 10))
+        if points:
+            current_user.add_points(points)
 
     db.session.commit()
     session.pop('cart', None)
     session.pop('custom_cart', None)
-    flash(f'Ordine {order.order_code} confermato! Ritiro {slot_label}.', 'success')
+    _cassa = '' if wallet_enabled() else ' Pagamento alla cassa al ritiro.'
+    flash(f'Ordine {order.order_code} confermato! Ritiro {slot_label}.{_cassa}',
+          'success')
 
     # notifica utente
     send_telegram_to_user(
@@ -378,10 +395,11 @@ def cancel_order(order_id):
         return redirect(url_for('main.my_orders'))
 
     order.status = 'cancelled'
-    current_user.credit_wallet(order.total_price,
-                               f'Rimborso ordine #{order.id}', order_id=order.id)
-    points_back = int(order.total_price * get_numeric_setting('loyalty_points_per_euro', 10))
-    current_user.loyalty_points = max(0, current_user.loyalty_points - points_back)
+    if wallet_enabled():
+        current_user.credit_wallet(order.total_price,
+                                   f'Rimborso ordine #{order.id}', order_id=order.id)
+        points_back = int(order.total_price * get_numeric_setting('loyalty_points_per_euro', 10))
+        current_user.loyalty_points = max(0, current_user.loyalty_points - points_back)
 
     for item in order.items:
         stock = DailyStock.query.filter_by(
@@ -403,6 +421,7 @@ def cancel_order(order_id):
 
 @bp.route('/wallet')
 @login_required
+@wallet_required
 def wallet():
     return render_template('main/wallet.html',
                            loyalty_threshold=get_numeric_setting('loyalty_reward_points', 100),
@@ -411,6 +430,7 @@ def wallet():
 
 @bp.route('/wallet/dt')
 @login_required
+@wallet_required
 def wallet_dt():
     draw   = request.args.get('draw', 1, type=int)
     start  = request.args.get('start', 0, type=int)
@@ -443,6 +463,7 @@ def wallet_dt():
 
 @bp.route('/wallet/redeem', methods=['POST'])
 @login_required
+@wallet_required
 def redeem_points():
     threshold = get_numeric_setting('loyalty_reward_points', 100)
     reward = get_numeric_setting('loyalty_reward_amount', 1.0)
@@ -1040,31 +1061,37 @@ def banco_pay_confirm(token):
         db.session.commit()
         flash('QR scaduto. Chiedi al personale di generarne uno nuovo.', 'danger')
         return redirect(url_for('main.index'))
-    _overdraft = current_user.wallet_overdraft or 0.0
-    if current_user.wallet_balance + _overdraft < sess.total:
-        flash(f'Saldo insufficiente ({numero_italiano(current_user.wallet_balance)}€). Ricarica il wallet.', 'danger')
-        return redirect(url_for('main.banco_pay', token=token))
+    if wallet_enabled():
+        _overdraft = current_user.wallet_overdraft or 0.0
+        if current_user.wallet_balance + _overdraft < sess.total:
+            flash(f'Saldo insufficiente ({numero_italiano(current_user.wallet_balance)}€). Ricarica il wallet.', 'danger')
+            return redirect(url_for('main.banco_pay', token=token))
     try:
         items = json.loads(sess.items_json)
     except Exception:
         items = []
     lines = ', '.join(f"{i['qty']}× {i['name']}" for i in items)
-    current_user.debit_wallet(sess.total, f'Banco: {lines}')
-    # marca ttype come banco
-    from app.models import Transaction
-    last_tx = Transaction.query.filter_by(user_id=current_user.id)\
-        .order_by(Transaction.id.desc()).first()
-    if last_tx:
-        last_tx.ttype = 'banco'
+    if wallet_enabled():
+        current_user.debit_wallet(sess.total, f'Banco: {lines}')
+        # marca ttype come banco
+        from app.models import Transaction
+        last_tx = Transaction.query.filter_by(user_id=current_user.id)\
+            .order_by(Transaction.id.desc()).first()
+        if last_tx:
+            last_tx.ttype = 'banco'
     sess.status      = 'paid'
     sess.customer_id = current_user.id
     db.session.commit()
-    flash(f'Pagamento di {numero_italiano(sess.total)}€ confermato!', 'success')
-    send_telegram_to_user(
-        current_user,
-        f'☕ Pagamento banco confermato: <b>{numero_italiano(sess.total)}€</b>\n'
-        f'💰 Saldo residuo: <b>{numero_italiano(current_user.wallet_balance)}€</b>'
-    )
+    if wallet_enabled():
+        flash(f'Pagamento di {numero_italiano(sess.total)}€ confermato!', 'success')
+        send_telegram_to_user(
+            current_user,
+            f'☕ Pagamento banco confermato: <b>{numero_italiano(sess.total)}€</b>\n'
+            f'💰 Saldo residuo: <b>{numero_italiano(current_user.wallet_balance)}€</b>'
+        )
+    else:
+        flash(f'Consumazione di {numero_italiano(sess.total)}€ registrata. '
+              f'Paga alla cassa.', 'success')
     return redirect(url_for('main.index'))
 
 
@@ -1244,17 +1271,23 @@ def cesto_acquista(code):
                 extra_products.append(ep)
 
     total = lb.product.price + sum(p.price for p in extra_products)
-    balance = current_user.wallet_balance or 0
-    if balance < total:
-        flash(
-            f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.',
-            'danger',
-        )
-        return redirect(url_for('main.cesto_scan', code=code))
-
-    current_user.debit_wallet(lb.product.price, f'Cesto: {lb.product.name}')
-    for ep in extra_products:
-        current_user.debit_wallet(ep.price, f'Cesto extra: {ep.name}')
+    if wallet_enabled():
+        balance = current_user.wallet_balance or 0
+        if balance < total:
+            flash(
+                f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.',
+                'danger',
+            )
+            return redirect(url_for('main.cesto_scan', code=code))
+        current_user.debit_wallet(lb.product.price, f'Cesto: {lb.product.name}')
+        for ep in extra_products:
+            current_user.debit_wallet(ep.price, f'Cesto extra: {ep.name}')
+    else:
+        # La vendita resta nel registro anche senza portafoglio: il cliente
+        # paga alla cassa, ma report e guadagni devono vederla.
+        current_user.registra_consumo(lb.product.price, f'Cesto: {lb.product.name}')
+        for ep in extra_products:
+            current_user.registra_consumo(ep.price, f'Cesto extra: {ep.name}')
 
     lb.status   = 'sold'
     lb.sold_at  = datetime.utcnow()
@@ -1262,7 +1295,8 @@ def cesto_acquista(code):
     db.session.commit()
 
     extras_str = ' + ' + ', '.join(p.name for p in extra_products) if extra_products else ''
-    flash(f'Acquisto confermato! {lb.product.name}{extras_str}. Buon appetito.', 'success')
+    _cassa = '' if wallet_enabled() else ' Paga alla cassa.'
+    flash(f'Acquisto confermato! {lb.product.name}{extras_str}.{_cassa} Buon appetito.', 'success')
     return redirect(url_for('main.cesto_scan', code=code))
 
 
@@ -1358,10 +1392,11 @@ def prenotazioni_crea():
         return redirect(url_for('main.prenotazioni_nuova'))
 
     total = sum(p.price * q for p, q in items_data)
-    balance = current_user.wallet_balance or 0
-    if balance < total:
-        flash(f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.', 'danger')
-        return redirect(url_for('main.prenotazioni_nuova'))
+    if wallet_enabled():
+        balance = current_user.wallet_balance or 0
+        if balance < total:
+            flash(f'Saldo insufficiente. Hai {numero_italiano(balance)} €, serve {numero_italiano(total)} €.', 'danger')
+            return redirect(url_for('main.prenotazioni_nuova'))
 
     # Crea prenotazione
     code = _gen_pren_code()
@@ -1379,7 +1414,8 @@ def prenotazioni_crea():
             quantity=qty, unit_price=p.price,
         ))
 
-    current_user.debit_wallet(total, f'Prenotazione {code}')
+    if wallet_enabled():
+        current_user.debit_wallet(total, f'Prenotazione {code}')
     db.session.commit()
 
     flash(f'Prenotazione {code} confermata per il {pickup_date.strftime("%d/%m/%Y")}!', 'success')
@@ -1400,10 +1436,13 @@ def prenotazioni_cancella(pid):
         flash('Non è possibile cancellare una prenotazione del giorno stesso o passata.', 'danger')
         return redirect(url_for('main.prenotazioni_list'))
     pren.status = 'cancelled'
-    if pren.total_price and pren.total_price > 0:
+    if wallet_enabled() and pren.total_price and pren.total_price > 0:
         current_user.credit_wallet(pren.total_price, f'Rimborso {pren.code}')
-    db.session.commit()
-    flash(f'Prenotazione {pren.code} cancellata. Rimborso di {numero_italiano(pren.total_price)} € accreditato.', 'info')
+        db.session.commit()
+        flash(f'Prenotazione {pren.code} cancellata. Rimborso di {numero_italiano(pren.total_price)} € accreditato.', 'info')
+    else:
+        db.session.commit()
+        flash(f'Prenotazione {pren.code} cancellata.', 'info')
     return redirect(url_for('main.prenotazioni_list'))
 
 

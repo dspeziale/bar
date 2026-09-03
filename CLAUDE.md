@@ -146,8 +146,9 @@ il default di un'ora scadeva sulle schermate POS/KDS lasciate aperte per tutto i
 ### Funzionalità attivabili (feature flag)
 
 I moduli disattivabili sono `AppSetting` con valore `'1'`/`'0'`, gestiti dal tab
-**Funzionalità** di `/admin/settings`. Oggi ce ne sono due: `tables_enabled` (gestione
-tavoli e prenotazioni) e `cesto_enabled` (cesto cucina con etichette QR). Gli helper
+**Funzionalità** di `/admin/settings`. Oggi ce ne sono tre: `tables_enabled` (gestione
+tavoli e prenotazioni), `cesto_enabled` (cesto cucina con etichette QR) e
+`wallet_enabled` (portafoglio prepagato e fedeltà — vedi la sezione Wallet). Gli helper
 passano tutti da `_funzione_attiva(chiave)` in `app/__init__.py`: un flag nuovo aggiunge
 solo una funzione di una riga, non un'altra copia della cache su `g`. Per aggiungerne un
 altro servono cinque punti:
@@ -196,7 +197,15 @@ sull'ordinamento da metadati.
 
 Il saldo si muove **solo** attraverso i metodi di `User` (`credit_wallet`, `debit_wallet`,
 `add_points`, `redeem_points`): ognuno crea la `Transaction` corrispondente, così lo storico
-resta coerente. `wallet_overdraft` è il rosso massimo consentito per utente e va sempre
+resta coerente.
+
+Il portafoglio è **opzionale**: col flag `wallet_enabled` a `'0'` l'app non muove denaro
+(niente controlli di capienza, addebiti, rimborsi, ricariche, bonus di benvenuto o punti) e
+si paga alla cassa. Le vendite però restano registrate: ordini e sessioni banco esistono
+come righe proprie, mentre il cesto passa da `User.registra_consumo()` — crea la
+`Transaction` di vendita **senza** toccare il saldo — perché `ds_guadagni` conta il cesto
+proprio dalle transazioni `Cesto: %`. I saldi esistenti non vengono azzerati: spegnere il
+flag li nasconde soltanto. Ogni nuovo punto di pagamento deve gestire entrambe le modalità. `wallet_overdraft` è il rosso massimo consentito per utente e va sempre
 sommato al saldo nei controlli di capienza. I parametri economici (punti per euro, soglia
 premio, prezzi base builder, bonus registrazione) stanno in `AppSetting`, leggibili con
 `get_numeric_setting(key, default)`: non usare le costanti di `config.py`, che sono solo

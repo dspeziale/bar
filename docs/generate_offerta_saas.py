@@ -295,14 +295,14 @@ def table_grid(doc, headers, rows, widths, head_fill=HEX_NAVY):
 # Canone e percentuale corrispondono alle impostazioni tenant_monthly_fee e
 # platform_fee_percentage. Il contributo di ingresso e' una tantum e non ha
 # un'impostazione nell'applicazione: si fattura all'attivazione.
-FEE_INGRESSO = 400.00      # euro, una tantum all'attivazione
+FEE_INGRESSO = 500.00      # euro, una tantum all'attivazione
 CANONE_MENSILE = 40.00     # euro al mese
-FEE_PERCENTUALE = 3.5      # per cento sull'imponibile
+FEE_PERCENTUALE = 3.2      # per cento sull'imponibile
 IVA = 10.0                 # aliquota scorporata dal calcolo dell'applicazione
 
 # Proiezioni: incasso medio giornaliero e giorni di apertura al mese.
 # 22 giorni = apertura dal lunedi al venerdi, tipica di una mensa aziendale.
-SCENARI_GIORNO = [800, 1000, 1200]
+SCENARI_GIORNO = [500, 750, 1000]
 GIORNI_MESE = 22
 
 

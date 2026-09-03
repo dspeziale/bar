@@ -433,7 +433,8 @@
       </li>
     </ul>
     <ul class="navbar-nav ml-auto align-items-center">
-      {% if current_user.is_authenticated and not current_user.is_admin %}
+      {% if current_user.is_authenticated and not current_user.is_admin
+            and wallet_enabled %}
       <li class="nav-item mr-2">
         <a href="{{ url_for('main.wallet') }}" class="wallet-badge">
           <i class="fas fa-wallet mr-1"></i>{{ current_user.wallet_balance|num_it }}€
@@ -923,6 +924,7 @@
             {% endif %}
 
             {# Wallet #}
+            {% if wallet_enabled %}
             <li class="nav-item">
               <a href="{{ url_for('main.wallet') }}"
                  class="nav-link {{ 'active' if ep == 'main.wallet' }}">
@@ -930,6 +932,7 @@
                 <p>Wallet & Fedeltà</p>
               </a>
             </li>
+            {% endif %}
 
             {# Pasto Aziendale — visibile solo ai dipendenti convenzionati #}
             {% if current_user.corporate_membership and current_user.corporate_membership.is_active %}

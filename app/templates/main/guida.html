@@ -28,7 +28,7 @@
       <a class="nav-link" href="#g-iniziare"><i class="fas fa-door-open mr-1"></i>Come iniziare</a>
       <a class="nav-link" href="#g-ordinare"><i class="fas fa-utensils mr-1"></i>Ordinare</a>
       <a class="nav-link" href="#g-ordini"><i class="fas fa-receipt mr-1"></i>I miei ordini</a>
-      <a class="nav-link" href="#g-wallet"><i class="fas fa-wallet mr-1"></i>Wallet e punti</a>
+      {% if wallet_enabled %}<a class="nav-link" href="#g-wallet"><i class="fas fa-wallet mr-1"></i>Wallet e punti</a>{% endif %}
       {% if tables_enabled %}
       <a class="nav-link" href="#g-tavoli"><i class="fas fa-chair mr-1"></i>Prenotare un tavolo</a>
       {% endif %}
@@ -84,7 +84,7 @@
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-door-open mr-2 text-primary"></i>Come iniziare</h2></div>
     <div class="card-body">
       <p>Dopo il login arrivi sulla <strong>Home</strong>, dove trovi un riepilogo dei tuoi ordini del giorno e i collegamenti rapidi alle funzioni principali.</p>
-      <p>Il menu a sinistra è il punto di partenza per tutto: <strong>Ordina</strong>, <strong>I Miei Ordini</strong>, <strong>Tavoli</strong>, <strong>Wallet</strong> e <strong>Vota il Menu</strong>.</p>
+      <p>Il menu a sinistra è il punto di partenza per tutto: <strong>Ordina</strong>, <strong>I Miei Ordini</strong>{% if tables_enabled %}, <strong>Tavoli</strong>{% endif %}{% if wallet_enabled %}, <strong>Wallet</strong>{% endif %} e <strong>Vota il Menu</strong>.</p>
       <div class="alert alert-light border">
         <i class="fas fa-lightbulb mr-1 text-warning"></i>
         Puoi cambiare tema chiaro/scuro dall'icona in alto a destra nella barra di navigazione.
@@ -105,7 +105,7 @@
       <div class="guida-step"><div class="num">2</div><div>Clicca <strong>Aggiungi</strong>: il prodotto entra nel carrello (icona carrello in alto).</div></div>
       <div class="guida-step"><div class="num">3</div><div>Apri il <a href="{{ url_for('main.cart') }}">Carrello</a> per rivedere e modificare le quantità.</div></div>
       <div class="guida-step"><div class="num">4</div><div>Scegli (se richiesto) lo slot orario di ritiro/consegna.</div></div>
-      <div class="guida-step"><div class="num">5</div><div>Conferma l'ordine: il pagamento viene scalato dal tuo wallet, se hai saldo sufficiente.</div></div>
+      <div class="guida-step"><div class="num">5</div><div>{% if wallet_enabled %}Conferma l'ordine: il pagamento viene scalato dal tuo wallet, se hai saldo sufficiente.{% else %}Conferma l'ordine: pagherai alla cassa al momento del ritiro.{% endif %}</div></div>
       <div class="guida-step"><div class="num">6</div><div>Trovi l'ordine in <strong>I Miei Ordini</strong> con lo stato aggiornato in tempo reale.</div></div>
     </div>
   </section>
@@ -118,6 +118,7 @@
     </div>
   </section>
 
+  {% if wallet_enabled %}
   <section id="g-wallet" class="guida-section card card-outline card-warning mb-4">
     <div class="card-header"><h2 class="card-title m-0"><i class="fas fa-wallet mr-2 text-warning"></i>Wallet e punti</h2></div>
     <div class="card-body">
@@ -129,6 +130,7 @@
       <div class="guida-step"><div class="num">3</div><div>Conferma: i punti vengono convertiti in credito wallet, utilizzabile subito per un nuovo ordine.</div></div>
     </div>
   </section>
+  {% endif %}{# /wallet #}
 
   {% if tables_enabled %}
   <section id="g-tavoli" class="guida-section card card-outline card-info mb-4">

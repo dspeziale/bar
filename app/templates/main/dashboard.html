@@ -6,6 +6,7 @@
 {% block content %}
 <!-- KPI -->
 <div class="row">
+  {% if wallet_enabled %}
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-info">
       <div class="inner"><h3>{{ current_user.wallet_balance|num_it }}€</h3><p>Saldo Wallet</p></div>
@@ -20,6 +21,7 @@
       <a href="{{ url_for('main.wallet') }}" class="small-box-footer">Riscatta <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
+  {% endif %}
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-success">
       <div class="inner"><h3>{{ today_orders|length }}</h3><p>Ordini Oggi</p></div>
@@ -205,6 +207,7 @@
 
   <!-- Sidebar: ultime tx + punti fedeltà -->
   <div class="col-lg-5">
+    {% if wallet_enabled %}
     <div class="card card-outline card-warning">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-history mr-2"></i>Ultime transazioni</h3>
@@ -259,6 +262,7 @@
         {% endif %}
       </div>
     </div>
+    {% endif %}{# /wallet_enabled #}
 
     <!-- MFA -->
     <div class="card card-outline {{ 'card-success' if current_user.totp_enabled else 'card-secondary' }} mt-3">

@@ -183,6 +183,7 @@
             <span>Totale ordine:</span>
             <strong class="text-success">{{ total|num_it }}€</strong>
           </div>
+          {% if wallet_enabled %}
           <div class="d-flex justify-content-between mb-3">
             <span>Saldo wallet:</span>
             <span class="{{ 'text-success' if wallet >= total else 'text-danger' }} font-weight-bold">
@@ -196,8 +197,14 @@
             <a href="{{ url_for('main.wallet') }}" class="alert-link">Ricarica</a>.
           </div>
           {% endif %}
+          {% else %}
+          <div class="alert alert-info py-2 mb-3">
+            <i class="fas fa-cash-register mr-1"></i>
+            Pagherai alla cassa al ritiro.
+          </div>
+          {% endif %}
           <button type="submit" class="btn btn-success btn-block"
-                  {% if wallet < total %}disabled{% endif %}>
+                  {% if wallet_enabled and wallet < total %}disabled{% endif %}>
             <i class="fas fa-check mr-1"></i>Conferma Ordine
           </button>
         </form>

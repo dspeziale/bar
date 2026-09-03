@@ -158,10 +158,12 @@
     <div class="product">{{ lb.product.name }}</div>
     <div class="price" id="main-price">{{ lb.product.price|num_it }} €</div>
 
+    {% if wallet_enabled %}
     <div class="wallet-row">
       <span>Saldo wallet</span>
       <strong>{{ current_user.wallet_balance or 0|num_it }} €</strong>
     </div>
+    {% endif %}
 
     {% set balance = current_user.wallet_balance or 0 %}
 
@@ -207,13 +209,19 @@
         </div>
       </div>
 
-      {% if balance >= lb.product.price %}
+      {% if not wallet_enabled or balance >= lb.product.price %}
       <button type="submit" class="btn-buy" id="btn-buy" style="margin-top:14px;">
         <i class="fas fa-wallet mr-2"></i>Acquista ora
       </button>
+      {% if wallet_enabled %}
       <div class="sub" id="after-balance" style="margin-top:10px;">
         Saldo dopo acquisto: <strong id="after-val">{{ (balance - lb.product.price)|num_it }} €</strong>
       </div>
+      {% else %}
+      <div class="sub" style="margin-top:10px;">
+        Il pagamento avviene alla cassa.
+      </div>
+      {% endif %}
       {% else %}
       <button class="btn-buy" id="btn-buy" disabled style="margin-top:14px;">
         <i class="fas fa-wallet mr-2"></i>Saldo insufficiente
@@ -236,7 +244,7 @@
 <script>
 (function () {
   var MAIN_PRICE = {{ lb.product.price | tojson }};
-  var BALANCE    = {{ (current_user.wallet_balance or 0) | tojson }};
+  var BALANCE    = {{ ((current_user.wallet_balance or 0) if wallet_enabled else 999999999) | tojson }};
   var cart       = [];
   var stream     = null;
   var scanning   = false;
