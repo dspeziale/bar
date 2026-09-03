@@ -1152,7 +1152,8 @@ def account_delete():
     if current_user.is_admin or current_user.is_staff:
         flash('Gli account staff non possono essere cancellati da qui.', 'danger')
         return redirect(url_for('main.index'))
-    if current_user.wallet_balance and current_user.wallet_balance > 0:
+    if (wallet_enabled() and current_user.wallet_balance
+            and current_user.wallet_balance > 0):
         flash(
             f'Impossibile cancellare l\'account: hai ancora '
             f'{numero_italiano(current_user.wallet_balance)}€ nel wallet. '

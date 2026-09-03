@@ -22,12 +22,14 @@
       <i class="fas fa-bell mr-1"></i>Notifiche
     </a>
   </li>
+  {% if wallet_enabled %}
   <li class="nav-item">
     <a class="nav-link" id="t-fedelta" data-toggle="tab"
        href="#tab-fedelta" role="tab">
       <i class="fas fa-star mr-1"></i>Fedeltà
     </a>
   </li>
+  {% endif %}
   <li class="nav-item">
     <a class="nav-link" id="t-prezzi" data-toggle="tab"
        href="#tab-prezzi" role="tab">
@@ -301,6 +303,7 @@
   </div>{# /tab-notifiche #}
 
   {# ══ FEDELTÀ ════════════════════════════════════════════════════════════ #}
+  {% if wallet_enabled %}
   <div class="tab-pane fade" id="tab-fedelta" role="tabpanel">
     <div class="row">
 
@@ -396,6 +399,7 @@
 
     </div>
   </div>{# /tab-fedelta #}
+  {% endif %}
 
   {# ══ PREZZI MENU ════════════════════════════════════════════════════════ #}
   <div class="tab-pane fade" id="tab-prezzi" role="tabpanel">

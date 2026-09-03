@@ -49,7 +49,7 @@
               {% set rows = [
                 ('clear_orders',       'fas fa-shopping-cart', 'Ordini',                              stats.orders,       'Elimina ordini, voci e prenotazioni pasto aziendale'),
                 ('clear_reservations', 'fas fa-chair',         'Prenotazioni tavoli',                 stats.reservations, 'Elimina tutte le prenotazioni tavolo'),
-                ('clear_transactions', 'fas fa-wallet',        'Transazioni wallet',                  stats.transactions, 'Elimina tutti i movimenti di wallet'),
+                ('clear_transactions', 'fas fa-exchange-alt',  'Transazioni',                         stats.transactions, 'Elimina tutti i movimenti registrati'),
                 ('clear_polls',        'fas fa-poll',          'Sondaggi',                            stats.polls,        'Elimina sondaggi, scelte e voti'),
                 ('clear_stock',        'fas fa-boxes',         'Stock giornaliero',                   stats.stock,        'Azzera le quantità giornaliere dei prodotti'),
                 ('clear_catalog',      'fas fa-utensils',      'Prodotti & Categorie (+ ordini)',     stats.products,     'Elimina prodotti, categorie, stock e tutti gli ordini collegati'),
@@ -123,13 +123,13 @@
             <li><i class="fas fa-qrcode text-info mr-1"></i><strong>~130 sessioni banco QR</strong> negli ultimi 25 giorni</li>
             <li><i class="fas fa-box-open text-danger mr-1"></i><strong>~160 menu pasto</strong> con <strong>~1.400 prenotazioni</strong></li>
             <li><i class="fas fa-chair text-secondary mr-1"></i><strong>~200 prenotazioni tavolo</strong></li>
-            <li><i class="fas fa-wallet text-success mr-1"></i>Transazioni wallet (topup + pagamenti)</li>
+            <li><i class="fas fa-exchange-alt text-success mr-1"></i>Transazioni (accrediti e pagamenti)</li>
             <li><i class="fas fa-boxes text-muted mr-1"></i>20 consumabili di magazzino</li>
           </ul>
           <div class="callout callout-warning py-2 mb-3">
             <small>
               <i class="fas fa-exclamation-triangle mr-1"></i>
-              Il reset elimina <strong>tutti</strong> i dati operativi del tenant default prima di ricaricare.
+              Il reset elimina <strong>tutti</strong> i dati operativi del tenant default prima di caricare di nuovo la demo.
               Le impostazioni e gli account admin vengono conservati.
             </small>
           </div>

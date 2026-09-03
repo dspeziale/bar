@@ -98,7 +98,7 @@
           <th>Nascita</th>
           <th>Indirizzo</th>
           <th>Telegram</th>
-          <th>Wallet</th>
+          {% if wallet_enabled %}<th>Wallet</th>{% endif %}
           <th>Stato</th>
           <th class="no-sort"></th>
         </tr>
@@ -108,6 +108,7 @@
 </div>
 
 {# ── Modal topup (condiviso) ── #}
+{% if wallet_enabled %}
 <div class="modal fade" id="sharedTopupModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
@@ -142,6 +143,7 @@
     </div>
   </div>
 </div>
+{% endif %}{# /modal topup #}
 
 {# ── Modal attivazione (condiviso) ── #}
 <div class="modal fade" id="sharedActivateModal" tabindex="-1">
@@ -235,6 +237,7 @@
                        placeholder="-100xxxxxxxx (opzionale)">
               </div>
             </div>
+            {% if wallet_enabled %}
             <div class="col-sm-6">
               <div class="form-group">
                 <label>Fido wallet (€ in rosso consentiti)</label>
@@ -245,6 +248,7 @@
                 </div>
               </div>
             </div>
+            {% endif %}
             <div class="col-sm-6">
               <div class="form-group">
                 <label>Nuova password</label>
@@ -315,6 +319,7 @@ var table = $('#clientsTable').DataTable({
         return d ? '<code style="font-size:.78rem;">' + $('<span>').text(d).html() + '</code>' : '<span class="text-muted">—</span>';
       }
     },
+    {% if wallet_enabled %}
     {
       data: null,
       render: function(d) {
@@ -323,12 +328,11 @@ var table = $('#clientsTable').DataTable({
         if (d.wallet_overdraft > 0) {
           s += ' <span class="badge badge-warning ml-1">fido ' + parseFloat(d.wallet_overdraft).toFixed(0) + '€</span>';
         }
-        {% if wallet_enabled %}
         s += ' <button class="btn btn-xs btn-outline-success ml-1 btn-topup-client" data-id="' + d.id + '" title="Ricarica"><i class="fas fa-plus"></i></button>';
-        {% endif %}
         return s;
       }
     },
+    {% endif %}
     {
       data: null,
       render: function(d) {

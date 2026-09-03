@@ -46,7 +46,7 @@
           <th>Utente</th>
           <th>Email</th>
           <th>Ruoli</th>
-          <th>Wallet</th>
+          {% if wallet_enabled %}<th>Wallet</th>{% endif %}
           <th>Stato</th>
           <th>Registrato</th>
           <th class="no-sort">Azioni</th>
@@ -57,6 +57,7 @@
 </div>
 
 {# ── Modal Topup condiviso ── #}
+{% if wallet_enabled %}
 <div class="modal fade" id="sharedTopupModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
@@ -88,6 +89,7 @@
     </div>
   </div>
 </div>
+{% endif %}{# /modal topup #}
 
 {# ── Modal Ruoli condiviso ── #}
 <div class="modal fade" id="sharedRolesModal" tabindex="-1">
@@ -154,6 +156,7 @@ var table = $('#usersTable').DataTable({
         return s;
       }
     },
+    {% if wallet_enabled %}
     {
       data: 'wallet_balance',
       render: function(d) {
@@ -161,6 +164,7 @@ var table = $('#usersTable').DataTable({
         return '<strong class="' + cls + '">' + qlNum(parseFloat(d)) + '€</strong>';
       }
     },
+    {% endif %}
     {
       data: 'is_active',
       render: function(d) {
@@ -172,7 +176,10 @@ var table = $('#usersTable').DataTable({
       data: null,
       orderable: false,
       render: function(d) {
-        var s = '<button class="btn btn-xs btn-success btn-topup" title="Ricarica"><i class="fas fa-plus"></i> Ricarica</button> ';
+        var s = '';
+        {% if wallet_enabled %}
+        s += '<button class="btn btn-xs btn-success btn-topup" title="Ricarica"><i class="fas fa-plus"></i> Ricarica</button> ';
+        {% endif %}
         var toggleClass = d.is_active ? 'warning' : 'info';
         var toggleIcon  = d.is_active ? 'ban' : 'check';
         var toggleTitle = d.is_active ? 'Sospendi' : 'Riattiva';
