@@ -712,7 +712,7 @@ def costruisci(reali):
                          'Le stampe operative della giornata')
     scheda(pdf, 3, 'Etichette QR del cesto',
            [('Chi la riceve', 'La cucina; l\'etichetta finisce sul prodotto '
-                              'e il QR lo paga il cliente'),
+                              'e il QR serve al cliente per l\'acquisto'),
             ('Quando si produce', 'Alla generazione di ogni lotto di pezzi '
                                   'pre-preparati'),
             ('Da dove si stampa', 'Backoffice › Cucina › Cesto Cucina › '
@@ -720,7 +720,9 @@ def costruisci(reali):
             ('Carta e formato', 'A4 da ritagliare (griglia 3 colonne) o '
                                 'etichette adesive')],
            'Ogni etichetta ha il QR di acquisto (il cliente lo inquadra e '
-           'paga dal wallet), nome, prezzo, allergeni, codice del pezzo e '
+           'paga dal borsellino prepagato oppure, se il portafoglio e '
+           'disattivato, registra l\'acquisto e paga in cassa), nome, '
+           'prezzo, allergeni, codice del pezzo e '
            'data/ora di preparazione. Se la funzione "Gestione cesto" è '
            'spenta nelle Impostazioni, le etichette non si generano e i QR '
            'già stampati non sono acquistabili.',

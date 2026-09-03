@@ -1481,7 +1481,10 @@ def s_cliente(doc):
     h2(doc, '6.7  Wallet e punti fedeltà')
     body_para(doc, 'Il wallet è il portafoglio digitale nel locale. '
               'Ogni acquisto con wallet accumula punti fedeltà. '
-              'Sezione: Wallet & Fedeltà nel menu laterale.')
+              'Sezione: Wallet & Fedeltà nel menu laterale. '
+              'Il wallet è una funzione disattivabile dalle Impostazioni: se '
+              'il locale lavora con il pagamento in cassa, le voci e le '
+              'pagine di questa sezione non compaiono.')
     spacer(doc, 4)
 
     data_table(doc,

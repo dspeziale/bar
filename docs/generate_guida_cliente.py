@@ -574,6 +574,12 @@ def s5_ordini(doc):
 def s6_wallet(doc):
     h1(doc, '6', 'Wallet e Punti Fedeltà', '💳', accent=HEX_PURPL)
 
+    body_para(doc,
+        'Nota: il wallet è una funzione che il locale può disattivare. Se nel '
+        'menu non vedi la voce "Wallet & Fedeltà", nel tuo bar si paga alla '
+        'cassa al momento del ritiro e questo capitolo non ti riguarda.')
+    spacer(doc, 6)
+
     role_badge(doc, '💳', 'Wallet',
                'Il wallet è il tuo portafoglio digitale nel locale: ci carichi credito e paghi i tuoi ordini '
                'in un tocco, senza contanti o carta ogni volta.',
@@ -662,6 +668,11 @@ def s7_banco(doc):
                'tu lo inquadri, controlli il riepilogo e confermi il pagamento in un tocco. '
                'Il wallet viene scalato in automatico e il banco riceve conferma istantanea.',
                HEX_GREEN)
+    spacer(doc, 6)
+    body_para(doc,
+        'Se il tuo locale lavora senza wallet, il flusso è identico ma il '
+        'pulsante finale si chiama "Conferma": registri la consumazione e '
+        'paghi alla cassa.')
     spacer(doc, 8)
 
     h2(doc, '7.1  Quando usarlo')

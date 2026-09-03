@@ -255,7 +255,7 @@ DEVICES = [
             'Configura menu, prodotti, prezzi, slot di ritiro e impostazioni',
             'Pubblica il menu del giorno delle convenzioni e i suoi allergeni',
             'Stampa la lista di produzione dei pasti aziendali',
-            'Gestisce utenti, ricariche wallet, ruoli e permessi; legge i report',
+            'Gestisce utenti, ricariche wallet (se il portafoglio e attivo), ruoli e permessi; legge i report',
         ],
     },
     {
@@ -296,7 +296,7 @@ QR_STEPS = [
     ('✅', HEX_PURPLE, 'Conferma pagamento',
      'Cliente', 'Il telefono mostra riepilogo articoli e totale — il cliente tocca "Paga ora".'),
     ('💰', HEX_GOLD, 'Addebito wallet',
-     'Sistema', 'Il wallet viene scalato automaticamente. Il tablet banco mostra "✓ Pagato da [nome]".'),
+     'Sistema', 'Con il portafoglio attivo il wallet viene scalato automaticamente e il tablet mostra "✓ Pagato da [nome]"; con il portafoglio disattivato la consumazione viene registrata e si incassa alla cassa.'),
 ]
 
 REQS = [

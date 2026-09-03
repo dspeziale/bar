@@ -476,7 +476,21 @@ def build():
         (' sono quelle che, se salti, si vedono: il servizio parte in ritardo o '
          'parte incompleto. Le altre si possono recuperare.', False),
     ])
-    spacer(doc, 6)
+    spacer(doc, 4)
+
+    box(doc, 'Portafoglio prepagato: attivo o spento', [
+        [('Il portafoglio e una funzione attivabile (Impostazioni › '
+          'Funzionalita). Se lavorate ', False),
+         ('senza portafoglio', True),
+         (', i clienti pagano alla cassa: saldi, ricariche, fidi, punti e '
+          'bonus non esistono, ma ordini, banco e cesto registrano comunque '
+          'le vendite nei report.', False)],
+        [('Le attivita di questo manuale contrassegnate con ', False),
+         ('"solo con portafoglio attivo"', True),
+         (' in quel caso si saltano: la scaletta resta valida per tutto il '
+          'resto.', False)],
+    ], accent=HEX_ORANGE, fill=HEX_WARN, label_color=ORANGE)
+    spacer(doc, 2)
 
     box(doc, 'Le tre parti della giornata', [
         [('Parte 1 — Pomeriggio precedente', True),
@@ -513,8 +527,8 @@ def build():
                     'Sondaggi'],
                    [('16:15', RED, True), 'Clienti in attesa attivati',
                     'Clienti'],
-                   [('16:30', DARK, True), 'Ricariche e fidi sistemati',
-                    'Clienti › Ricarica'],
+                   [('16:30', DARK, True), 'Ricariche e fidi (solo con '
+                    'portafoglio attivo)', 'Clienti › Ricarica'],
                    [('16:45', DARK, True), 'Listino e quantita di domani',
                     'Prodotti'],
                    [(ORA_CHIUSURA_BANCO, RED, True), 'Chiusura del banco e '
@@ -627,7 +641,8 @@ def build():
               'domani mattina. Attivato domani a mezzogiorno, no.',
         accent=HEX_PURPLE, critico=True)
 
-    fascia(doc, '16:30', 'Sistema ricariche e fidi', [
+    fascia(doc, '16:30', 'Sistema ricariche e fidi '
+           '(solo con portafoglio attivo)', [
         [('Il portafoglio e prepagato: senza credito l\'ordine viene rifiutato. '
           'Ricarica chi ha lasciato contante in cassa e verifica i saldi vicini '
           'allo zero.', False)],
@@ -635,6 +650,9 @@ def build():
           False), ('fido', True),
          (' dalla scheda del cliente: consente di ordinare andando in rosso fino '
           'alla soglia scelta.', False)],
+        [('Se il portafoglio prepagato e disattivato nelle Impostazioni, '
+          'questo passo non esiste: i clienti pagano alla cassa e si passa '
+          'direttamente all\'attivita successiva.', False)],
     ], motivo='il cliente a saldo zero se ne accorge davanti al carrello, '
               'nell\'ora di punta, e in quel momento non hai tempo.',
         accent=HEX_PURPLE)
@@ -1012,7 +1030,8 @@ def build():
             ('15:45', 'Pasto aziendale di domani pubblicato'),
             ('16:00', 'Sondaggio inviato (se usato)'),
             ('16:15', 'Clienti in attesa attivati'),
-            ('16:30', 'Ricariche e fidi sistemati'),
+            ('16:30', 'Ricariche e fidi sistemati (se il portafoglio '
+                      'e attivo)'),
             ('16:45', 'Listino e quantita di domani aggiornati'),
             (ORA_CHIUSURA_BANCO, 'Banco chiuso, invenduto ritirato dal cesto'),
             ('17:15', 'Numeri della giornata letti'),

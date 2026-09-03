@@ -1764,3 +1764,25 @@ Struttura cartelle:
     requirements.txt
     instance/
       bar.db           → SQLite (sviluppo)
+
+
+FUNZIONALITA' ATTIVABILI (feature flag)
+---------------------------------------
+Tre moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
+(AppSetting con valore '1'/'0', default '1'):
+
+- tables_enabled  : gestione tavoli e prenotazioni a fasce.
+- cesto_enabled   : cesto cucina con etichette QR; spento, le etichette gia'
+                    stampate non sono acquistabili e le rotte del modulo
+                    reindirizzano.
+- wallet_enabled  : portafoglio prepagato e fedelta'. Spento, l'applicazione
+                    non muove denaro: nessun controllo di capienza, addebito,
+                    rimborso, ricarica, fido, bonus di benvenuto o punto; si
+                    paga alla cassa e ogni riferimento al wallet sparisce
+                    dalle pagine (client e backoffice, tab Fedelta' compreso).
+                    Le vendite restano registrate: ordini e sessioni banco
+                    nelle rispettive tabelle, il cesto come Transaction di
+                    solo registro (User.registra_consumo, che non tocca il
+                    saldo). Report e guadagni DS quindi non cambiano. I saldi
+                    esistenti non vengono azzerati: riattivando il flag
+                    tornano visibili.

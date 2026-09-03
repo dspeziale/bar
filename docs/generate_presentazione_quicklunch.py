@@ -442,13 +442,29 @@ def build():
          ('. L\'applicazione organizza il resto.', False)],
     ], accent=HEX_NAVY, fill=HEX_LIGHT, label_color=NAVY)
 
+    box(doc, 'Due modalità di incasso, a vostra scelta', [
+        [('Modalità prepagata (consigliata)', True),
+         (': i clienti caricano un borsellino e ogni acquisto scala dal '
+          'saldo — zero contante al ritiro, punti fedeltà e bonus di '
+          'benvenuto attivi.', False)],
+        [('Modalità pagamento in cassa', True),
+         (': il portafoglio si disattiva dalle Impostazioni e l\'app non '
+          'muove denaro — i clienti ordinano, prenotano e ricevono gli '
+          'avvisi come sempre, ma pagano alla cassa al ritiro. Le vendite '
+          'restano registrate nei report.', False)],
+        [('Si passa dall\'una all\'altra con un interruttore, anche dopo '
+          'l\'avvio.', False)],
+    ], accent=HEX_GREEN, fill=HEX_LIGHT, label_color=GREEN)
+
     _page_break(doc)
 
     # ══ Come funziona: il giro completo ═══════════════════════════════════
     heading(doc, 'Come funziona: il giro completo del cliente', 1, before=0)
     body(doc, 'Dal primo contatto al ritiro del primo ordine, il percorso del '
               'cliente è questo. Nessun passaggio richiede assistenza da parte '
-              'vostra, tranne l\'approvazione iniziale.', color=GRAY)
+              'vostra, tranne l\'approvazione iniziale. Il percorso descrive la '
+              'modalità prepagata: con il pagamento in cassa i passi 2 e 5 non '
+              'esistono e il cliente salda al ritiro.', color=GRAY)
     rule(doc)
 
     step(doc, 1, 'Si registra inquadrando un QR', [

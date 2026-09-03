@@ -949,6 +949,16 @@ def s07(doc):
 def s08(doc):
     h1(doc, 8, 'Wallet Digitale e Fidelizzazione', '💳')
 
+    body_para(doc,
+        "Il wallet è una funzione attivabile: dal tab Funzionalità delle "
+        "Impostazioni (interruttore \"Portafoglio prepagato e punti "
+        "fedeltà\") si può disattivare per lavorare con il solo pagamento "
+        "in cassa. A portafoglio spento l'applicazione non muove denaro — "
+        "niente saldi, ricariche, fidi, punti o bonus, e ogni riferimento "
+        "sparisce dalle pagine — ma ordini, banco e cesto continuano a "
+        "registrare le vendite nei report e nei guadagni. Questo capitolo "
+        "descrive il funzionamento a portafoglio attivo.")
+
     h2(doc, 'Wallet digitale prepagato (wallet_balance)')
     body_para(doc,
         "Ogni utente ha un campo wallet_balance che rappresenta il suo credito in euro. "
@@ -2179,7 +2189,10 @@ def s_appendix_wallet(doc):
     body_para(doc,
         "Documento riepilogativo delle possibili modalità di gestione del wallet ricaricabile "
         "di QuickLunch, utilizzato per l'acquisto di pranzi e consumazioni in bar e mense. "
-        "Esistono due approcci distinti con implicazioni fiscali differenti.")
+        "Esistono due approcci distinti con implicazioni fiscali differenti. "
+        "L'appendice riguarda la sola modalità prepagata: con il wallet "
+        "disattivato non c'è raccolta anticipata di denaro e il tema del "
+        "credito residuo non si pone.")
 
     info_box(doc,
         "Prima dell'adozione operativa del sistema è opportuno richiedere una verifica da parte "

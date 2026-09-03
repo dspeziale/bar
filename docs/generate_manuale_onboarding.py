@@ -346,7 +346,7 @@ def build():
                    [('3 · Attivazione', DARK, True), 'Staff',
                     'Account abilitato ad accedere'],
                    [('4 · Primo credito', DARK, True), 'Staff',
-                    'Wallet capiente almeno quanto il primo ordine'],
+                    'Wallet capiente (si salta se il portafoglio e spento)'],
                    [('5 · Primo ordine', DARK, True), 'Cliente',
                     'Ordine pagato, in coda in cucina'],
                    [('6 · Rifiniture', DARK, True), 'Cliente',
@@ -415,7 +415,8 @@ def build():
           'Vale per ', False), ('tutti i nuovi clienti', True),
          (': registrazione pubblica, Google, link di un\'azienda convenzionata e '
           'anche creazione manuale dal backoffice. Il valore predefinito e ',
-          False), ('0', True), (': finche resta tale, nessun bonus viene dato.',
+          False), ('0', True), (': finche resta tale, nessun bonus viene dato. '
+          'Con il portafoglio prepagato disattivato il bonus non esiste.',
                                 False)],
         [('Punti fedelta', True),
          (' — di serie 10 punti per ogni euro speso, 100 punti riscattabili per '
@@ -528,10 +529,14 @@ def build():
     ], accent=HEX_PURPLE)
 
     # ══ FASE 4 · PRIMO CREDITO ════════════════════════════════════════════
-    heading(doc, 'Fase 4 — Il primo credito', 1, color=GREEN)
+    heading(doc, 'Fase 4 — Il primo credito (solo con portafoglio attivo)',
+            1, color=GREEN)
     body(doc, 'Il wallet e prepagato e il controllo alla conferma dell\'ordine e '
               'netto: saldo piu fido devono coprire il totale, altrimenti '
-              'l\'ordine viene rifiutato.', color=GRAY)
+              'l\'ordine viene rifiutato. Se invece il portafoglio e '
+              'disattivato nelle Impostazioni, questa fase si salta per '
+              'intero: il cliente ordina subito e paga alla cassa al ritiro.',
+         color=GRAY)
     rule(doc)
 
     step(doc, 1, 'Ricarica dalla scheda cliente', [

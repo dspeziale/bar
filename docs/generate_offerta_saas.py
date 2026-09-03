@@ -539,7 +539,10 @@ def build():
     heading(doc, 'Su cosa si calcola il %s%%' % _pct(FEE_PERCENTUALE), 1)
     body(doc, 'La base di calcolo non e una stima concordata: la misura '
               'l\'applicazione stessa, voce per voce, con un prospetto mensile '
-              'consultabile in qualsiasi momento.', color=GRAY)
+              'consultabile in qualsiasi momento. La quota si calcola allo '
+              'stesso modo in entrambe le modalita di incasso: anche con il '
+              'portafoglio prepagato disattivato le vendite restano '
+              'registrate.', color=GRAY)
     spacer(doc, 4)
 
     table_grid(doc,
@@ -651,7 +654,8 @@ def build():
         ('Per i clienti del locale', [
             'Menu digitale con ordinazione e scelta dell\'orario di ritiro',
             'Composizione libera di panini, insalate e poke, con extra a listino',
-            'Portafoglio prepagato con punti fedelta e premi',
+            'Portafoglio prepagato con punti fedelta e premi '
+            '(attivabile: si puo lavorare anche con il solo pagamento in cassa)',
             'Pagamento al banco inquadrando un QR, senza contanti',
             'Acquisto self-service dal cesto dei prodotti pronti',
             'Prenotazione del pasto aziendale convenzionato',

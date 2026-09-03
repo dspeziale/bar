@@ -383,8 +383,10 @@ def build():
     heading(doc, '01 — Cesto: panini e tramezzini pronti', 1, color=GREEN, before=0)
     body(doc, 'Prodotti preparati in anticipo e messi nel cesto a libero servizio. '
               'Qui non esiste un ordine: il cliente prende il pezzo, inquadra il QR '
-              'dell\'etichetta col telefono e paga dal proprio wallet. '
-              'L\'etichetta è il documento di vendita.', color=GRAY)
+              'dell\'etichetta col telefono e paga dal proprio wallet — oppure, se '
+              'il portafoglio prepagato è disattivato, la vendita si registra e il '
+              'conto si salda in cassa. L\'etichetta è il documento di vendita.',
+         color=GRAY)
     rule(doc)
 
     step(doc, 1, 'Prepara i pezzi', [
@@ -422,8 +424,10 @@ def build():
 
     step(doc, 6, 'Metti nel cesto', [
         [('Dal momento in cui il pezzo è nel cesto la vendita è automatica: il '
-          'cliente inquadra, conferma e l\'importo viene scalato dal suo wallet. '
-          'L\'etichetta passa da ', False), ('pronta', True), (' a ', False),
+          'cliente inquadra, conferma e l\'importo viene scalato dal suo wallet '
+          '(con il portafoglio disattivato la vendita viene comunque registrata '
+          'e il cliente paga in cassa). L\'etichetta passa da ', False),
+         ('pronta', True), (' a ', False),
          ('venduta', True), (' e nessun altro può riacquistarla.', False)],
     ], accent=HEX_GREEN)
 
@@ -565,9 +569,11 @@ def build():
     # ══ 03 · BUILDER ══════════════════════════════════════════════════════
     heading(doc, '03 — Ordini dal builder visuale', 1, color=BLUE, before=0)
     body(doc, 'Panini, insalate e poke composti dal cliente ingrediente per '
-              'ingrediente. Arrivano in cucina già pagati: l\'importo è stato '
-              'scalato dal wallet alla conferma dell\'ordine, quindi non c\'è nulla '
-              'da incassare, solo da produrre nell\'orario giusto.', color=GRAY)
+              'ingrediente. Con il portafoglio attivo arrivano in cucina già '
+              'pagati (l\'importo è scalato alla conferma) e non c\'è nulla da '
+              'incassare; con il portafoglio disattivato il cliente paga alla '
+              'cassa al ritiro. In entrambi i casi, qui si produce '
+              'nell\'orario giusto.', color=GRAY)
     rule(doc)
 
     heading(doc, 'Il display cucina', 3, color=DARK)
@@ -674,6 +680,7 @@ def build():
     box(doc, 'Annullare un ordine', [
         [('Portare un ordine ad "annullato" ', False),
          ('rimborsa automaticamente il wallet del cliente', True),
+         (' (quando il portafoglio è attivo)', False),
          (' e libera le scorte impegnate. È corretto quando il prodotto non è '
           'realizzabile, ma è un movimento di denaro: concordalo con il banco, '
           'non farlo per ripulire il display.', False)],
