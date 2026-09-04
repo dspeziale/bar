@@ -191,12 +191,46 @@
                 <i class="fas fa-save mr-1"></i>Salva
               </button>
             </form>
-            <form method="POST" action="{{ url_for('admin.settings_test_telegram') }}" class="mt-2">
-              {{ csrf_field() }}
-              <button class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-paper-plane mr-1"></i>Invia messaggio di test
-              </button>
-            </form>
+            <div class="mt-2">
+              <form method="POST"
+                    action="{{ url_for('admin.settings_test_telegram') }}"
+                    class="d-inline-block mr-1">
+                {{ csrf_field() }}
+                <button class="btn btn-outline-secondary btn-sm">
+                  <i class="fas fa-paper-plane mr-1"></i>Invia una domanda di prova
+                </button>
+              </form>
+              {% if prova.codice %}
+              <form method="POST"
+                    action="{{ url_for('admin.settings_telegram_prova_esito') }}"
+                    class="d-inline-block">
+                {{ csrf_field() }}
+                <button class="btn btn-outline-primary btn-sm">
+                  <i class="fas fa-check-double mr-1"></i>Leggi la risposta
+                </button>
+              </form>
+              {% endif %}
+              <small class="form-text text-muted">
+                La prova arriva sul canale con i due bottoni dei promemoria:
+                rispondi con un tocco e poi premi <em>Leggi la risposta</em>.
+                Se la risposta torna, funziona anche la conferma del pasto.
+              </small>
+              {% if prova.risposta == 'si' or prova.risposta == 'no' %}
+              <p class="mb-0 mt-1">
+                <span class="badge badge-success">
+                  <i class="fas fa-reply mr-1"></i>Ultima risposta:
+                  {{ 'Sì' if prova.risposta == 'si' else 'No' }}
+                  {%- if prova.chi %} da {{ prova.chi }}{% endif %}
+                </span>
+              </p>
+              {% elif prova.codice %}
+              <p class="mb-0 mt-1">
+                <span class="badge badge-warning">
+                  <i class="fas fa-hourglass-half mr-1"></i>In attesa di risposta
+                </span>
+              </p>
+              {% endif %}
+            </div>
 
             <hr class="my-3">
             <p class="mb-1"><strong>Risposte ai promemoria</strong></p>

@@ -150,25 +150,24 @@ def sez_telegram(pdf, idx):
                  'Facoltativo ma consigliato: senza Telegram gli avvisi ti '
                  'arrivano per email, che e piu lenta.', idx)
 
-    h2(pdf, 'Con un clic, dall\'email', C, idx)
-    testo(pdf, 'Nell\'email di iscrizione c\'e il pulsante "Collega Telegram '
-               'con un clic": aprilo dal telefono e il collegamento e fatto, '
-               'senza copiare niente. Il bot ti risponde confermando.')
+    h2(pdf, 'Dove si fa', C, idx)
+    testo(pdf, 'Nell\'email che hai ricevuto premi "Collega Telegram", '
+               'oppure apri Profilo > Collega Telegram: e la pagina che '
+               'guida il collegamento e ti mostra il tuo codice personale.')
 
-    h2(pdf, 'A mano, se preferisci', C, idx)
+    h2(pdf, 'I tre passi', C, idx)
     passi(pdf, [
-        ('Cerca il bot su Telegram',
-         'Il nome del bot e indicato nell\'email che hai ricevuto: cercalo '
-         'nella barra di ricerca di Telegram e apri la chat.'),
-        ('Premi Avvia',
-         'Oppure scrivi /start: e la conferma che accetti di ricevere i '
-         'messaggi.'),
-        ('Scrivi /id',
-         'Il bot ti risponde con il tuo ID Telegram, un numero come '
-         '123456789.'),
-        ('Incollalo nel tuo profilo',
-         'Profilo > campo "Telegram Chat ID", poi salva. Da quel momento '
-         'ricevi gli avvisi nella chat.'),
+        ('Apri il bot',
+         'Dal telefono premi il pulsante "Apri il bot": la chat si apre col '
+         'codice gia scritto. Dal computer cerca il bot su Telegram, il suo '
+         'nome e indicato nella pagina.'),
+        ('Premi Avvia e invia il codice',
+         'Il codice e quello mostrato in pagina, sei caratteri come '
+         'QL-K7M2PX. Vale solo per te e non scade.'),
+        ('Torna in pagina e conferma',
+         'Premi "Ho inviato il codice": riconosciamo il tuo messaggio e il '
+         'collegamento e fatto. Non serve nessun numero di '
+         'identificazione.'),
     ], C)
 
     h2(pdf, 'Che cosa ti arriva', C, idx)

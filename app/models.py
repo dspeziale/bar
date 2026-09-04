@@ -96,6 +96,10 @@ class User(UserMixin, db.Model):
     birth_date       = db.Column(db.Date,        nullable=True)
     address          = db.Column(db.Text,        default='')
     telegram_chat_id = db.Column(db.String(64),  default='')
+    # Codice che il cliente invia al bot per farsi riconoscere:
+    # evita di dovergli chiedere il proprio ID Telegram.
+    telegram_link_code = db.Column(db.String(16), default='',
+                                   server_default='')
 
     # ── MFA (TOTP) ────────────────────────────────────────────────────────────
     totp_secret  = db.Column(db.String(64),  nullable=True)

@@ -579,16 +579,15 @@ def build():
           'centesimi.', False)],
     ], accent=HEX_GREEN)
 
-    step(doc, 2, 'Telegram: si collega da se, dall\'email', [
-        [('L\'email di attivazione contiene un pulsante ', False),
-         ('Collega Telegram con un clic', True),
-         (': porta al bot e salva da se il collegamento, senza che il '
-          'cliente copi nulla. In allegato trova la guida del cliente in '
-          'PDF.', False)],
-        [('Se apre l\'email dal computer, la via manuale e nel messaggio: '
-          'cercare il bot su Telegram, premere Avvia, scrivere ', False),
-         ('/id', True),
-         (' e incollare il numero ricevuto nel proprio profilo.', False)],
+    step(doc, 2, 'Telegram: si collega col proprio codice', [
+        [('Entrambe le email contengono il pulsante ', False),
+         ('Collega Telegram', True),
+         (': porta a una pagina che mostra al cliente un codice personale '
+          'e il pulsante per aprire il bot. Il cliente invia il codice in '
+          'chat, torna sulla pagina e conferma.', False)],
+        [('Non deve cercare nessun numero di identificazione: il codice '
+          'basta, e la stessa pagina si raggiunge dal ', False),
+         ('Profilo', True), (' del cliente.', False)],
         [('Da collegato riceve gli avvisi sul telefono e puo confermare o '
           'disdire il pasto direttamente dal promemoria.', False)],
     ], accent=HEX_GREEN)
@@ -675,10 +674,10 @@ def build():
     ], accent=HEX_SLATE)
 
     step(doc, 2, 'Collega Telegram, se vuole', [
-        [('Nel proprio ', False), ('Profilo', True),
-         (' il cliente puo inserire il proprio identificativo Telegram e '
-          'ricevere lì conferme d\'ordine, promemoria di ritiro e avvisi di '
-          'ricarica.', False)],
+        [('Dal proprio ', False), ('Profilo', True),
+         (' il cliente apre Collega Telegram, invia al bot il codice che '
+          'la pagina gli mostra e riceve lì conferme d\'ordine, promemoria '
+          'di ritiro e avvisi di ricarica.', False)],
         [('Non e obbligatorio: chi non collega Telegram riceve i promemoria di '
           'ritiro ', False), ('per email', True),
          ('. Telegram resta piu immediato, perche arriva come messaggio.',
@@ -701,14 +700,19 @@ def build():
               'banco.', color=GRAY)
     spacer(doc, 6)
 
-    box(doc, 'Il cliente creato dal backoffice puo non comparire in lista', [
-        [('Un cliente creato con Clienti › Nuovo cliente viene salvato senza '
-          'l\'associazione al locale, e la lista clienti ', False),
-         ('non lo mostra', True),
-         (' finche l\'applicazione non viene riavviata. L\'account esiste e '
-          'funziona, ma non e gestibile dall\'elenco.', False)],
-        [('Nel frattempo la strada affidabile e la registrazione dal QR, che '
-          'passa dall\'attivazione.', False)],
+    box(doc, 'I bottoni Telegram rispondono solo se attivate le risposte', [
+        [('Il promemoria del pasto porta i bottoni Sì e No, ma la risposta '
+          'del cliente torna all\'applicazione solo dopo aver premuto una '
+          'volta ', False),
+         ('Impostazioni › Notifiche › Attiva le risposte', True),
+         ('. Senza quel passaggio i bottoni compaiono e non fanno nulla: il '
+          'cliente crede di aver disdetto e la cucina prepara comunque.',
+          False)],
+        [('Dalla stessa pagina il pulsante ', False),
+         ('Invia una domanda di prova', True),
+         (' manda una domanda con i due bottoni e ne legge la risposta: e '
+          'il modo di accertarsi che il canale funzioni in entrambe le '
+          'direzioni.', False)],
     ], accent=HEX_ORANGE, fill=HEX_WARN, label_color=ORANGE)
 
     spacer(doc, 10)

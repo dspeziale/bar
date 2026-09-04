@@ -693,10 +693,10 @@ def sez_cliente(pdf, idx):
          'il pulsante per collegare Telegram. L\'account resta in attesa: '
          'appena il personale lo attiva arriva la seconda email.'),
         ('Collega Telegram (facoltativo)',
-         'Un tocco sul pulsante dell\'email e il collegamento e fatto. A '
-         'mano: cerca il bot del locale, premi Avvia, scrivi /id e incolla '
-         'il numero nel tuo profilo. Senza Telegram gli avvisi arrivano per '
-         'email.'),
+         'Il pulsante dell\'email porta alla pagina Collega Telegram, che '
+         'mostra un codice personale: si invia al bot e il collegamento e '
+         'fatto, senza cercare numeri di identificazione. Senza Telegram '
+         'gli avvisi arrivano per email.'),
     ], C)
 
     h2(pdf, 'Ordinare', C, idx)

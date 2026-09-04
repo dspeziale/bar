@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Collega Telegram{% endblock %}
+{% block page_title %}Collega Telegram{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Collega Telegram</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    {% if collegato %}
+    {# ── Già collegato ── #}
+    <div class="card card-outline card-success">
+      <div class="card-body text-center py-4">
+        <i class="fab fa-telegram fa-3x mb-3" style="color:#229ED9;"></i>
+        <h4 class="mb-2">Telegram è collegato</h4>
+        <p class="text-muted mb-4" style="max-width:460px;margin:auto;">
+          Ricevi qui gli avvisi degli ordini e i promemoria del pasto, con i
+          bottoni per confermare o disdire il ritiro con un tocco.
+        </p>
+        <form method="POST" action="{{ url_for('main.telegram_scollega') }}"
+              data-confirm="Scollegare Telegram? Gli avvisi torneranno per email.">
+          {{ csrf_field() }}
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-unlink mr-1"></i>Scollega
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% else %}
+    {# ── Da collegare: tre passi ── #}
+    <div class="card" style="border-top:3px solid #229ED9;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3" style="gap:.7rem;">
+          <i class="fab fa-telegram fa-2x" style="color:#229ED9;"></i>
+          <div>
+            <h4 class="mb-0">Ricevi gli avvisi sul telefono</h4>
+            <p class="text-muted mb-0" style="font-size:.92rem;">
+              Ti avvisiamo quando l'ordine è pronto e ti ricordiamo il ritiro
+              del pasto. È facoltativo: senza Telegram gli avvisi arrivano
+              per email.
+            </p>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="d-flex mb-3" style="gap:.9rem;">
+          <div class="text-center" style="flex-shrink:0;width:32px;height:32px;
+               border-radius:6px;background:#229ED9;color:#fff;font-weight:700;
+               line-height:32px;">1</div>
+          <div style="flex:1;">
+            <strong>Apri il bot su Telegram</strong>
+            <p class="text-muted mb-2" style="font-size:.9rem;">
+              Dal telefono, con un tocco: il codice viene inserito da sé.
+            </p>
+            <a href="{{ link_bot }}" target="_blank" rel="noopener"
+               class="btn btn-sm" style="background:#229ED9;color:#fff;">
+              <i class="fab fa-telegram mr-1"></i>Apri @{{ nome_bot }}
+            </a>
+          </div>
+        </div>
+
+        <div class="d-flex mb-3" style="gap:.9rem;">
+          <div class="text-center" style="flex-shrink:0;width:32px;height:32px;
+               border-radius:6px;background:#229ED9;color:#fff;font-weight:700;
+               line-height:32px;">2</div>
+          <div style="flex:1;">
+            <strong>Premi <em>Avvia</em> e invia questo codice</strong>
+            <p class="text-muted mb-2" style="font-size:.9rem;">
+              Se hai usato il pulsante qui sopra il codice è già scritto: ti
+              basta inviarlo. Altrimenti cerca <strong>@{{ nome_bot }}</strong>
+              su Telegram e scrivi:
+            </p>
+            <div class="d-flex align-items-center" style="gap:.5rem;">
+              <code id="codice-ql" style="font-size:1.35rem;font-weight:700;
+                    letter-spacing:.08em;background:#f4f6f9;color:#0f3460;
+                    padding:.4rem .8rem;border-radius:6px;">{{ codice }}</code>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                      id="btn-copia" title="Copia il codice">
+                <i class="far fa-copy mr-1"></i>Copia
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex mb-2" style="gap:.9rem;">
+          <div class="text-center" style="flex-shrink:0;width:32px;height:32px;
+               border-radius:6px;background:#229ED9;color:#fff;font-weight:700;
+               line-height:32px;">3</div>
+          <div style="flex:1;">
+            <strong>Torna qui e conferma</strong>
+            <p class="text-muted mb-2" style="font-size:.9rem;">
+              Riconosciamo il tuo codice e completiamo il collegamento.
+            </p>
+            <form method="POST"
+                  action="{{ url_for('main.telegram_collega_verifica') }}">
+              {{ csrf_field() }}
+              <button class="btn btn-success">
+                <i class="fas fa-check mr-1"></i>Ho inviato il codice
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="callout callout-info mb-0 mt-3" style="font-size:.88rem;">
+          <i class="fas fa-info-circle mr-1"></i>
+          Il codice è personale e vale solo per il tuo account. Non serve
+          conoscere nessun numero di identificazione: al resto pensiamo noi.
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var bottone = document.getElementById('btn-copia');
+  if (!bottone) { return; }
+  bottone.addEventListener('click', function () {
+    var testo = document.getElementById('codice-ql').textContent.trim();
+    var mostraEsito = function () {
+      bottone.innerHTML = '<i class="fas fa-check mr-1"></i>Copiato';
+      setTimeout(function () {
+        bottone.innerHTML = '<i class="far fa-copy mr-1"></i>Copia';
+      }, 1800);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(testo).then(mostraEsito, function () {});
+      return;
+    }
+    var area = document.createElement('textarea');
+    area.value = testo;
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); mostraEsito(); } catch (e) {}
+    document.body.removeChild(area);
+  });
+})();
+</script>
+{% endblock %}

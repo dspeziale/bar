@@ -33,8 +33,12 @@ def get_numeric_setting(key, default):
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
-def send_telegram(text):
-    """Invia un messaggio HTML al canale/gruppo Telegram configurato."""
+def send_telegram(text, reply_markup=None):
+    """Invia un messaggio HTML al canale/gruppo Telegram configurato.
+
+    Con `reply_markup` il messaggio porta i bottoni inline: e' cosi' che la
+    domanda di prova chiede una risposta a chi la riceve.
+    """
     token   = get_setting('telegram_bot_token')
     chat_id = get_setting('telegram_chat_id')
     if not token or not chat_id:
@@ -43,12 +47,17 @@ def send_telegram(text):
     payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
     try:
         if _HAS_REQUESTS:
+            if reply_markup:
+                payload['reply_markup'] = reply_markup
             r = _requests.post(url, json=payload, timeout=8)
             data = r.json()
             if r.ok and data.get('ok'):
                 return True, 'Messaggio inviato'
             return False, data.get('description', 'Errore Telegram')
         else:
+            if reply_markup:
+                # urlencode non sa annidare: i bottoni vanno come JSON.
+                payload['reply_markup'] = _json.dumps(reply_markup)
             body = _urllib_parse.urlencode(payload).encode()
             req  = _urllib_req.Request(url, data=body)
             resp = _urllib_req.urlopen(req, timeout=8)
@@ -113,6 +122,83 @@ def link_collegamento_bot(user):
     return 'https://t.me/%s?start=%s' % (nome_bot(), token_collegamento(user))
 
 
+# ── Collegamento del bot senza webhook ───────────────────────────────────────
+#
+# Chiedere al cliente il proprio "ID Telegram" non funziona: il bot puo'
+# rispondere solo se il webhook e' registrato, cosa che richiede HTTPS e
+# un'attivazione manuale. Qui si fa il contrario: il cliente invia al bot un
+# codice personale e l'applicazione lo cerca fra i messaggi ricevuti dal bot
+# (getUpdates), ricavando da se' il chat id. Funziona sempre, anche senza
+# webhook.
+
+CARATTERI_CODICE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'   # senza I, O, 0, 1
+
+
+def codice_collegamento(user, rigenera=False):
+    """Il codice personale da inviare al bot. Lo crea se non c'e'."""
+    import secrets as _secrets
+    from app import db as _db
+
+    attuale = (getattr(user, 'telegram_link_code', '') or '').strip()
+    if attuale and not rigenera:
+        return attuale
+    codice = 'QL-' + ''.join(_secrets.choice(CARATTERI_CODICE)
+                             for _ in range(6))
+    user.telegram_link_code = codice
+    _db.session.commit()
+    return codice
+
+
+def link_avvio_bot(user):
+    """Deep link che apre la chat col codice gia' scritto."""
+    return 'https://t.me/%s?start=%s' % (nome_bot(),
+                                         codice_collegamento(user))
+
+
+def collega_telegram_da_messaggi(user):
+    """Cerca il codice dell'utente fra i messaggi arrivati al bot.
+
+    Ritorna (ok, messaggio). Non richiede il webhook: usa getUpdates, che
+    Telegram consente solo quando il webhook NON e' attivo — se lo e', il
+    collegamento e' gia' avvenuto da se' e lo si verifica sul database.
+    """
+    from app import db as _db
+
+    codice = codice_collegamento(user)
+    ok, risultato = telegram_api('getUpdates', {'limit': 100, 'timeout': 0})
+
+    if not ok:
+        testo = str(risultato).lower()
+        if 'webhook is active' in testo or 'conflict' in testo:
+            if (getattr(user, 'telegram_chat_id', '') or '').strip():
+                return True, 'Telegram e collegato.'
+            return False, ('Apri il bot e premi Avvia: il collegamento '
+                           'avviene da se, poi ricarica questa pagina.')
+        return False, 'Telegram non risponde: %s' % risultato
+
+    for aggiornamento in reversed(risultato or []):
+        messaggio = (aggiornamento.get('message')
+                     or aggiornamento.get('edited_message') or {})
+        testo = (messaggio.get('text') or '').upper()
+        if codice.upper() not in testo:
+            continue
+        chat = (messaggio.get('chat') or {}).get('id')
+        if not chat:
+            continue
+        user.telegram_chat_id = str(chat)
+        _db.session.commit()
+        telegram_api('sendMessage', {
+            'chat_id': chat,
+            'text': ('Telegram collegato, %s! Da adesso ricevi qui gli '
+                     'avvisi degli ordini e i promemoria del pasto.'
+                     % user.display_name),
+        })
+        return True, 'Telegram collegato.'
+
+    return False, ('Non ho ancora ricevuto il tuo codice. Apri il bot, '
+                   'premi Avvia e invia il codice, poi riprova.')
+
+
 def telegram_api(metodo, payload):
     """Chiama un metodo dell'API del bot. Ritorna (ok, dati_o_errore).
 
@@ -152,6 +238,107 @@ def tastiera_conferma_pasto(booking_id):
         {'text': '❌ No, non vengo',
          'callback_data': 'pasto:%d:no' % booking_id},
     ]]}
+
+
+# ── Domanda di prova: si verifica anche la direzione di ritorno ─────────────
+#
+# Il vecchio "messaggio di test" diceva soltanto che l'invio funziona. Ma il
+# punto delicato e' la risposta: i bottoni dei promemoria arrivano sempre,
+# mentre l'esito torna solo se il canale e' configurato per riportarlo. Qui
+# la prova pone una domanda e poi si va a leggere che cosa e' stato
+# risposto: con le risposte attive l'aggiornamento arriva sul webhook, senza
+# di esse lo si recupera con getUpdates.
+
+def tastiera_prova(codice):
+    """I due bottoni della domanda di prova."""
+    return {'inline_keyboard': [[
+        {'text': '\U0001F44D Sì, l\u2019ho ricevuto',
+         'callback_data': 'prova:%s:si' % codice},
+        {'text': '\U0001F44E No', 'callback_data': 'prova:%s:no' % codice},
+    ]]}
+
+
+def _scrivi_impostazione(chiave, valore, etichetta=''):
+    from app import db
+    from app.models import AppSetting
+    riga = AppSetting.query.filter_by(key=chiave).first()
+    if riga:
+        riga.value = valore
+    else:
+        db.session.add(AppSetting(key=chiave, value=valore, label=etichetta))
+    db.session.commit()
+
+
+def invia_domanda_prova():
+    """Manda al canale dello staff una domanda con i due bottoni."""
+    import secrets as _secrets
+    codice = _secrets.token_hex(4)
+    testo = ('\U0001F514 <b>Prova QuickLunch</b>\n'
+             'Questo messaggio porta gli stessi bottoni dei promemoria del '
+             'pasto.\n\n<b>Domanda: lo hai ricevuto?</b>\n'
+             'Rispondi con un tocco, poi in QuickLunch premi '
+             '<i>Leggi la risposta</i>.')
+    ok, msg = send_telegram(testo, reply_markup=tastiera_prova(codice))
+    if not ok:
+        return False, msg
+    _scrivi_impostazione('telegram_prova_codice', codice,
+                         'Domanda di prova Telegram in corso')
+    _scrivi_impostazione('telegram_prova_risposta', '',
+                         'Risposta alla domanda di prova')
+    _scrivi_impostazione('telegram_prova_chi', '',
+                         'Chi ha risposto alla domanda di prova')
+    return True, ('Domanda inviata su Telegram. Rispondi col bottone, poi '
+                  'premi "Leggi la risposta".')
+
+
+def registra_risposta_prova(codice, valore, chi=''):
+    """Annota la risposta arrivata. Ritorna True se era la prova in corso."""
+    if valore not in ('si', 'no'):
+        return False
+    atteso = get_setting('telegram_prova_codice')
+    if not atteso or codice != atteso:
+        return False
+    _scrivi_impostazione('telegram_prova_risposta', valore)
+    _scrivi_impostazione('telegram_prova_chi', (chi or '')[:60])
+    return True
+
+
+def leggi_risposta_prova():
+    """Che cosa e' stato risposto alla domanda di prova.
+
+    Ritorna (stato, dettaglio) con stato fra 'assente', 'attesa', 'si', 'no'.
+    """
+    codice = get_setting('telegram_prova_codice')
+    if not codice:
+        return 'assente', 'Nessuna domanda di prova da controllare.'
+
+    risposta = get_setting('telegram_prova_risposta')
+    if risposta in ('si', 'no'):
+        return risposta, get_setting('telegram_prova_chi')
+
+    # Nessuna risposta registrata dal webhook: si guarda fra gli
+    # aggiornamenti in coda, cosi' la prova funziona anche prima di
+    # attivare le risposte.
+    ok, risultato = telegram_api('getUpdates', {'limit': 100, 'timeout': 0})
+    if not ok:
+        testo = str(risultato)
+        if 'webhook' in testo.lower() or 'conflict' in testo.lower():
+            return 'attesa', ('Le risposte passano dal webhook: se hai '
+                              'appena premuto il bottone riprova fra qualche '
+                              'secondo.')
+        return 'attesa', testo
+
+    atteso = 'prova:%s:' % codice
+    for aggiornamento in (risultato or []):
+        callback = (aggiornamento or {}).get('callback_query') or {}
+        dati = (callback.get('data') or '').strip()
+        if not dati.startswith(atteso):
+            continue
+        valore = dati.rsplit(':', 1)[-1]
+        chi = ((callback.get('from') or {}).get('first_name') or '').strip()
+        if registra_risposta_prova(codice, valore, chi):
+            return valore, chi
+    return 'attesa', 'Non e ancora arrivata nessuna risposta.'
 
 
 def send_telegram_to_user(user, text, reply_markup=None):
@@ -446,68 +633,152 @@ def send_reminder_to_user(user, text, subject='Promemoria',
     return (True, 'email') if ok else (False, 'email: %s' % msg)
 
 
-def blocco_telegram_html(user):
-    """Il riquadro "Collega Telegram" delle email al cliente.
+# ── Email al cliente: impianto comune ────────────────────────────────────────
+#
+# Stessa grafica delle guide: banda navy in testa, filetto rosso, titoli
+# navy, corpo grigio scuro. Tutto allineato a sinistra: le email centrate
+# risultano deformi appena il testo va a capo, e i client di posta ignorano
+# meta' del CSS, percio' l'allineamento e' scritto su ogni blocco.
 
-    Un pulsante che collega da se' (deep link col token firmato) e sotto la
-    via manuale, per chi apre l'email dal computer.
-    """
+NAVY_HEX = '#0f3460'
+ROSSO_HEX = '#e94560'
+TESTO_HEX = '#3b4048'
+GRIGIO_HEX = '#8b9099'
+BORDO_HEX = '#e2e6ec'
+
+
+def _guscio_email(titolo, corpo_html):
+    """La cornice comune: intestazione, corpo, pie' di pagina."""
     co_name = get_setting('company_name') or 'QuickLunch'
-    try:
-        link_bot = link_collegamento_bot(user)
-    except Exception:
-        link_bot = ''
-    bot = nome_bot()
-    return f"""
-    <div style="margin-top:22px;padding:16px 18px;background:#f5faff;
-                border:1px solid #d9ecff;border-radius:8px;">
-      <p style="margin:0 0 8px;font-size:15px;"><strong>
-        Collega Telegram e ricevi gli avvisi sul telefono
-      </strong></p>
-      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;">
-        Ti avvisiamo quando l'ordine e' pronto e ti ricordiamo il ritiro del
-        pasto: dal promemoria puoi confermare o disdire con un tocco.
-      </p>
-      <div style="margin:14px 0 10px;">
-        <a href="{link_bot}"
-           style="background:#229ED9;color:#fff;padding:11px 24px;
-                  border-radius:6px;text-decoration:none;font-weight:bold;
-                  font-size:15px;">
-          Collega Telegram con un clic &rarr;
-        </a>
+    return """
+<div style="background:#f4f6f9;padding:24px 0;margin:0;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;
+              border:1px solid %(bordo)s;border-radius:10px;overflow:hidden;
+              font-family:Arial,Helvetica,sans-serif;text-align:left;">
+
+    <div style="background:%(navy)s;padding:22px 28px;text-align:left;">
+      <div style="color:#b2c2d9;font-size:12px;letter-spacing:1.4px;
+                  text-align:left;">QUICKLUNCH</div>
+      <div style="color:#ffffff;font-size:23px;font-weight:bold;
+                  padding-top:4px;text-align:left;">%(titolo)s</div>
+    </div>
+    <div style="height:3px;background:%(rosso)s;"></div>
+
+    <div style="padding:26px 28px;color:%(testo)s;font-size:15px;
+                line-height:1.62;text-align:left;">
+%(corpo)s
+    </div>
+
+    <div style="border-top:1px solid %(bordo)s;padding:16px 28px;
+                text-align:left;">
+      <div style="color:%(grigio)s;font-size:12px;line-height:1.6;
+                  text-align:left;">
+        Messaggio automatico di %(locale)s<br>
+        Assistenza: DS Consulting &middot; dspeziale@gmail.com
+        &middot; +39 352 0150489
       </div>
-      <p style="margin:12px 0 4px;font-size:13px;color:#555;">
-        <strong>Se il pulsante non funziona</strong> (per esempio apri questa
-        email dal computer), fai così dal telefono:
-      </p>
-      <ol style="padding-left:20px;margin:6px 0;font-size:13px;color:#555;
-                 line-height:1.7;">
-        <li>Apri Telegram e cerca <strong>@{bot}</strong>.</li>
-        <li>Apri la chat e premi <strong>Avvia</strong> (o scrivi
-            <code>/start</code>).</li>
-        <li>Scrivi <code>/id</code>: il bot ti risponde con il tuo
-            <strong>ID Telegram</strong>, un numero come 123456789.</li>
-        <li>Copia quel numero nel tuo profilo su {co_name}, nel campo
-            <em>Telegram Chat ID</em>, e salva.</li>
-      </ol>
-      <p style="margin:8px 0 0;font-size:12px;color:#888;">
-        Il collegamento e' facoltativo: senza Telegram continuerai a
-        ricevere gli avvisi per email.
-      </p>
-    </div>"""
+    </div>
+
+  </div>
+</div>""" % {'titolo': titolo, 'corpo': corpo_html, 'locale': co_name,
+             'navy': NAVY_HEX, 'rosso': ROSSO_HEX, 'testo': TESTO_HEX,
+             'grigio': GRIGIO_HEX, 'bordo': BORDO_HEX}
+
+
+def _titolo_sezione(testo):
+    return ("""
+      <div style="color:%s;font-size:17px;font-weight:bold;margin:26px 0 6px;
+                  text-align:left;">%s</div>
+      <div style="height:2px;width:44px;background:%s;margin-bottom:12px;">
+      </div>""" % (NAVY_HEX, testo, ROSSO_HEX))
+
+
+def _passi_html(passi):
+    """Passi numerati: tabella, perche' gli elenchi <ol> nei client di posta
+    rientrano in modo imprevedibile."""
+    righe = []
+    for numero, (titolo, dettaglio) in enumerate(passi, 1):
+        righe.append("""
+        <tr>
+          <td style="width:26px;vertical-align:top;padding:0 10px 12px 0;
+                     text-align:left;">
+            <div style="width:24px;height:24px;border-radius:5px;
+                        background:%s;color:#ffffff;font-size:13px;
+                        font-weight:bold;text-align:center;
+                        line-height:24px;">%d</div>
+          </td>
+          <td style="vertical-align:top;padding:0 0 12px 0;text-align:left;
+                     font-size:15px;line-height:1.55;">
+            <strong style="color:#1a1a2e;">%s</strong><br>%s
+          </td>
+        </tr>""" % (NAVY_HEX, numero, titolo, dettaglio))
+    return ("""
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+             style="width:100%%;text-align:left;">%s
+      </table>""" % ''.join(righe))
+
+
+def _bottone(testo, indirizzo, colore=None):
+    return """
+      <div style="margin:18px 0;text-align:left;">
+        <a href="%s" style="background:%s;color:#ffffff;padding:12px 26px;
+           border-radius:6px;text-decoration:none;font-weight:bold;
+           font-size:15px;display:inline-block;">%s</a>
+      </div>""" % (indirizzo, colore or ROSSO_HEX, testo)
+
+
+def _riquadro(titolo, contenuto, colore=None):
+    colore = colore or '#229ED9'
+    return """
+      <div style="margin:22px 0;border:1px solid %s;border-left:4px solid %s;
+                  background:#f7fbff;border-radius:6px;padding:16px 18px;
+                  text-align:left;">
+        <div style="color:%s;font-weight:bold;font-size:15px;
+                    margin-bottom:8px;text-align:left;">%s</div>
+        <div style="font-size:14px;line-height:1.6;text-align:left;">%s</div>
+      </div>""" % (BORDO_HEX, colore, NAVY_HEX, titolo, contenuto)
+
+
+def indirizzo_pagina_collegamento():
+    """Indirizzo assoluto della pagina che guida il collegamento del bot.
+
+    Dentro una richiesta lo ricava url_for; fuori (invii da riga di comando)
+    si usa l'indirizzo pubblico salvato in Impostazioni, se c'e'.
+    """
+    from flask import url_for
+    try:
+        return url_for('main.telegram_collega', _external=True)
+    except Exception:
+        base = (get_setting('public_base_url') or '').strip().rstrip('/')
+        return (base + '/telegram/collega') if base else ''
+
+
+def blocco_telegram_html(user):
+    """Come collegare il bot: si punta alla pagina dell'app, che guida il
+    cliente col suo codice. Chiedergli il proprio "ID Telegram" non
+    funzionava: il bot puo' rispondere solo col webhook attivo."""
+    pagina = indirizzo_pagina_collegamento()
+    bot = nome_bot()
+    contenuto = ("""Ti avvisiamo quando l'ordine e' pronto e ti ricordiamo il
+        ritiro del pasto: dal promemoria puoi confermare o disdire con un
+        tocco.%s
+        <div style="font-size:13px;color:%s;line-height:1.6;text-align:left;">
+          La pagina ti mostra un <strong>codice personale</strong> e il
+          pulsante per aprire il bot <strong>@%s</strong>: invii il codice
+          in chat e il collegamento e' fatto. Non devi cercare nessun
+          numero di identificazione.
+        </div>""" % (_bottone('Collega Telegram &rarr;', pagina, '#229ED9')
+                     if pagina else '', GRIGIO_HEX, bot))
+    return _riquadro('Vuoi gli avvisi sul telefono?', contenuto)
 
 
 def blocco_telegram_testo(user):
     """La stessa cosa per la versione testuale dell'email."""
-    try:
-        link_bot = link_collegamento_bot(user)
-    except Exception:
-        link_bot = ''
-    bot = nome_bot()
-    return (f"Per ricevere gli avvisi su Telegram collega il bot @{bot}: "
-            f"apri {link_bot} oppure cerca @{bot} su Telegram, premi Avvia e "
-            f"scrivi /id per conoscere il tuo ID Telegram da incollare nel "
-            f"tuo profilo.")
+    pagina = indirizzo_pagina_collegamento()
+    return ('Per ricevere gli avvisi su Telegram apri %s: trovi un codice da '
+            'inviare al bot @%s e il collegamento e fatto.'
+            % (pagina or 'la pagina Collega Telegram nel tuo profilo',
+               nome_bot()))
 
 
 def nota_guida_html():
@@ -515,11 +786,12 @@ def nota_guida_html():
     if not percorso_manuale_benvenuto():
         return ''
     return """
-    <p style="margin-top:18px;font-size:14px;">
-      In allegato trovi la <strong>guida del cliente in PDF</strong>:
-      come ordinare, comporre il tuo panino, pagare al banco col QR,
-      prenotare il pasto aziendale e gestire le notifiche.
-    </p>"""
+      <div style="margin-top:22px;font-size:14px;line-height:1.6;
+                  color:%s;text-align:left;">
+        In allegato trovi la <strong>guida del cliente in PDF</strong>: come
+        ordinare, comporre il tuo panino, pagare al banco col QR, prenotare
+        il pasto aziendale e gestire le notifiche.
+      </div>""" % TESTO_HEX
 
 
 def avvisa_staff_email_non_inviata(user, motivo, quale='benvenuto'):
@@ -554,32 +826,36 @@ def send_registration_received_email(user):
 
     co_name = get_setting('company_name') or 'QuickLunch'
     nome = (getattr(user, 'first_name', '') or '').strip() or user.username
-    subject = f'[{co_name}] Registrazione ricevuta'
+    subject = '[%s] Registrazione ricevuta' % co_name
     allegato = percorso_manuale_benvenuto()
 
-    html = f"""
-<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
-  <div style="background:#e94560;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">
-    <h2 style="margin:0;font-size:20px;">Registrazione ricevuta</h2>
-  </div>
-  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
-    <p>Ciao <strong>{nome}</strong>,</p>
-    <p>abbiamo ricevuto la tua registrazione su <strong>{co_name}</strong>.
-       Il tuo account e' <strong>in attesa di approvazione</strong>: appena
-       il personale lo attiva ricevi un'altra email e puoi iniziare a
-       ordinare.</p>
-    <p style="font-size:14px;">Nel frattempo puoi già fare due cose:
-       leggere la guida allegata e collegare Telegram.</p>
-    {nota_guida_html()}{blocco_telegram_html(user)}
-    <p style="margin-top:24px;color:#aaa;font-size:11px;">
-      Messaggio automatico generato da {co_name}
-    </p>
-  </div>
-</div>"""
+    corpo = ("""
+      <div style="text-align:left;">Ciao <strong>%(nome)s</strong>,</div>
+      <div style="margin-top:10px;text-align:left;">
+        abbiamo ricevuto la tua registrazione su <strong>%(locale)s</strong>.
+        Il tuo account e' <strong>in attesa di approvazione</strong>: appena
+        il personale lo attiva ti arriva un'altra email e puoi iniziare a
+        ordinare.
+      </div>
+      %(titolo)s
+      %(passi)s
+      %(guida)s%(telegram)s""" % {
+        'nome': nome, 'locale': co_name,
+        'titolo': _titolo_sezione('Nel frattempo'),
+        'passi': _passi_html([
+            ('Leggi la guida allegata',
+             'Cinque minuti, e sai come ordinare, comporre il tuo piatto e '
+             'ritirare.'),
+            ('Collega Telegram, se vuoi',
+             'Ricevi gli avvisi sul telefono invece che per email.'),
+        ]),
+        'guida': nota_guida_html(),
+        'telegram': blocco_telegram_html(user)})
 
-    text = (f"Ciao {nome}, abbiamo ricevuto la tua registrazione su "
-            f"{co_name}. L'account e' in attesa di approvazione: ti avvisiamo "
-            f"appena e' attivo. "
+    html = _guscio_email('Registrazione ricevuta', corpo)
+    text = ('Ciao %s, abbiamo ricevuto la tua registrazione su %s. '
+            "L'account e' in attesa di approvazione: ti avvisiamo appena e' "
+            'attivo. ' % (nome, co_name)
             + ('In allegato la guida del cliente in PDF. '
                if allegato else '')
             + blocco_telegram_testo(user))
@@ -593,69 +869,56 @@ def send_registration_received_email(user):
 def send_account_activated_email(user, login_url=''):
     """Avvisa il cliente per email che il suo account e' stato attivato.
 
-    L'avviso Telegram richiede che l'utente abbia collegato il proprio chat id,
-    cosa che un cliente appena registrato non ha ancora fatto: l'email e' quindi
-    l'unico canale che lo raggiunge davvero.
+    L'avviso Telegram richiede che l'utente abbia collegato il proprio chat
+    id, cosa che un cliente appena registrato non ha ancora fatto: l'email
+    e' quindi l'unico canale che lo raggiunge davvero.
     """
     if not getattr(user, 'email', ''):
         return False, 'Utente senza email'
 
     co_name = get_setting('company_name') or 'QuickLunch'
-    nome    = (getattr(user, 'first_name', '') or '').strip() or user.username
-    subject = f'[{co_name}] Il tuo account e\' attivo'
+    nome = (getattr(user, 'first_name', '') or '').strip() or user.username
+    subject = "[%s] Il tuo account e' attivo" % co_name
 
-    # Il passo della ricarica ha senso solo col portafoglio prepagato attivo.
+    # Il passo della ricarica ha senso solo col portafoglio prepagato.
     try:
         from app import wallet_enabled as _wallet_attivo
         con_wallet = _wallet_attivo()
     except Exception:
         con_wallet = True
-    passo_credito = (
-        "<li>Ricarica il credito in cassa: il portafoglio e' prepagato e "
-        "serve per ordinare.</li>" if con_wallet else
-        '<li>Ordina e paga alla cassa al momento del ritiro.</li>')
 
-    bot = nome_bot()
-    blocco_telegram = blocco_telegram_html(user)
+    passi = [('Accedi', 'Con la stessa email con cui ti sei registrato.')]
+    if con_wallet:
+        passi.append(('Ricarica il credito in cassa',
+                      "Il portafoglio e' prepagato: il credito serve per "
+                      'ordinare, e al ritiro non paghi nulla.'))
+    passi.append(('Scegli dal menu',
+                  "Indica l'orario di ritiro e conferma l'ordine."
+                  + ('' if con_wallet else
+                     ' Pagherai alla cassa quando lo ritiri.')))
+
     allegato = percorso_manuale_benvenuto()
-    nota_allegato = nota_guida_html()
+    corpo = ("""
+      <div style="text-align:left;">Ciao <strong>%(nome)s</strong>,</div>
+      <div style="margin-top:10px;text-align:left;">
+        il tuo account su <strong>%(locale)s</strong> e' attivo: da adesso
+        puoi accedere, consultare il menu e ordinare.
+      </div>
+      %(titolo)s
+      %(passi)s%(bottone)s%(guida)s%(telegram)s""" % {
+        'nome': nome, 'locale': co_name,
+        'titolo': _titolo_sezione('Come iniziare'),
+        'passi': _passi_html(passi),
+        'bottone': (_bottone('Accedi ora &rarr;', login_url)
+                    if login_url else ''),
+        'guida': nota_guida_html(),
+        'telegram': blocco_telegram_html(user)})
 
-    cta = ''
-    if login_url:
-        cta = f"""
-    <div style="margin:26px 0 6px;">
-      <a href="{login_url}"
-         style="background:#e94560;color:#fff;padding:12px 28px;border-radius:6px;
-                text-decoration:none;font-weight:bold;font-size:16px;">
-        Accedi ora &rarr;
-      </a>
-    </div>"""
-
-    html = f"""
-<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
-  <div style="background:#e94560;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">
-    <h2 style="margin:0;font-size:20px;">Account attivato</h2>
-  </div>
-  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
-    <p>Ciao <strong>{nome}</strong>,</p>
-    <p>il tuo account su <strong>{co_name}</strong> e' stato attivato: da adesso puoi
-       accedere, consultare il menu e ordinare.</p>
-    <p style="margin-top:16px;"><strong>Come iniziare</strong></p>
-    <ol style="padding-left:20px;margin:8px 0;font-size:14px;">
-      <li>Accedi con l'email con cui ti sei registrato.</li>
-      {passo_credito}
-      <li>Scegli dal menu, indica l'orario di ritiro e conferma.</li>
-    </ol>{cta}{blocco_telegram}{nota_allegato}
-    <p style="margin-top:24px;color:#aaa;font-size:11px;">
-      Messaggio automatico generato da {co_name}
-    </p>
-  </div>
-</div>"""
-
-    text = (f"Ciao {nome}, il tuo account su {co_name} e' stato attivato: "
-            f"puoi accedere e ordinare. "
-            + ("Ricorda di ricaricare il credito in cassa. "
-               if con_wallet else "Pagherai alla cassa al ritiro. ")
+    html = _guscio_email('Account attivato', corpo)
+    text = ('Ciao %s, il tuo account su %s e\' stato attivato: puoi accedere '
+            'e ordinare. ' % (nome, co_name)
+            + ('Ricorda di ricaricare il credito in cassa. '
+               if con_wallet else 'Pagherai alla cassa al ritiro. ')
             + blocco_telegram_testo(user))
     ok, msg = send_email(user.email, subject, html, text,
                          allegati=[allegato] if allegato else None)

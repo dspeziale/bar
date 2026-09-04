@@ -1519,6 +1519,48 @@ def push_unsubscribe():
 
 
 
+# ── Collegamento del bot Telegram, guidato ───────────────────────────────────
+
+@bp.route('/telegram/collega')
+@login_required
+def telegram_collega():
+    """Pagina che accompagna il cliente nel collegamento del bot.
+
+    Non gli si chiede il proprio ID Telegram (che non ha modo di conoscere
+    se il webhook non e' attivo): gli si da' un codice da inviare al bot, e
+    l'applicazione lo riconosce fra i messaggi ricevuti.
+    """
+    from app.notifications import (codice_collegamento, link_avvio_bot,
+                                   nome_bot)
+    return render_template(
+        'main/telegram_collega.html',
+        codice=codice_collegamento(current_user),
+        link_bot=link_avvio_bot(current_user),
+        nome_bot=nome_bot(),
+        collegato=bool((current_user.telegram_chat_id or '').strip()))
+
+
+@bp.route('/telegram/collega/verifica', methods=['POST'])
+@login_required
+def telegram_collega_verifica():
+    """Cerca il codice fra i messaggi del bot e salva il collegamento."""
+    from app.notifications import collega_telegram_da_messaggi
+
+    ok, messaggio = collega_telegram_da_messaggi(current_user)
+    flash(messaggio, 'success' if ok else 'warning')
+    return redirect(url_for('main.telegram_collega'))
+
+
+@bp.route('/telegram/scollega', methods=['POST'])
+@login_required
+def telegram_scollega():
+    """Stacca il bot: gli avvisi tornano per email."""
+    current_user.telegram_chat_id = ''
+    db.session.commit()
+    flash('Telegram scollegato: gli avvisi tornano per email.', 'info')
+    return redirect(url_for('main.telegram_collega'))
+
+
 # ── Risposte ai bottoni Telegram ──────────────────────────────────────────────
 #
 # Il promemoria del pasto aziendale porta due bottoni (Si' / No). Quando
@@ -1582,7 +1624,13 @@ def _gestisci_messaggio_bot(messaggio):
     comando = pezzi[0].split('@')[0].lower()
 
     if comando == '/start' and len(pezzi) > 1:
-        utente = utente_da_token(pezzi[1])
+        from app.models import User as _U
+        chiave = pezzi[1].strip()
+        # Prima il codice breve della pagina di collegamento, poi il token
+        # firmato dell'email: sono due vie per la stessa cosa.
+        utente = _U.query.filter_by(telegram_link_code=chiave.upper()).first()
+        if not utente:
+            utente = utente_da_token(chiave)
         if utente:
             utente.telegram_chat_id = str(chat)
             db.session.commit()
@@ -1632,7 +1680,17 @@ def telegram_webhook(segreto):
 
     pezzi = dati.split(':')
     esito = 'Comando non riconosciuto.'
-    if len(pezzi) == 3 and pezzi[0] == 'pasto' and pezzi[2] in ('si', 'no'):
+    if len(pezzi) == 3 and pezzi[0] == 'prova' and pezzi[2] in ('si', 'no'):
+        # La domanda di prova delle Impostazioni: si annota la risposta,
+        # che il gestore rilegge dalla pagina.
+        from app.notifications import registra_risposta_prova
+        chi = ((callback.get('from') or {}).get('first_name') or '').strip()
+        if registra_risposta_prova(pezzi[1], pezzi[2], chi):
+            esito = ('Risposta registrata: il canale funziona in entrambe '
+                     'le direzioni.')
+        else:
+            esito = 'Questa prova non e piu in corso.'
+    elif len(pezzi) == 3 and pezzi[0] == 'pasto' and pezzi[2] in ('si', 'no'):
         try:
             bid = int(pezzi[1])
         except ValueError:

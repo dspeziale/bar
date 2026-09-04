@@ -272,14 +272,49 @@ Il promemoria del pasto aziendale porta due bottoni inline (Sì / No) costruiti 
   altrimenti chiunque potrebbe annullare il pasto di un altro;
 - su "No" mette la prenotazione a `cancelled` — è il modo in cui il cliente **blocca la
   produzione** — e avvisa il canale dello staff, perché la cucina sta per prepararlo;
-- gestisce anche i messaggi in chat: `/start <token>` collega il `telegram_chat_id`
-  (il token è l'id utente firmato con `SECRET_KEY`, sta nei 64 caratteri del deep link e
-  arriva dall'email di benvenuto), `/id` risponde con il chat id da incollare nel profilo.
+- gestisce anche i messaggi in chat: `/start <chiave>` collega il `telegram_chat_id`,
+  accettando **prima** il codice breve (`User.telegram_link_code`, formato `QL-XXXXXX`) e
+  poi il token firmato con `SECRET_KEY` dei vecchi deep link; `/id` risponde col chat id,
+  ma non è più il percorso consigliato (vedi sotto).
 
 Il webhook va registrato una volta da **Impostazioni → Notifiche → Attiva le risposte**
 (`setWebhook`): senza quel passaggio i bottoni compaiono ma la risposta non arriva. Telegram
 pretende HTTPS, quindi l'attivazione funziona solo in produzione. Per i metodi diversi da
 `sendMessage` c'è `telegram_api(metodo, payload)`.
+
+#### Il cliente si collega col proprio codice, non con l'ID
+
+Chiedere al cliente il proprio "ID Telegram" **non funzionava**: il bot risponde a `/id`
+solo se il webhook è registrato, quindi le istruzioni via email cadevano nel vuoto. Il
+percorso attuale è `/telegram/collega` (`main.telegram_collega`, più
+`telegram_collega_verifica` e `telegram_scollega`), raggiungibile dal profilo e dal pulsante
+delle due email:
+
+1. la pagina mostra il codice personale — `codice_collegamento(user)`, alfabeto
+   `CARATTERI_CODICE` senza `I`, `O`, `0` e `1` perché va letto e ribattuto — e il deep link
+   `link_avvio_bot(user)` che lo precompila;
+2. il cliente lo invia al bot;
+3. `collega_telegram_da_messaggi(user)` lo cerca in `getUpdates` e salva il `chat_id`.
+
+`getUpdates` e il webhook sono **mutuamente esclusivi**: col webhook attivo Telegram
+risponde `409 Conflict`, e la funzione lo traduce in "premi Avvia e riprova", perché in quel
+caso il collegamento arriva da sé sul webhook. Chi tocca queste funzioni tenga presente che
+devono funzionare in **entrambe** le configurazioni.
+
+#### La prova del canale va in due direzioni
+
+`invia_domanda_prova()` (Impostazioni → Notifiche → *Invia una domanda di prova*) manda sul
+canale una **domanda** coi due bottoni, non un semplice "connessione funzionante": è
+`leggi_risposta_prova()` a dire se la risposta è tornata, leggendola dall'impostazione se
+l'ha registrata il webhook (`registra_risposta_prova()`, ramo `prova:` del callback) o da
+`getUpdates` se le risposte non sono attive. È la diagnosi del guasto più insidioso: i
+bottoni del promemoria si vedono sempre, ma senza `setWebhook` il "No" del cliente non
+annulla nulla e la cucina prepara comunque.
+
+Le chiavi `telegram_prova_codice`, `telegram_prova_risposta` e `telegram_prova_chi` sono di
+servizio e stanno **fuori** da `all_keys` di `admin.settings`: quella lista la riscrive
+`settings_save`, che le azzererebbe a ogni salvataggio. Lo stato arriva al template come
+variabile `prova`.
 
 ### Email ai clienti: due momenti, nessun silenzio
 

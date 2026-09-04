@@ -2020,6 +2020,12 @@ def settings():
     ]
     cfg = {k: get_setting(k) for k in all_keys}
 
+    # Stato della domanda di prova Telegram: e\' di servizio, quindi resta
+    # fuori da all_keys, che il salvataggio riscrive per intero.
+    prova = {'codice': get_setting('telegram_prova_codice'),
+             'risposta': get_setting('telegram_prova_risposta'),
+             'chi': get_setting('telegram_prova_chi')}
+
     # Sezione "Dati": elenco dei carichi generati, solo per il super admin
     carichi = []
     if current_user.is_admin:
@@ -2027,7 +2033,8 @@ def settings():
                    .order_by(CaricoMensile.creato_il.desc()).all())
     oggi = date.today()
     return render_template('admin/settings.html', cfg=cfg, carichi=carichi,
-                           mese_corrente='%04d-%02d' % (oggi.year, oggi.month))
+                           mese_corrente='%04d-%02d' % (oggi.year, oggi.month),
+                           prova=prova)
 
 
 @bp.route('/settings/save', methods=['POST'])
@@ -2057,8 +2064,38 @@ def settings_save():
 @bp.route('/settings/test-telegram', methods=['POST'])
 @require_permission('manage_settings')
 def settings_test_telegram():
-    ok, msg = send_telegram('✅ <b>Test QuickLunch</b>\nConnessione Telegram funzionante!')
-    flash(f'Telegram: {msg}', 'success' if ok else 'danger')
+    """Manda una domanda di prova sul canale Telegram.
+
+    Non un semplice "funziona": la domanda porta i due bottoni dei
+    promemoria, cosi' premendone uno si verifica anche che la risposta torni
+    indietro. L'esito si rilegge con settings_telegram_prova_esito.
+    """
+    from app.notifications import invia_domanda_prova
+
+    ok, msg = invia_domanda_prova()
+    flash(msg if ok else f'Telegram: {msg}', 'success' if ok else 'danger')
+    return redirect(url_for('admin.settings'))
+
+
+@bp.route('/settings/telegram-prova-esito', methods=['POST'])
+@require_permission('manage_settings')
+def settings_telegram_prova_esito():
+    """Legge la risposta data alla domanda di prova."""
+    from app.notifications import leggi_risposta_prova
+
+    stato, dettaglio = leggi_risposta_prova()
+    chi = (' Ha risposto %s.' % dettaglio) if dettaglio else ''
+    if stato == 'si':
+        flash('Risposta ricevuta: "Sì".%s Il canale Telegram funziona in '
+              'entrambe le direzioni: i bottoni dei promemoria '
+              'risponderanno.' % chi, 'success')
+    elif stato == 'no':
+        flash('Risposta ricevuta: "No".%s Il canale funziona in entrambe le '
+              'direzioni: la risposta è arrivata.' % chi, 'success')
+    elif stato == 'assente':
+        flash(dettaglio, 'warning')
+    else:
+        flash('Nessuna risposta per ora. %s' % dettaglio, 'warning')
     return redirect(url_for('admin.settings'))
 
 

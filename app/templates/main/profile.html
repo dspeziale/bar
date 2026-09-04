@@ -145,11 +145,25 @@
                      value="{{ current_user.birth_date.strftime('%Y-%m-%d') if current_user.birth_date else '' }}">
             </div>
             <div class="form-group col-md-6">
-              <label>Telegram Chat ID</label>
-              <input type="text" name="telegram_chat_id" class="form-control"
-                     value="{{ current_user.telegram_chat_id or '' }}"
-                     placeholder="es. 123456789">
-              <small class="text-muted">Per ricevere notifiche via Telegram</small>
+              <label>Notifiche Telegram</label>
+              {# Il numero di chat non si chiede piu' all'utente: si ricava
+                 dal codice che invia al bot, dalla pagina di collegamento. #}
+              <div>
+                {% if current_user.telegram_chat_id %}
+                <a href="{{ url_for('main.telegram_collega') }}"
+                   class="btn btn-outline-success btn-block">
+                  <i class="fab fa-telegram mr-1"></i>Telegram collegato
+                </a>
+                {% else %}
+                <a href="{{ url_for('main.telegram_collega') }}"
+                   class="btn btn-block" style="background:#229ED9;color:#fff;">
+                  <i class="fab fa-telegram mr-1"></i>Collega Telegram
+                </a>
+                {% endif %}
+              </div>
+              <small class="text-muted">
+                Avvisi di ordine pronto e promemoria del pasto sul telefono
+              </small>
             </div>
           </div>
           <div class="form-group">

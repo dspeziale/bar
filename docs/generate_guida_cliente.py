@@ -930,13 +930,14 @@ def s9_pasto_aziendale(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _collega_telegram(doc):
-    """Come collegare il bot: dal link dell'email o a mano con /id."""
+    """Come collegare il bot: pagina dedicata e codice personale."""
     body_para(doc,
-        'Come collegare Telegram: nell\'email di benvenuto trovi il '
-        'pulsante "Collega Telegram con un clic" — un tocco dal telefono e '
-        'sei collegato. Se preferisci farlo a mano: apri Telegram, cerca il '
-        'bot del locale, premi Avvia, scrivi /id e incolla il numero che ti '
-        'risponde nel campo "Telegram Chat ID" del tuo profilo.')
+        'Come collegare Telegram: nell\'email che hai ricevuto premi '
+        '"Collega Telegram", oppure apri Profilo › Collega Telegram. La '
+        'pagina ti mostra un codice personale e il pulsante per aprire il '
+        'bot del locale: premi Avvia, invia il codice in chat, torna sulla '
+        'pagina e premi "Ho inviato il codice". Non devi cercare nessun '
+        'numero di identificazione.')
     spacer(doc, 8)
 
 
@@ -1143,7 +1144,7 @@ def s13_riassunto(doc):
             ['Annullare pasto aziendale',            'Pasto Aziendale → Annulla (entro 30 min)', '9.4'],
             ['Votare un sondaggio',                  'Sondaggi (o Vota il Menu)',                 '10'],
             ['Attivare notifiche Telegram',          'Chiedi al cassiere / admin',                '11.2'],
-            ['Trovare il proprio Chat ID Telegram',  'Telegram → @userinfobot',                  '11.3'],
+            ['Collegare Telegram',                   'Profilo → Collega Telegram',               '11.3'],
         ],
         col_widths=[6.5, 6.5, 4.6])
     spacer(doc, 10)

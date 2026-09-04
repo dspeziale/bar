@@ -531,6 +531,9 @@ def _migrate_tenant_columns():
     # Token di ritiro pasto aziendale
     _ensure('corporate_meal_bookings', 'pickup_token', "VARCHAR(16) DEFAULT ''")
 
+    # Codice di collegamento del bot Telegram
+    _ensure('users', 'telegram_link_code', "VARCHAR(16) DEFAULT ''")
+
     # Risposta ai bottoni Si'/No del promemoria del pasto
     _ensure('corporate_meal_bookings', 'conferma_utente', "VARCHAR(4) DEFAULT ''")
 
@@ -1107,6 +1110,7 @@ def _seed_defaults():
         # Notifiche
         ('telegram_bot_token',     '',      'Token Bot Telegram'),
         ('telegram_bot_username', 'dslunch_bot', 'Nome utente del bot Telegram'),
+        ('public_base_url',       '',     'Indirizzo pubblico dell app, per i link nelle email inviate fuori dal web'),
         ('telegram_chat_id',       '',      'Chat ID canale Telegram'),
         ('gmail_user',             '',      'Account Gmail mittente'),
         ('gmail_app_password',     '',      'App Password Gmail'),
