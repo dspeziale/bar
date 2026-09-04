@@ -1236,7 +1236,7 @@ def slot_toggle(sid):
     slot.is_active = not slot.is_active
     db.session.commit()
     flash(f'Slot {slot.time_str} {"attivato" if slot.is_active else "disattivato"}.', 'info')
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    return redirect(url_for('admin.slots'))
 
 
 @bp.route('/slots/<int:sid>/capacity', methods=['POST'])
@@ -1248,7 +1248,7 @@ def slot_capacity(sid):
         slot.max_orders = cap
         db.session.commit()
         flash(f'Capacità slot {slot.time_str} → {cap}.', 'success')
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    return redirect(url_for('admin.slots'))
 
 
 @bp.route('/slots/new', methods=['POST'])
@@ -1258,19 +1258,19 @@ def slot_new():
     max_orders = request.form.get('max_orders', 20, type=int)
     if not time_str:
         flash('Orario obbligatorio.', 'danger')
-        return redirect(url_for('admin.tavoli', tab='slot'))
+        return redirect(url_for('admin.slots'))
     import re
     if not re.match(r'^\d{2}:\d{2}$', time_str):
         flash('Formato orario non valido (HH:MM).', 'danger')
-        return redirect(url_for('admin.tavoli', tab='slot'))
+        return redirect(url_for('admin.slots'))
     tid = _active_tenant_id()
     if TimeSlot.query.filter_by(time_str=time_str, tenant_id=tid).first():
         flash(f'Lo slot {time_str} esiste già.', 'warning')
-        return redirect(url_for('admin.tavoli', tab='slot'))
+        return redirect(url_for('admin.slots'))
     db.session.add(TimeSlot(time_str=time_str, max_orders=max(1, max_orders), tenant_id=tid))
     db.session.commit()
     flash(f'Slot {time_str} creato.', 'success')
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    return redirect(url_for('admin.slots'))
 
 
 @bp.route('/slots/<int:sid>/delete', methods=['POST'])
@@ -1279,11 +1279,11 @@ def slot_delete(sid):
     slot = db.get_or_404(TimeSlot, sid)
     if slot.orders:
         flash(f'Impossibile eliminare lo slot {slot.time_str}: ha ordini associati.', 'danger')
-        return redirect(url_for('admin.tavoli', tab='slot'))
+        return redirect(url_for('admin.slots'))
     db.session.delete(slot)
     db.session.commit()
     flash(f'Slot {slot.time_str} eliminato.', 'info')
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    return redirect(url_for('admin.slots'))
 
 
 # ── Banco POS ─────────────────────────────────────────────────────────────────
@@ -4270,7 +4270,7 @@ def slot_durata(sid):
     slot.seat_duration_minutes = int(request.form.get('seat_duration_minutes', 0) or 0)
     db.session.commit()
     flash(f'Durata slot {slot.time_str} aggiornata a {slot.seat_duration_minutes} min.', 'success')
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    return redirect(url_for('admin.slots'))
 
 
 # â”€â”€ Check-in tavolo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
