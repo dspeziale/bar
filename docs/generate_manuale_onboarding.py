@@ -507,9 +507,24 @@ def build():
 
     # ══ FASE 3 · ATTIVAZIONE ══════════════════════════════════════════════
     heading(doc, 'Fase 3 — Attivare l\'account', 1, color=PURPLE, before=0)
-    body(doc, 'E il passaggio che sblocca tutto, e va fatto in fretta: il cliente '
-              'e in attesa e non riceve nessun avviso automatico.', color=GRAY)
+    body(doc, 'E il passaggio che sblocca tutto, e va fatto in fretta: il '
+              'cliente ha ricevuto la conferma di registrazione con la guida '
+              'allegata, ma finche non lo attivi non puo entrare.', color=GRAY)
     rule(doc)
+
+    box(doc, 'Le due email al cliente', [
+        [('Appena si registra', True),
+         (' — da qualunque via: email, Google, link dell\'azienda — il '
+          'cliente riceve "Registrazione ricevuta", con la ', False),
+         ('guida del cliente in PDF', True),
+         (' allegata e il pulsante per collegare Telegram.', False)],
+        [('Quando lo attivi', True),
+         (' riceve la seconda email, "Il tuo account e attivo", con i primi '
+          'passi e di nuovo la guida.', False)],
+        [('Perche partano serve ', False), ('Gmail configurata', True),
+         (' in Impostazioni › Notifiche: senza quella nessuna delle due '
+          'viene inviata, e non compare alcun errore.', False)],
+    ], accent=HEX_GREEN, fill=HEX_LIGHT, label_color=GREEN)
 
     step(doc, 1, 'Apri la lista clienti', [
         [('Clienti: i nomi in attesa sono quelli marcati come non attivi. Il '

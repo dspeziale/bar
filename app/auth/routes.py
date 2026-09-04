@@ -4,7 +4,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db, oauth
 from app.auth import bp
 from app.models import Tenant, User
-from app.notifications import get_setting, send_telegram
+from app.notifications import (get_setting, send_telegram,
+                               send_registration_received_email)
 
 
 def _tenant_predefinito():
@@ -90,6 +91,7 @@ def register():
             db.session.add(user)
             db.session.commit()
             user.apply_registration_bonus()
+            send_registration_received_email(user)
             send_telegram(
                 f'🆕 <b>Nuovo cliente in attesa</b>\n'
                 f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
@@ -174,6 +176,7 @@ def google_callback():
         db.session.add(user)
         db.session.commit()
         user.apply_registration_bonus()
+        send_registration_received_email(user)
         send_telegram(
             f'🆕 <b>Nuovo utente (Google)</b> — in attesa di attivazione\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'

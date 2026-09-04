@@ -446,39 +446,19 @@ def send_reminder_to_user(user, text, subject='Promemoria',
     return (True, 'email') if ok else (False, 'email: %s' % msg)
 
 
-def send_account_activated_email(user, login_url=''):
-    """Avvisa il cliente per email che il suo account e' stato attivato.
+def blocco_telegram_html(user):
+    """Il riquadro "Collega Telegram" delle email al cliente.
 
-    L'avviso Telegram richiede che l'utente abbia collegato il proprio chat id,
-    cosa che un cliente appena registrato non ha ancora fatto: l'email e' quindi
-    l'unico canale che lo raggiunge davvero.
+    Un pulsante che collega da se' (deep link col token firmato) e sotto la
+    via manuale, per chi apre l'email dal computer.
     """
-    if not getattr(user, 'email', ''):
-        return False, 'Utente senza email'
-
     co_name = get_setting('company_name') or 'QuickLunch'
-    nome    = (getattr(user, 'first_name', '') or '').strip() or user.username
-    subject = f'[{co_name}] Il tuo account e\' attivo'
-
-    # Il passo della ricarica ha senso solo col portafoglio prepagato attivo.
-    try:
-        from app import wallet_enabled as _wallet_attivo
-        con_wallet = _wallet_attivo()
-    except Exception:
-        con_wallet = True
-    passo_credito = (
-        "<li>Ricarica il credito in cassa: il portafoglio e' prepagato e "
-        "serve per ordinare.</li>" if con_wallet else
-        '<li>Ordina e paga alla cassa al momento del ritiro.</li>')
-
-    # Il collegamento del bot: un link che fa tutto e, sotto, la via
-    # manuale per chi preferisce (o per chi apre l'email dal computer).
     try:
         link_bot = link_collegamento_bot(user)
     except Exception:
         link_bot = ''
     bot = nome_bot()
-    blocco_telegram = f"""
+    return f"""
     <div style="margin-top:22px;padding:16px 18px;background:#f5faff;
                 border:1px solid #d9ecff;border-radius:8px;">
       <p style="margin:0 0 8px;font-size:15px;"><strong>
@@ -516,13 +496,105 @@ def send_account_activated_email(user, login_url=''):
       </p>
     </div>"""
 
-    allegato = percorso_manuale_benvenuto()
-    nota_allegato = """
+
+def blocco_telegram_testo(user):
+    """La stessa cosa per la versione testuale dell'email."""
+    try:
+        link_bot = link_collegamento_bot(user)
+    except Exception:
+        link_bot = ''
+    bot = nome_bot()
+    return (f"Per ricevere gli avvisi su Telegram collega il bot @{bot}: "
+            f"apri {link_bot} oppure cerca @{bot} su Telegram, premi Avvia e "
+            f"scrivi /id per conoscere il tuo ID Telegram da incollare nel "
+            f"tuo profilo.")
+
+
+def nota_guida_html():
+    """Riga che nomina l'allegato, solo se l'allegato c'e' davvero."""
+    if not percorso_manuale_benvenuto():
+        return ''
+    return """
     <p style="margin-top:18px;font-size:14px;">
       In allegato trovi la <strong>guida del cliente in PDF</strong>:
       come ordinare, comporre il tuo panino, pagare al banco col QR,
       prenotare il pasto aziendale e gestire le notifiche.
-    </p>""" if allegato else ''
+    </p>"""
+
+
+def send_registration_received_email(user):
+    """Conferma al cliente che la registrazione e' arrivata, con la guida.
+
+    Va inviata da ogni percorso di registrazione: e' il primo riscontro che
+    il cliente riceve e l'unico prima che il titolare approvi l'account.
+    """
+    if not getattr(user, 'email', ''):
+        return False, 'Utente senza email'
+
+    co_name = get_setting('company_name') or 'QuickLunch'
+    nome = (getattr(user, 'first_name', '') or '').strip() or user.username
+    subject = f'[{co_name}] Registrazione ricevuta'
+    allegato = percorso_manuale_benvenuto()
+
+    html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
+  <div style="background:#e94560;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;">
+    <h2 style="margin:0;font-size:20px;">Registrazione ricevuta</h2>
+  </div>
+  <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;">
+    <p>Ciao <strong>{nome}</strong>,</p>
+    <p>abbiamo ricevuto la tua registrazione su <strong>{co_name}</strong>.
+       Il tuo account e' <strong>in attesa di approvazione</strong>: appena
+       il personale lo attiva ricevi un'altra email e puoi iniziare a
+       ordinare.</p>
+    <p style="font-size:14px;">Nel frattempo puoi già fare due cose:
+       leggere la guida allegata e collegare Telegram.</p>
+    {nota_guida_html()}{blocco_telegram_html(user)}
+    <p style="margin-top:24px;color:#aaa;font-size:11px;">
+      Messaggio automatico generato da {co_name}
+    </p>
+  </div>
+</div>"""
+
+    text = (f"Ciao {nome}, abbiamo ricevuto la tua registrazione su "
+            f"{co_name}. L'account e' in attesa di approvazione: ti avvisiamo "
+            f"appena e' attivo. "
+            + ('In allegato la guida del cliente in PDF. '
+               if allegato else '')
+            + blocco_telegram_testo(user))
+    return send_email(user.email, subject, html, text,
+                      allegati=[allegato] if allegato else None)
+
+
+def send_account_activated_email(user, login_url=''):
+    """Avvisa il cliente per email che il suo account e' stato attivato.
+
+    L'avviso Telegram richiede che l'utente abbia collegato il proprio chat id,
+    cosa che un cliente appena registrato non ha ancora fatto: l'email e' quindi
+    l'unico canale che lo raggiunge davvero.
+    """
+    if not getattr(user, 'email', ''):
+        return False, 'Utente senza email'
+
+    co_name = get_setting('company_name') or 'QuickLunch'
+    nome    = (getattr(user, 'first_name', '') or '').strip() or user.username
+    subject = f'[{co_name}] Il tuo account e\' attivo'
+
+    # Il passo della ricarica ha senso solo col portafoglio prepagato attivo.
+    try:
+        from app import wallet_enabled as _wallet_attivo
+        con_wallet = _wallet_attivo()
+    except Exception:
+        con_wallet = True
+    passo_credito = (
+        "<li>Ricarica il credito in cassa: il portafoglio e' prepagato e "
+        "serve per ordinare.</li>" if con_wallet else
+        '<li>Ordina e paga alla cassa al momento del ritiro.</li>')
+
+    bot = nome_bot()
+    blocco_telegram = blocco_telegram_html(user)
+    allegato = percorso_manuale_benvenuto()
+    nota_allegato = nota_guida_html()
 
     cta = ''
     if login_url:
@@ -560,10 +632,7 @@ def send_account_activated_email(user, login_url=''):
             f"puoi accedere e ordinare. "
             + ("Ricorda di ricaricare il credito in cassa. "
                if con_wallet else "Pagherai alla cassa al ritiro. ")
-            + f"Per ricevere gli avvisi su Telegram collega il bot @{bot}: "
-            f"apri {link_bot} oppure cerca @{bot} su Telegram, premi Avvia e "
-            f"scrivi /id per conoscere il tuo ID Telegram da incollare nel "
-            f"tuo profilo.")
+            + blocco_telegram_testo(user))
     return send_email(user.email, subject, html, text,
                       allegati=[allegato] if allegato else None)
 

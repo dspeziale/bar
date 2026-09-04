@@ -4,7 +4,9 @@ from flask_login import login_user, current_user
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
-from app.notifications import get_setting, send_telegram
+from app.notifications import (get_setting, send_telegram,
+                               send_registration_received_email,
+                               send_account_activated_email)
 
 
 def _get_tenant_or_404(slug):
@@ -69,6 +71,9 @@ def register(slug):
             db.session.add(user)
             db.session.commit()
             user.apply_registration_bonus()
+            # Qui l'account e' attivo da subito (segue il login): il
+            # messaggio giusto e' quello di benvenuto, con la guida allegata.
+            send_account_activated_email(user)
             send_telegram(
                 f'🆕 <b>Nuovo utente registrato</b> — {tenant.name}\n'
                 f'📧 {email}'
@@ -179,6 +184,7 @@ def google_callback():
         db.session.add(user)
         db.session.commit()
         user.apply_registration_bonus()
+        send_registration_received_email(user)
         send_telegram(
             f'🆕 <b>Nuovo utente Google</b> — {tenant.name}\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
