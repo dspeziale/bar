@@ -358,6 +358,7 @@ def clients_dt():
             'toggle_url':     url_for('admin.client_toggle',  uid=c.id),
             'edit_url':       url_for('admin.client_edit',    uid=c.id),
             'topup_url':      url_for('admin.client_topup',   uid=c.id),
+            'email_url':      url_for('admin.client_reinvia_email', uid=c.id),
             'delete_url':     url_for('admin.client_delete',  uid=c.id),
             'push_test_url':  url_for('admin.push_test',      uid=c.id),
         })
@@ -1007,6 +1008,41 @@ def client_delete(uid):
     _delete_user_cascade(uid)
     db.session.commit()
     flash(f'Cliente "{name}" eliminato.', 'info')
+    return redirect(url_for('admin.clients'))
+
+
+@bp.route('/clients/<int:uid>/reinvia-email', methods=['POST'])
+@require_permission('manage_clients')
+def client_reinvia_email(uid):
+    """Rimanda al cliente l'email con la guida, mostrando l'esito vero.
+
+    Serve in due casi concreti: il cliente dice di non aver ricevuto nulla
+    (spam, indirizzo sbagliato) oppure Gmail non era configurata quando si
+    e' registrato. Il messaggio riporta l'errore esatto, invece di lasciare
+    l'invio silenzioso come accade nei percorsi automatici.
+    """
+    u = db.get_or_404(User, uid)
+    if not u.email:
+        flash('Questo cliente non ha un indirizzo email.', 'warning')
+        return redirect(url_for('admin.clients'))
+
+    if u.is_active:
+        ok, msg = send_account_activated_email(
+            u, login_url=url_for('auth.login', _external=True))
+        quale = 'benvenuto'
+    else:
+        from app.notifications import send_registration_received_email
+        ok, msg = send_registration_received_email(u)
+        quale = 'registrazione ricevuta'
+
+    from app.notifications import percorso_manuale_benvenuto
+    con_guida = ' con la guida in allegato' if percorso_manuale_benvenuto()         else ' (guida non allegata: PDF non presente sul server)'
+    if ok:
+        flash('Email di %s inviata a %s%s.' % (quale, u.email, con_guida),
+              'success')
+    else:
+        flash('Email non inviata a %s: %s. Controlla Impostazioni, tab '
+              'Notifiche, sezione Gmail.' % (u.email, msg), 'danger')
     return redirect(url_for('admin.clients'))
 
 

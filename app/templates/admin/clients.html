@@ -361,6 +361,7 @@ var table = $('#clientsTable').DataTable({
         }
         s += '<button class="btn btn-xs btn-danger btn-delete-client" data-id="' + d.id + '" data-name="' + $('<span>').text(d.display_name).html() + '" data-url="' + d.delete_url + '" title="Elimina"><i class="fas fa-trash"></i></button>';
         s += ' <button class="btn btn-xs btn-outline-info btn-push-test" data-url="' + d.push_test_url + '" title="Invia notifica push di test"><i class="fas fa-bell"></i></button>';
+        s += ' <button class="btn btn-xs btn-outline-secondary btn-reinvia-email" data-url="' + d.email_url + '" title="Rimanda l\'email con la guida in PDF"><i class="fas fa-envelope"></i></button>';
         return s;
       }
     }
@@ -371,6 +372,14 @@ function submitForm(url) {
   var f = qlPostForm().attr('action', url);
   $('body').append(f); f.submit();
 }
+
+/* Rimanda al cliente l'email con la guida allegata */
+$(document).on('click', '.btn-reinvia-email', function() {
+  var d = table.row($(this).closest('tr')).data();
+  if (confirm('Rimandare a ' + d.email + ' l\'email con la guida in PDF?')) {
+    submitForm($(this).data('url'));
+  }
+});
 
 /* Topup */
 $(document).on('click', '.btn-topup-client', function() {

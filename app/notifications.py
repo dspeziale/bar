@@ -522,11 +522,32 @@ def nota_guida_html():
     </p>"""
 
 
+def avvisa_staff_email_non_inviata(user, motivo, quale='benvenuto'):
+    """Dice sul canale dello staff che un'email al cliente non e' partita.
+
+    Senza questo l'errore resta invisibile: chi si registra non riceve
+    niente e nel backoffice non compare nulla. Il canale Telegram, che
+    funziona anche quando Gmail non e' configurata, e' il posto giusto per
+    accorgersene subito.
+    """
+    try:
+        send_telegram(
+            '⚠️ <b>Email non inviata</b> (%s)\n'
+            '📧 %s\n'
+            '❗ %s\n'
+            'Controlla Impostazioni › Notifiche › Gmail.'
+            % (quale, getattr(user, 'email', '?'), motivo))
+    except Exception:
+        pass
+
+
 def send_registration_received_email(user):
     """Conferma al cliente che la registrazione e' arrivata, con la guida.
 
     Va inviata da ogni percorso di registrazione: e' il primo riscontro che
     il cliente riceve e l'unico prima che il titolare approvi l'account.
+    Se l'invio non riesce lo staff viene avvisato su Telegram: un errore
+    silenzioso qui significa un cliente che non sa nulla.
     """
     if not getattr(user, 'email', ''):
         return False, 'Utente senza email'
@@ -562,8 +583,11 @@ def send_registration_received_email(user):
             + ('In allegato la guida del cliente in PDF. '
                if allegato else '')
             + blocco_telegram_testo(user))
-    return send_email(user.email, subject, html, text,
-                      allegati=[allegato] if allegato else None)
+    ok, msg = send_email(user.email, subject, html, text,
+                         allegati=[allegato] if allegato else None)
+    if not ok:
+        avvisa_staff_email_non_inviata(user, msg, 'registrazione')
+    return ok, msg
 
 
 def send_account_activated_email(user, login_url=''):
@@ -633,8 +657,11 @@ def send_account_activated_email(user, login_url=''):
             + ("Ricorda di ricaricare il credito in cassa. "
                if con_wallet else "Pagherai alla cassa al ritiro. ")
             + blocco_telegram_testo(user))
-    return send_email(user.email, subject, html, text,
-                      allegati=[allegato] if allegato else None)
+    ok, msg = send_email(user.email, subject, html, text,
+                         allegati=[allegato] if allegato else None)
+    if not ok:
+        avvisa_staff_email_non_inviata(user, msg, 'attivazione')
+    return ok, msg
 
 
 def send_email_to_all_users(subject, html_body):
