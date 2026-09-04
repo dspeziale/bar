@@ -4,9 +4,9 @@
 
 Il .docx resta l'unica fonte: qui viene riletto con python-docx e ricomposto
 con fpdf2, la stessa libreria degli altri PDF dell'applicazione. Serve perche'
-l'email di benvenuto allega la guida del cliente in PDF, e l'invio avviene in
-produzione, dove non esistono Word ne' LibreOffice: il PDF va quindi prodotto
-qui e versionato.
+serve per avere in PDF i manuali che nascono come .docx, senza riscriverne il
+contenuto. I due documenti consegnati ai clienti (guida utente e guida del
+cliente) hanno invece un generatore PDF proprio, impaginato.
 
     python docs/genera_pdf_manuali.py
 
@@ -30,7 +30,10 @@ DIR_APP = os.path.join(ROOT, 'app', 'static', 'docs')
 FONT_DIR = os.path.join(ROOT, 'app', 'static', 'fonts')
 
 # I manuali da avere anche in PDF. Aggiungere qui quando ne serve un altro.
-DA_CONVERTIRE = ['guida_cliente', 'manuale_onboarding_cliente']
+# La guida del cliente NON si converte piu' dal .docx: ha un suo
+# generatore impaginato, docs/generate_guida_cliente_pdf.py. Metterla
+# qui la sovrascriverebbe con la versione spartana.
+DA_CONVERTIRE = ['manuale_onboarding_cliente']
 
 RED = (233, 69, 96)
 NAVY = (15, 52, 96)

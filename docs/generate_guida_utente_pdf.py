@@ -51,6 +51,7 @@ class Guida(FPDF):
     """Pagina con intestazione della sezione corrente e pie' di pagina."""
 
     sezione = ''
+    etichetta_testata = 'QuickLunch · Guida utente'
 
     def header(self):
         if self.page_no() <= 2:       # copertina e indice restano puliti
@@ -58,7 +59,7 @@ class Guida(FPDF):
         self.set_y(9)
         self.set_font(FONT, '', 8)
         self.set_text_color(*MGRAY)
-        self.cell(W / 2, 4, 'QuickLunch · Guida utente')
+        self.cell(W / 2, 4, self.etichetta_testata)
         self.set_font(FONT, 'B', 8)
         self.set_text_color(*NAVY)
         self.cell(W / 2, 4, self.sezione, align='R')
