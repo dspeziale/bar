@@ -598,6 +598,22 @@ def _seed_defaults():
         except Exception:
             db.session.rollback()
 
+    # Chi si e' registrato dal link di un tenant nasceva con is_client=False
+    # (il default del modello) e restava invisibile nella lista clienti del
+    # backoffice, che filtra proprio su quel campo. Si recuperano gli utenti
+    # non amministratori e senza alcun ruolo di backoffice: sono clienti.
+    # I letterali true/false valgono su SQLite e su PostgreSQL, dove il
+    # confronto con 1/0 su una colonna boolean darebbe errore di tipo.
+    try:
+        db.session.execute(text(
+            "UPDATE users SET is_client = true "
+            "WHERE (is_client = false OR is_client IS NULL) "
+            "  AND (is_admin = false OR is_admin IS NULL) "
+            "  AND id NOT IN (SELECT user_id FROM user_roles)"
+        ))
+    except Exception:
+        db.session.rollback()
+
     # ── Permissions ───────────────────────────────────────────────────────
     if not Permission.query.first():
         perms = [
@@ -683,20 +699,40 @@ def _seed_defaults():
 
     # ── Categorie prodotti ────────────────────────────────────────────────
     if not Category.query.first():
-        cats = [
-            Category(name='Panini',   icon='fa-burger',       color='warning'),
-            Category(name='Primo',    icon='fa-bowl-food',    color='danger'),
-            Category(name='Insalate', icon='fa-leaf',         color='success'),
-            Category(name='Contorni', icon='fa-carrot',       color='info'),
-            Category(name='Dolci',    icon='fa-cake-candles', color='pink'),
-            Category(name='Bevande',  icon='fa-bottle-water', color='primary'),
+        # Catalogo di partenza per un bar/mensa aziendale: si toglie quello
+        # che non si vende e si aggiunge il resto, invece di partire da zero.
+        _categorie = [
+            ('Colazione',      'fa-mug-saucer',      'warning'),
+            ('Caffetteria',    'fa-mug-hot',         'dark'),
+            ('Panini',         'fa-burger',          'warning'),
+            ('Tramezzini',     'fa-bread-slice',     'warning'),
+            ('Pizza e Focacce', 'fa-pizza-slice',    'danger'),
+            ('Primi piatti',   'fa-bowl-food',       'danger'),
+            ('Secondi piatti', 'fa-drumstick-bite',  'danger'),
+            ('Poke e Bowl',    'fa-bowl-rice',       'info'),
+            ('Insalate',       'fa-leaf',            'success'),
+            ('Contorni',       'fa-carrot',          'success'),
+            ('Frutta',         'fa-apple-whole',     'success'),
+            ('Yogurt',         'fa-jar',             'info'),
+            ('Dolci',          'fa-cake-candles',    'secondary'),
+            ('Gelati',         'fa-ice-cream',       'info'),
+            ('Snack',          'fa-cookie-bite',     'secondary'),
+            ('Bevande',        'fa-bottle-water',    'primary'),
+            ('Succhi e Bibite', 'fa-glass-water',    'primary'),
+            ('Birra e Vino',   'fa-wine-glass',      'dark'),
         ]
-        db.session.add_all(cats)
+        db.session.add_all([
+            Category(name=nome, icon=icona, color=colore,
+                     tenant_id=default_tenant.id)
+            for nome, icona, colore in _categorie
+        ])
 
     # ── Slot orari ────────────────────────────────────────────────────────
     if not TimeSlot.query.first():
         for t in Config.PICKUP_SLOTS:
-            db.session.add(TimeSlot(time_str=t, max_orders=20, is_active=True))
+            db.session.add(TimeSlot(time_str=t, max_orders=20,
+                                    is_active=True,
+                                    tenant_id=default_tenant.id))
 
     # ── Tavoli ────────────────────────────────────────────────────────────
     if not Table.query.first():
@@ -708,7 +744,8 @@ def _seed_defaults():
             (9, 2, 'Bancone'),   (10, 2, 'Bancone'),
         ]
         for num, seats, loc in tables:
-            db.session.add(Table(number=num, seats=seats, location=loc))
+            db.session.add(Table(number=num, seats=seats, location=loc,
+                                 tenant_id=default_tenant.id))
 
     # ── Categorie ingredienti builder ─────────────────────────────────────
     if not IngredientCategory.query.first():
@@ -732,6 +769,8 @@ def _seed_defaults():
             IngredientCategory(name='Topping',       builder_type='insalata', is_required=False,
                                max_choices=2,  sort_order=7, icon='fa-seedling'),
         ]
+        for _ic in ing_cats:
+            _ic.tenant_id = default_tenant.id
         db.session.add_all(ing_cats)
         db.session.flush()
 
@@ -820,6 +859,8 @@ def _seed_defaults():
             IngredientCategory(name='Extra poke',    builder_type='poke', is_required=False,
                                max_choices=3,  sort_order=5, icon='fa-plus'),
         ]
+        for _pc in poke_cats:
+            _pc.tenant_id = default_tenant.id
         db.session.add_all(poke_cats)
         db.session.flush()
 

@@ -796,6 +796,10 @@ def build():
          (', sulla data di oggi: elenco nominativo per azienda, ordinato per '
           'cognome, con le porzioni per persona. E la lista di produzione e la '
           'base per etichettare le porzioni.', False)],
+        [('I nomi sono stampati come ', False), ('"Mario R."', True),
+         (' — nome per esteso e cognome puntato: la lista resta appendibile '
+          'in cucina senza esporre l\'anagrafica dei clienti. Vale per tutte '
+          'le stampe e per il display.', False)],
         [('Il conteggio e ', False), ('definitivo solo 30 minuti prima', True),
          (' di ogni orario di ritiro: fino a quel momento un dipendente puo '
           'ancora disdire. Stampa alle 11:00 e tieni conto che qualche numero '

@@ -288,7 +288,7 @@ var table = $('#clientsTable').DataTable({
       data: null,
       render: function(d) {
         var init = ((d.first_name || d.email)[0] || '?').toUpperCase();
-        var name  = $('<span>').text(d.full_name).html();
+        var name  = $('<span>').text(d.display_name).html();
         var email = $('<span>').text(d.email).html();
         return '<span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#e94560,#0f3460);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem;margin-right:8px;flex-shrink:0;">' + init + '</span>'
              + '<div style="display:inline-block;vertical-align:middle;"><strong>' + name + '</strong><br><small class="text-muted">' + email + '</small></div>';
@@ -359,7 +359,7 @@ var table = $('#clientsTable').DataTable({
         } else {
           s += '<button class="btn btn-xs btn-warning btn-toggle-client" data-id="' + d.id + '" title="Sospendi" onclick="submitForm(\'' + d.toggle_url + '\')"><i class="fas fa-ban"></i></button> ';
         }
-        s += '<button class="btn btn-xs btn-danger btn-delete-client" data-id="' + d.id + '" data-name="' + $('<span>').text(d.full_name).html() + '" data-url="' + d.delete_url + '" title="Elimina"><i class="fas fa-trash"></i></button>';
+        s += '<button class="btn btn-xs btn-danger btn-delete-client" data-id="' + d.id + '" data-name="' + $('<span>').text(d.display_name).html() + '" data-url="' + d.delete_url + '" title="Elimina"><i class="fas fa-trash"></i></button>';
         s += ' <button class="btn btn-xs btn-outline-info btn-push-test" data-url="' + d.push_test_url + '" title="Invia notifica push di test"><i class="fas fa-bell"></i></button>';
         return s;
       }
@@ -376,7 +376,7 @@ function submitForm(url) {
 $(document).on('click', '.btn-topup-client', function() {
   var d = table.row($(this).closest('tr')).data();
   $('#topupForm').attr('action', d.topup_url);
-  $('#topupName').text(d.full_name);
+  $('#topupName').text(d.display_name);
   $('#topupBalance').text(qlNum(parseFloat(d.wallet_balance)) + '€');
   $('#sharedTopupModal input[name="amount"]').val('');
   $('#sharedTopupModal').modal('show');
@@ -386,7 +386,7 @@ $(document).on('click', '.btn-topup-client', function() {
 $(document).on('click', '.btn-activate-client', function() {
   var d = table.row($(this).closest('tr')).data();
   $('#activateForm').attr('action', d.toggle_url);
-  $('#activateName').text(d.full_name);
+  $('#activateName').text(d.display_name);
   $('#activateEmail').text(d.email);
   $('#activateGoogle').toggleClass('d-none', !d.has_google);
   $('#sharedActivateModal').modal('show');

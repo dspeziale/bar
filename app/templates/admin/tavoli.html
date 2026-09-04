@@ -190,9 +190,9 @@
       {% set res = res_index.get((t.id, slot_time)) %}
       {% if res %}
       <span class="chip-taken"
-            title="{{ res.user.username }} — {{ res.party_size }} pers.{% if res.notes %} — {{ res.notes }}{% endif %}">
+            title="{{ res.user.display_name }} — {{ res.party_size }} pers.{% if res.notes %} — {{ res.notes }}{% endif %}">
         <i class="fas fa-user" style="font-size:.68rem;"></i>
-        {{ res.user.username[:9] }}{% if res.checkin_at %}&nbsp;<i class="fas fa-check" style="font-size:.6rem;"></i>{% endif %}
+        {{ res.user.display_name[:11] }}{% if res.checkin_at %}&nbsp;<i class="fas fa-check" style="font-size:.6rem;"></i>{% endif %}
       </span>
       {% else %}
       <span class="chip-free">
@@ -232,7 +232,7 @@
       {% for r in all_day_res %}
       {% set lbl = r.label() %}
       <tr class="{{ 'table-secondary text-muted' if r.status == 'cancelled' }}">
-        <td class="align-middle"><strong>{{ r.user.username }}</strong></td>
+        <td class="align-middle"><strong>{{ r.user.display_name }}</strong></td>
         <td class="align-middle">
           T{{ r.table.number }}
           <small class="text-muted">({{ r.table.seats }}p)</small>
@@ -259,7 +259,7 @@
               </button>
             </form>
             {% endif %}
-            {% set cancel_msg = 'Annullare prenotazione di ' ~ r.user.username ~ '?' %}
+            {% set cancel_msg = 'Annullare prenotazione di ' ~ r.user.display_name ~ '?' %}
             <form method="POST"
                   action="{{ url_for('admin.reservation_cancel', rid=r.id) }}"
                   style="display:inline;"

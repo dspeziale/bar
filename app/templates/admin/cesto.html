@@ -124,7 +124,7 @@
                 <span class="badge badge-warning">Disponibile</span>
               {% elif lb.status == 'sold' %}
                 <span class="badge badge-success">Venduto</span>
-                {% if lb.buyer %}<br><small class="text-muted">{{ lb.buyer.full_name }}</small>{% endif %}
+                {% if lb.buyer %}<br><small class="text-muted">{{ lb.buyer.display_name }}</small>{% endif %}
               {% else %}
                 <span class="badge badge-secondary">Annullato</span>
               {% endif %}

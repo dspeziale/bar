@@ -615,6 +615,10 @@ def build():
          (' in alto a destra, il nome del cliente, gli articoli di menu e — per '
           'ogni prodotto del builder — l\'elenco completo degli ingredienti '
           'scelti.', False)],
+        [('Il cliente compare come ', False), ('"Mario R."', True),
+         (': nome per esteso e cognome puntato. E la forma usata su tutto '
+          'quello che si vede o si stampa, display e tagliandi compresi, '
+          'perche una lista appesa non deve esporre l\'anagrafica.', False)],
         [('Lavora in ordine di orario di ritiro, non di arrivo.', False)],
     ], accent=HEX_BLUE)
 

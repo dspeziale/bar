@@ -106,6 +106,25 @@ class User(UserMixin, db.Model):
         parts = [self.first_name or '', self.last_name or '']
         return ' '.join(p for p in parts if p) or self.username
 
+    @property
+    def display_name(self):
+        """Nome per esteso e cognome puntato: 'Mario R.', 'Anna D. L.'.
+
+        E' la forma da usare in ogni pagina e stampa in cui il cliente e'
+        visibile ad altri (display di cucina, tagliandi, liste di
+        produzione, report): resta riconoscibile da chi lo conosce senza
+        esporre il cognome per intero. Con un dato solo si mostra quello
+        che c'e'; senza nome ne' cognome si ricade sullo username, come
+        full_name.
+        """
+        nome = (self.first_name or '').strip()
+        cognome = (self.last_name or '').strip()
+        if nome and cognome:
+            iniziali = ' '.join(p[0].upper() + '.'
+                                for p in cognome.split() if p)
+            return ('%s %s' % (nome, iniziali)).strip()
+        return nome or cognome or self.username
+
     tenant = db.relationship('Tenant', foreign_keys=[tenant_id], overlaps='users')
 
     orders               = db.relationship('Order',            back_populates='user', lazy='dynamic')

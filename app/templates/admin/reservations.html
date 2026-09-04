@@ -37,7 +37,7 @@
       {% set lbl = r.label() %}
       <tr>
         <td>#{{ r.id }}</td>
-        <td><strong>{{ r.user.username }}</strong></td>
+        <td><strong>{{ r.user.display_name }}</strong></td>
         <td>
           <strong>T{{ r.table.number }}</strong>
           <small class="text-muted">({{ r.table.seats }}p{% if r.table.location %}, {{ r.table.location }}{% endif %})</small>

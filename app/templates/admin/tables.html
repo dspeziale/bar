@@ -56,8 +56,8 @@
             {% if not table.is_active %}
             <span class="text-muted">–</span>
             {% elif res %}
-            <span class="badge badge-danger" title="{{ res.user.username }}">
-              {{ res.user.username[:8] }}
+            <span class="badge badge-danger" title="{{ res.user.display_name }}">
+              {{ res.user.display_name[:10] }}
               ({{ res.party_size }}p)
             </span>
             {% else %}

@@ -82,6 +82,13 @@ Dentro `_seed_defaults()`, subito dopo la creazione del tenant di default, c'è 
 assegna `tenant_id = <default>` a **tutte** le righe orfane di `orphan_tables` (users,
 orders, table_reservations, prodotti, ecc.), silenziosamente e a ogni avvio. Prima di
 scrivere una migrazione o un backfill di `tenant_id`, controlla se quel loop già lo copre.
+
+Quel loop però gira **prima** dei blocchi che creano i dati di base, quindi non li copre:
+un blocco di seed che dimentica `tenant_id=default_tenant.id` produce righe invisibili nel
+backoffice fino al riavvio *successivo*. Dopo un `reset_totale()` l'effetto è un catalogo
+apparentemente vuoto. Tutti i blocchi (categorie, slot, tavoli, categorie ingredienti panino
+e poke, articoli del banco) ora passano il tenant esplicitamente: **fallo anche nei blocchi
+nuovi**.
 Effetto collaterale noto: anche i due superadmin globali, che per progetto hanno
 `tenant_id = None`, si ritrovano agganciati al tenant di default dopo un riavvio.
 
@@ -106,6 +113,19 @@ Quasi tutte le tabelle hanno `tenant_id` nullable. Il super admin globale ha
 **Ogni record nuovo che appartiene a un tenant deve ricevere il `tenant_id` esplicitamente
 alla creazione**: non esiste un default né un event listener. Le viste del backoffice
 filtrano per tenant, quindi un record creato senza `tenant_id` non compare da nessuna parte.
+
+Per i **clienti** servono due campi insieme, perché `clients_dt` filtra
+`is_client=True, tenant_id=<tenant>`: senza `tenant_id` l'utente è invisibile finché il loop
+`orphan_tables` non lo aggancia al riavvio (su Vercel, imprevedibile); senza `is_client=True`
+— che nel modello ha default **False** — non compare mai. È già capitato su tutti e cinque i
+punti che creano un cliente: `auth.register` e `auth.google_callback` (che non hanno un
+tenant nel contesto e usano l'helper `_tenant_predefinito()`), `tenant.register` e
+`tenant.google_callback` (che hanno `tenant.id` ma dimenticavano `is_client`) e
+`admin.client_new`. Effetto tipico: la notifica Telegram di nuova registrazione arriva —
+`send_telegram` non filtra nulla — ma il titolare non trova il cliente e non può attivarlo.
+Se aggiungi un percorso di registrazione, valorizza entrambi i campi e la coppia
+`is_active`/redirect: una pagina che promette "in attesa di attivazione" richiede
+`is_active=False`, altrimenti l'utente entra scavalcando l'approvazione.
 
 Lo scoping non è ancora uniforme: gli endpoint DataTables (`*_dt`) filtrano per tenant,
 mentre alcune viste (dashboard, tavoli, prodotti) interrogano senza filtro. In uno scenario
@@ -192,6 +212,22 @@ mano: quando sono stati aggiunti `prep_labels`, `prenotazioni`, `push_subscripti
 `ForeignKeyViolation` su `prep_labels_product_id_fkey`. **Se aggiungi un modello con una FK
 verso prodotti, utenti o convenzioni, aggiorna anche quella funzione** — o meglio, portala
 sull'ordinamento da metadati.
+
+### Come si mostra il nome di un cliente
+
+`User` ha due proprietà e non sono interscambiabili:
+
+- **`display_name`** — `'Mario R.'`, nome per esteso e cognome ridotto alle iniziali
+  (`'De Luca'` → `'D. L.'`). È la forma da usare in **ogni pagina e stampa** in cui il
+  cliente è visibile a qualcun altro: display di cucina, tagliando ordine, liste di
+  produzione, registro presenze, report PDF, tabelle del backoffice.
+- **`full_name`** — nome e cognome per intero. Resta solo dove serve il dato vero: i campi
+  dei form che modificano l'anagrafica (`clients_dt` espone `first_name`/`last_name` proprio
+  per quelli) e le pagine in cui l'utente vede sé stesso (navbar, profilo).
+
+Ordinamenti e ricerche vanno sempre sulle colonne reali (`last_name`, `first_name`), non
+sulla stringa mostrata: il PDF mensile delle convenzioni, per esempio, mostra il nome
+puntato ma ordina per cognome vero tramite una chiave separata.
 
 ### Wallet e fedeltà
 

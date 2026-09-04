@@ -34,6 +34,12 @@ def _tenant_filter():
     return {'tenant_id': current_user.tenant_id}
 
 
+# Le sole classi Bootstrap valide insieme come badge-*, text-* e
+# btn-outline-*: il menu del cliente le usa in tutte e tre le forme.
+COLORI_CATEGORIA = ['primary', 'secondary', 'success', 'danger', 'warning',
+                    'info', 'dark']
+
+
 def _active_tenant_id():
     """Ritorna il tenant_id da usare per categorie/prodotti.
     Super admin (tenant_id=None) → tenant 'default'.
@@ -334,6 +340,7 @@ def clients_dt():
         data.append({
             'id':             c.id,
             'full_name':      c.full_name,
+            'display_name':   c.display_name,
             'first_name':     c.first_name or '',
             'last_name':      c.last_name or '',
             'email':          c.email,
@@ -400,7 +407,7 @@ def orders_dt():
             'id':          o.id,
             'order_code':  o.order_code or f'#{o.id}',
             'created_at':  o.created_at.strftime('%H:%M') if o.created_at else '',
-            'username':    o.user.username,
+            'username':    o.user.display_name,
             'full_name':   o.user.full_name,
             'slot':        o.slot.time_str if o.slot else '—',
             'items':       ' · '.join(items_parts),
@@ -902,6 +909,7 @@ def client_new():
     u = User(
         username=username, email=email,
         is_client=True,
+        tenant_id=_active_tenant_id(),
         first_name=first_name,
         last_name=last_name,
         phone=request.form.get('phone', '').strip(),
@@ -1111,7 +1119,8 @@ def user_roles_assign(uid):
 def categories():
     tid = _active_tenant_id()
     cats = Category.query.filter_by(tenant_id=tid).order_by(Category.name).all()
-    return render_template('admin/categories.html', categories=cats)
+    return render_template('admin/categories.html', categories=cats,
+                           colors=COLORI_CATEGORIA)
 
 
 @bp.route('/categories/new', methods=['POST'])
@@ -1289,7 +1298,7 @@ def banco_session_status(token):
         db.session.commit()
     customer_name = None
     if sess.customer:
-        customer_name = sess.customer.full_name or sess.customer.username
+        customer_name = sess.customer.display_name
     return jsonify({'status': sess.status, 'customer': customer_name})
 
 
@@ -1376,7 +1385,7 @@ def banco_pasto_lookup():
         'status':    booking.status,
         'status_label': label,
         'status_badge': badge,
-        'user_name': booking.user.full_name or booking.user.username,
+        'user_name': booking.user.display_name,
         'meal_name': booking.meal.name,
         'meal_date': booking.meal.meal_date.strftime('%d/%m/%Y'),
         'slot':      booking.slot.time_str if booking.slot else None,
@@ -2986,7 +2995,7 @@ def meal_consegna():
         send_telegram_to_user(
             booking.user,
             f'✅ Pasto ritirato: <b>{booking.meal.name}</b>. Buon appetito!')
-        flash(f'Consegnato a {booking.user.full_name}.', 'success')
+        flash(f'Consegnato a {booking.user.display_name}.', 'success')
     else:
         flash('Prenotazione non in stato "prenotato".', 'warning')
     next_url = request.form.get('next') or url_for('admin.meal_ritiro')
@@ -3065,7 +3074,7 @@ def convenzione_report_pdf(cid):
                 continue
             qty = b.quantity or 1
             entries.append({
-                'full_name': (b.user.full_name or b.user.username or '')[:38],
+                'full_name': (b.user.display_name or '')[:38],
                 'meal_name': meal.name[:38],
                 'qty':       qty,
                 'status':    b.status,
@@ -4410,7 +4419,9 @@ def convenzione_report_mensile_pdf(cid):
             # allegato alla fattura, va ordinato per cognome.
             cog = (b.user.last_name or '').strip()
             nom = (b.user.first_name or '').strip()
-            nome = (f'{cog} {nom}'.strip() or b.user.username or '')[:38]
+            # Mostrato col cognome puntato; l'ordinamento resta sul cognome
+            # vero, nella chiave 'ordine' qui sotto.
+            nome = (b.user.display_name or '')[:38]
             riga = per_persona.setdefault(
                 nome, {'qty': 0, 'importo': 0.0, 'giorni': set(),
                        'ordine': (cog.lower(), nom.lower())})
@@ -4693,7 +4704,7 @@ def _raccogli_scontrini(year, month, tenant_id=None):
             righe.append(_riga(
                 o.created_at or _dt.combine(o.order_date, _dt.min.time()),
                 'Ordine', o.order_code or ('#%d' % o.id),
-                (o.user.full_name if o.user else '—'), o.total_price or 0.0, tn))
+                (o.user.display_name if o.user else '—'), o.total_price or 0.0, tn))
 
         # Sessioni banco pagate
         for s in (BancoSession.query
@@ -4704,7 +4715,7 @@ def _raccogli_scontrini(year, month, tenant_id=None):
                   .order_by(BancoSession.created_at).all()):
             righe.append(_riga(
                 s.created_at, 'Banco QR', s.token[:10].upper(),
-                (s.customer.full_name if s.customer else '—'),
+                (s.customer.display_name if s.customer else '—'),
                 s.total or 0.0, tn))
 
         # Vendite dal cesto: stanno nei movimenti di wallet
@@ -4719,7 +4730,7 @@ def _raccogli_scontrini(year, month, tenant_id=None):
                    .order_by(Transaction.created_at).all()):
             righe.append(_riga(
                 tx.created_at, 'Cesto QR', tx.description[:40],
-                (tx.user.full_name if tx.user else '—'),
+                (tx.user.display_name if tx.user else '—'),
                 abs(tx.amount or 0.0), tn))
 
         # Pasti aziendali prenotati
@@ -4735,7 +4746,7 @@ def _raccogli_scontrini(year, month, tenant_id=None):
                         _dt.combine(meal.meal_date, _dt.min.time()),
                         'Pasto aziendale',
                         '%s (%s)' % (meal.name[:24], ca.name[:18]),
-                        (b.user.full_name if b.user else '—'),
+                        (b.user.display_name if b.user else '—'),
                         (meal.price or 0.0) * qta, tn))
 
     righe.sort(key=lambda r: (r['quando'] or _dt.min, r['tipo']))

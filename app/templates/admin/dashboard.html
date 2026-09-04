@@ -166,7 +166,7 @@
                 {{ o.order_code or ('#' ~ o.id) }}
               </code>
             </td>
-            <td>{{ o.user.username }}</td>
+            <td>{{ o.user.display_name }}</td>
             <td>{{ o.slot.time_str }}</td>
             <td>
               {% for item in o.items %}

@@ -373,20 +373,22 @@ def build():
               'trova nulla da ordinare.', color=GRAY)
     rule(doc)
 
-    step(doc, 1, 'Riavvia l\'applicazione una volta', [
-        [('Alla primissima installazione categorie, slot di ritiro, tavoli e '
-          'articoli del banco vengono creati ma ', False),
-         ('non sono ancora visibili', True),
-         (': compaiono solo al secondo avvio. E un effetto noto della procedura '
-          'di inizializzazione.', False)],
-        [('Verifica: apri Prodotti e Slot orari. Se le liste sono vuote, riavvia '
-          'e ricontrolla.', False)],
+    step(doc, 1, 'Controlla il catalogo di partenza', [
+        [('L\'installazione — e ogni azzeramento del database — crea un '
+          'catalogo iniziale gia pronto: ', False),
+         ('18 categorie di prodotto', True),
+         (', gli slot di ritiro, i tavoli e gli articoli del banco. Sono '
+          'visibili subito, senza riavviare nulla.', False)],
+        [('Apri ', False), ('Categorie', True),
+         (' e togli quelle che non ti servono: e piu rapido che crearle da '
+          'zero. Di ognuna puoi cambiare nome, icona e colore.', False)],
     ], accent=HEX_ORANGE)
 
     step(doc, 2, 'Crea i prodotti del menu', [
         [('L\'installazione crea le ', False), ('categorie', True),
          (' ma ', False), ('nessun prodotto', True),
-         (': il menu parte vuoto e va compilato a mano.', False)],
+         (': il menu parte vuoto e va compilato a mano, scegliendo per '
+          'ciascun prodotto una delle categorie gia presenti.', False)],
         [('Prodotti › Nuovo, per ciascuno: nome, categoria, prezzo, quantita '
           'giornaliera e allergeni. Basta un prodotto per rendere possibile un '
           'ordine, ma un menu credibile ne vuole una decina.', False)],
@@ -553,6 +555,13 @@ def build():
          (': la soglia di rosso consentita. Utile per il personale interno o per '
           'chi salda a fine mese, evita di bloccare l\'ordine per pochi '
           'centesimi.', False)],
+    ], accent=HEX_GREEN)
+
+    step(doc, 3, 'Spiegagli come comparira il suo nome', [
+        [('Nelle liste, sui tagliandi e nei report il cliente e indicato con '
+          'il nome per esteso e il cognome puntato: ', False),
+         ('Mario R.', True),
+         ('. Nella sua area personale, invece, si legge per intero.', False)],
     ], accent=HEX_GREEN)
 
     step(doc, 3, 'Verifica che il cliente veda il saldo', [

@@ -189,7 +189,7 @@
             {% if b.status != 'cancelled' %}
             {% set lbl = b.label() %}
             <tr>
-              <td class="pl-3">{{ b.user.full_name }}</td>
+              <td class="pl-3">{{ b.user.display_name }}</td>
               <td class="text-center">× {{ b.quantity or 1 }}</td>
               <td>{{ b.slot.time_str if b.slot else '—' }}</td>
               <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>

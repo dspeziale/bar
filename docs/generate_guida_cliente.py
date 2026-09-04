@@ -517,6 +517,8 @@ def s4_builder(doc):
 def s5_ordini(doc):
     h1(doc, '5', 'I Miei Ordini', '📦', accent=HEX_PURPL)
 
+    _nota_privacy_nome(doc)
+
     h2(doc, '5.1  Accedere allo storico')
     step_row(doc, 1, 'Vai in "I Miei Ordini"', 'Dal menu laterale')
     spacer(doc, 4)
@@ -570,6 +572,17 @@ def s5_ordini(doc):
 # ══════════════════════════════════════════════════════════════════════════════
 # SEZIONE 6 — WALLET E PUNTI FEDELTÀ
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _nota_privacy_nome(doc):
+    """Il cliente si vede per intero, gli altri lo vedono abbreviato."""
+    body_para(doc,
+        'Il tuo nome sulle liste: quando il tuo ordine compare sul display '
+        'della cucina, sul tagliando o su una lista stampata, sei indicato '
+        'con il nome e la sola iniziale del cognome — per esempio '
+        '"Mario R.". Qui nella tua area personale, invece, il nome resta '
+        'per intero.')
+    spacer(doc, 8)
+
 
 def s6_wallet(doc):
     h1(doc, '6', 'Wallet e Punti Fedeltà', '💳', accent=HEX_PURPL)

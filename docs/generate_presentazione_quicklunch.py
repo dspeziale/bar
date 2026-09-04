@@ -731,6 +731,12 @@ def build():
          ('trattamento conforme al GDPR con nomina a responsabile ex art. '
           '28; alla cessazione i dati vi vengono restituiti in formato '
           'aperto.', False)],
+        [('Cognomi non esposti: ', True),
+         ('nelle liste, sui tagliandi e nei report i clienti compaiono con '
+          'il nome per esteso e il cognome ridotto all\'iniziale — '
+          '"Mario R." — così una lista appesa in cucina o consegnata a '
+          'un\'azienda resta leggibile per chi deve lavorarci senza '
+          'esporre l\'anagrafica.', False)],
         [('I dati sono vostri: ', True),
          ('clienti, storico e listini si esportano e si portano via, in '
           'qualsiasi momento.', False)],

@@ -108,7 +108,7 @@
         {% for p in plist %}
         <tr id="row-pren-{{ p.id }}">
           <td><code>{{ p.code }}</code></td>
-          <td>{{ p.user.full_name }}</td>
+          <td>{{ p.user.display_name }}</td>
           <td>{{ p.slot.time_str if p.slot else '—' }}</td>
           <td>
             {% for item in p.items %}

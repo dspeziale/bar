@@ -3,8 +3,24 @@ from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db, oauth
 from app.auth import bp
-from app.models import User
+from app.models import Tenant, User
 from app.notifications import get_setting, send_telegram
+
+
+def _tenant_predefinito():
+    """Tenant a cui agganciare chi si registra dalle pagine globali.
+
+    Le registrazioni su /auth non passano da un tenant: senza questo l'utente
+    nasce con tenant_id NULL e la lista clienti del backoffice, che filtra per
+    tenant, non lo mostra mai. Si usa lo slug 'default' (lo stesso ripiego di
+    _active_tenant_id nel backoffice); se non c'e' ma esiste un solo tenant,
+    quello.
+    """
+    t = Tenant.query.filter_by(slug='default').first()
+    if t:
+        return t.id
+    tutti = Tenant.query.limit(2).all()
+    return tutti[0].id if len(tutti) == 1 else None
 
 
 def _make_username(email):
@@ -68,6 +84,7 @@ def register():
                 last_name=last_name,
                 is_client=True,
                 is_active=False,
+                tenant_id=_tenant_predefinito(),
             )
             user.set_password(password)
             db.session.add(user)
@@ -152,6 +169,7 @@ def google_callback():
             last_name  = last_name,
             is_active  = False,
             is_client  = True,
+            tenant_id  = _tenant_predefinito(),
         )
         db.session.add(user)
         db.session.commit()

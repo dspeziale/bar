@@ -63,6 +63,7 @@ def register(slug):
                 username  = _make_username(email, tenant.id),
                 email     = email,
                 tenant_id = tenant.id,
+                is_client = True,
             )
             user.set_password(password)
             db.session.add(user)
@@ -169,6 +170,11 @@ def google_callback():
             first_name = first_name,
             last_name  = last_name,
             tenant_id  = tenant.id,
+            is_client  = True,
+            # La pagina che segue dice "in attesa di attivazione": senza
+            # questo l'utente sarebbe attivo di default ed entrerebbe subito,
+            # scavalcando l'approvazione del titolare.
+            is_active  = False,
         )
         db.session.add(user)
         db.session.commit()

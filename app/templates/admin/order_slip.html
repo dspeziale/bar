@@ -114,7 +114,7 @@
 
   <!-- Dettagli -->
   <div class="row" style="margin:2px 0;"><span class="label">Data:</span><span class="val">{{ order.order_date.strftime('%d/%m/%Y') }}</span></div>
-  <div class="row" style="margin:2px 0;"><span class="label">Utente:</span><span class="val">{{ order.user.username }}</span></div>
+  <div class="row" style="margin:2px 0;"><span class="label">Utente:</span><span class="val">{{ order.user.display_name }}</span></div>
   <div class="row" style="margin:2px 0;"><span class="label">Orario ritiro:</span><span class="val bold" style="font-size:11pt;">{{ order.slot.time_str }}</span></div>
   {% if order.notes %}
   <div class="row" style="margin:2px 0;"><span class="label">Note:</span><span class="val" style="font-style:italic;">{{ order.notes }}</span></div>

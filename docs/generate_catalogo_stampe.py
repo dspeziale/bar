@@ -339,7 +339,7 @@ def facsimile_tagliando(pdf):
     riga('QL-2026-0412', 'B', 14, 'C', 7)
     separatore()
     voce('Data:', '15/04/2026')
-    voce('Utente:', 'mario')
+    voce('Utente:', 'Mario R.')
     voce('Orario ritiro:', '12:30', 'B', 10)
     voce('Note:', 'senza cipolla')
     separatore(True)
@@ -685,6 +685,8 @@ def costruisci(reali):
            'È il documento di lavoro che identifica l\'ordine: codice grande '
            'leggibile a colpo d\'occhio, orario di ritiro, elenco degli '
            'articoli con i prodotti del builder scomposti per ingrediente. '
+           'Il cliente è indicato con nome e cognome puntato ("Mario R."), '
+           'come in ogni pagina e in ogni stampa del sistema. '
            'Regola fissa: si allega al prodotto insieme allo scontrino del '
            'registratore di cassa.',
            'Rotta: /admin/orders/<id>/slip — template order_slip.html')
