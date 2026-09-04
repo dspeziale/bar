@@ -52,6 +52,12 @@ def login():
             if user.is_admin:
                 return redirect(next_page or url_for('admin.dashboard'))
             return redirect(next_page or url_for('main.index'))
+        if user and user.check_password(password) and not user.is_active:
+            # Password giusta, account ancora da approvare: dirgli
+            # "credenziali non valide" lo mandava a cercare un errore che
+            # non c'era. Gli si rimanda anche la conferma con la guida.
+            send_registration_received_email(user)
+            return redirect(url_for('auth.pending'))
         flash('Credenziali non valide.', 'danger')
     return render_template('auth/login.html')
 
@@ -142,6 +148,11 @@ def google_callback():
 
     if user:
         if not user.is_active:
+            # Chi riprova a iscriversi mentre e' ancora in attesa non sta
+            # facendo una registrazione nuova: senza questo non riceveva
+            # nulla e sembrava che l'iscrizione non avesse funzionato.
+            # Gli si rimanda la conferma, con la guida allegata.
+            send_registration_received_email(user)
             return redirect(url_for('auth.pending'))
         if not user.google_id:
             user.google_id = google_id

@@ -192,8 +192,10 @@ def google_callback():
         return redirect(url_for('auth.pending'))
 
     if not user.is_active:
-        flash("Account non attivo. Contatta l'amministratore.", 'warning')
-        return redirect(url_for('auth.login'))
+        # Come nel percorso globale: si rimanda la conferma con la guida,
+        # cosi chi riprova a iscriversi riceve comunque qualcosa.
+        send_registration_received_email(user)
+        return redirect(url_for('auth.pending'))
 
     login_user(user, remember=True)
     return redirect(url_for('main.index'))

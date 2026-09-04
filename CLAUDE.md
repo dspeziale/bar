@@ -281,6 +281,25 @@ Il webhook va registrato una volta da **Impostazioni → Notifiche → Attiva le
 pretende HTTPS, quindi l'attivazione funziona solo in produzione. Per i metodi diversi da
 `sendMessage` c'è `telegram_api(metodo, payload)`.
 
+### Email ai clienti: due momenti, nessun silenzio
+
+Il cliente riceve **due** email, entrambe con la guida in PDF allegata:
+`send_registration_received_email()` appena si registra (da tutti i percorsi, Google
+compreso) e `send_account_activated_email()` quando il titolare lo attiva.
+
+Due trappole già capitate, entrambe da tenere presenti se tocchi questi flussi:
+
+- **Chi riprova a iscriversi mentre è in attesa non stava ricevendo nulla**, perché il
+  secondo accesso finisce nel ramo "utente esistente" e non è una registrazione. Ora
+  `auth.google_callback`, `tenant.google_callback` e `auth.login` (password giusta ma
+  account non attivo) rimandano la conferma e portano a `/auth/pending`. Prima, il login
+  con password su un account in attesa rispondeva "Credenziali non valide".
+- **Un invio fallito era invisibile**: il valore di ritorno di `send_email` veniva ignorato
+  e senza Gmail configurata non partiva niente, senza traccia. Ora
+  `avvisa_staff_email_non_inviata()` scrive sul canale Telegram destinatario e motivo, e
+  dalla lista clienti l'icona a busta (`admin.client_reinvia_email`) rimanda l'email
+  mostrando l'esito reale: è lo strumento con cui si diagnostica in dieci secondi.
+
 ### PDF dei manuali e allegati email
 
 `send_email(..., allegati=[percorsi])` allega file; gli allegati mancanti vengono ignorati,
