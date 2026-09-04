@@ -525,7 +525,7 @@
             {% set in_ordini       = ep in ('admin.orders','admin.cucina') %}
             {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories') %}
             {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots','admin.tavoli') %}
-            {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients') %}
+            {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients','admin.diete') %}
             {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
             {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
             {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto','admin.convenzioni_report','admin.meal_ritiro') %}
@@ -758,6 +758,15 @@
                     <p>Clienti</p>
                   </a>
                 </li>
+                {% if dieta_enabled and p('manage_clients') %}
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.diete') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.diete' }}">
+                    <i class="fas fa-leaf nav-icon" style="color:#27ae60;"></i>
+                    <p>Diete clienti</p>
+                  </a>
+                </li>
+                {% endif %}
                 {% endif %}
                 {% if p('manage_roles') %}
                 <li class="nav-item">
@@ -892,6 +901,16 @@
                 </li>
               </ul>
             </li>
+
+            {% if dieta_enabled %}
+            <li class="nav-item">
+              <a href="{{ url_for('main.dieta') }}"
+                 class="nav-link {{ 'active' if ep == 'main.dieta' }}">
+                <i class="nav-icon fas fa-leaf" style="color:#27ae60;"></i>
+                <p>La mia dieta</p>
+              </a>
+            </li>
+            {% endif %}
 
             {# I miei ordini #}
             <li class="nav-item">

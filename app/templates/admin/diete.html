@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Diete clienti{% endblock %}
+{% block page_title %}Diete clienti{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Diete clienti</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:linear-gradient(135deg,#27ae60,#0f3460);color:#fff;">
+      <div class="inner"><h3>{{ righe|length }}</h3><p>Clienti con dieta attiva</p></div>
+      <div class="icon"><i class="fas fa-leaf"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-gradient-info">
+      <div class="inner"><h3>{{ pranzi_oggi|selectattr('voci')|list|length }}</h3><p>Pranzi del piano per oggi</p></div>
+      <div class="icon"><i class="fas fa-calendar-day"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="small-box {{ 'bg-gradient-warning' if senza_valori else 'bg-gradient-success' }}">
+      <div class="inner"><h3>{{ senza_valori }}</h3><p>Prodotti senza valori nutrizionali</p></div>
+      <div class="icon"><i class="fas fa-fire"></i></div>
+      <a href="{{ url_for('admin.products') }}" class="small-box-footer">Compila <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  <div class="col-lg-3 col-6">
+    <div class="card h-100 mb-0">
+      <div class="card-body py-2" style="font-size:.85rem;">
+        {% if conteggio %}
+        {% for etichetta, n in conteggio|dictsort(by='value', reverse=true) %}
+        <div class="d-flex justify-content-between"><span>{{ etichetta }}</span><strong>{{ n }}</strong></div>
+        {% endfor %}
+        {% else %}
+        <span class="text-muted">Nessuna esigenza dichiarata.</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if senza_valori %}
+<div class="callout callout-warning" style="font-size:.9rem;">
+  <i class="fas fa-exclamation-triangle mr-1"></i>
+  <strong>{{ senza_valori }} prodott{{ 'o' if senza_valori == 1 else 'i' }} attiv{{ 'o' if senza_valori == 1 else 'i' }} senza kcal.</strong>
+  Nella dieta un valore mancante è "sconosciuto", non zero: quei piatti non entrano nei piani e nel carrello
+  vengono conteggiati a parte. Si compilano dalla scheda prodotto (kcal, proteine, carboidrati, grassi, vegetariano, vegano).
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline" style="border-top:3px solid #27ae60 !important;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-users mr-2"></i>Esigenze dichiarate</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr><th>Cliente</th><th>Esigenze</th><th>Regime</th><th class="text-right">Fabbisogno</th><th>Giorni</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+          {% for r in righe %}
+          <tr>
+            <td><strong>{{ r.utente.display_name }}</strong></td>
+            <td>
+              {% for c in r.profilo.lista_condizioni %}<span class="badge badge-danger mr-1">{{ c[1] }}</span>{% endfor %}
+              {% for k in r.profilo.lista_esclusioni %}<span class="badge badge-warning mr-1">senza {{ k|replace('_',' ') }}</span>{% endfor %}
+              {% if not r.profilo.lista_condizioni and not r.profilo.lista_esclusioni %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td>{{ r.profilo.etichetta_regime }}<br><small class="text-muted">{{ r.profilo.etichetta_obiettivo }}</small></td>
+            <td class="text-right">{{ r.fabbisogno.target }} kcal<br><small class="text-muted">pranzo {{ r.fabbisogno.pranzo }}</small></td>
+            <td><small>{{ r.profilo.lista_giorni|join(' ') }}</small></td>
+            <td><small class="text-muted">{{ r.profilo.note }}</small></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Nessun cliente ha ancora impostato la dieta.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-outline card-info">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-calendar-day mr-2"></i>Pranzi del piano · {{ oggi|data_it('breve') }}</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+          {% for d in pranzi_oggi if d.voci %}
+          <tr>
+            <td>
+              <strong>{{ d.plan.user.display_name }}</strong>
+              {% if d.stato == 'ordinato' %}<span class="badge badge-primary ml-1">ordinato</span>{% else %}<span class="badge badge-light border ml-1">proposto</span>{% endif %}
+              <div class="text-muted" style="font-size:.82rem;">
+                {% for v in d.voci if v.ruolo != 'bevanda' %}{{ v.nome }}{% if not loop.last %} + {% endif %}{% endfor %}
+                · {{ d.kcal_totali }} kcal
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td class="text-center text-muted py-4">Nessun pranzo pianificato per oggi.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer text-muted" style="font-size:.8rem;">
+        "Proposto" è il suggerimento del piano: diventa un ordine solo quando il cliente lo conferma dal carrello.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

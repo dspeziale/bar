@@ -82,7 +82,8 @@ def create_app(config_object='config.Config'):
     def _inject_feature_flags():
         return {'tables_enabled': tables_enabled(),
                 'cesto_enabled': cesto_enabled(),
-                'wallet_enabled': wallet_enabled()}
+                'wallet_enabled': wallet_enabled(),
+                'dieta_enabled': dieta_enabled()}
 
     # Registra Google OAuth (se configurato)
     oauth.register(
@@ -120,6 +121,8 @@ def create_app(config_object='config.Config'):
                 _check_table_reminders()
             _check_order_reminders()
             _check_meal_reminders()
+            if dieta_enabled():
+                _check_diet_weekly()
         except Exception:
             pass
 
@@ -166,6 +169,11 @@ def _funzione_attiva(chiave):
 def tables_enabled():
     """True se la gestione tavoli e prenotazioni e' attiva (Impostazioni)."""
     return _funzione_attiva('tables_enabled')
+
+
+def dieta_enabled():
+    """Dieta settimanale dei clienti: profilo, piano e controllo delle kcal."""
+    return _funzione_attiva('dieta_enabled')
 
 
 def cesto_enabled():
@@ -394,6 +402,246 @@ def _check_meal_reminders():
         db.session.commit()
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Dieta: valori nutrizionali del listino di partenza
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Stime per porzione servita al banco (kcal, proteine g, carboidrati g,
+# grassi g, vegetariano, vegano). Sono valori indicativi da tabelle di
+# composizione degli alimenti: il gestore li corregge dal backoffice sui
+# propri piatti. Il nome e' la chiave perche' e' l'unica cosa che il seed e
+# un'installazione gia' esistente hanno in comune.
+_NUTRIZIONE_LISTINO = {
+    'Cornetto vuoto':                  (230, 4, 28, 11, True, False),
+    'Cornetto alla crema':             (290, 5, 36, 13, True, False),
+    'Cornetto integrale':              (220, 5, 27, 10, True, False),
+    'Sfogliatella':                    (300, 5, 38, 14, True, False),
+    'Ciambella glassata':              (320, 4, 45, 14, True, False),
+    'Caffè espresso':                  (2, 0, 0, 0, True, True),
+    'Caffè macchiato':                 (15, 1, 1, 1, True, False),
+    'Cappuccino':                      (90, 5, 8, 4, True, False),
+    'Latte macchiato':                 (130, 7, 11, 6, True, False),
+    'Caffè americano':                 (5, 0, 0, 0, True, True),
+    'Caffè decaffeinato':              (2, 0, 0, 0, True, True),
+    "Caffè d'orzo":                    (10, 0, 2, 0, True, True),
+    'Ginseng':                         (70, 1, 12, 2, True, False),
+    'Tè caldo':                        (2, 0, 0, 0, True, True),
+    'Cioccolata calda':                (220, 8, 30, 8, True, False),
+    'Panino prosciutto e mozzarella':  (480, 24, 52, 18, False, False),
+    'Panino crudo e squacquerone':     (520, 25, 50, 22, False, False),
+    'Panino porchetta':                (560, 26, 50, 27, False, False),
+    'Panino vegetariano grigliato':    (420, 12, 60, 14, True, False),
+    'Piadina crudo e rucola':          (540, 26, 52, 24, False, False),
+    'Tramezzino tonno e pomodoro':     (300, 15, 28, 13, False, False),
+    'Tramezzino prosciutto e funghi':  (290, 13, 28, 13, False, False),
+    'Tramezzino vegetariano':          (260, 8, 30, 11, True, False),
+    'Toast prosciutto e formaggio':    (330, 17, 30, 15, False, False),
+    'Pizza margherita al taglio':      (420, 16, 55, 14, True, False),
+    'Pizza patate e rosmarino':        (400, 9, 62, 12, True, True),
+    'Focaccia farcita':                (480, 18, 52, 20, False, False),
+    'Pasta al pomodoro':               (450, 14, 80, 8, True, True),
+    'Pasta al ragù':                   (560, 26, 78, 14, False, False),
+    'Lasagna al forno':                (620, 30, 50, 30, False, False),
+    'Zuppa di legumi':                 (320, 18, 45, 6, True, True),
+    'Insalata di riso':                (480, 14, 70, 15, False, False),
+    'Pollo arrosto':                   (330, 40, 0, 18, False, False),
+    'Cotoletta di pollo':              (420, 32, 22, 22, False, False),
+    'Filetto di platessa al forno':    (260, 30, 8, 11, False, False),
+    'Frittata di verdure':             (300, 18, 8, 22, True, False),
+    'Roast beef':                      (280, 38, 1, 13, False, False),
+    'Poke di salmone':                 (620, 30, 70, 22, False, False),
+    'Poke di pollo':                   (560, 34, 68, 15, False, False),
+    'Bowl vegetariana':                (520, 16, 78, 15, True, True),
+    'Insalata mista':                  (120, 3, 8, 8, True, True),
+    'Insalata caprese':                (350, 20, 6, 27, True, False),
+    'Insalata di pollo e mais':        (380, 30, 18, 20, False, False),
+    'Insalata greca':                  (330, 12, 12, 26, True, False),
+    'Patate al forno':                 (220, 4, 36, 7, True, True),
+    'Verdure grigliate':               (110, 3, 10, 6, True, True),
+    'Spinaci saltati':                 (90, 5, 4, 6, True, True),
+    "Fagiolini all'olio":              (100, 3, 8, 6, True, True),
+    'Frutta di stagione':              (80, 1, 18, 0, True, True),
+    'Macedonia fresca':                (120, 1, 28, 0, True, True),
+    'Ananas a fette':                  (90, 1, 22, 0, True, True),
+    'Yogurt bianco':                   (110, 6, 8, 5, True, False),
+    'Yogurt alla frutta':              (150, 5, 24, 3, True, False),
+    'Yogurt con granola':              (260, 9, 36, 8, True, False),
+    'Tiramisù':                        (420, 8, 40, 25, True, False),
+    'Panna cotta':                     (300, 4, 26, 20, True, False),
+    'Torta della nonna':               (380, 7, 42, 20, True, False),
+    "Crostatina all'albicocca":        (200, 3, 30, 8, True, False),
+    'Gelato confezionato':             (220, 4, 26, 11, True, False),
+    'Ghiacciolo':                      (60, 0, 15, 0, True, True),
+    'Patatine in busta':               (160, 2, 15, 10, True, True),
+    'Crackers':                        (120, 3, 20, 3, True, True),
+    'Taralli':                         (200, 4, 30, 7, True, True),
+    'Barretta di cioccolato':          (240, 3, 28, 13, True, False),
+    'Acqua naturale 50 cl':            (0, 0, 0, 0, True, True),
+    'Acqua frizzante 50 cl':           (0, 0, 0, 0, True, True),
+    'Acqua naturale 1,5 L':            (0, 0, 0, 0, True, True),
+    'Cola in lattina':                 (140, 0, 35, 0, True, True),
+    'Aranciata in lattina':            (130, 0, 32, 0, True, True),
+    'Tè freddo al limone':             (90, 0, 22, 0, True, True),
+    'Succo di frutta ACE':             (110, 0, 26, 0, True, True),
+    "Spremuta d'arancia":              (100, 2, 22, 0, True, True),
+    'Birra bionda 33 cl':              (140, 1, 11, 0, True, True),
+    'Calice di vino rosso':            (125, 0, 4, 0, True, True),
+    'Calice di vino bianco':           (120, 0, 4, 0, True, True),
+}
+
+# Ingredienti del builder: (kcal, proteine, carboidrati, grassi, vegano,
+# allergeni da aggiungere se mancano). Il pane porta glutine e il seed non lo
+# diceva: senza questa correzione un celiaco vedrebbe ogni panino "adatto".
+_NUTRIZIONE_INGREDIENTI = {
+    'Pane bianco':        (220, 7, 42, 2, True, 'glutine'),
+    'Pane integrale':     (200, 8, 38, 2, True, 'glutine'),
+    'Ciabatta':           (240, 8, 46, 2, True, 'glutine'),
+    'Rosetta':            (210, 7, 42, 1, True, 'glutine'),
+    'Senza glutine':      (210, 4, 40, 4, True, ''),
+    'Prosciutto cotto':   (70, 10, 1, 3, False, ''),
+    'Prosciutto crudo':   (110, 13, 0, 6, False, ''),
+    'Tonno':              (100, 20, 0, 2, False, 'pesce'),
+    'Mozzarella':         (150, 11, 1, 11, False, ''),
+    'Formaggio':          (180, 12, 0, 14, False, ''),
+    'Bresaola':           (75, 15, 0, 1, False, ''),
+    'Salmone':            (120, 12, 0, 8, False, ''),
+    'Feta':               (130, 7, 2, 11, False, ''),
+    'Pollo grigliato':    (110, 22, 0, 2, False, ''),
+    'Legumi misti':       (130, 8, 20, 1, True, ''),
+    'Lattuga':            (8, 1, 1, 0, True, ''),
+    'Rucola':             (5, 1, 0, 0, True, ''),
+    'Pomodoro':           (15, 1, 3, 0, True, ''),
+    'Cetriolo':           (8, 0, 2, 0, True, ''),
+    'Cipolla':            (15, 0, 3, 0, True, ''),
+    'Peperoni':           (15, 1, 3, 0, True, ''),
+    'Mais':               (40, 1, 8, 0, True, ''),
+    'Olive':              (45, 0, 1, 5, True, ''),
+    'Carote':             (20, 0, 4, 0, True, ''),
+    'Avocado':            (120, 1, 4, 11, True, ''),
+    'Maionese':           (90, 0, 1, 10, False, ''),
+    'Senape':             (10, 0, 1, 0, True, 'senape'),
+    'Ketchup':            (20, 0, 5, 0, True, ''),
+    'Pesto':              (90, 2, 1, 9, False, ''),
+    'Hummus':             (60, 3, 6, 3, True, 'sesamo'),
+    'Yogurt greco':       (40, 3, 2, 2, False, ''),
+    'Tahini':             (90, 3, 3, 8, True, ''),
+    'Uovo':               (75, 6, 0, 5, False, ''),
+    'Bacon':              (110, 7, 0, 9, False, ''),
+    'Mozzarella extra':   (150, 11, 1, 11, False, ''),
+    'Parmigiano':         (40, 4, 0, 3, False, ''),
+    'Crostini':           (60, 2, 10, 1, True, 'glutine'),
+    'Lattuga mista':      (10, 1, 1, 0, True, ''),
+    'Spinaci baby':       (10, 1, 1, 0, True, ''),
+    'Iceberg':            (8, 0, 2, 0, True, ''),
+    'Aceto balsamico':    (15, 0, 3, 0, True, ''),
+    'Olio e limone':      (90, 0, 0, 10, True, ''),
+    'Ranch':              (80, 0, 2, 8, False, ''),
+    'Semi di girasole':   (60, 2, 2, 5, True, ''),
+    'Sesamo':             (55, 2, 2, 5, True, ''),
+    'Pinoli':             (70, 1, 1, 7, True, ''),
+    'Base poke':          (250, 5, 55, 1, True, ''),
+    # Poke
+    'Riso bianco':        (250, 5, 55, 1, True, ''),
+    'Riso integrale':     (230, 5, 48, 2, True, ''),
+    'Quinoa':             (220, 8, 39, 4, True, ''),
+    'Mix riso e quinoa':  (235, 6, 47, 2, True, ''),
+    'Tonno marinato':     (110, 22, 1, 2, False, 'pesce'),
+    'Polpo':              (90, 17, 2, 1, False, 'molluschi'),
+    'Gamberi':            (85, 18, 1, 1, False, 'crostacei'),
+    'Tofu':               (120, 12, 3, 7, True, 'soia'),
+    'Pollo teriyaki':     (150, 22, 6, 4, False, 'soia'),
+    'Edamame':            (60, 6, 5, 2, True, 'soia'),
+    'Carota julienne':    (20, 0, 4, 0, True, ''),
+    'Cavolo rosso':       (15, 1, 3, 0, True, ''),
+    'Mango':              (45, 0, 11, 0, True, ''),
+    'Cipolla rossa':      (15, 0, 3, 0, True, ''),
+    'Salsa ponzu':        (20, 1, 3, 0, True, 'soia'),
+    'Maionese spicy':     (90, 0, 1, 10, False, 'uova'),
+    'Teriyaki':           (35, 1, 7, 0, True, 'soia'),
+    'Salsa di sesamo':    (80, 2, 3, 7, True, 'sesamo'),
+    'Miso':               (25, 2, 3, 1, True, 'soia'),
+    'Cipollotto':         (5, 0, 1, 0, True, ''),
+    'Tempura flakes':     (70, 1, 9, 3, False, 'glutine'),
+    'Alga nori':          (5, 1, 1, 0, True, ''),
+    'Lime':               (5, 0, 1, 0, True, ''),
+}
+
+
+def _nutrizione_prodotto(nome):
+    """I campi nutrizionali per Product(...) dal listino di partenza, o {}."""
+    v = _NUTRIZIONE_LISTINO.get(nome)
+    if not v:
+        return {}
+    return {'kcal': v[0], 'proteine_g': float(v[1]), 'carboidrati_g': float(v[2]),
+            'grassi_g': float(v[3]), 'is_vegetarian': v[4], 'is_vegan': v[5]}
+
+
+def _backfill_nutrizione():
+    """Completa per nome i valori mancanti di prodotti e ingredienti.
+
+    Tocca solo le righe con kcal NULL, cioe' mai compilate: quello che il
+    gestore ha gia' scritto a mano non viene sovrascritto. Idempotente, gira
+    a ogni avvio e dopo il primo passaggio non trova piu' nulla da fare.
+    """
+    from app.models import Product, Ingredient
+    for p in Product.query.filter(Product.kcal.is_(None)).all():
+        v = _NUTRIZIONE_LISTINO.get(p.name)
+        if not v:
+            continue
+        p.kcal, p.proteine_g, p.carboidrati_g, p.grassi_g = v[0], float(v[1]), float(v[2]), float(v[3])
+        p.is_vegetarian, p.is_vegan = v[4], v[5]
+    for i in Ingredient.query.filter(Ingredient.kcal.is_(None)).all():
+        v = _NUTRIZIONE_INGREDIENTI.get(i.name)
+        if not v:
+            continue
+        i.kcal, i.proteine_g, i.carboidrati_g, i.grassi_g = v[0], float(v[1]), float(v[2]), float(v[3])
+        i.is_vegan = v[4]
+        if v[4]:
+            i.is_vegetarian = True
+        if v[5]:
+            presenti = [a.strip().lower() for a in (i.allergens or '').split(',') if a.strip()]
+            if v[5] not in presenti:
+                i.allergens = ', '.join(presenti + [v[5]]) if presenti else v[5]
+
+
+def _check_diet_weekly(adesso=None):
+    """Il lunedì mattina prepara il piano della settimana a chi ha la dieta
+    attiva e vuole gli avvisi, e glielo manda su Telegram o per email.
+
+    Gira nel polling dei promemoria: e' a carico del traffico, come gli
+    altri, quindi "lunedì mattina" vuol dire alla prima visita di qualcuno
+    dopo le 7. Il flag `notificato` sul piano evita i doppi invii.
+    `adesso` serve ai test per fissare il momento.
+    """
+    from datetime import datetime as _dtt
+    from app.models import DietProfile, DietPlan
+    from app.dieta import genera_piano, inizio_settimana, testo_piano
+    from app.notifications import send_reminder_to_user
+
+    now = adesso or _dtt.now(_ROME)
+    if now.weekday() != 0 or now.hour < 7:
+        return
+    lunedi = inizio_settimana(now.date())
+    profili = DietProfile.query.filter_by(attivo=True, avvisi=True).all()
+    for profilo in profili:
+        user = profilo.user
+        if not user or not user.is_active:
+            continue
+        piano = DietPlan.query.filter_by(user_id=user.id, week_start=lunedi).first()
+        if piano is None:
+            piano = genera_piano(user, profilo, lunedi, oggi=now.date())
+        if piano.notificato or not piano.days:
+            continue
+        inviato, _canale = send_reminder_to_user(
+            user, testo_piano(piano) + '\n\nApri QuickLunch → La mia dieta per ordinare '
+            'un pranzo del piano con un tocco.',
+            subject='Il tuo pranzo della settimana')
+        if inviato:
+            piano.notificato = True
+    db.session.commit()
+
+
 def _migrate_tenant_columns():
     """Aggiunge le colonne multi-tenant alle tabelle esistenti (compatibile SQLite e PostgreSQL)."""
     from sqlalchemy import inspect as sa_inspect, text
@@ -542,6 +790,18 @@ def _migrate_tenant_columns():
 
     # Barcode prodotto (EAN-13/UPC per scansione lattine al cesto)
     _ensure('products', 'barcode', "VARCHAR(32)")
+
+    # Dieta: valori per porzione su prodotti, ingredienti e pasti aziendali.
+    # NULL vuol dire "non indicato" e va lasciato tale: la dieta distingue
+    # un piatto senza dati da uno a zero calorie.
+    for _tab in ('products', 'ingredients', 'daily_fixed_meals', 'meal_configurations'):
+        _ensure(_tab, 'kcal',          'INTEGER')
+        _ensure(_tab, 'proteine_g',    'FLOAT')
+        _ensure(_tab, 'carboidrati_g', 'FLOAT')
+        _ensure(_tab, 'grassi_g',      'FLOAT')
+        _ensure(_tab, 'is_vegan',      'BOOLEAN DEFAULT FALSE')
+    for _tab in ('products', 'daily_fixed_meals', 'meal_configurations'):
+        _ensure(_tab, 'is_vegetarian', 'BOOLEAN DEFAULT FALSE')
 
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)
@@ -834,7 +1094,7 @@ def _seed_defaults():
             db.session.add(Product(
                 name=_nome, price=_prezzo, category_id=_cid,
                 daily_quantity=_qta, is_active=True, allergens=_allerg,
-                tenant_id=default_tenant.id))
+                tenant_id=default_tenant.id, **_nutrizione_prodotto(_nome)))
 
     # ── Slot orari ────────────────────────────────────────────────────────
     if not TimeSlot.query.first():
@@ -953,6 +1213,11 @@ def _seed_defaults():
             Ingredient(name='Parmigiano',         price_extra=0.20, category_id=topping.id,  is_vegetarian=True,  allergens='latte'),
         ]
         db.session.add_all(ingredients)
+
+    # ── Valori nutrizionali mancanti: dal listino di partenza ─────────────
+    # Le installazioni gia' esistenti hanno prodotti e ingredienti creati da
+    # questo stesso seed ma senza kcal: si completano per nome, una volta.
+    _backfill_nutrizione()
 
     # ── Categorie poke (aggiunta idempotente) ─────────────────────────────
     if not IngredientCategory.query.filter_by(builder_type='poke').first():
@@ -1136,6 +1401,7 @@ def _seed_defaults():
         # Funzionalita' attivabili ('0' = disattivata)
         ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
         ('cesto_enabled',          '1',     'Abilita gestione cesto cucina (QR)'),
+        ('dieta_enabled',          '1',     'Abilita la dieta settimanale dei clienti'),
         ('wallet_enabled',         '1',     'Abilita portafoglio prepagato e punti'),
         # Reminder
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),
@@ -1148,5 +1414,9 @@ def _seed_defaults():
     for skey, sval, slabel in default_settings:
         if not AppSetting.query.filter_by(key=skey).first():
             db.session.add(AppSetting(key=skey, value=sval, label=slabel))
+
+    # Seconda passata: gli ingredienti poke vengono creati dopo la prima, e
+    # al primo avvio resterebbero senza valori fino al riavvio successivo.
+    _backfill_nutrizione()
 
     db.session.commit()

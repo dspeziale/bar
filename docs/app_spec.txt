@@ -1768,10 +1768,15 @@ Struttura cartelle:
 
 FUNZIONALITA' ATTIVABILI (feature flag)
 ---------------------------------------
-Tre moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
+Quattro moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
 (AppSetting con valore '1'/'0', default '1'):
 
 - tables_enabled  : gestione tavoli e prenotazioni a fasce.
+- dieta_enabled   : dieta settimanale dei clienti (vedi sezione dedicata in
+                    coda). Spento: spariscono la pagina /dieta, la voce di
+                    menu, i giudizi nel menu e nel carrello, il box in home e
+                    la pagina Diete clienti del backoffice; le preferenze
+                    salvate restano.
 - cesto_enabled   : cesto cucina con etichette QR; spento, le etichette gia'
                     stampate non sono acquistabili e le rotte del modulo
                     reindirizzano.
@@ -1786,3 +1791,60 @@ Tre moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
                     saldo). Report e guadagni DS quindi non cambiano. I saldi
                     esistenti non vengono azzerati: riattivando il flag
                     tornano visibili.
+
+
+DIETA SETTIMANALE (app/dieta.py)
+--------------------------------
+Il cliente dichiara le proprie esigenze e l'applicazione le applica al menu,
+al carrello e a un piano dei pranzi della settimana.
+
+Dati
+- Product, Ingredient, DailyFixedMeal, MealConfiguration: kcal, proteine_g,
+  carboidrati_g, grassi_g (per porzione), is_vegetarian, is_vegan. NULL vale
+  "non indicato": la dieta lo distingue da zero. Il listino di partenza ha i
+  valori; _backfill_nutrizione() li completa per nome sulle installazioni
+  esistenti, solo dove kcal e' NULL, senza toccare i dati scritti dal gestore.
+  Il pane del builder porta l'allergene glutine (prima non lo diceva).
+- DietProfile (uno per utente): condizioni (celiachia, lattosio, uova, frutta a
+  guscio, pesce/frutti di mare, soia -> allergeni esclusi), esclusioni libere,
+  regime (onnivoro/vegetariano/vegano), obiettivo (mantenimento/dimagrimento
+  -15%/aumento +10%), sesso, peso, altezza, attivita', kcal manuali (hanno la
+  precedenza), quota pranzo (default 40%), budget per pranzo, giorni in cui il
+  cliente pranza al bar, avvisi, note per il locale, attivo.
+- DietPlan (utente + lunedi', unico) con DietPlanDay: voci in JSON (prodotto,
+  ruolo, kcal, prezzo), totali, stato proposto/ordinato/saltato, order_id.
+
+Regole
+- Fabbisogno: Mifflin-St Jeor (peso, altezza, eta' dalla data di nascita,
+  sesso) x fattore di attivita' x correzione dell'obiettivo, tra 1200 e 4500
+  kcal; senza dati corporei un valore medio dichiarato come stima.
+- Compatibilita': allergeni del prodotto (o dell'ingrediente, con
+  normalizzazione dei testi liberi) contro le esclusioni; regime contro i flag
+  is_vegetarian/is_vegan. I motivi sono frasi mostrate accanto al nome.
+- Consumo del giorno: ordini non annullati (prodotti e composti del builder,
+  per nome ingrediente) + pasto aziendale prenotato. Il cesto resta fuori.
+- Carrello: kcal, giudizio leggero/in linea/abbondante sulla quota pranzo,
+  avvisi (allergene escluso, oltre la quota, oltre il fabbisogno con quanto
+  gia' ordinato, valori mancanti), alternative della stessa categoria. Con un
+  allergene escluso nel carrello l'ordine richiede la casella "voglio ordinare
+  comunque": e' un avviso, non un divieto.
+- Compositore: per ogni giorno scelto un principale (>= 250 kcal, categorie
+  primi/secondi/panini/tramezzini/pizza/poke/insalate), eventuali contorno e
+  chiusura (frutta/yogurt/dolci), piu' la bevanda a zero kcal piu' economica.
+  Punteggio = scarto dalla quota + penalita' (principale ripetuto nella
+  settimana 0,35; contorno o chiusura ripetuti 0,08; budget superato; meno di
+  20 g di proteine; dolce a chi vuole perdere peso) + un pizzico di caso. I
+  giorni gia' ordinati non si toccano; quelli trascorsi sono "saltati".
+- "Ordina" mette nel carrello i prodotti del giorno ancora disponibili e
+  ricorda il giorno in sessione: alla conferma il giorno diventa ordinato.
+- Avviso del lunedi' (>= 7:00 Roma, nel polling dei promemoria): genera il
+  piano a chi ha avvisi attivi e lo manda con send_reminder_to_user; il flag
+  notificato evita i doppi invii.
+
+Pagine
+- Cliente: /dieta (profilo, fabbisogno, oggi, piano), menu con badge "Adatto a
+  te"/motivo e filtro "Solo adatti a me", carrello con pannello dieta, home con
+  box "Calorie di oggi", pasto aziendale con compatibilita', profilo con link.
+- Staff: /admin/diete (permesso manage_clients): esigenze dichiarate, pranzi
+  del piano di oggi, prodotti senza valori nutrizionali; campi nutrizionali in
+  scheda prodotto, ingredienti e pasto del giorno.

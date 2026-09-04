@@ -881,6 +881,21 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
             synchronize_session=False)
         OrderItem.query.filter(
             OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+    # dieta: i giorni del piano puntano agli ordini, piani e profili agli utenti
+    from app.models import DietPlan, DietPlanDay, DietProfile
+    if order_ids:
+        DietPlanDay.query.filter(DietPlanDay.order_id.in_(order_ids)).update(
+            {'order_id': None}, synchronize_session=False)
+    if user_ids:
+        plan_ids = [r[0] for r in db.session.query(DietPlan.id).filter(
+            DietPlan.user_id.in_(user_ids)).all()]
+        if plan_ids:
+            DietPlanDay.query.filter(DietPlanDay.plan_id.in_(plan_ids)).delete(
+                synchronize_session=False)
+            DietPlan.query.filter(DietPlan.id.in_(plan_ids)).delete(
+                synchronize_session=False)
+        DietProfile.query.filter(DietProfile.user_id.in_(user_ids)).delete(
+            synchronize_session=False)
     Order.query.filter(
         Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 

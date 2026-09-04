@@ -132,6 +132,52 @@
   <!-- Riepilogo ordine -->
   {% if items or custom_cart %}
   <div class="col-lg-4">
+    {% if analisi_dieta %}
+    {% set a = analisi_dieta %}
+    {% set gm = {'leggero': ('Leggero', 'info'), 'in_linea': ('In linea', 'success'),
+                 'abbondante': ('Abbondante', 'warning')} %}
+    {% set pct = ((100 * a.totale.kcal / a.fabbisogno.pranzo)|round|int) if a.fabbisogno.pranzo else 0 %}
+    <div class="card card-outline mb-3" style="border-top:3px solid #27ae60 !important;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-leaf mr-2" style="color:#27ae60;"></i>La tua dieta</h3>
+      </div>
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between">
+          <span>Questo pranzo</span><strong>{{ a.totale.kcal }} kcal</strong>
+        </div>
+        <div class="d-flex justify-content-between text-muted" style="font-size:.85rem;">
+          <span>La tua quota pranzo</span><span>{{ a.fabbisogno.pranzo }} kcal</span>
+        </div>
+        <div class="progress my-2" style="height:8px;">
+          <div class="progress-bar bg-{{ gm[a.giudizio][1] }}" style="width:{{ [pct, 100]|min }}%;"></div>
+        </div>
+        <span class="badge badge-{{ gm[a.giudizio][1] }}">{{ gm[a.giudizio][0] }}</span>
+        <small class="text-muted ml-1">P {{ a.totale.proteine|round|int }} g · C {{ a.totale.carboidrati|round|int }} g · G {{ a.totale.grassi|round|int }} g</small>
+        {% if a.consumo.kcal %}
+        <div class="text-muted mt-1" style="font-size:.85rem;">
+          Già ordinato oggi: {{ a.consumo.kcal }} kcal · giornata {{ a.totale_giorno }} / {{ a.fabbisogno.target }} kcal
+        </div>
+        {% endif %}
+        {% for av in a.avvisi %}
+        <div class="alert alert-{{ av.livello }} py-1 px-2 mt-2 mb-0" style="font-size:.85rem;">{{ av.testo }}</div>
+        {% endfor %}
+        {% if a.alternative %}
+        <div class="mt-2" style="font-size:.85rem;">
+          <strong>Alternative adatte a te:</strong>
+          {% for alt in a.alternative %}
+          <div>
+            al posto di <em>{{ alt.al_posto_di }}</em> →
+            <form method="POST" action="{{ url_for('main.cart_add', product_id=alt.prodotto.id) }}" class="d-inline">
+              {{ csrf_field() }}<input type="hidden" name="qty" value="1">
+              <button class="btn btn-link btn-sm p-0 align-baseline">{{ alt.prodotto.name }}{% if alt.prodotto.kcal is not none %} ({{ alt.prodotto.kcal }} kcal){% endif %}</button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
     <div class="card card-outline card-success">
       <div class="card-header bg-gradient-success text-white">
         <h3 class="card-title"><i class="fas fa-check-circle mr-2"></i>Riepilogo Ordine</h3>
@@ -201,6 +247,15 @@
           <div class="alert alert-info py-2 mb-3">
             <i class="fas fa-cash-register mr-1"></i>
             Pagherai alla cassa al ritiro.
+          </div>
+          {% endif %}
+          {% if analisi_dieta and analisi_dieta.ha_incompatibili %}
+          <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="conferma_dieta"
+                   name="conferma_dieta" value="1">
+            <label class="custom-control-label text-danger" for="conferma_dieta" style="font-size:.9rem;">
+              Ho letto gli avvisi della dieta e voglio ordinare comunque
+            </label>
           </div>
           {% endif %}
           <button type="submit" class="btn btn-success btn-block"

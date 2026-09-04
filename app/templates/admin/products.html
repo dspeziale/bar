@@ -80,6 +80,27 @@
             {{ allergen_checkboxes([]) }}
           </div>
           <div class="form-group">
+            <label><i class="fas fa-leaf mr-1" style="color:#27ae60;"></i>Valori per porzione
+              <small class="text-muted">(per la dieta dei clienti)</small></label>
+            <div class="form-row">
+              <div class="col-3"><input type="number" name="kcal" id="newKcal" class="form-control form-control-sm" placeholder="kcal" min="0" step="1"></div>
+              <div class="col-3"><input type="number" name="proteine_g" id="newProt" class="form-control form-control-sm" placeholder="prot. g" min="0" step="0.1"></div>
+              <div class="col-3"><input type="number" name="carboidrati_g" id="newCarb" class="form-control form-control-sm" placeholder="carb. g" min="0" step="0.1"></div>
+              <div class="col-3"><input type="number" name="grassi_g" id="newFat" class="form-control form-control-sm" placeholder="grassi g" min="0" step="0.1"></div>
+            </div>
+            <div class="mt-1">
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="is_vegetarian" id="newVeg" class="form-check-input">
+                <label class="form-check-label" for="newVeg">Vegetariano</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="is_vegan" id="newVegan" class="form-check-input">
+                <label class="form-check-label" for="newVegan">Vegano</label>
+              </div>
+            </div>
+            <small class="text-muted">Vuoto = non indicato: il piatto non entra nei piani dieta dei clienti.</small>
+          </div>
+          <div class="form-group">
             <label><i class="fas fa-barcode mr-1"></i>Barcode EAN (opzionale)</label>
             <input type="text" name="barcode" class="form-control" placeholder="Es: 8000057004898"
                    maxlength="32" pattern="[0-9]{8,14}" title="8-14 cifre">
@@ -147,6 +168,27 @@
             {{ allergen_checkboxes([]) }}
           </div>
           <div class="form-group">
+            <label><i class="fas fa-leaf mr-1" style="color:#27ae60;"></i>Valori per porzione
+              <small class="text-muted">(per la dieta dei clienti)</small></label>
+            <div class="form-row">
+              <div class="col-3"><input type="number" name="kcal" id="editKcal" class="form-control form-control-sm" placeholder="kcal" min="0" step="1"></div>
+              <div class="col-3"><input type="number" name="proteine_g" id="editProt" class="form-control form-control-sm" placeholder="prot. g" min="0" step="0.1"></div>
+              <div class="col-3"><input type="number" name="carboidrati_g" id="editCarb" class="form-control form-control-sm" placeholder="carb. g" min="0" step="0.1"></div>
+              <div class="col-3"><input type="number" name="grassi_g" id="editFat" class="form-control form-control-sm" placeholder="grassi g" min="0" step="0.1"></div>
+            </div>
+            <div class="mt-1">
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="is_vegetarian" id="editVeg" class="form-check-input">
+                <label class="form-check-label" for="editVeg">Vegetariano</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="is_vegan" id="editVegan" class="form-check-input">
+                <label class="form-check-label" for="editVegan">Vegano</label>
+              </div>
+            </div>
+            <small class="text-muted">Vuoto = non indicato: il piatto non entra nei piani dieta dei clienti.</small>
+          </div>
+          <div class="form-group">
             <label><i class="fas fa-barcode mr-1"></i>Barcode EAN (opzionale)</label>
             <input type="text" name="barcode" id="editBarcode" class="form-control"
                    maxlength="32" placeholder="Es: 8000057004898">
@@ -185,6 +227,11 @@ var table = $('#productsTable').DataTable({
       render: function(d) {
         var name = $('<span>').text(d.name).html();
         var html = '<strong>' + name + '</strong>';
+        if (d.kcal != null) {
+          html += ' <span class="badge badge-light border" style="font-size:.7rem;">' + d.kcal + ' kcal</span>';
+        } else {
+          html += ' <span class="badge badge-light text-muted" style="font-size:.7rem;" title="Valori nutrizionali non indicati">kcal —</span>';
+        }
         if (d.description) {
           html += '<br><small class="text-muted">' + $('<span>').text(d.description.substring(0, 60)).html() + '</small>';
         }
@@ -248,6 +295,12 @@ $(document).on('click', '.btn-edit-prod', function() {
   $('#editCategory').val(d.category_id);
   $('#editActive').prop('checked', d.is_active);
   $('#editBarcode').val(d.barcode || '');
+  $('#editKcal').val(d.kcal == null ? '' : d.kcal);
+  $('#editProt').val(d.proteine_g == null ? '' : d.proteine_g);
+  $('#editCarb').val(d.carboidrati_g == null ? '' : d.carboidrati_g);
+  $('#editFat').val(d.grassi_g == null ? '' : d.grassi_g);
+  $('#editVeg').prop('checked', !!d.is_vegetarian);
+  $('#editVegan').prop('checked', !!d.is_vegan);
   // allergen checkboxes
   $('#editModal input[name="allergens"]').prop('checked', false);
   if (d.allergens) {

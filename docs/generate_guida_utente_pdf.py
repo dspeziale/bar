@@ -719,6 +719,19 @@ def sez_cliente(pdf, idx):
                'ordina e si paga al ritiro. Lo si capisce subito, perche in '
                'quel caso la voce Wallet non appare nel menu.')
 
+    h2(pdf, 'La dieta settimanale', C, idx)
+    testo(pdf, 'Da La mia dieta il cliente dichiara condizioni e allergie '
+               '(celiachia, lattosio, uova, frutta a guscio, pesce, soia), '
+               'regime e obiettivo, e riceve il fabbisogno calorico. Il menu '
+               'mostra "Adatto a te" o il motivo contrario, il carrello '
+               'confronta le calorie con la quota del pranzo e chiede una '
+               'conferma se c\'e un allergene escluso, e il piano della '
+               'settimana propone un pranzo per ogni giorno, ordinabile con '
+               'un tocco. Funziona sui piatti con i valori nutrizionali '
+               'compilati: il listino di partenza li ha, i piatti del gestore '
+               'li ricevono dalla scheda prodotto. Il backoffice li riassume '
+               'in Clienti > Diete clienti.')
+
     callout(pdf, 'Il tuo nome sulle liste',
             'Sul display della cucina, sul tagliando e sulle liste stampate '
             'compari con il nome e la sola iniziale del cognome - "Mario R." '

@@ -322,9 +322,67 @@ def sez_pasto(pdf, idx):
             'lascia il posto a un collega.', GREEN, (240, 250, 244))
 
 
+def sez_dieta(pdf, idx):
+    C = GREEN
+    apri_sezione(pdf, 7, 'La mia dieta', 'Esigenze alimentari, calorie e un '
+                 'piano dei pranzi della settimana.', C,
+                 'A chi ha una condizione da rispettare - celiachia, lattosio, '
+                 'allergie, dieta vegetariana o vegana - o vuole tenere '
+                 'd\'occhio le calorie. E facoltativa: senza, nulla cambia.', idx)
+
+    h2(pdf, 'Impostarla', C, idx)
+    passi(pdf, [
+        ('Apri La mia dieta',
+         'Dal menu laterale o dal Profilo. Spunta le condizioni: ognuna '
+         'esclude da sola gli allergeni corrispondenti; sotto trovi anche i '
+         '14 allergeni ufficiali da escludere uno per uno.'),
+        ('Scegli regime e obiettivo',
+         'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo o '
+         'aumentare la massa.'),
+        ('Peso, altezza, attivita (facoltativi)',
+         'Con questi dati e la data di nascita il fabbisogno e calcolato su '
+         'misura; senza, e un valore medio e la pagina lo dice. Le calorie '
+         'indicate da un nutrizionista, se le scrivi, hanno la precedenza.'),
+    ], C)
+
+    h2(pdf, 'Che cosa cambia', C, idx)
+    elenco(pdf, [
+        ('Nel menu: ', 'ogni piatto mostra le calorie e "Adatto a te", oppure '
+         'il motivo per cui non lo e ("contiene glutine"). Il pulsante Solo '
+         'adatti a me nasconde il resto.'),
+        ('Nel carrello: ', 'le calorie del pranzo rispetto alla tua quota - '
+         'leggero, in linea, abbondante - e il totale della giornata. Se '
+         'c\'e un allergene che escludi, l\'ordine chiede una conferma '
+         'esplicita e ti propone un\'alternativa adatta.'),
+        ('In home: ', 'le calorie di oggi rispetto al fabbisogno, calcolate '
+         'dagli ordini che hai fatto davvero.'),
+    ])
+
+    h2(pdf, 'Il piano della settimana', C, idx)
+    passi(pdf, [
+        ('Componi il piano',
+         'Per ogni giorno in cui pranzi qui ricevi un pranzo completo vicino '
+         'alla tua quota: principale, contorno o frutta, acqua. Senza gli '
+         'allergeni che escludi e senza ripetere il piatto nella settimana.'),
+        ('Ordina con un tocco',
+         'Il pranzo del giorno finisce nel carrello: scegli l\'orario e '
+         'conferma. Il giorno resta "Ordinato" anche se rifai il piano.'),
+        ('Rigenera se non ti convince',
+         'Le frecce propongono un\'alternativa per quel giorno; "Rifai il '
+         'piano" ricompone la settimana. Il lunedi mattina, se vuoi, il '
+         'piano ti arriva su Telegram o per email.'),
+    ], C)
+
+    callout(pdf, 'Stime, non prescrizioni',
+            'Le calorie sono valori per porzione indicati dal locale e non '
+            'sostituiscono il parere di un medico o di un nutrizionista. Un '
+            'piatto senza valori non entra nel piano e nel carrello viene '
+            'conteggiato a parte.', ORANGE, (255, 247, 235))
+
+
 def sez_domande(pdf, idx):
     C = NAVY
-    apri_sezione(pdf, 7, 'Domande frequenti', 'Le cose che si chiedono piu '
+    apri_sezione(pdf, 8, 'Domande frequenti', 'Le cose che si chiedono piu '
                  'spesso al banco.', C,
                  'A tutti: cinque minuti di lettura che fanno risparmiare '
                  'una domanda alla cassa.', idx)
@@ -387,7 +445,7 @@ def costruisci(voci_indice=None):
 
     raccolte = []
     for sezione in (sez_iscrizione, sez_telegram, sez_ordinare, sez_ritirare,
-                    sez_pagare, sez_pasto, sez_domande):
+                    sez_pagare, sez_pasto, sez_dieta, sez_domande):
         sezione(pdf, raccolte)
     return pdf, raccolte
 

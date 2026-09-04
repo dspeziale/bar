@@ -3,7 +3,8 @@ import secrets
 from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
-from app import db, tables_enabled, cesto_enabled, wallet_enabled, numero_italiano
+from app import (db, tables_enabled, cesto_enabled, wallet_enabled,
+                 dieta_enabled, numero_italiano)
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -13,7 +14,11 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Table, TableReservation, Poll, PollVote, PollChoice,
                         DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
                         CorporateMembership, PrepLabel, User,
-                        Prenotazione, PrenotazioneItem, PushSubscription)
+                        Prenotazione, PrenotazioneItem, PushSubscription,
+                        DietProfile, DietPlan, DietPlanDay, ALLERGENS,
+                        CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
+                        ATTIVITA_DIETA, GIORNI_SETTIMANA)
+from app.dieta import profilo_attivo
 from config import Config
 
 
@@ -51,6 +56,19 @@ def wallet_required(f):
     def decorated(*args, **kwargs):
         if not wallet_enabled():
             flash('Il portafoglio prepagato non e\' attivo.', 'warning')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def dieta_required(f):
+    """Blocca la rotta se la dieta settimanale e' disattivata."""
+    from functools import wraps
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not dieta_enabled():
+            flash('La dieta settimanale non e\' attiva.', 'warning')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return decorated
@@ -100,7 +118,14 @@ def index():
             if not today_meal_booking:
                 meal_booking_reminder = True
 
+    riepilogo_dieta = None
+    _profilo = profilo_attivo(current_user) if dieta_enabled() else None
+    if _profilo:
+        from app.dieta import riepilogo_giornata
+        riepilogo_dieta = riepilogo_giornata(current_user, _profilo)
+
     return render_template('main/dashboard.html',
+                           riepilogo_dieta=riepilogo_dieta,
                            today_orders=today_orders,
                            today_reservations=today_reservations,
                            recent_tx=recent_tx,
@@ -121,8 +146,17 @@ def menu():
         Product.category_id, Product.name).all()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
     cart = session.get('cart', {})
+    # Con la dieta attiva ogni scheda dice se il piatto va bene e quante kcal fa.
+    profilo = profilo_attivo(current_user) if dieta_enabled() else None
+    compat = {}
+    if profilo:
+        from app.dieta import compatibilita
+        for p in products:
+            ok, motivi = compatibilita(p, profilo)
+            compat[p.id] = {'ok': ok, 'motivi': motivi}
     return render_template('main/menu.html', categories=categories,
-                           products=products, slots=slots, cart=cart)
+                           products=products, slots=slots, cart=cart,
+                           profilo_dieta=profilo, compat=compat)
 
 
 @bp.route('/cart/add/<int:product_id>', methods=['POST'])
@@ -190,11 +224,17 @@ def cart():
 
     tid = _effective_tenant_id()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
+    analisi = None
+    profilo = profilo_attivo(current_user) if dieta_enabled() else None
+    if profilo and (items or custom_cart):
+        from app.dieta import analizza_carrello
+        analisi = analizza_carrello(current_user, profilo, cart, custom_cart)
     return render_template('main/cart.html', items=items,
                            custom_cart=custom_cart,
                            total=round(total, 2),
                            slots=slots,
-                           wallet=current_user.wallet_balance)
+                           wallet=current_user.wallet_balance,
+                           analisi_dieta=analisi)
 
 
 # ── Ordine ────────────────────────────────────────────────────────────────────
@@ -242,6 +282,18 @@ def place_order():
         total += ci['total_price']
 
     total = round(total, 2)
+
+    # Dieta: chi ha esclusioni dichiarate non ordina per sbaglio un piatto che
+    # le contiene. Non e' un divieto: basta confermare dopo aver letto l'avviso.
+    analisi_dieta = None
+    profilo_dieta = profilo_attivo(current_user) if dieta_enabled() else None
+    if profilo_dieta:
+        from app.dieta import analizza_carrello
+        analisi_dieta = analizza_carrello(current_user, profilo_dieta, cart, custom_cart)
+        if analisi_dieta['ha_incompatibili'] and request.form.get('conferma_dieta') != '1':
+            flash('Nel carrello c\'e\' qualcosa che non e\' adatto alle tue esigenze: '
+                  'leggi gli avvisi e, se vuoi procedere comunque, conferma.', 'warning')
+            return redirect(url_for('main.cart'))
 
     if wallet_enabled():
         _overdraft = current_user.wallet_overdraft or 0.0
@@ -303,15 +355,30 @@ def place_order():
     db.session.commit()
     session.pop('cart', None)
     session.pop('custom_cart', None)
+
+    # Se il carrello veniva da un giorno del piano, quel giorno e' ordinato.
+    _giorno_id = session.pop('dieta_giorno_id', None)
+    if _giorno_id:
+        _giorno = db.session.get(DietPlanDay, _giorno_id)
+        if _giorno and _giorno.plan and _giorno.plan.user_id == current_user.id:
+            _giorno.stato = 'ordinato'
+            _giorno.order_id = order.id
+            db.session.commit()
     _cassa = '' if wallet_enabled() else ' Pagamento alla cassa al ritiro.'
     flash(f'Ordine {order.order_code} confermato! Ritiro {slot_label}.{_cassa}',
           'success')
 
     # notifica utente
+    _riga_dieta = ''
+    if analisi_dieta:
+        _fabb = analisi_dieta['fabbisogno']
+        _riga_dieta = ('\n🥗 Pranzo: <b>%d kcal</b> su una quota di %d · oggi %d/%d kcal'
+                       % (analisi_dieta['totale']['kcal'], _fabb['pranzo'],
+                          analisi_dieta['totale_giorno'], _fabb['target']))
     send_telegram_to_user(
         current_user,
         f'✅ Ordine <b>{order.order_code}</b> confermato!\n'
-        f'Ritiro {slot_label}. Totale: <b>{numero_italiano(total)}€</b>'
+        f'Ritiro {slot_label}. Totale: <b>{numero_italiano(total)}€</b>' + _riga_dieta
     )
 
     # notifica admin / cucina
@@ -899,9 +966,18 @@ def pasto_aziendale():
         except Exception:
             can_cancel = True
 
+    compat_pasti = {}
+    _profilo = profilo_attivo(current_user) if dieta_enabled() else None
+    if _profilo:
+        from app.dieta import compatibilita
+        for m in meals:
+            ok, motivi = compatibilita(m, _profilo)
+            compat_pasti[m.id] = {'ok': ok, 'motivi': motivi}
+
     return render_template('main/pasto_aziendale.html',
                            corp=corp, meals=meals, my_booking=my_booking,
-                           slots=slots, today=today, can_cancel=can_cancel)
+                           slots=slots, today=today, can_cancel=can_cancel,
+                           compat_pasti=compat_pasti, profilo_dieta=_profilo)
 
 
 @bp.route('/pasto-aziendale/prenota', methods=['POST'])
@@ -1009,6 +1085,180 @@ def pasto_aziendale_cancella():
 
 
 # ── Guida utente ─────────────────────────────────────────────────────────────
+
+
+# ── Dieta settimanale ──────────────────────────────────────────────────────────
+
+def _profilo_del_cliente_o_404(gid):
+    """Il giorno del piano, solo se appartiene a chi lo chiede."""
+    giorno = db.get_or_404(DietPlanDay, gid)
+    if not giorno.plan or giorno.plan.user_id != current_user.id:
+        from flask import abort
+        abort(404)
+    return giorno
+
+
+@bp.route('/dieta')
+@login_required
+@dieta_required
+def dieta():
+    from app.dieta import fabbisogno, inizio_settimana, riepilogo_giornata
+    profilo = current_user.diet_profile
+    fabb = piano = riepilogo = None
+    if profilo:
+        fabb = fabbisogno(profilo, current_user)
+        piano = DietPlan.query.filter_by(user_id=current_user.id,
+                                         week_start=inizio_settimana()).first()
+        if profilo.attivo:
+            riepilogo = riepilogo_giornata(current_user, profilo)
+    return render_template('main/dieta.html', profilo=profilo, fabb=fabb,
+                           piano=piano, riepilogo=riepilogo, oggi=date.today(),
+                           condizioni=CONDIZIONI_DIETA, regimi=REGIMI_DIETA,
+                           obiettivi=OBIETTIVI_DIETA, attivita=ATTIVITA_DIETA,
+                           giorni_settimana=GIORNI_SETTIMANA, allergeni=ALLERGENS)
+
+
+@bp.route('/dieta/profilo', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_profilo():
+    """Salva le preferenze; con `genera` prepara subito il piano."""
+    from app.dieta import genera_piano
+
+    profilo = current_user.diet_profile
+    nuovo = profilo is None
+    if nuovo:
+        profilo = DietProfile(user_id=current_user.id,
+                              tenant_id=_effective_tenant_id())
+        db.session.add(profilo)
+
+    chiavi_cond = {c[0] for c in CONDIZIONI_DIETA}
+    profilo.condizioni = ','.join(c for c in request.form.getlist('condizioni')
+                                  if c in chiavi_cond)
+    chiavi_all = {a[0] for a in ALLERGENS}
+    profilo.esclusioni = ','.join(a for a in request.form.getlist('esclusioni')
+                                  if a in chiavi_all)
+    regime = request.form.get('regime', 'onnivoro')
+    profilo.regime = regime if regime in {r[0] for r in REGIMI_DIETA} else 'onnivoro'
+    obiettivo = request.form.get('obiettivo', 'mantenimento')
+    profilo.obiettivo = (obiettivo if obiettivo in {o[0] for o in OBIETTIVI_DIETA}
+                         else 'mantenimento')
+    attivita = request.form.get('attivita', 'sedentaria')
+    profilo.attivita = (attivita if attivita in {a[0] for a in ATTIVITA_DIETA}
+                        else 'sedentaria')
+    sesso = request.form.get('sesso', '').strip().upper()
+    profilo.sesso = sesso if sesso in ('M', 'F') else ''
+
+    def _numero(nome, minimo, massimo, intero=False):
+        grezzo = (request.form.get(nome) or '').strip().replace(',', '.')
+        if not grezzo:
+            return None
+        try:
+            v = float(grezzo)
+        except ValueError:
+            return None
+        if not (minimo <= v <= massimo):
+            return None
+        return int(round(v)) if intero else v
+
+    profilo.peso_kg = _numero('peso_kg', 30, 250)
+    profilo.altezza_cm = _numero('altezza_cm', 120, 230)
+    profilo.kcal_manuali = _numero('kcal_manuali', 1000, 5000, intero=True)
+    quota = _numero('quota_pranzo', 25, 60, intero=True)
+    profilo.quota_pranzo = (quota / 100.0) if quota else 0.40
+    profilo.budget_pranzo = _numero('budget_pranzo', 1, 100)
+    chiavi_giorni = {g[0] for g in GIORNI_SETTIMANA}
+    giorni = [g for g in request.form.getlist('giorni') if g in chiavi_giorni]
+    profilo.giorni = ','.join(giorni) if giorni else 'lun,mar,mer,gio,ven'
+    profilo.avvisi = request.form.get('avvisi') == '1'
+    profilo.note = (request.form.get('note') or '').strip()[:1000]
+    profilo.attivo = True
+    db.session.commit()
+
+    if request.form.get('genera') == '1':
+        genera_piano(current_user, profilo)
+        flash('Preferenze salvate e piano della settimana pronto.', 'success')
+    else:
+        flash('Preferenze salvate.' if not nuovo else
+              'Dieta attivata: da adesso menu e carrello tengono conto delle tue esigenze.',
+              'success')
+    return redirect(url_for('main.dieta'))
+
+
+@bp.route('/dieta/genera', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_genera():
+    from app.dieta import genera_piano
+    profilo = profilo_attivo(current_user)
+    if not profilo:
+        flash('Prima imposta le tue preferenze.', 'warning')
+        return redirect(url_for('main.dieta'))
+    piano = genera_piano(current_user, profilo)
+    proposti = [d for d in piano.days if d.voci]
+    if proposti:
+        flash('Piano della settimana pronto: %d pranz%s proposti.'
+              % (len(proposti), 'o' if len(proposti) == 1 else 'i'), 'success')
+    else:
+        flash('Non sono riuscito a comporre nessun pranzo: il listino non ha piatti '
+              'compatibili con le tue esigenze, o mancano i valori nutrizionali.', 'warning')
+    return redirect(url_for('main.dieta'))
+
+
+@bp.route('/dieta/giorno/<int:gid>/ordina', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_ordina_giorno(gid):
+    """Mette nel carrello il pranzo del giorno: si conferma dal carrello."""
+    from app.dieta import carrello_da_giorno
+    giorno = _profilo_del_cliente_o_404(gid)
+    carrello, mancanti = carrello_da_giorno(giorno)
+    if not carrello:
+        flash('Nessuno dei prodotti di questo pranzo e\' ordinabile oggi.', 'warning')
+        return redirect(url_for('main.dieta'))
+    session['cart'] = carrello
+    session['custom_cart'] = []
+    session['dieta_giorno_id'] = giorno.id
+    if mancanti:
+        flash('Non disponibili oggi e tolti dal carrello: %s.' % ', '.join(mancanti),
+              'warning')
+    flash('Pranzo di %s nel carrello: scegli l\'orario di ritiro e conferma.'
+          % giorno.etichetta_giorno.lower(), 'success')
+    return redirect(url_for('main.cart'))
+
+
+@bp.route('/dieta/giorno/<int:gid>/rigenera', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_rigenera_giorno(gid):
+    from app.dieta import rigenera_giorno
+    giorno = _profilo_del_cliente_o_404(gid)
+    profilo = profilo_attivo(current_user)
+    if not profilo:
+        return redirect(url_for('main.dieta'))
+    if giorno.stato == 'ordinato':
+        flash('Questo pranzo e\' gia\' stato ordinato.', 'info')
+    elif rigenera_giorno(giorno, profilo, current_user):
+        flash('Nuova proposta per %s.' % giorno.etichetta_giorno.lower(), 'success')
+    else:
+        flash('Nessuna alternativa compatibile nel listino.', 'warning')
+    return redirect(url_for('main.dieta'))
+
+
+@bp.route('/dieta/stato', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_stato():
+    """Sospende o riattiva la dieta senza perdere le preferenze."""
+    profilo = current_user.diet_profile
+    if not profilo:
+        return redirect(url_for('main.dieta'))
+    profilo.attivo = request.form.get('attivo') == '1'
+    db.session.commit()
+    flash('Dieta riattivata.' if profilo.attivo else
+          'Dieta sospesa: menu e carrello tornano senza avvisi.', 'info')
+    return redirect(url_for('main.dieta'))
+
 
 @bp.route('/guida')
 @login_required

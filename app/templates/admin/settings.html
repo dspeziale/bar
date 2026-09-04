@@ -695,7 +695,7 @@
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
               {{ csrf_field() }}
-              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled,wallet_enabled">
+              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled,wallet_enabled,dieta_enabled">
               <div class="form-group mb-2">
                 {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
                 <input type="hidden" name="tables_enabled" value="0">
@@ -734,6 +734,30 @@
                   l'acquisto self-service dei clienti: le etichette QR già
                   stampate non sono più acquistabili finché non la riattivi.
                   Lo storico delle vendite resta nei report e nei guadagni.
+                </small>
+              </div>
+              <div class="form-group mb-2">
+                {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
+                <input type="hidden" name="dieta_enabled" value="0">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input"
+                         id="chk-dieta-enabled" name="dieta_enabled" value="1"
+                         {{ 'checked' if cfg.dieta_enabled != '0' }}>
+                  <label class="custom-control-label" for="chk-dieta-enabled"
+                         style="cursor:pointer;">
+                    <i class="fas fa-leaf mr-1" style="color:#27ae60;"></i>
+                    <strong>Dieta settimanale dei clienti</strong>
+                  </label>
+                </div>
+                <small class="form-text text-muted">
+                  Il cliente dichiara condizioni e allergie (celiachia, lattosio,
+                  vegetariano...), riceve il fabbisogno calorico e un piano dei
+                  pranzi della settimana composto dal vostro listino; menu e
+                  carrello segnalano cosa è adatto e quante calorie fa. Servono i
+                  valori nutrizionali sui prodotti: il listino di partenza li ha
+                  già, i vostri piatti li compilate dalla scheda prodotto.
+                  Disattivandola spariscono la pagina del cliente, gli avvisi e la
+                  pagina Diete clienti; le preferenze salvate restano.
                 </small>
               </div>
               <div class="form-group mb-2">

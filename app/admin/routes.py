@@ -4,7 +4,8 @@ from functools import wraps
 from flask import (render_template, redirect, url_for, flash, request, abort,
                    jsonify, current_app)
 from flask_login import login_required, current_user
-from app import db, tables_enabled, cesto_enabled, wallet_enabled, numero_italiano
+from app import (db, tables_enabled, cesto_enabled, wallet_enabled, dieta_enabled,
+                 numero_italiano)
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -300,6 +301,12 @@ def products_dt():
             'allergen_list':  [[k, l, i] for k, l, i in p.allergen_list],
             'is_active':      p.is_active,
             'barcode':        p.barcode or '',
+            'kcal':           p.kcal,
+            'proteine_g':     p.proteine_g,
+            'carboidrati_g':  p.carboidrati_g,
+            'grassi_g':       p.grassi_g,
+            'is_vegetarian':  bool(p.is_vegetarian),
+            'is_vegan':       bool(p.is_vegan),
         })
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
@@ -585,6 +592,25 @@ def categories_dt():
     return jsonify(draw=draw, recordsTotal=total, recordsFiltered=filtered, data=data)
 
 
+def _nutrizione_da_form(form):
+    """kcal e macro dai campi del form. Campo vuoto = non indicato (NULL),
+    che per la dieta e' diverso da zero."""
+    def _num(nome, intero=False):
+        grezzo = (form.get(nome) or '').strip().replace(',', '.')
+        if grezzo == '':
+            return None
+        try:
+            v = float(grezzo)
+        except ValueError:
+            return None
+        if v < 0:
+            return None
+        return int(round(v)) if intero else v
+    return {'kcal': _num('kcal', intero=True), 'proteine_g': _num('proteine_g'),
+            'carboidrati_g': _num('carboidrati_g'), 'grassi_g': _num('grassi_g'),
+            'is_vegetarian': 'is_vegetarian' in form, 'is_vegan': 'is_vegan' in form}
+
+
 @bp.route('/products/new', methods=['POST'])
 @require_permission('manage_products')
 def product_new():
@@ -601,7 +627,8 @@ def product_new():
     db.session.add(Product(name=name, description=description, price=price,
                            category_id=category_id, daily_quantity=daily_quantity,
                            allergens=allergens, barcode=barcode,
-                           tenant_id=_active_tenant_id()))
+                           tenant_id=_active_tenant_id(),
+                           **_nutrizione_da_form(request.form)))
     db.session.commit()
     flash(f'Prodotto "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.products'))
@@ -619,6 +646,8 @@ def product_edit(pid):
     p.is_active    = 'is_active' in request.form
     p.allergens    = ','.join(request.form.getlist('allergens'))
     p.barcode      = request.form.get('barcode', '').strip() or None
+    for _k, _v in _nutrizione_da_form(request.form).items():
+        setattr(p, _k, _v)
     db.session.commit()
     flash(f'Prodotto "{p.name}" aggiornato.', 'success')
     return redirect(url_for('admin.products'))
@@ -1827,6 +1856,47 @@ def table_delete(tid):
 
 # ── Ingredienti builder ───────────────────────────────────────────────────────
 
+# ── Diete dei clienti ─────────────────────────────────────────────────────────
+
+@bp.route('/diete')
+@require_permission('manage_clients')
+def diete():
+    """Le esigenze alimentari dei clienti e i pranzi del piano di oggi.
+
+    Serve alla cucina e al banco: chi e' celiaco, chi non tollera il lattosio,
+    e quanti prodotti del listino non hanno ancora i valori nutrizionali
+    (senza quelli la dieta non li puo' proporre).
+    """
+    from datetime import date as _date
+    from app.models import DietProfile, DietPlan, DietPlanDay
+    from app.dieta import fabbisogno
+
+    if not dieta_enabled():
+        flash('La dieta settimanale e\' disattivata dalle Impostazioni.', 'warning')
+        return redirect(url_for('admin.settings'))
+    tid = _active_tenant_id()
+    profili = (DietProfile.query.join(User, DietProfile.user_id == User.id)
+               .filter(DietProfile.attivo == True, User.tenant_id == tid)          # noqa: E712
+               .order_by(User.last_name, User.first_name).all())
+    righe = []
+    for pr in profili:
+        f = fabbisogno(pr, pr.user)
+        righe.append({'profilo': pr, 'utente': pr.user, 'fabbisogno': f})
+    senza_valori = (Product.query.filter_by(tenant_id=tid, is_active=True)
+                    .filter(Product.kcal.is_(None)).count())
+    oggi = _date.today()
+    pranzi_oggi = (DietPlanDay.query.join(DietPlan)
+                   .filter(DietPlanDay.giorno == oggi, DietPlan.tenant_id == tid)
+                   .filter(DietPlanDay.stato != 'saltato').all())
+    conteggio = {}
+    for c in [c for c in righe]:
+        for cond in c['profilo'].lista_condizioni:
+            conteggio[cond[1]] = conteggio.get(cond[1], 0) + 1
+        conteggio[c['profilo'].etichetta_regime] = conteggio.get(c['profilo'].etichetta_regime, 0) + 1
+    return render_template('admin/diete.html', righe=righe, senza_valori=senza_valori,
+                           pranzi_oggi=pranzi_oggi, conteggio=conteggio, oggi=oggi)
+
+
 @bp.route('/ingredients')
 @require_permission('manage_ingredients')
 def ingredients():
@@ -1868,10 +1938,15 @@ def ingredient_new():
     if not name or not category_id:
         flash('Nome e categoria obbligatori.', 'danger')
         return redirect(url_for('admin.ingredients'))
-    db.session.add(Ingredient(name=name, category_id=category_id,
-                              price_extra=price_extra or 0.0,
-                              is_vegetarian=is_vegetarian, allergens=allergens,
-                              grams_per_serving=grams_per_serving))
+    _ing = Ingredient(name=name, category_id=category_id,
+                      price_extra=price_extra or 0.0,
+                      is_vegetarian=is_vegetarian, allergens=allergens,
+                      grams_per_serving=grams_per_serving)
+    _n = _nutrizione_da_form(request.form)
+    _ing.kcal, _ing.proteine_g = _n['kcal'], _n['proteine_g']
+    _ing.carboidrati_g, _ing.grassi_g = _n['carboidrati_g'], _n['grassi_g']
+    _ing.is_vegan = _n['is_vegan']
+    db.session.add(_ing)
     db.session.commit()
     flash(f'Ingrediente "{name}" aggiunto.', 'success')
     return redirect(url_for('admin.ingredients'))
@@ -1897,6 +1972,10 @@ def ingredient_edit(iid):
     ing.grams_per_serving = float(gps_raw) if gps_raw else None
     ing.is_vegetarian = 'is_vegetarian' in request.form
     ing.allergens = request.form.get('allergens', '').strip()
+    _n = _nutrizione_da_form(request.form)
+    ing.kcal, ing.proteine_g = _n['kcal'], _n['proteine_g']
+    ing.carboidrati_g, ing.grassi_g = _n['carboidrati_g'], _n['grassi_g']
+    ing.is_vegan = _n['is_vegan']
     db.session.commit()
     flash(f'Ingrediente "{ing.name}" aggiornato.', 'success')
     return redirect(url_for('admin.ingredients'))
@@ -2013,7 +2092,7 @@ def settings():
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
-        'tables_enabled', 'cesto_enabled', 'wallet_enabled',
+        'tables_enabled', 'cesto_enabled', 'wallet_enabled', 'dieta_enabled',
         'telegram_webhook_secret', 'telegram_bot_username',
         'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
         'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
@@ -2715,6 +2794,8 @@ def convenzione_pasto(cid):
         meal.price        = float(price)    if price    else corp.daily_price
         meal.max_bookings = int(max_book)   if max_book else corp.max_daily_covers
         meal.is_active    = 'is_active' in request.form
+        for _k, _v in _nutrizione_da_form(request.form).items():
+            setattr(meal, _k, _v)
         db.session.commit()
         flash(f'Opzione "{name}" salvata.', 'success')
         return redirect(url_for('admin.convenzione_pasto', cid=cid, d=_d_param()))
@@ -2785,6 +2866,7 @@ def convenzione_configurazioni(cid):
             max_bookings = int(m) if (m := request.form.get('max_bookings', '').strip()) else None,
             sort_order   = int(request.form.get('sort_order', 0) or 0),
             tenant_id    = None if current_user.is_admin else current_user.tenant_id,
+            **_nutrizione_da_form(request.form),
         )
         db.session.add(cfg)
         db.session.commit()
@@ -2818,6 +2900,8 @@ def configurazione_edit(cid, cfg_id):
     m = request.form.get('max_bookings', '').strip()
     cfg.max_bookings = int(m) if m else None
     cfg.sort_order   = int(request.form.get('sort_order', 0) or 0)
+    for _k, _v in _nutrizione_da_form(request.form).items():
+        setattr(cfg, _k, _v)
     db.session.commit()
     flash(f'Configurazione "{cfg.name}" aggiornata.', 'success')
     return redirect(url_for('admin.convenzione_configurazioni', cid=cid))

@@ -167,9 +167,10 @@ il default di un'ora scadeva sulle schermate POS/KDS lasciate aperte per tutto i
 ### Funzionalità attivabili (feature flag)
 
 I moduli disattivabili sono `AppSetting` con valore `'1'`/`'0'`, gestiti dal tab
-**Funzionalità** di `/admin/settings`. Oggi ce ne sono tre: `tables_enabled` (gestione
-tavoli e prenotazioni), `cesto_enabled` (cesto cucina con etichette QR) e
-`wallet_enabled` (portafoglio prepagato e fedeltà — vedi la sezione Wallet). Gli helper
+**Funzionalità** di `/admin/settings`. Oggi ce ne sono quattro: `tables_enabled` (gestione
+tavoli e prenotazioni), `cesto_enabled` (cesto cucina con etichette QR), `wallet_enabled`
+(portafoglio prepagato e fedeltà — vedi la sezione Wallet) e `dieta_enabled` (dieta
+settimanale dei clienti — vedi la sezione Dieta). Gli helper
 passano tutti da `_funzione_attiva(chiave)` in `app/__init__.py`: un flag nuovo aggiunge
 solo una funzione di una riga, non un'altra copia della cache su `g`. Per aggiungerne un
 altro servono cinque punti:
@@ -330,6 +331,38 @@ c'è — ogni messaggio con `reply_markup` moriva in `NameError` **prima** della
 i bottoni dei promemoria non partivano affatto, e i test non lo vedevano perché
 sostituivano `send_telegram_to_user`. Quando sostituisci una funzione di invio in un test,
 verifica a parte che quella vera sia almeno importabile ed eseguibile.
+
+### Dieta settimanale (`app/dieta.py`)
+
+Il cliente dichiara condizioni e allergie in `/dieta` (`DietProfile`), riceve il fabbisogno
+(Mifflin-St Jeor × attività × obiettivo, o le kcal che scrive lui) e un piano dei pranzi
+(`DietPlan` + `DietPlanDay`, voci in JSON). Menu, carrello, home e pasto aziendale ne tengono
+conto; il backoffice ha `/admin/diete`. Flag `dieta_enabled`, quarto della lista.
+
+- **Un valore nutrizionale mancante è `NULL`, non zero**, e resta tale: `nutrienti()` lo
+  segnala come `noto=False`, il compositore scarta il prodotto, il carrello lo conta a parte.
+  Il form del backoffice (`_nutrizione_da_form`) salva `NULL` per il campo vuoto: non
+  "normalizzare" a 0, altrimenti un piatto senza dati diventa il più leggero del menu.
+- `_backfill_nutrizione()` completa **per nome** i prodotti e gli ingredienti del listino di
+  partenza con `kcal IS NULL`, a ogni avvio e in due passate (gli ingredienti poke nascono
+  dopo la prima). Non tocca ciò che il gestore ha già scritto. È lì che il pane del builder
+  riceve l'allergene `glutine`, che il seed non dichiarava: senza, un celiaco vedeva ogni
+  panino "adatto".
+- Gli allergeni degli ingredienti sono testo libero (`'uova, latte'`, `'frutta a guscio'`):
+  passano sempre da `chiavi_allergeni()`, mai confrontati alla lettera.
+- Il regime si applica ai flag `is_vegetarian`/`is_vegan`, che hanno default `False`: un
+  prodotto del gestore non marcato risulta "non indicato come vegetariano". È voluto (lato
+  sicuro) e il messaggio lo dice; la soluzione è compilare la scheda, non ammorbidire il
+  controllo.
+- Il compositore penalizza il **principale** ripetuto nella settimana (0,35) molto più di
+  contorno e frutta (0,08): con lo stesso peso preferiva un pranzo troppo leggero pur di
+  variare la frutta. Il caso rompe i pareggi; i test passano `seed=` e `oggi=`.
+- L'ordine con un allergene escluso nel carrello richiede `conferma_dieta=1`: è un avviso da
+  leggere, non un divieto. Il collegamento giorno→ordine passa da `session['dieta_giorno_id']`.
+- L'avviso del lunedì gira nel polling dei promemoria (`_check_diet_weekly`, dopo le 7 di
+  Roma) e usa `DietPlan.notificato` contro i doppi invii; accetta `adesso=` per i test.
+- Le nuove tabelle hanno FK verso utenti e ordini: `_delete_tenant_data()` in `demo_seed.py`
+  le cancella prima di ordini e utenti. Chi aggiunge un modello alla dieta aggiorni anche lì.
 
 ### Email ai clienti: due momenti, nessun silenzio
 

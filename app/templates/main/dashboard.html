@@ -29,6 +29,20 @@
       <a href="{{ url_for('main.my_orders') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
+  {% if riepilogo_dieta %}
+  <div class="col-lg-3 col-6">
+    <div class="small-box" style="background:linear-gradient(135deg,#27ae60,#0f3460);color:#fff;">
+      <div class="inner">
+        <h3>{{ riepilogo_dieta.consumo.kcal }}<small style="font-size:.95rem;"> / {{ riepilogo_dieta.fabbisogno.target }} kcal</small></h3>
+        <p>Calorie di oggi</p>
+      </div>
+      <div class="icon"><i class="fas fa-leaf"></i></div>
+      <a href="{{ url_for('main.dieta') }}" class="small-box-footer" style="background:rgba(0,0,0,.12);">
+        La mia dieta <i class="fas fa-arrow-circle-right"></i>
+      </a>
+    </div>
+  </div>
+  {% endif %}
   {% if tables_enabled %}
   <div class="col-lg-3 col-6">
     <div class="small-box" style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;">

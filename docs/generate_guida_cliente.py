@@ -120,10 +120,11 @@ def build_toc_cliente(doc):
         ('7',  '📲  Paga al Banco — QR',          'Pagamento QR istantaneo generato dallo staff'),
         ('8',  '🪑  Prenotare un Tavolo',         'Fasce orarie, selezione tavolo, prenotazioni'),
         ('9',  '🏢  Pasto Aziendale',             'Solo dipendenti con convenzione attiva'),
-        ('10', '🗳️  Sondaggi',                   'Vota il menu, risultati in tempo reale'),
-        ('11', '🔔  Notifiche Telegram',          'Conferme e avvisi automatici via Telegram'),
-        ('12', '❓  Domande Frequenti',           '12 risposte ai problemi più comuni'),
-        ('13', '🧭  Scheda Riassuntiva',          'Tutte le azioni principali in una tabella'),
+        ('10', '🥗  La Mia Dieta',                'Esigenze alimentari, calorie, piano della settimana'),
+        ('11', '🗳️  Sondaggi',                   'Vota il menu, risultati in tempo reale'),
+        ('12', '🔔  Notifiche Telegram',          'Conferme e avvisi automatici via Telegram'),
+        ('13', '❓  Domande Frequenti',           '12 risposte ai problemi più comuni'),
+        ('14', '🧭  Scheda Riassuntiva',          'Tutte le azioni principali in una tabella'),
     ]
 
     tbl = doc.add_table(rows=len(toc_items), cols=3)
@@ -926,7 +927,80 @@ def s9_pasto_aziendale(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 10 — SONDAGGI
+# SEZIONE 10 — LA MIA DIETA
+# ══════════════════════════════════════════════════════════════════════════════
+
+def s10_dieta(doc):
+    h1(doc, '10', 'La Mia Dieta', '🥗', accent=HEX_GREEN)
+
+    body_para(doc, 'Se hai esigenze alimentari — celiachia, intolleranza al lattosio, allergie, '
+              'una dieta vegetariana o vegana, un obiettivo di peso — puoi dirlo all\'applicazione una '
+              'volta sola. Da quel momento il menu ti indica cosa è adatto a te, il carrello controlla '
+              'le calorie e ogni settimana puoi avere un piano dei pranzi già pronto da ordinare con un tocco.')
+    spacer(doc, 6)
+
+    h2(doc, '10.1  Impostare le preferenze')
+    step_row(doc, 1, 'Apri "La mia dieta" dal menu laterale',
+             'La trovi anche dal tuo Profilo. La prima volta si apre direttamente il modulo delle preferenze',
+             accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 2, 'Spunta le tue condizioni',
+             'Celiachia, intolleranza al lattosio, allergia a uova, frutta a guscio, pesce e frutti di mare, '
+             'soia: ognuna esclude in automatico gli allergeni corrispondenti. Sotto "Altri allergeni" puoi '
+             'aggiungerne altri dall\'elenco dei 14 ufficiali', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 3, 'Scegli regime e obiettivo',
+             'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo o aumentare la massa',
+             accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 4, 'Se vuoi, inserisci peso, altezza, sesso e attività',
+             'Con questi dati (e la data di nascita del profilo) il fabbisogno viene calcolato su misura. '
+             'Senza, l\'applicazione usa un valore medio e te lo dice. Se un nutrizionista ti ha indicato '
+             'le calorie, scrivile nel campo apposito: hanno la precedenza', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 5, 'Indica in quali giorni pranzi qui e salva',
+             'Il piano della settimana viene composto solo per quei giorni. Puoi anche fissare un budget '
+             'per pranzo', accent=HEX_GREEN)
+    spacer(doc, 8)
+
+    h2(doc, '10.2  Cosa cambia nel menu e nel carrello')
+    step_row(doc, 1, 'Nel menu ogni piatto ha le calorie e un giudizio',
+             '"Adatto a te" in verde, oppure in rosso il motivo: "contiene glutine", "non indicato come '
+             'vegetariano". Il pulsante "Solo adatti a me" nasconde tutto il resto', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 2, 'Nel carrello vedi le calorie del pranzo rispetto alla tua quota',
+             'Leggero, in linea o abbondante; se hai già ordinato qualcosa oggi, anche il totale della '
+             'giornata. Se un prodotto contiene un allergene che escludi, l\'ordine chiede una conferma '
+             'esplicita: è un avviso, la scelta resta tua. Dove possibile ti propone un\'alternativa adatta',
+             accent=HEX_GREEN)
+    spacer(doc, 8)
+
+    h2(doc, '10.3  Il piano della settimana')
+    step_row(doc, 1, 'Premi "Componi il piano"',
+             'Per ogni giorno scelto ricevi un pranzo completo — piatto principale, contorno o frutta, '
+             'acqua — vicino alla tua quota di calorie, senza gli allergeni che escludi e senza ripetere '
+             'lo stesso piatto nella settimana', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 2, '"Ordina" mette il pranzo nel carrello',
+             'Scegli l\'orario di ritiro e conferma come per qualsiasi ordine. Il giorno risulta '
+             '"Ordinato" e resta così anche se rifai il piano', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 3, 'Non ti convince? Rigenera il giorno',
+             'Il pulsante con le frecce propone un\'alternativa. "Rifai il piano" ricompone tutta la '
+             'settimana, tranne i giorni già ordinati', accent=HEX_GREEN)
+    spacer(doc, 6)
+
+    info_box(doc, 'Il lunedì mattina, se lo desideri, ricevi il piano della settimana su Telegram o per '
+             'email. Nella pagina trovi anche le calorie di oggi rispetto al tuo fabbisogno, calcolate '
+             'dagli ordini che hai fatto davvero.', style='info')
+    spacer(doc, 6)
+    info_box(doc, 'Le calorie sono stime per porzione indicate dal locale e non sostituiscono il parere '
+             'di un medico o di un nutrizionista. Un piatto senza valori indicati non entra nel piano e '
+             'nel carrello viene segnalato a parte.', style='warning')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SEZIONE 11 — SONDAGGI
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _collega_telegram(doc):
@@ -942,19 +1016,19 @@ def _collega_telegram(doc):
 
 
 def s10_sondaggi(doc):
-    h1(doc, '10', 'Sondaggi', '🗳️', accent=HEX_PURPL)
+    h1(doc, '11', 'Sondaggi', '🗳️', accent=HEX_PURPL)
 
     body_para(doc, 'Il locale può aprire sondaggi per capire cosa i clienti vorrebbero trovare nel menu. '
               'Votando, aiuti a scegliere i prossimi piatti.')
     spacer(doc, 6)
 
-    h2(doc, '10.1  Trovare i sondaggi attivi')
+    h2(doc, '11.1  Trovare i sondaggi attivi')
     step_row(doc, 1, 'Vai in "Sondaggi" (o "Vota il Menu") dal menu laterale',
              'Se c\'è un sondaggio attivo, si apre direttamente la pagina di voto. '
              'Se non vedi nessun sondaggio, il locale non ne ha aperti al momento: ricontrolla più avanti')
     spacer(doc, 8)
 
-    h2(doc, '10.2  Votare')
+    h2(doc, '11.2  Votare')
     step_row(doc, 1, 'Leggi la domanda e le opzioni',
              'Ogni opzione ha un\'emoji e un testo descrittivo')
     spacer(doc, 4)
@@ -966,18 +1040,18 @@ def s10_sondaggi(doc):
              'resta evidenziata e non potrai cambiarla.', style='info')
     spacer(doc, 8)
 
-    h2(doc, '10.3  Risultati in tempo reale')
+    h2(doc, '11.3  Risultati in tempo reale')
     step_row(doc, 1, 'Dopo aver votato, guarda i risultati',
              'Vedi le percentuali aggiornate in tempo reale per ogni opzione, '
              'così puoi capire come si sta orientando la preferenza di tutti i clienti')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 11 — NOTIFICHE TELEGRAM
+# SEZIONE 12 — NOTIFICHE TELEGRAM
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s11_notifiche(doc):
-    h1(doc, '11', 'Notifiche Telegram', '🔔', accent=HEX_PURPL)
+    h1(doc, '12', 'Notifiche Telegram', '🔔', accent=HEX_PURPL)
 
     body_para(doc, 'QuickLunch può avvisarti via Telegram in tempo reale per i principali eventi '
               'del tuo account, senza dover tenere l\'app aperta.')
@@ -985,7 +1059,7 @@ def s11_notifiche(doc):
 
     _collega_telegram(doc)
 
-    h2(doc, '11.1  Cosa ricevi')
+    h2(doc, '12.1  Cosa ricevi')
     data_table(doc,
         ['Evento', 'Contenuto della notifica'],
         [
@@ -998,7 +1072,7 @@ def s11_notifiche(doc):
         col_widths=[5.5, 12.1])
     spacer(doc, 8)
 
-    h2(doc, '11.2  Come attivare le notifiche')
+    h2(doc, '12.2  Come attivare le notifiche')
     body_para(doc,
         'Il collegamento con Telegram viene impostato dal personale del locale sul tuo profilo cliente. '
         'Per attivarlo, comunica al cassiere o all\'amministratore il tuo Telegram username '
@@ -1009,7 +1083,7 @@ def s11_notifiche(doc):
              'controlla "I Miei Ordini" per gli aggiornamenti sullo stato.', style='tip')
     spacer(doc, 8)
 
-    h2(doc, '11.3  Come trovare il proprio Chat ID')
+    h2(doc, '12.3  Come trovare il proprio Chat ID')
     step_row(doc, 1, 'Apri Telegram sul tuo telefono', '')
     spacer(doc, 4)
     step_row(doc, 2, 'Cerca @userinfobot nella barra di ricerca',
@@ -1022,7 +1096,7 @@ def s11_notifiche(doc):
              'Il personale lo inserisce nel tuo profilo e le notifiche si attivano subito')
     spacer(doc, 8)
 
-    h2(doc, '11.4  Tabella eventi e notifiche')
+    h2(doc, '12.4  Tabella eventi e notifiche')
     data_table(doc,
         ['Quando', 'Chi genera l\'evento', 'Cosa ricevi su Telegram'],
         [
@@ -1036,11 +1110,11 @@ def s11_notifiche(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 12 — DOMANDE FREQUENTI
+# SEZIONE 13 — DOMANDE FREQUENTI
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s12_faq(doc):
-    h1(doc, '12', 'Domande Frequenti', '❓', accent=HEX_PURPL)
+    h1(doc, '13', 'Domande Frequenti', '❓', accent=HEX_PURPL)
 
     faqs = [
         ('Ho dimenticato la password — cosa faccio?',
@@ -1107,11 +1181,11 @@ def s12_faq(doc):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SEZIONE 13 — SCHEDA RIASSUNTIVA
+# SEZIONE 14 — SCHEDA RIASSUNTIVA
 # ══════════════════════════════════════════════════════════════════════════════
 
 def s13_riassunto(doc):
-    h1(doc, '13', 'Scheda Riassuntiva', '🧭', accent=HEX_PURPL)
+    h1(doc, '14', 'Scheda Riassuntiva', '🧭', accent=HEX_PURPL)
 
     body_para(doc, 'Tieni questa pagina come riferimento veloce: ogni azione, dove trovarla e la sezione di approfondimento.')
     spacer(doc, 6)
@@ -1142,9 +1216,11 @@ def s13_riassunto(doc):
             ['Vedere / annullare prenotazioni tavolo', 'Le Mie Prenotazioni',                    '8.6–8.7'],
             ['Prenotare il pasto aziendale',         'Pasto Aziendale',                           '9.2'],
             ['Annullare pasto aziendale',            'Pasto Aziendale → Annulla (entro 30 min)', '9.4'],
-            ['Votare un sondaggio',                  'Sondaggi (o Vota il Menu)',                 '10'],
-            ['Attivare notifiche Telegram',          'Chiedi al cassiere / admin',                '11.2'],
-            ['Collegare Telegram',                   'Profilo → Collega Telegram',               '11.3'],
+            ['Impostare la dieta',                   'La mia dieta → Imposta la tua dieta',       '10.1'],
+            ['Avere il piano della settimana',       'La mia dieta → Componi il piano',           '10.3'],
+            ['Votare un sondaggio',                  'Sondaggi (o Vota il Menu)',                 '11'],
+            ['Attivare notifiche Telegram',          'Chiedi al cassiere / admin',                '12.2'],
+            ['Collegare Telegram',                   'Profilo → Collega Telegram',               '12.3'],
         ],
         col_widths=[6.5, 6.5, 4.6])
     spacer(doc, 10)
@@ -1196,6 +1272,8 @@ def main():
     s9_pasto_aziendale(doc)
     _page_break(doc)
 
+    s10_dieta(doc)
+    doc.add_page_break()
     s10_sondaggi(doc)
     _page_break(doc)
 

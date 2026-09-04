@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}La mia dieta{% endblock %}
+{% block page_title %}La mia dieta{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item active">La mia dieta</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dieta-verde { color:#27ae60; }
+  .giorno-card { border-top:3px solid #27ae60; }
+  .giorno-card.ordinato { border-top-color:#0f3460; }
+  .giorno-card.saltato, .giorno-card.vuoto { opacity:.65; border-top-color:#adb5bd; }
+  .voce-ruolo { font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:#8b9099; }
+  .kcal-chip { font-weight:700; color:#0f3460; }
+  .anello { width:110px; height:110px; border-radius:50%;
+            background:conic-gradient(#27ae60 var(--pct), #e9ecef 0);
+            display:flex; align-items:center; justify-content:center; }
+  .anello > div { width:84px; height:84px; border-radius:50%; background:#fff;
+                  display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .anello.sopra { background:conic-gradient(#e94560 var(--pct), #e9ecef 0); }
+  .cond-card { cursor:pointer; }
+  .cond-card input { margin-top:.35rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set gm = {'leggero': ('Leggero', 'info'), 'in_linea': ('In linea', 'success'),
+             'abbondante': ('Abbondante', 'warning')} %}
+
+{% if profilo and not profilo.attivo %}
+<div class="alert alert-secondary d-flex align-items-center justify-content-between">
+  <span><i class="fas fa-pause-circle mr-1"></i>La dieta è <strong>sospesa</strong>: menu e carrello non mostrano avvisi.</span>
+  <form method="POST" action="{{ url_for('main.dieta_stato') }}">
+    {{ csrf_field() }}<input type="hidden" name="attivo" value="1">
+    <button class="btn btn-success btn-sm"><i class="fas fa-play mr-1"></i>Riattiva</button>
+  </form>
+</div>
+{% endif %}
+
+{% if profilo and profilo.attivo %}
+{# ── Riepilogo: fabbisogno, quota, oggi ── #}
+<div class="row">
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body d-flex align-items-center" style="gap:1rem;">
+        {% set pct = riepilogo.percento %}
+        <div class="anello {{ 'sopra' if riepilogo.percento_reale > 100 }}" style="--pct:{{ pct }}%;">
+          <div>
+            <strong style="font-size:1.25rem;line-height:1;">{{ riepilogo.consumo.kcal }}</strong>
+            <small class="text-muted">kcal oggi</small>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div class="text-muted" style="font-size:.85rem;">Fabbisogno giornaliero</div>
+          <div style="font-size:1.4rem;font-weight:700;">{{ fabb.target }} <small>kcal</small></div>
+          <div class="text-muted" style="font-size:.85rem;">Quota pranzo <strong>{{ fabb.pranzo }}</strong> kcal ({{ (fabb.quota*100)|round|int }}%)</div>
+          {% if riepilogo.consumo.kcal %}
+          <span class="badge badge-{{ gm[riepilogo.giudizio_pranzo][1] }} mt-1">{{ gm[riepilogo.giudizio_pranzo][0] }} rispetto alla quota</span>
+          {% else %}
+          <span class="badge badge-light border mt-1">Nessun ordine oggi</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-footer py-1 text-muted" style="font-size:.8rem;">
+        <i class="fas fa-info-circle mr-1"></i>{{ fabb.spiegazione }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted" style="font-size:.85rem;">Le tue esigenze</div>
+        <div class="mt-1">
+          {% for c in profilo.lista_condizioni %}
+          <span class="badge badge-danger mr-1 mb-1">{{ c[1] }}</span>
+          {% endfor %}
+          {% for k in profilo.lista_esclusioni %}
+          <span class="badge badge-warning mr-1 mb-1">senza {{ k|replace('_',' ') }}</span>
+          {% endfor %}
+          <span class="badge badge-info mr-1 mb-1">{{ profilo.etichetta_regime }}</span>
+          <span class="badge badge-light border mr-1 mb-1">{{ profilo.etichetta_obiettivo }}</span>
+          {% if profilo.budget_pranzo %}<span class="badge badge-light border mb-1">max {{ profilo.budget_pranzo|num_it }}€ a pranzo</span>{% endif %}
+        </div>
+        {% if riepilogo.consumo.voci %}
+        <div class="text-muted mt-2" style="font-size:.8rem;">Oggi:
+          {% for v in riepilogo.consumo.voci %}{{ v.quantita }}× {{ v.nome }} ({{ v.kcal }} kcal{% if not v.noto %}, non indicato{% endif %}){% if not loop.last %} · {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-footer py-1">
+        <a href="#preferenze" class="btn btn-link btn-sm p-0" data-toggle="collapse"><i class="fas fa-sliders-h mr-1"></i>Modifica preferenze</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4 mb-3">
+    <div class="card h-100" style="border-top:3px solid #27ae60;">
+      <div class="card-body">
+        <div class="text-muted" style="font-size:.85rem;">Piano della settimana</div>
+        {% if piano %}
+        <div><strong>dal {{ piano.week_start|data_it('breve') }} al {{ piano.week_end|data_it('breve') }}</strong></div>
+        <div class="text-muted" style="font-size:.85rem;">{{ piano.days|selectattr('voci')|list|length }} pranzi proposti · quota {{ piano.target_pranzo }} kcal</div>
+        {% else %}
+        <div>Nessun piano per questa settimana.</div>
+        <div class="text-muted" style="font-size:.85rem;">Lo componiamo dal menu del locale rispettando le tue esigenze, con varietà tra i giorni.</div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('main.dieta_genera') }}" class="mt-2">
+          {{ csrf_field() }}
+          <button class="btn btn-success btn-sm">
+            <i class="fas fa-magic mr-1"></i>{{ 'Rifai il piano' if piano else 'Componi il piano' }}
+          </button>
+        </form>
+        {% if piano %}<small class="text-muted d-block mt-1">I giorni già ordinati restano come sono.</small>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Il piano ── #}
+{% if piano %}
+<div class="row">
+  {% for d in piano.days %}
+  <div class="col-xl col-lg-4 col-md-6 mb-3">
+    <div class="card giorno-card h-100 {{ d.stato }}{% if not d.voci %} vuoto{% endif %}">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <strong>{{ d.etichetta_giorno }} <span class="text-muted" style="font-weight:400;">{{ d.giorno.strftime('%d/%m') }}</span></strong>
+        {% if d.stato == 'ordinato' %}<span class="badge badge-primary">Ordinato</span>
+        {% elif d.stato == 'saltato' %}<span class="badge badge-secondary">Passato</span>
+        {% elif d.giorno == oggi %}<span class="badge badge-success">Oggi</span>{% endif %}
+      </div>
+      <div class="card-body py-2">
+        {% if d.voci %}
+          {% for v in d.voci %}
+          <div class="mb-1">
+            <div class="voce-ruolo">{{ v.ruolo }}</div>
+            <div class="d-flex justify-content-between">
+              <span>{{ v.nome }}</span>
+              <small class="text-muted ml-2">{{ v.kcal }} kcal</small>
+            </div>
+          </div>
+          {% endfor %}
+          <hr class="my-2">
+          <div class="d-flex justify-content-between">
+            <span class="kcal-chip">{{ d.kcal_totali }} kcal</span>
+            <strong>{{ d.prezzo_totale|num_it }}€</strong>
+          </div>
+          <div class="text-muted" style="font-size:.78rem;">P {{ d.proteine_g|round|int }} g · C {{ d.carboidrati_g|round|int }} g · G {{ d.grassi_g|round|int }} g</div>
+          {% set gd = gm[('leggero' if d.kcal_totali < piano.target_pranzo*0.8 else ('abbondante' if d.kcal_totali > piano.target_pranzo*1.15 else 'in_linea'))] %}
+          <span class="badge badge-{{ gd[1] }} mt-1">{{ gd[0] }}</span>
+        {% else %}
+          <div class="text-muted" style="font-size:.88rem;">{{ d.nota or 'Nessuna proposta.' }}</div>
+        {% endif %}
+      </div>
+      {% if d.stato != 'saltato' %}
+      <div class="card-footer py-2 d-flex" style="gap:.4rem;">
+        {% if d.voci and d.stato != 'ordinato' %}
+        <form method="POST" action="{{ url_for('main.dieta_ordina_giorno', gid=d.id) }}" style="flex:1;">
+          {{ csrf_field() }}
+          <button class="btn btn-success btn-sm btn-block" {% if d.giorno != oggi %}title="Il carrello viene riempito adesso: potrai ordinare per oggi"{% endif %}>
+            <i class="fas fa-cart-plus mr-1"></i>Ordina
+          </button>
+        </form>
+        {% endif %}
+        {% if d.stato != 'ordinato' %}
+        <form method="POST" action="{{ url_for('main.dieta_rigenera_giorno', gid=d.id) }}">
+          {{ csrf_field() }}
+          <button class="btn btn-outline-secondary btn-sm" title="Un'altra proposta"><i class="fas fa-sync"></i></button>
+        </form>
+        {% elif d.order %}
+        <a href="{{ url_for('main.my_orders') }}" class="btn btn-outline-primary btn-sm btn-block"><i class="fas fa-receipt mr-1"></i>{{ d.order.order_code }}</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="text-muted" style="font-size:.85rem;">
+  <i class="fas fa-lightbulb mr-1 text-warning"></i>
+  Il piano usa solo piatti del listino con i valori nutrizionali indicati dal locale, compatibili con le tue esigenze, e non ripete lo stesso piatto nella settimana.
+  Le stime caloriche sono indicative: non sostituiscono il parere di un medico o di un nutrizionista.
+</p>
+{% endif %}
+{% endif %}
+
+{# ── Preferenze (form) ── #}
+<div id="preferenze" class="collapse {{ 'show' if not profilo or not profilo.attivo }}">
+<div class="card" style="border-top:3px solid #27ae60;">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-leaf mr-2 dieta-verde"></i>{{ 'Le tue preferenze' if profilo else 'Imposta la tua dieta' }}</h3>
+  </div>
+  <div class="card-body">
+    {% if not profilo %}
+    <p class="text-muted">
+      Dicci di cosa devi tenere conto: il menu ti mostrerà cosa è adatto a te, il carrello controllerà le calorie
+      e ogni settimana potrai avere un piano dei pranzi già pronto da ordinare con un tocco.
+    </p>
+    {% endif %}
+    <form method="POST" action="{{ url_for('main.dieta_profilo') }}">
+      {{ csrf_field() }}
+
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">1 · Condizioni e allergie</h6>
+      <div class="row">
+        {% for chiave, etichetta, escl, descr in condizioni %}
+        <div class="col-md-6 col-lg-4 mb-2">
+          <label class="card cond-card mb-0 p-2 d-flex flex-row align-items-start" style="gap:.5rem;">
+            <input type="checkbox" name="condizioni" value="{{ chiave }}"
+                   {{ 'checked' if profilo and chiave in (profilo.condizioni or '').split(',') }}>
+            <span>
+              <strong style="font-size:.92rem;">{{ etichetta }}</strong><br>
+              <small class="text-muted">{{ descr }}</small>
+            </span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      <a class="btn btn-link btn-sm p-0 mb-2" data-toggle="collapse" href="#altri-allergeni">
+        <i class="fas fa-plus mr-1"></i>Altri allergeni da escludere
+      </a>
+      <div id="altri-allergeni" class="collapse {{ 'show' if profilo and profilo.esclusioni }}">
+        <div class="row">
+          {% for k, label, icon in allergeni %}
+          <div class="col-6 col-sm-4 col-lg-3">
+            <div class="form-check">
+              <input type="checkbox" name="esclusioni" value="{{ k }}" class="form-check-input" id="escl-{{ k }}"
+                     {{ 'checked' if profilo and k in (profilo.esclusioni or '').split(',') }}>
+              <label class="form-check-label" for="escl-{{ k }}">{{ icon }} {{ label }}</label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <hr>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">2 · Regime e obiettivo</h6>
+      <div class="row">
+        <div class="col-md-6">
+          {% for k, label, descr in regimi %}
+          <div class="form-check mb-1">
+            <input type="radio" name="regime" value="{{ k }}" class="form-check-input" id="reg-{{ k }}"
+                   {{ 'checked' if (profilo and profilo.regime == k) or (not profilo and k == 'onnivoro') }}>
+            <label class="form-check-label" for="reg-{{ k }}"><strong>{{ label }}</strong> <small class="text-muted">— {{ descr }}</small></label>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          {% for k, label, fattore in obiettivi %}
+          <div class="form-check mb-1">
+            <input type="radio" name="obiettivo" value="{{ k }}" class="form-check-input" id="ob-{{ k }}"
+                   {{ 'checked' if (profilo and profilo.obiettivo == k) or (not profilo and k == 'mantenimento') }}>
+            <label class="form-check-label" for="ob-{{ k }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <hr>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">3 · Fabbisogno <small class="text-lowercase" style="letter-spacing:0;">(facoltativo, ma rende il calcolo su misura)</small></h6>
+      <div class="form-row">
+        <div class="form-group col-6 col-md-2">
+          <label>Sesso</label>
+          <select name="sesso" class="form-control form-control-sm">
+            <option value="" {{ 'selected' if not profilo or not profilo.sesso }}>—</option>
+            <option value="F" {{ 'selected' if profilo and profilo.sesso == 'F' }}>F</option>
+            <option value="M" {{ 'selected' if profilo and profilo.sesso == 'M' }}>M</option>
+          </select>
+        </div>
+        <div class="form-group col-6 col-md-2">
+          <label>Peso (kg)</label>
+          <input type="number" name="peso_kg" class="form-control form-control-sm" min="30" max="250" step="0.5"
+                 value="{{ profilo.peso_kg if profilo and profilo.peso_kg else '' }}">
+        </div>
+        <div class="form-group col-6 col-md-2">
+          <label>Altezza (cm)</label>
+          <input type="number" name="altezza_cm" class="form-control form-control-sm" min="120" max="230" step="1"
+                 value="{{ profilo.altezza_cm|int if profilo and profilo.altezza_cm else '' }}">
+        </div>
+        <div class="form-group col-6 col-md-6">
+          <label>Attività</label>
+          <select name="attivita" class="form-control form-control-sm">
+            {% for k, label, f in attivita %}
+            <option value="{{ k }}" {{ 'selected' if (profilo and profilo.attivita == k) or (not profilo and k == 'sedentaria') }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>Fabbisogno impostato a mano (kcal/giorno)</label>
+          <input type="number" name="kcal_manuali" class="form-control form-control-sm" min="1000" max="5000" step="50"
+                 value="{{ profilo.kcal_manuali if profilo and profilo.kcal_manuali else '' }}"
+                 placeholder="lascia vuoto per il calcolo">
+          <small class="text-muted">Se te l'ha indicato un nutrizionista, scrivilo qui: ha la precedenza.</small>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Quota del pranzo</label>
+          <div class="input-group input-group-sm">
+            <input type="number" name="quota_pranzo" class="form-control" min="25" max="60" step="5"
+                   value="{{ ((profilo.quota_pranzo or 0.4)*100)|round|int if profilo else 40 }}">
+            <div class="input-group-append"><span class="input-group-text">% del giorno</span></div>
+          </div>
+          <small class="text-muted">L'età viene dalla data di nascita nel profilo.</small>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Budget per pranzo (€)</label>
+          <input type="number" name="budget_pranzo" class="form-control form-control-sm" min="1" max="100" step="0.5"
+                 value="{{ profilo.budget_pranzo if profilo and profilo.budget_pranzo else '' }}" placeholder="facoltativo">
+        </div>
+      </div>
+
+      <hr>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">4 · Quando pranzi qui</h6>
+      <div class="mb-2">
+        {% set gsel = profilo.lista_giorni if profilo else ['lun','mar','mer','gio','ven'] %}
+        {% for k, label in giorni_settimana %}
+        <div class="form-check form-check-inline">
+          <input type="checkbox" name="giorni" value="{{ k }}" class="form-check-input" id="g-{{ k }}" {{ 'checked' if k in gsel }}>
+          <label class="form-check-label" for="g-{{ k }}">{{ label[:3] }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-check mb-2">
+        <input type="checkbox" name="avvisi" value="1" class="form-check-input" id="avvisi" {{ 'checked' if not profilo or profilo.avvisi }}>
+        <label class="form-check-label" for="avvisi">Il lunedì mattina mandami il piano della settimana (Telegram o email)</label>
+      </div>
+      <div class="form-group">
+        <label>Note per il locale</label>
+        <input type="text" name="note" class="form-control form-control-sm" maxlength="1000"
+               value="{{ profilo.note if profilo else '' }}" placeholder="es. contaminazione da glutine da evitare anche in cucina">
+      </div>
+
+      <div class="d-flex flex-wrap" style="gap:.5rem;">
+        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>Salva</button>
+        <button type="submit" name="genera" value="1" class="btn btn-outline-success">
+          <i class="fas fa-magic mr-1"></i>Salva e componi il piano
+        </button>
+        {% if profilo and profilo.attivo %}
+        <span class="ml-auto"></span>
+        {% endif %}
+      </div>
+    </form>
+    {% if profilo and profilo.attivo %}
+    <form method="POST" action="{{ url_for('main.dieta_stato') }}" class="mt-3 text-right">
+      {{ csrf_field() }}<input type="hidden" name="attivo" value="0">
+      <button class="btn btn-link btn-sm text-muted"><i class="fas fa-pause mr-1"></i>Sospendi la dieta</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}

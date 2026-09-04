@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import db, login_manager, numero_italiano
@@ -277,6 +277,15 @@ class Product(db.Model):
     allergens      = db.Column(db.String(512), default='')
     barcode        = db.Column(db.String(32), nullable=True, index=True)
     tenant_id      = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    # Valori per porzione. NULL = non indicato: la dieta li tratta come
+    # sconosciuti, non come zero, altrimenti un piatto senza dati sembrerebbe
+    # il piu' leggero del menu.
+    kcal           = db.Column(db.Integer, nullable=True)
+    proteine_g     = db.Column(db.Float, nullable=True)
+    carboidrati_g  = db.Column(db.Float, nullable=True)
+    grassi_g       = db.Column(db.Float, nullable=True)
+    is_vegetarian  = db.Column(db.Boolean, default=False, server_default='0')
+    is_vegan       = db.Column(db.Boolean, default=False, server_default='0')
 
     category = db.relationship('Category', back_populates='products')
     order_items = db.relationship('OrderItem', back_populates='product')
@@ -414,6 +423,13 @@ class Ingredient(db.Model):
     # Magazzino (opzionale): grammi per porzione e giacenza attuale in grammi
     grams_per_serving = db.Column(db.Float, nullable=True)
     stock_qty         = db.Column(db.Float, nullable=True)
+    # Valori per porzione, come sul prodotto: servono a calcolare il panino
+    # o l'insalata composti dal cliente.
+    kcal              = db.Column(db.Integer, nullable=True)
+    proteine_g        = db.Column(db.Float, nullable=True)
+    carboidrati_g     = db.Column(db.Float, nullable=True)
+    grassi_g          = db.Column(db.Float, nullable=True)
+    is_vegan          = db.Column(db.Boolean, default=False, server_default='0')
     category          = db.relationship('IngredientCategory', back_populates='ingredients')
 
 
@@ -758,6 +774,12 @@ class MealConfiguration(db.Model):
     max_bookings = db.Column(db.Integer, nullable=True)     # None → usa max_daily_covers della convenzione
     sort_order   = db.Column(db.Integer, default=0)
     tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    kcal          = db.Column(db.Integer, nullable=True)
+    proteine_g    = db.Column(db.Float, nullable=True)
+    carboidrati_g = db.Column(db.Float, nullable=True)
+    grassi_g      = db.Column(db.Float, nullable=True)
+    is_vegetarian = db.Column(db.Boolean, default=False, server_default='0')
+    is_vegan      = db.Column(db.Boolean, default=False, server_default='0')
     corporate    = db.relationship('CorporateAccount', back_populates='configurations')
 
     @property
@@ -814,6 +836,12 @@ class DailyFixedMeal(db.Model):
     max_bookings = db.Column(db.Integer, default=60)
     is_active    = db.Column(db.Boolean, default=True)
     tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    kcal          = db.Column(db.Integer, nullable=True)
+    proteine_g    = db.Column(db.Float, nullable=True)
+    carboidrati_g = db.Column(db.Float, nullable=True)
+    grassi_g      = db.Column(db.Float, nullable=True)
+    is_vegetarian = db.Column(db.Boolean, default=False, server_default='0')
+    is_vegan      = db.Column(db.Boolean, default=False, server_default='0')
     corporate    = db.relationship('CorporateAccount', back_populates='daily_meals')
     bookings     = db.relationship('CorporateMealBooking', back_populates='meal',
                                    cascade='all, delete-orphan')
@@ -992,3 +1020,171 @@ class CaricoMensileRiga(db.Model):
     riga_id   = db.Column(db.Integer, nullable=False)
 
     carico = db.relationship('CaricoMensile', back_populates='righe')
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Dieta settimanale
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Condizioni che il cliente puo' dichiarare. Ognuna si traduce in allergeni da
+# escludere (chiavi di ALLERGENS) e, dove serve, in un regime. Le etichette
+# sono quelle che il cliente riconosce; la logica sta in app/dieta.py.
+CONDIZIONI_DIETA = [
+    # (chiave, etichetta, allergeni esclusi, descrizione breve)
+    ('celiachia',     'Celiachia / senza glutine',       ['glutine'],
+     'Escludiamo pane, pasta, pizza e tutto cio\' che contiene glutine.'),
+    ('lattosio',      'Intolleranza al lattosio',        ['latte'],
+     'Niente latte, formaggi, yogurt e derivati.'),
+    ('uova',          'Allergia alle uova',              ['uova'],
+     'Escludiamo uova e preparazioni che le contengono.'),
+    ('frutta_guscio', 'Allergia alla frutta a guscio',   ['frutta_guscio', 'arachidi'],
+     'Noci, mandorle, nocciole, pistacchi, arachidi e derivati.'),
+    ('pesce',         'Allergia a pesce e frutti di mare', ['pesce', 'crostacei', 'molluschi'],
+     'Pesce, crostacei e molluschi.'),
+    ('soia',          'Allergia alla soia',              ['soia'],
+     'Soia e derivati, salsa di soia compresa.'),
+]
+CONDIZIONI_DIETA_MAP = {c[0]: c for c in CONDIZIONI_DIETA}
+
+REGIMI_DIETA = [
+    ('onnivoro',    'Onnivoro',    'Nessuna esclusione sul tipo di alimento.'),
+    ('vegetariano', 'Vegetariano', 'Senza carne e pesce; latticini e uova sì.'),
+    ('vegano',      'Vegano',      'Nessun alimento di origine animale.'),
+]
+
+OBIETTIVI_DIETA = [
+    ('mantenimento', 'Mantenere il peso',  0.0),
+    ('dimagrimento', 'Perdere peso',      -0.15),
+    ('aumento',      'Aumentare la massa', 0.10),
+]
+
+ATTIVITA_DIETA = [
+    ('sedentaria', 'Sedentaria (ufficio, poco movimento)', 1.2),
+    ('leggera',    'Leggera (cammino, 1-2 allenamenti)',   1.375),
+    ('moderata',   'Moderata (3-5 allenamenti)',          1.55),
+    ('intensa',    'Intensa (lavoro fisico o sport quotidiano)', 1.725),
+]
+
+GIORNI_SETTIMANA = [('lun', 'Lunedì'), ('mar', 'Martedì'), ('mer', 'Mercoledì'),
+                    ('gio', 'Giovedì'), ('ven', 'Venerdì'), ('sab', 'Sabato'),
+                    ('dom', 'Domenica')]
+
+
+class DietProfile(db.Model):
+    """Le preferenze alimentari di un cliente e il suo fabbisogno."""
+    __tablename__ = 'diet_profiles'
+    id            = db.Column(db.Integer, primary_key=True)
+    user_id       = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False,
+                              unique=True, index=True)
+    tenant_id     = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    attivo        = db.Column(db.Boolean, default=True)
+    condizioni    = db.Column(db.String(256), default='')    # chiavi di CONDIZIONI_DIETA
+    esclusioni    = db.Column(db.String(512), default='')    # chiavi di ALLERGENS, anche libere
+    regime        = db.Column(db.String(16), default='onnivoro')
+    obiettivo     = db.Column(db.String(16), default='mantenimento')
+    sesso         = db.Column(db.String(1), default='')       # 'M', 'F' o ''
+    peso_kg       = db.Column(db.Float, nullable=True)
+    altezza_cm    = db.Column(db.Float, nullable=True)
+    attivita      = db.Column(db.String(16), default='sedentaria')
+    kcal_manuali  = db.Column(db.Integer, nullable=True)      # se il cliente le fissa a mano
+    quota_pranzo  = db.Column(db.Float, default=0.40)         # parte del fabbisogno a pranzo
+    budget_pranzo = db.Column(db.Float, nullable=True)        # euro al giorno, facoltativo
+    giorni        = db.Column(db.String(32), default='lun,mar,mer,gio,ven')
+    avvisi        = db.Column(db.Boolean, default=True)
+    note          = db.Column(db.Text, default='')
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('diet_profile', uselist=False))
+
+    @property
+    def lista_condizioni(self):
+        chiavi = [c.strip() for c in (self.condizioni or '').split(',') if c.strip()]
+        return [CONDIZIONI_DIETA_MAP[c] for c in chiavi if c in CONDIZIONI_DIETA_MAP]
+
+    @property
+    def lista_esclusioni(self):
+        """Tutti gli allergeni da escludere: dalle condizioni e da quelli scelti a mano."""
+        chiavi = []
+        for cond in self.lista_condizioni:
+            chiavi.extend(cond[2])
+        chiavi.extend(k.strip() for k in (self.esclusioni or '').split(',') if k.strip())
+        visti = []
+        for k in chiavi:
+            if k in ALLERGEN_LABELS and k not in visti:
+                visti.append(k)
+        return visti
+
+    @property
+    def lista_giorni(self):
+        return [g.strip() for g in (self.giorni or '').split(',') if g.strip()]
+
+    @property
+    def etichetta_regime(self):
+        return dict((k, l) for k, l, _d in REGIMI_DIETA).get(self.regime, 'Onnivoro')
+
+    @property
+    def etichetta_obiettivo(self):
+        return dict((k, l) for k, l, _f in OBIETTIVI_DIETA).get(self.obiettivo, 'Mantenere il peso')
+
+
+class DietPlan(db.Model):
+    """Il piano di una settimana per un cliente: un giorno per riga in DietPlanDay."""
+    __tablename__ = 'diet_plans'
+    id            = db.Column(db.Integer, primary_key=True)
+    user_id       = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    tenant_id     = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    week_start    = db.Column(db.Date, nullable=False)        # il lunedì
+    target_pranzo = db.Column(db.Integer, default=0)          # kcal per pranzo al momento della generazione
+    generated_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    notificato    = db.Column(db.Boolean, default=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'week_start'),)
+
+    user = db.relationship('User', backref=db.backref('diet_plans', lazy='dynamic'))
+    days = db.relationship('DietPlanDay', back_populates='plan',
+                           cascade='all, delete-orphan',
+                           order_by='DietPlanDay.giorno')
+
+    @property
+    def week_end(self):
+        return self.week_start + timedelta(days=6)
+
+
+class DietPlanDay(db.Model):
+    """Il pranzo proposto per un giorno. Le voci sono JSON, cosi' il piano
+    resta leggibile anche se un prodotto viene poi tolto dal listino."""
+    __tablename__ = 'diet_plan_days'
+    id            = db.Column(db.Integer, primary_key=True)
+    plan_id       = db.Column(db.Integer, db.ForeignKey('diet_plans.id'), nullable=False, index=True)
+    giorno        = db.Column(db.Date, nullable=False)
+    voci_json     = db.Column(db.Text, default='[]')
+    kcal_totali   = db.Column(db.Integer, default=0)
+    proteine_g    = db.Column(db.Float, default=0.0)
+    carboidrati_g = db.Column(db.Float, default=0.0)
+    grassi_g      = db.Column(db.Float, default=0.0)
+    prezzo_totale = db.Column(db.Float, default=0.0)
+    stato         = db.Column(db.String(16), default='proposto')   # proposto / ordinato / saltato
+    order_id      = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    nota          = db.Column(db.String(256), default='')
+
+    plan  = db.relationship('DietPlan', back_populates='days')
+    order = db.relationship('Order')
+
+    @property
+    def voci(self):
+        import json as _json
+        try:
+            return _json.loads(self.voci_json or '[]')
+        except ValueError:
+            return []
+
+    @voci.setter
+    def voci(self, valore):
+        import json as _json
+        self.voci_json = _json.dumps(valore, ensure_ascii=False)
+
+    @property
+    def etichetta_giorno(self):
+        nomi = dict(GIORNI_SETTIMANA)
+        chiavi = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']
+        return nomi[chiavi[self.giorno.weekday()]]

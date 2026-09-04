@@ -15,6 +15,8 @@
   .qty-input { width:65px; }
   .price-badge { font-size:1.1rem; font-weight:700; color:#e94560; }
   .avail-badge { font-size:.75rem; }
+  .solo-adatti .non-adatto { display:none; }
+  #btn-adatti.active { background:#27ae60; color:#fff; border-color:#27ae60; }
 </style>
 {% endblock %}
 
@@ -34,6 +36,12 @@
       <button class="btn btn-outline-secondary category-pill active" data-cat="all">
         <i class="fas fa-th me-1"></i> Tutto
       </button>
+      {% if profilo_dieta %}
+      <button class="btn btn-outline-success ml-auto" id="btn-adatti" type="button"
+              title="Nasconde i piatti che contengono quello che escludi">
+        <i class="fas fa-leaf me-1"></i> Solo adatti a me
+      </button>
+      {% endif %}
       {% for cat in categories %}
       <button class="btn btn-outline-{{ cat.color }} category-pill" data-cat="{{ cat.id }}">
         <i class="fas {{ cat.icon }} me-1"></i> {{ cat.name }}
@@ -53,7 +61,7 @@
   <div class="row">
     {% for p in cat_products %}
     {% set avail = p.available_today() %}
-    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-3{% if compat.get(p.id) and not compat[p.id].ok %} non-adatto{% endif %}">
       <div class="card product-card h-100 {% if avail == 0 %}border-danger{% endif %}">
         <div class="card-body d-flex flex-column">
           <div class="d-flex justify-content-between align-items-start mb-1">
@@ -67,6 +75,18 @@
             {% endif %}
           </div>
           <h6 class="card-title mt-1 mb-1">{{ p.name }}</h6>
+          {% if p.kcal is not none or compat.get(p.id) %}
+          <div class="mb-1" style="font-size:.76rem;">
+            {% if p.kcal is not none %}<span class="badge badge-light border">{{ p.kcal }} kcal</span>{% endif %}
+            {% if compat.get(p.id) %}
+              {% if compat[p.id].ok %}
+              <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Adatto a te</span>
+              {% else %}
+              <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>{{ compat[p.id].motivi|join(', ') }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% endif %}
           {% if p.description %}
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
@@ -105,7 +125,7 @@
   <div class="row">
     {% for p in cat_products %}
     {% set avail = p.available_today() %}
-    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-3{% if compat.get(p.id) and not compat[p.id].ok %} non-adatto{% endif %}">
       <div class="card product-card h-100 {% if avail == 0 %}border-danger{% endif %}">
         <div class="card-body d-flex flex-column">
           <div class="d-flex justify-content-between align-items-start mb-1">
@@ -119,6 +139,18 @@
             {% endif %}
           </div>
           <h6 class="card-title mt-1 mb-1">{{ p.name }}</h6>
+          {% if p.kcal is not none or compat.get(p.id) %}
+          <div class="mb-1" style="font-size:.76rem;">
+            {% if p.kcal is not none %}<span class="badge badge-light border">{{ p.kcal }} kcal</span>{% endif %}
+            {% if compat.get(p.id) %}
+              {% if compat[p.id].ok %}
+              <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Adatto a te</span>
+              {% else %}
+              <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>{{ compat[p.id].motivi|join(', ') }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% endif %}
           {% if p.description %}
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
@@ -151,6 +183,10 @@
 {% block extra_js %}
 <script>
 $(function(){
+  $('#btn-adatti').click(function(){
+    $(this).toggleClass('active');
+    $('body').toggleClass('solo-adatti', $(this).hasClass('active'));
+  });
   $('.category-pill').click(function(){
     var cat = $(this).data('cat');
     $('.category-pill').removeClass('active');
