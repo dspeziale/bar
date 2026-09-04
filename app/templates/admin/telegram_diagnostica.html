@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Diagnostica Telegram{% endblock %}
+{% block page_title %}Diagnostica Telegram{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.settings') }}">Impostazioni</a></li>
+<li class="breadcrumb-item active">Diagnostica Telegram</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <div class="card" style="border-top:3px solid #229ED9;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fab fa-telegram mr-1" style="color:#229ED9;"></i>
+          Che cosa dice Telegram
+        </h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+          {% for r in righe %}
+            <tr>
+              <td style="width:34%;" class="text-muted">{{ r.voce }}</td>
+              <td>
+                {% if r.stato == 'ok' %}
+                <span class="text-success"><i class="fas fa-check mr-1"></i></span>
+                {% elif r.stato == 'ko' %}
+                <span class="text-danger"><i class="fas fa-times mr-1"></i></span>
+                {% endif %}
+                <span style="word-break:break-all;">{{ r.valore }}</span>
+                {% if r.nota %}
+                <div class="text-muted" style="font-size:.86rem;">{{ r.nota }}</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <form method="POST"
+              action="{{ url_for('admin.settings_telegram_risposte') }}"
+              class="d-inline-block mr-1">
+          {{ csrf_field() }}
+          <button class="btn btn-primary btn-sm">
+            <i class="fas fa-sync mr-1"></i>Ripeti la registrazione
+          </button>
+        </form>
+        <form method="POST"
+              action="{{ url_for('admin.settings_test_telegram') }}"
+              class="d-inline-block mr-1">
+          {{ csrf_field() }}
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-paper-plane mr-1"></i>Rifai la domanda di prova
+          </button>
+        </form>
+        <a href="{{ url_for('admin.settings') }}"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-arrow-left mr-1"></i>Impostazioni
+        </a>
+      </div>
+    </div>
+
+    <div class="callout callout-info" style="font-size:.9rem;">
+      <i class="fas fa-info-circle mr-1"></i>
+      L'indirizzo atteso da questa applicazione è
+      {% if atteso %}<code style="word-break:break-all;">{{ atteso }}</code>
+      {% else %}<em>nessuno: le risposte non sono ancora state attivate</em>
+      {% endif %}.
+      Telegram consegna le risposte solo a quell'indirizzo, e solo in HTTPS:
+      dall'ambiente di sviluppo la registrazione non è possibile.
+    </div>
+
+  </div>
+</div>
+{% endblock %}

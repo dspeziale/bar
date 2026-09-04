@@ -2095,8 +2095,31 @@ def settings_telegram_prova_esito():
     elif stato == 'assente':
         flash(dettaglio, 'warning')
     else:
-        flash('Nessuna risposta per ora. %s' % dettaglio, 'warning')
+        segreto = (get_setting('telegram_webhook_secret') or '').strip()
+        atteso = (url_for('main.telegram_webhook', segreto=segreto,
+                          _external=True) if segreto else '')
+        from app.notifications import motivo_mancata_risposta
+        flash('Nessuna risposta per ora. %s' % motivo_mancata_risposta(atteso),
+              'warning')
     return redirect(url_for('admin.settings'))
+
+
+@bp.route('/settings/telegram-diagnostica')
+@require_permission('manage_settings')
+def settings_telegram_diagnostica():
+    """Che cosa dice Telegram del canale: la pagina che spiega i silenzi.
+
+    "In attesa di risposta" non dice se nessuno ha premuto il bottone o se
+    Telegram non riesce a consegnare: la differenza la sa solo Telegram, e
+    qui gliela si chiede con getWebhookInfo.
+    """
+    from app.notifications import diagnostica_canale
+
+    segreto = (get_setting('telegram_webhook_secret') or '').strip()
+    atteso = (url_for('main.telegram_webhook', segreto=segreto,
+                      _external=True) if segreto else '')
+    return render_template('admin/telegram_diagnostica.html',
+                           righe=diagnostica_canale(atteso), atteso=atteso)
 
 
 @bp.route('/settings/telegram-risposte', methods=['POST'])

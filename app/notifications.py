@@ -3,13 +3,17 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+# json serve in entrambi i rami: reply_markup viaggia come stringa JSON
+# anche quando la chiamata la fa requests. Lasciarlo nel solo ramo di
+# ripiego era un NameError silenzioso su ogni messaggio coi bottoni.
+import json as _json
+
 try:
     import requests as _requests
     _HAS_REQUESTS = True
 except ImportError:
     import urllib.request as _urllib_req
     import urllib.parse as _urllib_parse
-    import json as _json
     _HAS_REQUESTS = False
 
 
@@ -339,6 +343,127 @@ def leggi_risposta_prova():
         if registra_risposta_prova(codice, valore, chi):
             return valore, chi
     return 'attesa', 'Non e ancora arrivata nessuna risposta.'
+
+
+def stato_webhook(url_attesa=''):
+    """Che cosa dice Telegram del webhook registrato.
+
+    Ritorna url registrato, se combacia con quello di questa applicazione,
+    aggiornamenti in coda ed eventuale errore di consegna: sono i fatti che
+    spiegano perché una risposta non torna. Chiederli a Telegram è l'unico
+    modo di distinguere "nessuno ha premuto" da "non riesco a consegnare".
+    """
+    ok, info = telegram_api('getWebhookInfo', {})
+    if not ok:
+        return {'errore': str(info)}
+    info = info if isinstance(info, dict) else {}
+    url = (info.get('url') or '').strip()
+    return {
+        'errore': '',
+        'url': url,
+        'attivo': bool(url),
+        'combacia': (not url_attesa) or (url == url_attesa),
+        'in_coda': info.get('pending_update_count') or 0,
+        'ultimo_errore': (info.get('last_error_message') or '').strip(),
+    }
+
+
+def motivo_mancata_risposta(url_attesa=''):
+    """Una frase che dice perché la risposta alla prova non è tornata."""
+    w = stato_webhook(url_attesa)
+    if w.get('errore'):
+        return 'Telegram non risponde: %s' % w['errore']
+    if not w['attivo']:
+        return ('Le risposte ai bottoni non sono attive: premi "Attiva le '
+                'risposte ai bottoni" qui sopra, poi rifai la prova.')
+    if w['ultimo_errore']:
+        return ('Telegram non riesce a consegnare le risposte: "%s". '
+                'Ripeti la registrazione.' % w['ultimo_errore'])
+    if url_attesa and not w['combacia']:
+        return ('Il webhook registrato punta a un altro indirizzo (%s): '
+                'ripeti la registrazione.' % w['url'])
+    if w['in_coda']:
+        return ('Ci sono %d aggiornamenti in coda non ancora consegnati: '
+                'riprova fra qualche secondo.' % w['in_coda'])
+    return ('Il canale risulta configurato: se hai premuto il bottone '
+            'adesso, riprova fra qualche secondo.')
+
+
+def diagnostica_canale(url_attesa=''):
+    """Le righe della pagina di diagnostica del canale Telegram."""
+    righe = []
+
+    def riga(voce, valore, stato='info', nota=''):
+        righe.append({'voce': voce, 'valore': valore, 'stato': stato,
+                      'nota': nota})
+
+    token = get_setting('telegram_bot_token')
+    riga('Token del bot', 'configurato' if token else 'mancante',
+         'ok' if token else 'ko',
+         '' if token else 'Senza token non parte nessun messaggio.')
+    if not token:
+        return righe
+
+    ok, me = telegram_api('getMe', {})
+    nome = ('@%s' % (me or {}).get('username', '')) if ok else str(me)
+    riga('Bot raggiunto', nome, 'ok' if ok else 'ko',
+         '' if ok else 'Token non valido, o rete non raggiungibile.')
+
+    chat = get_setting('telegram_chat_id')
+    riga('Canale dello staff', chat or 'mancante', 'ok' if chat else 'ko',
+         '' if chat else 'È la chat su cui arrivano gli avvisi e la prova.')
+
+    w = stato_webhook(url_attesa)
+    if w.get('errore'):
+        riga('Risposte ai bottoni', 'non verificabili', 'ko', w['errore'])
+        return righe
+
+    if not w['attivo']:
+        riga('Risposte ai bottoni', 'non attive', 'ko',
+             'Il "No" del cliente sul promemoria non annulla nulla. Le '
+             'risposte alla domanda di prova si recuperano comunque, '
+             'leggendo i messaggi in attesa.')
+    else:
+        riga('Risposte ai bottoni', 'attive', 'ok')
+        riga('Indirizzo registrato', w['url'],
+             'ok' if w['combacia'] else 'ko',
+             '' if w['combacia'] else
+             'Diverso da quello di questa applicazione (%s): finché resta '
+             'così le risposte vanno altrove. Ripeti la registrazione.'
+             % url_attesa)
+        riga('Aggiornamenti in coda', str(w['in_coda']),
+             'ok' if not w['in_coda'] else 'info',
+             '' if not w['in_coda'] else
+             'Telegram li sta ancora consegnando.')
+        if w['ultimo_errore']:
+            riga('Ultimo errore di consegna', w['ultimo_errore'], 'ko',
+                 'Telegram ha provato a consegnare e non ci è riuscito.')
+
+    if not w['attivo']:
+        ok, aggiornamenti = telegram_api('getUpdates',
+                                         {'limit': 100, 'timeout': 0})
+        if not ok:
+            riga('Messaggi in attesa', 'non leggibili', 'ko',
+                 str(aggiornamenti))
+        else:
+            elenco = aggiornamenti or []
+            premuti = [a for a in elenco if (a or {}).get('callback_query')]
+            riga('Messaggi in attesa', str(len(elenco)))
+            riga('Bottoni premuti in attesa', str(len(premuti)),
+                 'ok' if premuti else 'info',
+                 '' if premuti else
+                 'Nessuno ha premuto un bottone, oppure la risposta è già '
+                 'stata letta.')
+
+    codice = get_setting('telegram_prova_codice')
+    risposta = get_setting('telegram_prova_risposta')
+    riga('Domanda di prova', codice or 'nessuna inviata')
+    riga('Risposta alla prova',
+         {'si': 'Sì', 'no': 'No'}.get(risposta, 'non ancora arrivata'),
+         'ok' if risposta else 'info',
+         '' if risposta else motivo_mancata_risposta(url_attesa)
+         if codice else '')
+    return righe
 
 
 def send_telegram_to_user(user, text, reply_markup=None):

@@ -316,6 +316,21 @@ servizio e stanno **fuori** da `all_keys` di `admin.settings`: quella lista la r
 `settings_save`, che le azzererebbe a ogni salvataggio. Lo stato arriva al template come
 variabile `prova`.
 
+Quando la risposta non torna, `motivo_mancata_risposta()` e la pagina
+`/admin/settings/telegram-diagnostica` (`diagnostica_canale()`) chiedono a **Telegram** che
+cosa sta succedendo con `getWebhookInfo`: indirizzo registrato — confrontato con quello di
+questa installazione, perché un webhook rimasto su un deploy precedente manda le risposte
+altrove — aggiornamenti in coda e `last_error_message`, cioè il motivo per cui la consegna
+fallisce. "In attesa di risposta" da solo non distingue "nessuno ha premuto" da "non riesco
+a consegnare".
+
+**`import json as _json` sta in testa al modulo, fuori dal `try/except ImportError`.** Era
+solo nel ramo di ripiego (quello senza `requests`), quindi in produzione — dove `requests`
+c'è — ogni messaggio con `reply_markup` moriva in `NameError` **prima** della chiamata HTTP:
+i bottoni dei promemoria non partivano affatto, e i test non lo vedevano perché
+sostituivano `send_telegram_to_user`. Quando sostituisci una funzione di invio in un test,
+verifica a parte che quella vera sia almeno importabile ed eseguibile.
+
 ### Email ai clienti: due momenti, nessun silenzio
 
 Il cliente riceve **due** email, entrambe con la guida in PDF allegata:
