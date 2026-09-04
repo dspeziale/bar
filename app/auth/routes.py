@@ -8,6 +8,12 @@ from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email)
 
 
+MESSAGGIO_REGISTRATO = (
+    "Registrazione completata! Il tuo account e' in attesa di approvazione: ti avvisiamo per email appena e' attivo. Nel frattempo controlla la posta, trovi la guida in allegato.")
+MESSAGGIO_IN_ATTESA = (
+    "Il tuo account e' ancora in attesa di approvazione. Ti abbiamo rimandato l'email di conferma con la guida.")
+
+
 def _tenant_predefinito():
     """Tenant a cui agganciare chi si registra dalle pagine globali.
 
@@ -57,7 +63,8 @@ def login():
             # "credenziali non valide" lo mandava a cercare un errore che
             # non c'era. Gli si rimanda anche la conferma con la guida.
             send_registration_received_email(user)
-            return redirect(url_for('auth.pending'))
+            flash(MESSAGGIO_IN_ATTESA, 'info')
+            return redirect(url_for('auth.login'))
         flash('Credenziali non valide.', 'danger')
     return render_template('auth/login.html')
 
@@ -102,7 +109,8 @@ def register():
                 f'🆕 <b>Nuovo cliente in attesa</b>\n'
                 f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
             )
-            return redirect(url_for('auth.pending'))
+            flash(MESSAGGIO_REGISTRATO, 'success')
+            return redirect(url_for('auth.login'))
     return render_template('auth/register.html')
 
 
@@ -153,7 +161,8 @@ def google_callback():
             # nulla e sembrava che l'iscrizione non avesse funzionato.
             # Gli si rimanda la conferma, con la guida allegata.
             send_registration_received_email(user)
-            return redirect(url_for('auth.pending'))
+            flash(MESSAGGIO_IN_ATTESA, 'info')
+            return redirect(url_for('auth.login'))
         if not user.google_id:
             user.google_id = google_id
         if avatar:
@@ -192,7 +201,8 @@ def google_callback():
             f'🆕 <b>Nuovo utente (Google)</b> — in attesa di attivazione\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
         )
-        return redirect(url_for('auth.pending'))
+        flash(MESSAGGIO_REGISTRATO, 'success')
+        return redirect(url_for('auth.login'))
 
 
 @bp.route('/join')

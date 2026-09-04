@@ -7,6 +7,9 @@ from app.models import Tenant, User
 from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email,
                                send_account_activated_email)
+# I due messaggi vivono in app/auth/routes.py: qui si riusano, cosi' il
+# testo mostrato al cliente e' lo stesso da qualunque via si registri.
+from app.auth.routes import MESSAGGIO_REGISTRATO, MESSAGGIO_IN_ATTESA
 
 
 def _get_tenant_or_404(slug):
@@ -189,13 +192,15 @@ def google_callback():
             f'🆕 <b>Nuovo utente Google</b> — {tenant.name}\n'
             f'👤 {first_name} {last_name}'.strip() + f'\n📧 {email}'
         )
-        return redirect(url_for('auth.pending'))
+        flash(MESSAGGIO_REGISTRATO, 'success')
+        return redirect(url_for('auth.login'))
 
     if not user.is_active:
         # Come nel percorso globale: si rimanda la conferma con la guida,
         # cosi chi riprova a iscriversi riceve comunque qualcosa.
         send_registration_received_email(user)
-        return redirect(url_for('auth.pending'))
+        flash(MESSAGGIO_IN_ATTESA, 'info')
+        return redirect(url_for('auth.login'))
 
     login_user(user, remember=True)
     return redirect(url_for('main.index'))
