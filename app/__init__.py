@@ -98,6 +98,9 @@ def create_app(config_object='config.Config'):
 
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
+    # Telegram chiama il webhook senza sessione ne' token CSRF.
+    from app.main.routes import telegram_webhook as _tg_hook
+    csrf.exempt(_tg_hook)
 
     from app.admin import bp as admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -343,7 +346,9 @@ def _check_order_reminders():
 def _check_meal_reminders():
     from datetime import datetime as _dtt
     from app.models import CorporateMealBooking
-    from app.notifications import send_reminder_to_user, get_numeric_setting
+    from app.notifications import (send_reminder_to_user,
+                                   get_numeric_setting,
+                                   tastiera_conferma_pasto)
 
     remind = get_numeric_setting('meal_reminder_minutes', 15)
     # Gli orari degli slot sono ore locali italiane: il confronto deve
@@ -376,8 +381,11 @@ def _check_meal_reminders():
                 booking.user,
                 f'🥗 Reminder: il tuo pasto aziendale è alle <b>{booking.slot.time_str}</b>!\n'
                 f'📋 <b>{booking.meal.name}</b>\n'
-                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>',
+                f'⏱️ Mancano circa <b>{int(diff)} minuti</b>\n\n'
+                f'Confermi il ritiro? Se rispondi <b>No</b> la cucina non '
+                f'lo prepara.',
                 subject='Promemoria ritiro pasto aziendale',
+                reply_markup=tastiera_conferma_pasto(booking.id),
             )
             if inviato:
                 booking.reminder_sent = True
@@ -523,6 +531,9 @@ def _migrate_tenant_columns():
     # Token di ritiro pasto aziendale
     _ensure('corporate_meal_bookings', 'pickup_token', "VARCHAR(16) DEFAULT ''")
 
+    # Risposta ai bottoni Si'/No del promemoria del pasto
+    _ensure('corporate_meal_bookings', 'conferma_utente', "VARCHAR(4) DEFAULT ''")
+
     # Fido wallet (saldo negativo consentito)
     _ensure('users', 'wallet_overdraft', 'FLOAT DEFAULT 0.0')
 
@@ -564,7 +575,7 @@ def _migrate_tenant_columns():
 
 
 def _seed_defaults():
-    from app.models import (User, Category, TimeSlot, Table,
+    from app.models import (User, Category, Product, TimeSlot, Table,
                             IngredientCategory, Ingredient,
                             Permission, Role, AppSetting, Tenant, BancoItem)
     from sqlalchemy import text
@@ -726,6 +737,101 @@ def _seed_defaults():
                      tenant_id=default_tenant.id)
             for nome, icona, colore in _categorie
         ])
+
+    # ── Listino di partenza ───────────────────────────────────────────────
+    # Prodotti tipici di un bar caffetteria con servizio mensa: si toglie
+    # quello che non si vende e si correggono i prezzi, invece di partire da
+    # un menu vuoto. Come per le categorie, solo se la tabella e' vuota.
+    if not Product.query.first():
+        db.session.flush()          # le categorie appena aggiunte devono avere un id
+        _cat = {c.name: c.id for c in
+                Category.query.filter_by(tenant_id=default_tenant.id).all()}
+        # (categoria, nome, prezzo, quantita' al giorno, allergeni)
+        _listino = [
+            ('Colazione', 'Cornetto vuoto', 1.20, 40, 'glutine,latte,uova'),
+            ('Colazione', 'Cornetto alla crema', 1.50, 30, 'glutine,latte,uova'),
+            ('Colazione', 'Cornetto integrale', 1.40, 20, 'glutine,latte,uova'),
+            ('Colazione', 'Sfogliatella', 1.80, 15, 'glutine,latte,uova'),
+            ('Colazione', 'Ciambella glassata', 1.50, 15, 'glutine,latte,uova'),
+            ('Caffetteria', 'Caffè espresso', 1.10, 300, ''),
+            ('Caffetteria', 'Caffè macchiato', 1.20, 120, 'latte'),
+            ('Caffetteria', 'Cappuccino', 1.50, 150, 'latte'),
+            ('Caffetteria', 'Latte macchiato', 1.60, 60, 'latte'),
+            ('Caffetteria', 'Caffè americano', 1.30, 40, ''),
+            ('Caffetteria', 'Caffè decaffeinato', 1.20, 40, ''),
+            ('Caffetteria', 'Caffè d\'orzo', 1.20, 30, ''),
+            ('Caffetteria', 'Ginseng', 1.40, 30, 'latte'),
+            ('Caffetteria', 'Tè caldo', 1.50, 30, ''),
+            ('Caffetteria', 'Cioccolata calda', 2.20, 20, 'latte'),
+            ('Panini', 'Panino prosciutto e mozzarella', 4.20, 25, 'glutine,latte'),
+            ('Panini', 'Panino crudo e squacquerone', 5.00, 20, 'glutine,latte'),
+            ('Panini', 'Panino porchetta', 4.50, 15, 'glutine'),
+            ('Panini', 'Panino vegetariano grigliato', 4.20, 15, 'glutine'),
+            ('Panini', 'Piadina crudo e rucola', 5.00, 15, 'glutine,latte'),
+            ('Tramezzini', 'Tramezzino tonno e pomodoro', 3.20, 25, 'glutine,pesce,uova'),
+            ('Tramezzini', 'Tramezzino prosciutto e funghi', 3.00, 25, 'glutine,uova,latte'),
+            ('Tramezzini', 'Tramezzino vegetariano', 3.00, 15, 'glutine,uova'),
+            ('Tramezzini', 'Toast prosciutto e formaggio', 3.00, 20, 'glutine,latte'),
+            ('Pizza e Focacce', 'Pizza margherita al taglio', 3.00, 30, 'glutine,latte'),
+            ('Pizza e Focacce', 'Pizza patate e rosmarino', 2.80, 20, 'glutine'),
+            ('Pizza e Focacce', 'Focaccia farcita', 3.50, 20, 'glutine'),
+            ('Primi piatti', 'Pasta al pomodoro', 5.50, 40, 'glutine'),
+            ('Primi piatti', 'Pasta al ragù', 6.00, 40, 'glutine,sedano'),
+            ('Primi piatti', 'Lasagna al forno', 6.50, 25, 'glutine,latte,uova,sedano'),
+            ('Primi piatti', 'Zuppa di legumi', 5.00, 20, 'sedano'),
+            ('Primi piatti', 'Insalata di riso', 5.50, 20, 'uova'),
+            ('Secondi piatti', 'Pollo arrosto', 6.50, 30, ''),
+            ('Secondi piatti', 'Cotoletta di pollo', 6.80, 30, 'glutine,uova'),
+            ('Secondi piatti', 'Filetto di platessa al forno', 7.00, 20, 'pesce,glutine'),
+            ('Secondi piatti', 'Frittata di verdure', 5.50, 20, 'uova,latte'),
+            ('Secondi piatti', 'Roast beef', 7.50, 15, ''),
+            ('Poke e Bowl', 'Poke di salmone', 8.50, 15, 'pesce,soia,sesamo'),
+            ('Poke e Bowl', 'Poke di pollo', 7.50, 15, 'soia,sesamo'),
+            ('Poke e Bowl', 'Bowl vegetariana', 7.00, 15, 'soia,sesamo'),
+            ('Insalate', 'Insalata mista', 3.50, 25, ''),
+            ('Insalate', 'Insalata caprese', 5.00, 20, 'latte'),
+            ('Insalate', 'Insalata di pollo e mais', 6.00, 20, ''),
+            ('Insalate', 'Insalata greca', 5.50, 15, 'latte'),
+            ('Contorni', 'Patate al forno', 3.00, 40, ''),
+            ('Contorni', 'Verdure grigliate', 3.50, 30, ''),
+            ('Contorni', 'Spinaci saltati', 3.00, 20, ''),
+            ('Contorni', 'Fagiolini all\'olio', 3.00, 20, ''),
+            ('Frutta', 'Frutta di stagione', 1.00, 40, ''),
+            ('Frutta', 'Macedonia fresca', 2.50, 20, ''),
+            ('Frutta', 'Ananas a fette', 2.50, 15, ''),
+            ('Yogurt', 'Yogurt bianco', 1.80, 20, 'latte'),
+            ('Yogurt', 'Yogurt alla frutta', 1.80, 20, 'latte'),
+            ('Yogurt', 'Yogurt con granola', 2.80, 15, 'latte,glutine,frutta_guscio'),
+            ('Dolci', 'Tiramisù', 3.50, 20, 'glutine,latte,uova'),
+            ('Dolci', 'Panna cotta', 3.00, 15, 'latte'),
+            ('Dolci', 'Torta della nonna', 3.00, 15, 'glutine,latte,uova,frutta_guscio'),
+            ('Dolci', 'Crostatina all\'albicocca', 1.50, 20, 'glutine,latte,uova'),
+            ('Gelati', 'Gelato confezionato', 2.00, 25, 'latte'),
+            ('Gelati', 'Ghiacciolo', 1.20, 20, ''),
+            ('Snack', 'Patatine in busta', 1.50, 40, ''),
+            ('Snack', 'Crackers', 0.80, 40, 'glutine'),
+            ('Snack', 'Taralli', 1.50, 25, 'glutine'),
+            ('Snack', 'Barretta di cioccolato', 1.30, 30, 'latte,soia,frutta_guscio'),
+            ('Bevande', 'Acqua naturale 50 cl', 0.80, 120, ''),
+            ('Bevande', 'Acqua frizzante 50 cl', 0.80, 80, ''),
+            ('Bevande', 'Acqua naturale 1,5 L', 1.20, 40, ''),
+            ('Succhi e Bibite', 'Cola in lattina', 2.00, 60, ''),
+            ('Succhi e Bibite', 'Aranciata in lattina', 2.00, 40, ''),
+            ('Succhi e Bibite', 'Tè freddo al limone', 1.80, 50, ''),
+            ('Succhi e Bibite', 'Succo di frutta ACE', 1.80, 30, ''),
+            ('Succhi e Bibite', 'Spremuta d\'arancia', 2.50, 20, ''),
+            ('Birra e Vino', 'Birra bionda 33 cl', 3.00, 30, 'glutine'),
+            ('Birra e Vino', 'Calice di vino rosso', 3.00, 20, 'solfiti'),
+            ('Birra e Vino', 'Calice di vino bianco', 3.00, 20, 'solfiti'),
+        ]
+        for _cnome, _nome, _prezzo, _qta, _allerg in _listino:
+            _cid = _cat.get(_cnome)
+            if not _cid:
+                continue
+            db.session.add(Product(
+                name=_nome, price=_prezzo, category_id=_cid,
+                daily_quantity=_qta, is_active=True, allergens=_allerg,
+                tenant_id=default_tenant.id))
 
     # ── Slot orari ────────────────────────────────────────────────────────
     if not TimeSlot.query.first():
@@ -1000,6 +1106,7 @@ def _seed_defaults():
         ('company_email',   '',  'Email'),
         # Notifiche
         ('telegram_bot_token',     '',      'Token Bot Telegram'),
+        ('telegram_bot_username', 'dslunch_bot', 'Nome utente del bot Telegram'),
         ('telegram_chat_id',       '',      'Chat ID canale Telegram'),
         ('gmail_user',             '',      'Account Gmail mittente'),
         ('gmail_app_password',     '',      'App Password Gmail'),

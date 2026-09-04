@@ -573,6 +573,17 @@ def s5_ordini(doc):
 # SEZIONE 6 — WALLET E PUNTI FEDELTÀ
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _nota_conferma_pasto(doc):
+    """I bottoni del promemoria del pasto aziendale."""
+    body_para(doc,
+        'Confermare o disdire dal promemoria: poco prima dell\'orario di '
+        'ritiro ricevi su Telegram un promemoria con due bottoni. Con '
+        '"Sì, lo ritiro" confermi; con "No, non vengo" la prenotazione '
+        'viene annullata e la cucina non prepara il tuo pasto — usalo '
+        'appena sai che non passerai, così non si butta nulla.')
+    spacer(doc, 8)
+
+
 def _nota_privacy_nome(doc):
     """Il cliente si vede per intero, gli altri lo vedono abbreviato."""
     body_para(doc,
@@ -846,6 +857,8 @@ def s9_pasto_aziendale(doc):
                HEX_PURPL)
     spacer(doc, 8)
 
+    _nota_conferma_pasto(doc)
+
     h2(doc, '9.1  Chi può accedere')
     body_para(doc,
         'La sezione "Pasto Aziendale" è visibile solo se il tuo account è stato associato '
@@ -916,6 +929,17 @@ def s9_pasto_aziendale(doc):
 # SEZIONE 10 — SONDAGGI
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _collega_telegram(doc):
+    """Come collegare il bot: dal link dell'email o a mano con /id."""
+    body_para(doc,
+        'Come collegare Telegram: nell\'email di benvenuto trovi il '
+        'pulsante "Collega Telegram con un clic" — un tocco dal telefono e '
+        'sei collegato. Se preferisci farlo a mano: apri Telegram, cerca il '
+        'bot del locale, premi Avvia, scrivi /id e incolla il numero che ti '
+        'risponde nel campo "Telegram Chat ID" del tuo profilo.')
+    spacer(doc, 8)
+
+
 def s10_sondaggi(doc):
     h1(doc, '10', 'Sondaggi', '🗳️', accent=HEX_PURPL)
 
@@ -957,6 +981,8 @@ def s11_notifiche(doc):
     body_para(doc, 'QuickLunch può avvisarti via Telegram in tempo reale per i principali eventi '
               'del tuo account, senza dover tenere l\'app aperta.')
     spacer(doc, 6)
+
+    _collega_telegram(doc)
 
     h2(doc, '11.1  Cosa ricevi')
     data_table(doc,

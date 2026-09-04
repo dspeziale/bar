@@ -1970,6 +1970,7 @@ def settings():
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
         'tables_enabled', 'cesto_enabled', 'wallet_enabled',
+        'telegram_webhook_secret', 'telegram_bot_username',
         'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
         'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
     ]
@@ -2014,6 +2015,53 @@ def settings_save():
 def settings_test_telegram():
     ok, msg = send_telegram('✅ <b>Test QuickLunch</b>\nConnessione Telegram funzionante!')
     flash(f'Telegram: {msg}', 'success' if ok else 'danger')
+    return redirect(url_for('admin.settings'))
+
+
+@bp.route('/settings/telegram-risposte', methods=['POST'])
+@require_permission('manage_settings')
+def settings_telegram_risposte():
+    """Attiva (o spegne) le risposte ai bottoni dei promemoria Telegram.
+
+    Registra su Telegram l'indirizzo del webhook: senza questo passaggio i
+    bottoni Si'/No compaiono nel messaggio ma la risposta non arriva a
+    QuickLunch. Serve un indirizzo pubblico raggiungibile in HTTPS.
+    """
+    import secrets as _secrets
+    from app.notifications import telegram_api
+
+    spegni = (request.form.get('azione') or '') == 'off'
+    if spegni:
+        ok, res = telegram_api('deleteWebhook', {})
+        riga = AppSetting.query.filter_by(key='telegram_webhook_secret').first()
+        if riga:
+            riga.value = ''
+            db.session.commit()
+        flash('Risposte ai promemoria disattivate.' if ok
+              else f'Telegram: {res}', 'success' if ok else 'danger')
+        return redirect(url_for('admin.settings'))
+
+    riga = AppSetting.query.filter_by(key='telegram_webhook_secret').first()
+    segreto = (riga.value if riga else '').strip() or _secrets.token_urlsafe(24)
+    if riga:
+        riga.value = segreto
+    else:
+        db.session.add(AppSetting(key='telegram_webhook_secret', value=segreto,
+                                  label='Segreto del webhook Telegram'))
+    db.session.commit()
+
+    url = url_for('main.telegram_webhook', segreto=segreto, _external=True)
+    if url.startswith('http://'):
+        flash('Telegram accetta solo indirizzi HTTPS: le risposte si '
+              'attivano dall\'ambiente di produzione.', 'warning')
+        return redirect(url_for('admin.settings'))
+    ok, res = telegram_api('setWebhook', {
+        'url': url,
+        'allowed_updates': ['callback_query', 'message'],
+        'drop_pending_updates': True,
+    })
+    flash('Risposte ai promemoria attive: i bottoni Sì/No ora funzionano.'
+          if ok else f'Telegram: {res}', 'success' if ok else 'danger')
     return redirect(url_for('admin.settings'))
 
 
@@ -2797,7 +2845,10 @@ def maintenance():
             Product.query.delete(synchronize_session=False)
             Category.query.delete(synchronize_session=False)
             db.session.commit()
-            flash('Prodotti e categorie eliminati.', 'success')
+            flash('Prodotti e categorie eliminati: il catalogo è vuoto. '
+                  'Le categorie predefinite tornano con il reset completo '
+                  'qui sotto, oppure con l\'azzeramento del database in '
+                  'Impostazioni, tab Dati.', 'success')
 
         elif op == 'clear_ingredients':
             CustomOrderItemIngredient.query.delete(synchronize_session=False)
@@ -2862,7 +2913,15 @@ def maintenance():
                     db.session.execute(db.text(f'DELETE FROM user_roles WHERE user_id IN ({ids_str})'))
                     db.session.execute(db.text(f'DELETE FROM users WHERE id IN ({ids_str})'))
             db.session.commit()
-            flash('Reset completo eseguito.', 'success')
+            # Il reset azzera anche il catalogo: senza questo il gestore
+            # resta senza categorie, slot e ingredienti fino al riavvio
+            # successivo dell'applicazione. Il seed e' idempotente e
+            # ricrea solo cio' che manca.
+            from app import _seed_defaults
+            _seed_defaults()
+            flash('Reset completo eseguito. Ricreati i dati di base: '
+                  'categorie, slot di ritiro, tavoli, articoli del banco e '
+                  'ingredienti del builder.', 'success')
 
         elif op == 'run_demo_seed':
             from app.demo_seed import reset_demo_data, seed_demo_data

@@ -917,6 +917,24 @@ def build():
     ], motivo='il conteggio e definitivo solo dopo l\'ultimo servizio del mese.',
         accent=HEX_NAVY)
 
+    heading(doc, 'Una volta sola: le risposte su Telegram', 3, color=DARK)
+    fascia(doc, 'Prima\ndell\'avvio', 'Attiva i bottoni di conferma del pasto', [
+        [('Impostazioni › Notifiche › ', False),
+         ('Attiva le risposte ai bottoni', True),
+         ('. Da quel momento il promemoria del pasto aziendale arriva al '
+          'dipendente con due bottoni: ', False), ('Sì, lo ritiro', True),
+         (' e ', False), ('No, non vengo', True), ('.', False)],
+        [('Il ', False), ('No annulla la prenotazione', True),
+         (': il pasto sparisce dalla lista di produzione, non va preparato e '
+          'non entra in fatturazione. Sul canale Telegram dello staff arriva '
+          'l\'avviso, perche a quell\'ora la cucina sta impiattando.', False)],
+        [('Serve un indirizzo pubblico in HTTPS: si attiva '
+          'dall\'applicazione in produzione, non da un ambiente di prova.',
+          False)],
+    ], motivo='una volta registrato resta attivo; senza questo passaggio i '
+              'bottoni compaiono ma la risposta non arriva.',
+        accent=HEX_NAVY)
+
     heading(doc, 'Ogni settimana: la copia di sicurezza', 3, color=DARK)
     fascia(doc, 'Ogni\nvenerdì', 'Scarica il backup del database', [
         [('Impostazioni › Dati › ', False), ('Scarica il backup', True),

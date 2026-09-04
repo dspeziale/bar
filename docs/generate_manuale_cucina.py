@@ -681,6 +681,17 @@ def build():
           'immediata.', False)],
     ], accent=HEX_SLATE, fill=HEX_LIGHT, label_color=SLATE)
 
+    box(doc, 'Se un cliente disdice il pasto dal telefono', [
+        [('Il promemoria del pasto aziendale ha due bottoni. Quando un '
+          'dipendente risponde ', False), ('No, non vengo', True),
+         (', sul canale Telegram dello staff arriva "Pasto annullato dal '
+          'cliente" con nome, menu e orario.', False)],
+        [('Quel pasto ', False), ('non va preparato', True),
+         (': la prenotazione e gia annullata e non compare piu nella lista di '
+          'produzione. Se lo avevi gia impiattato, avvisa il banco: '
+          'l\'invenduto va registrato come tale, non riconsegnato.', False)],
+    ], accent=HEX_ORANGE, fill=HEX_WARN, label_color=ORANGE)
+
     box(doc, 'Annullare un ordine', [
         [('Portare un ordine ad "annullato" ', False),
          ('rimborsa automaticamente il wallet del cliente', True),

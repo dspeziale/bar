@@ -60,14 +60,114 @@ def send_telegram(text):
         return False, str(exc)
 
 
-def send_telegram_to_user(user, text):
-    """Invia un messaggio Telegram direttamente all'utente tramite il suo chat_id personale."""
+BOT_PREDEFINITO = 'dslunch_bot'
+
+# Documento che accompagna l'email di benvenuto: la guida del cliente, la
+# sola scritta per lui. Il PDF e' versionato (lo produce
+# docs/genera_pdf_manuali.py): in produzione non c'e' modo di convertire un
+# .docx al momento dell'invio.
+MANUALE_BENVENUTO = 'guida_cliente.pdf'
+
+
+def percorso_manuale_benvenuto():
+    """Percorso del PDF da allegare, o '' se non e' stato generato."""
+    import os as _os
+    base = _os.path.dirname(_os.path.abspath(__file__))
+    percorso = _os.path.join(base, 'static', 'docs', MANUALE_BENVENUTO)
+    return percorso if _os.path.isfile(percorso) else ''
+
+
+def nome_bot():
+    """Nome utente del bot, senza @ (impostabile in Impostazioni)."""
+    return (get_setting('telegram_bot_username') or BOT_PREDEFINITO).lstrip('@')
+
+
+def _serializzatore_collegamento():
+    from flask import current_app
+    from itsdangerous import URLSafeSerializer
+    return URLSafeSerializer(current_app.config['SECRET_KEY'],
+                             salt='telegram-link')
+
+
+def token_collegamento(user):
+    """Token firmato che identifica l'utente nel deep link del bot.
+
+    Sta nei 64 caratteri ammessi dal parametro start di Telegram e non
+    richiede colonne nuove: e' l'id utente firmato con la SECRET_KEY.
+    """
+    return _serializzatore_collegamento().dumps(int(user.id))
+
+
+def utente_da_token(token):
+    """L'utente dietro un token di collegamento, o None se non e' valido."""
+    from app.models import User
+    try:
+        uid = int(_serializzatore_collegamento().loads(token))
+    except Exception:
+        return None
+    return User.query.get(uid)
+
+
+def link_collegamento_bot(user):
+    """Indirizzo da mettere nell'email: un clic e il Telegram e' collegato."""
+    return 'https://t.me/%s?start=%s' % (nome_bot(), token_collegamento(user))
+
+
+def telegram_api(metodo, payload):
+    """Chiama un metodo dell'API del bot. Ritorna (ok, dati_o_errore).
+
+    Serve ai metodi diversi da sendMessage — rispondere a un bottone,
+    riscrivere un messaggio, registrare il webhook — che prima non
+    esistevano.
+    """
+    token = get_setting('telegram_bot_token')
+    if not token:
+        return False, 'Token Telegram non configurato'
+    url = f'https://api.telegram.org/bot{token}/{metodo}'
+    dati = dict(payload or {})
+    # reply_markup viaggia come stringa JSON: e' l'unica forma accettata
+    # anche dalla chiamata urlencoded di ripiego.
+    if isinstance(dati.get('reply_markup'), (dict, list)):
+        dati['reply_markup'] = _json.dumps(dati['reply_markup'])
+    try:
+        if _HAS_REQUESTS:
+            r = _requests.post(url, json=dati, timeout=8)
+            risposta = r.json()
+        else:
+            body = _urllib_parse.urlencode(dati).encode()
+            req = _urllib_req.Request(url, data=body)
+            risposta = _json.loads(_urllib_req.urlopen(req, timeout=8).read())
+        if risposta.get('ok'):
+            return True, risposta.get('result', {})
+        return False, risposta.get('description', 'Errore Telegram')
+    except Exception as exc:
+        return False, str(exc)
+
+
+def tastiera_conferma_pasto(booking_id):
+    """I due bottoni sotto il promemoria del pasto aziendale."""
+    return {'inline_keyboard': [[
+        {'text': '✅ Sì, lo ritiro',
+         'callback_data': 'pasto:%d:si' % booking_id},
+        {'text': '❌ No, non vengo',
+         'callback_data': 'pasto:%d:no' % booking_id},
+    ]]}
+
+
+def send_telegram_to_user(user, text, reply_markup=None):
+    """Invia un messaggio Telegram direttamente all'utente tramite il suo chat_id personale.
+
+    Con `reply_markup` (vedi tastiera_conferma_pasto) il messaggio porta i
+    bottoni su cui l'utente puo' rispondere.
+    """
     token   = get_setting('telegram_bot_token')
     chat_id = getattr(user, 'telegram_chat_id', None)
     if not token or not chat_id:
         return False, 'Token o Telegram Chat ID utente non disponibili'
     url     = f'https://api.telegram.org/bot{token}/sendMessage'
     payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
+    if reply_markup:
+        payload['reply_markup'] = _json.dumps(reply_markup)
     try:
         if _HAS_REQUESTS:
             r    = _requests.post(url, json=payload, timeout=8)
@@ -200,8 +300,17 @@ def telegram_poll_message(poll, base_url):
 
 # ── Gmail ─────────────────────────────────────────────────────────────────────
 
-def send_email(to_addr, subject, html_body, text_body=None):
-    """Invia un'email HTML tramite Gmail SMTP (App Password)."""
+def send_email(to_addr, subject, html_body, text_body=None, allegati=None):
+    """Invia un'email HTML tramite Gmail SMTP (App Password).
+
+    `allegati` e' una lista di percorsi: quelli assenti o illeggibili vengono
+    ignorati, perche' un allegato mancante non deve impedire l'invio.
+    """
+    import mimetypes
+    import os as _os
+    from email.mime.base import MIMEBase
+    from email import encoders as _encoders
+
     gmail_user = get_setting('gmail_user')
     gmail_pass = get_setting('gmail_app_password')
     if not gmail_user or not gmail_pass:
@@ -209,13 +318,33 @@ def send_email(to_addr, subject, html_body, text_body=None):
     if not to_addr:
         return False, 'Destinatario mancante'
     try:
-        msg = MIMEMultipart('alternative')
+        # Con un allegato la struttura e' mixed, con testo e HTML in un ramo
+        # alternative: altrimenti alcuni client mostrano l'HTML come file.
+        corpo = MIMEMultipart('alternative')
+        if text_body:
+            corpo.attach(MIMEText(text_body, 'plain'))
+        corpo.attach(MIMEText(html_body, 'html'))
+
+        percorsi = [p for p in (allegati or []) if p and _os.path.isfile(p)]
+        if percorsi:
+            msg = MIMEMultipart('mixed')
+            msg.attach(corpo)
+        else:
+            msg = corpo
         msg['Subject'] = subject
         msg['From']    = f'QuickLunch Ufficio <{gmail_user}>'
         msg['To']      = to_addr
-        if text_body:
-            msg.attach(MIMEText(text_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+        for percorso in percorsi:
+            tipo, _ = mimetypes.guess_type(percorso)
+            principale, _, secondario = (tipo or 'application/octet-stream'
+                                         ).partition('/')
+            parte = MIMEBase(principale, secondario or 'octet-stream')
+            with open(percorso, 'rb') as f:
+                parte.set_payload(f.read())
+            _encoders.encode_base64(parte)
+            parte.add_header('Content-Disposition', 'attachment',
+                             filename=_os.path.basename(percorso))
+            msg.attach(parte)
         ctx = ssl.create_default_context()
         with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ctx) as srv:
             srv.login(gmail_user, gmail_pass)
@@ -270,7 +399,8 @@ def send_supplier_low_stock_alert(item):
     return ok, msg
 
 
-def send_reminder_to_user(user, text, subject='Promemoria'):
+def send_reminder_to_user(user, text, subject='Promemoria',
+                          reply_markup=None):
     """Promemoria all'utente sul canale disponibile: Telegram, altrimenti email.
 
     `text` e' nel formato dei messaggi Telegram (HTML minimale con <b> e ritorni
@@ -284,7 +414,7 @@ def send_reminder_to_user(user, text, subject='Promemoria'):
 
     chat_id = (getattr(user, 'telegram_chat_id', '') or '').strip()
     if chat_id and get_setting('telegram_bot_token'):
-        ok, msg = send_telegram_to_user(user, text)
+        ok, msg = send_telegram_to_user(user, text, reply_markup=reply_markup)
         return (True, 'telegram') if ok else (False, 'telegram: %s' % msg)
 
     # Telegram non configurato per questo utente: si ripiega sull'email.
@@ -293,6 +423,11 @@ def send_reminder_to_user(user, text, subject='Promemoria'):
 
     co_name = get_setting('company_name') or 'QuickLunch'
     corpo   = text.replace('\n', '<br>')
+    if reply_markup:
+        # I bottoni di conferma esistono solo su Telegram: via email si
+        # indirizza l'utente dove puo' fare la stessa cosa.
+        corpo += ('<br><br>Se non puoi ritirarlo, annulla la prenotazione '
+                  'dalla pagina Pasto Aziendale: la cucina non lo prepara.')
     testo   = _re.sub(r'<[^>]+>', '', text)
     html = f"""
 <div style="font-family:sans-serif;max-width:560px;margin:auto;padding:0;">
@@ -325,6 +460,70 @@ def send_account_activated_email(user, login_url=''):
     nome    = (getattr(user, 'first_name', '') or '').strip() or user.username
     subject = f'[{co_name}] Il tuo account e\' attivo'
 
+    # Il passo della ricarica ha senso solo col portafoglio prepagato attivo.
+    try:
+        from app import wallet_enabled as _wallet_attivo
+        con_wallet = _wallet_attivo()
+    except Exception:
+        con_wallet = True
+    passo_credito = (
+        "<li>Ricarica il credito in cassa: il portafoglio e' prepagato e "
+        "serve per ordinare.</li>" if con_wallet else
+        '<li>Ordina e paga alla cassa al momento del ritiro.</li>')
+
+    # Il collegamento del bot: un link che fa tutto e, sotto, la via
+    # manuale per chi preferisce (o per chi apre l'email dal computer).
+    try:
+        link_bot = link_collegamento_bot(user)
+    except Exception:
+        link_bot = ''
+    bot = nome_bot()
+    blocco_telegram = f"""
+    <div style="margin-top:22px;padding:16px 18px;background:#f5faff;
+                border:1px solid #d9ecff;border-radius:8px;">
+      <p style="margin:0 0 8px;font-size:15px;"><strong>
+        Collega Telegram e ricevi gli avvisi sul telefono
+      </strong></p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;">
+        Ti avvisiamo quando l'ordine e' pronto e ti ricordiamo il ritiro del
+        pasto: dal promemoria puoi confermare o disdire con un tocco.
+      </p>
+      <div style="margin:14px 0 10px;">
+        <a href="{link_bot}"
+           style="background:#229ED9;color:#fff;padding:11px 24px;
+                  border-radius:6px;text-decoration:none;font-weight:bold;
+                  font-size:15px;">
+          Collega Telegram con un clic &rarr;
+        </a>
+      </div>
+      <p style="margin:12px 0 4px;font-size:13px;color:#555;">
+        <strong>Se il pulsante non funziona</strong> (per esempio apri questa
+        email dal computer), fai così dal telefono:
+      </p>
+      <ol style="padding-left:20px;margin:6px 0;font-size:13px;color:#555;
+                 line-height:1.7;">
+        <li>Apri Telegram e cerca <strong>@{bot}</strong>.</li>
+        <li>Apri la chat e premi <strong>Avvia</strong> (o scrivi
+            <code>/start</code>).</li>
+        <li>Scrivi <code>/id</code>: il bot ti risponde con il tuo
+            <strong>ID Telegram</strong>, un numero come 123456789.</li>
+        <li>Copia quel numero nel tuo profilo su {co_name}, nel campo
+            <em>Telegram Chat ID</em>, e salva.</li>
+      </ol>
+      <p style="margin:8px 0 0;font-size:12px;color:#888;">
+        Il collegamento e' facoltativo: senza Telegram continuerai a
+        ricevere gli avvisi per email.
+      </p>
+    </div>"""
+
+    allegato = percorso_manuale_benvenuto()
+    nota_allegato = """
+    <p style="margin-top:18px;font-size:14px;">
+      In allegato trovi la <strong>guida del cliente in PDF</strong>:
+      come ordinare, comporre il tuo panino, pagare al banco col QR,
+      prenotare il pasto aziendale e gestire le notifiche.
+    </p>""" if allegato else ''
+
     cta = ''
     if login_url:
         cta = f"""
@@ -348,9 +547,9 @@ def send_account_activated_email(user, login_url=''):
     <p style="margin-top:16px;"><strong>Come iniziare</strong></p>
     <ol style="padding-left:20px;margin:8px 0;font-size:14px;">
       <li>Accedi con l'email con cui ti sei registrato.</li>
-      <li>Ricarica il credito in cassa: il portafoglio e' prepagato e serve per ordinare.</li>
+      {passo_credito}
       <li>Scegli dal menu, indica l'orario di ritiro e conferma.</li>
-    </ol>{cta}
+    </ol>{cta}{blocco_telegram}{nota_allegato}
     <p style="margin-top:24px;color:#aaa;font-size:11px;">
       Messaggio automatico generato da {co_name}
     </p>
@@ -358,8 +557,15 @@ def send_account_activated_email(user, login_url=''):
 </div>"""
 
     text = (f"Ciao {nome}, il tuo account su {co_name} e' stato attivato: "
-            f"puoi accedere e ordinare. Ricorda di ricaricare il credito in cassa.")
-    return send_email(user.email, subject, html, text)
+            f"puoi accedere e ordinare. "
+            + ("Ricorda di ricaricare il credito in cassa. "
+               if con_wallet else "Pagherai alla cassa al ritiro. ")
+            + f"Per ricevere gli avvisi su Telegram collega il bot @{bot}: "
+            f"apri {link_bot} oppure cerca @{bot} su Telegram, premi Avvia e "
+            f"scrivi /id per conoscere il tuo ID Telegram da incollare nel "
+            f"tuo profilo.")
+    return send_email(user.email, subject, html, text,
+                      allegati=[allegato] if allegato else None)
 
 
 def send_email_to_all_users(subject, html_body):

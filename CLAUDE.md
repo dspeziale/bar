@@ -69,8 +69,9 @@ Lo schema è gestito a mano e **ogni chiamata a `create_app()` esegue**, in ques
 1. `db.create_all()` — crea le tabelle nuove.
 2. `_migrate_tenant_columns()` — `ALTER TABLE ADD COLUMN` idempotenti tramite l'helper
    `_ensure(tabella, colonna, definizione)`, con traduzione dei tipi SQLite → PostgreSQL.
-3. `_seed_defaults()` — permessi, ruoli, superadmin, categorie, slot, tavoli, articoli banco,
-   impostazioni di default. Ogni blocco è idempotente (`if not X.query.first()` o
+3. `_seed_defaults()` — permessi, ruoli, superadmin, categorie (18), listino di partenza
+   (~75 prodotti da bar caffetteria/mensa), slot, tavoli, articoli banco, ingredienti del
+   builder, impostazioni di default. Ogni blocco è idempotente (`if not X.query.first()` o
    `filter_by(...).first()`).
 
 **Per aggiungere una colonna**: dichiarala nel modello *e* aggiungi un `_ensure(...)` in
@@ -197,7 +198,18 @@ Tre procedure per il solo super admin, esposte dal tab **Dati** di `/admin/setti
   `CaricoMensileRiga` (entità + chiave primaria): è quel registro che rende l'operazione
   annullabile. Non tocca i saldi dei wallet, così l'eliminazione è un annullamento completo.
 - **Reset totale**: `reset_totale()` svuota tutte le tabelle e riesegue `_seed_defaults()`.
-  Diverso dal `reset_all` della pagina Manutenzione, che è **parziale**.
+  Diverso dal `reset_all` della pagina Manutenzione, che è **parziale** (non tocca
+  impostazioni, slot, tavoli e articoli del banco) ma che ora richiama a sua volta
+  `_seed_defaults()` in coda.
+
+**Ogni percorso che cancella il catalogo deve ripassare dal seed.** Sono tre e sono in file
+diversi — `reset_totale()` in `data_tools.py`, `reset_all` in `admin/routes.py`,
+`reset_demo_data()`+`seed_demo_data()` in `demo_seed.py` — ed è facile correggerne uno solo:
+`reset_all` cancellava categorie e ingredienti senza ricrearli, lasciando il gestore con un
+catalogo vuoto (e apparentemente un bug) fino al riavvio successivo, quando il seed li
+ripristinava da sé. Le pulizie selettive della Manutenzione (`clear_catalog`,
+`clear_ingredients`) restano invece senza seed, perché svuotare è proprio quello che
+chiedono: lì il messaggio spiega come riavere i valori predefiniti.
 - **Backup/restore**: `esporta_backup()` / `importa_backup()`, JSON tabella per tabella,
   indipendente dal motore. Su PostgreSQL il restore riallinea le sequenze
   (`_sistema_sequenze()`), altrimenti i nuovi inserimenti collidono sugli id.
@@ -246,6 +258,40 @@ sommato al saldo nei controlli di capienza. I parametri economici (punti per eur
 premio, prezzi base builder, bonus registrazione) stanno in `AppSetting`, leggibili con
 `get_numeric_setting(key, default)`: non usare le costanti di `config.py`, che sono solo
 fallback storici.
+
+### Bot Telegram: bottoni, webhook, collegamento
+
+Il promemoria del pasto aziendale porta due bottoni inline (Sì / No) costruiti da
+`tastiera_conferma_pasto()`; `send_telegram_to_user` e `send_reminder_to_user` accettano
+`reply_markup`. La risposta torna sul webhook `main.telegram_webhook`, che:
+
+- è **esente da CSRF** (`csrf.exempt` in `create_app()`): Telegram non ha sessione né token;
+- si autentica con il segreto nel percorso (`AppSetting('telegram_webhook_secret')`,
+  generato all'attivazione e confrontato con `compare_digest`);
+- verifica che il `chat.id` del callback sia quello del proprietario della prenotazione,
+  altrimenti chiunque potrebbe annullare il pasto di un altro;
+- su "No" mette la prenotazione a `cancelled` — è il modo in cui il cliente **blocca la
+  produzione** — e avvisa il canale dello staff, perché la cucina sta per prepararlo;
+- gestisce anche i messaggi in chat: `/start <token>` collega il `telegram_chat_id`
+  (il token è l'id utente firmato con `SECRET_KEY`, sta nei 64 caratteri del deep link e
+  arriva dall'email di benvenuto), `/id` risponde con il chat id da incollare nel profilo.
+
+Il webhook va registrato una volta da **Impostazioni → Notifiche → Attiva le risposte**
+(`setWebhook`): senza quel passaggio i bottoni compaiono ma la risposta non arriva. Telegram
+pretende HTTPS, quindi l'attivazione funziona solo in produzione. Per i metodi diversi da
+`sendMessage` c'è `telegram_api(metodo, payload)`.
+
+### PDF dei manuali e allegati email
+
+`send_email(..., allegati=[percorsi])` allega file; gli allegati mancanti vengono ignorati,
+perché non devono impedire l'invio. L'email di benvenuto allega
+`app/static/docs/guida_cliente.pdf`.
+
+Quel PDF è **versionato**: in produzione non ci sono Word né LibreOffice per convertire un
+`.docx` al momento dell'invio. Lo produce `docs/genera_pdf_manuali.py`, che rilegge il
+`.docx` con python-docx e lo ricompone con fpdf2 — così il contenuto resta uno solo, quello
+del generatore `.docx`. **Dopo aver modificato un manuale, rigenera il `.docx` e poi quel
+comando**, altrimenti il PDF allegato resta indietro.
 
 ### Reminder: nessuno scheduler
 

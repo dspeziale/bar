@@ -376,22 +376,29 @@ def build():
     step(doc, 1, 'Controlla il catalogo di partenza', [
         [('L\'installazione — e ogni azzeramento del database — crea un '
           'catalogo iniziale gia pronto: ', False),
-         ('18 categorie di prodotto', True),
-         (', gli slot di ritiro, i tavoli e gli articoli del banco. Sono '
-          'visibili subito, senza riavviare nulla.', False)],
+         ('18 categorie di prodotto e un listino di circa 75 voci', True),
+         (', gli slot di ritiro, i tavoli, gli articoli del banco e gli '
+          'ingredienti del builder. Tutto visibile subito, senza riavviare '
+          'nulla.', False)],
         [('Apri ', False), ('Categorie', True),
          (' e togli quelle che non ti servono: e piu rapido che crearle da '
           'zero. Di ognuna puoi cambiare nome, icona e colore.', False)],
     ], accent=HEX_ORANGE)
 
-    step(doc, 2, 'Crea i prodotti del menu', [
-        [('L\'installazione crea le ', False), ('categorie', True),
-         (' ma ', False), ('nessun prodotto', True),
-         (': il menu parte vuoto e va compilato a mano, scegliendo per '
-          'ciascun prodotto una delle categorie gia presenti.', False)],
-        [('Prodotti › Nuovo, per ciascuno: nome, categoria, prezzo, quantita '
-          'giornaliera e allergeni. Basta un prodotto per rendere possibile un '
-          'ordine, ma un menu credibile ne vuole una decina.', False)],
+    step(doc, 2, 'Adatta il listino al tuo bar', [
+        [('L\'installazione crea anche un ', False),
+         ('listino di partenza', True),
+         (' da bar caffetteria con servizio mensa: circa 75 prodotti nelle '
+          '18 categorie — caffetteria, colazione, panini e tramezzini, primi '
+          'e secondi, contorni, frutta, dolci, bevande — ognuno con prezzo, '
+          'quantita giornaliera e allergeni gia compilati.', False)],
+        [('Il lavoro e di ', False), ('correzione, non di creazione', True),
+         (': in Prodotti disattiva quello che non vendi, allinea i prezzi ai '
+          'tuoi e ritocca le quantita sulla tua capacita di produzione. '
+          'Aggiungi le tue specialita con Prodotti › Nuovo.', False)],
+        [('Controlla gli ', False), ('allergeni', True),
+         (' dei prodotti che tieni: quelli predefiniti valgono per una '
+          'ricetta tipica, ma la tua puo essere diversa.', False)],
     ], accent=HEX_ORANGE)
 
     step(doc, 3, 'Verifica gli slot di ritiro', [
@@ -555,6 +562,20 @@ def build():
          (': la soglia di rosso consentita. Utile per il personale interno o per '
           'chi salda a fine mese, evita di bloccare l\'ordine per pochi '
           'centesimi.', False)],
+    ], accent=HEX_GREEN)
+
+    step(doc, 2, 'Telegram: si collega da se, dall\'email', [
+        [('L\'email di attivazione contiene un pulsante ', False),
+         ('Collega Telegram con un clic', True),
+         (': porta al bot e salva da se il collegamento, senza che il '
+          'cliente copi nulla. In allegato trova la guida del cliente in '
+          'PDF.', False)],
+        [('Se apre l\'email dal computer, la via manuale e nel messaggio: '
+          'cercare il bot su Telegram, premere Avvia, scrivere ', False),
+         ('/id', True),
+         (' e incollare il numero ricevuto nel proprio profilo.', False)],
+        [('Da collegato riceve gli avvisi sul telefono e puo confermare o '
+          'disdire il pasto direttamente dal promemoria.', False)],
     ], accent=HEX_GREEN)
 
     step(doc, 3, 'Spiegagli come comparira il suo nome', [

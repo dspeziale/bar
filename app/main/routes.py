@@ -1517,3 +1517,145 @@ def push_unsubscribe():
         db.session.commit()
     return jsonify({'ok': True})
 
+
+
+# ── Risposte ai bottoni Telegram ──────────────────────────────────────────────
+#
+# Il promemoria del pasto aziendale porta due bottoni (Si' / No). Quando
+# l'utente ne premi uno, Telegram chiama questo indirizzo: non c'e' una
+# sessione ne' un token CSRF, quindi la rotta e' esente e si autentica con un
+# segreto nel percorso, generato all'attivazione dalle Impostazioni.
+
+def _segreto_webhook():
+    """Il segreto atteso nell'URL del webhook, generato alla prima attivazione."""
+    from app.notifications import get_setting
+    return (get_setting('telegram_webhook_secret') or '').strip()
+
+
+def _conferma_pasto(booking, risposta, chat_id):
+    """Applica la risposta ai bottoni. Ritorna il testo da mostrare all'utente.
+
+    "No" annulla la prenotazione: e' il modo in cui l'utente blocca la
+    produzione del suo pasto.
+    """
+    atteso = (getattr(booking.user, 'telegram_chat_id', '') or '').strip()
+    if not atteso or str(chat_id) != atteso:
+        return None, 'Questa prenotazione non e tua.'
+    if booking.status == 'cancelled':
+        return 'no', 'Prenotazione gia annullata: la cucina non lo prepara.'
+    if booking.status == 'consumed':
+        return None, 'Pasto gia consegnato.'
+    if risposta == 'si':
+        booking.conferma_utente = 'si'
+        db.session.commit()
+        return 'si', 'Grazie, ritiro confermato.'
+
+    booking.conferma_utente = 'no'
+    booking.status = 'cancelled'
+    db.session.commit()
+    # La cucina deve saperlo: sta per produrre quel pasto.
+    nome = booking.meal.name if booking.meal else 'pasto'
+    ora = booking.slot.time_str if booking.slot else ''
+    send_telegram(
+        f'🚫 <b>Pasto annullato dal cliente</b>\n'
+        f'👤 {booking.user.display_name}\n'
+        f'📋 {nome}{" — " + ora if ora else ""}\n'
+        f'Non va preparato.'
+    )
+    return 'no', 'Annullato: la cucina non lo prepara.'
+
+
+def _gestisci_messaggio_bot(messaggio):
+    """Risponde ai comandi in chat: /start (collega) e /id (mostra l'ID).
+
+    Il collegamento arriva dal link nell'email di benvenuto, che porta un
+    token firmato nel parametro start: qui si riconosce l'utente e si salva
+    il suo chat id, senza che debba copiare niente.
+    """
+    from app.notifications import (telegram_api, utente_da_token, nome_bot)
+
+    chat = (messaggio.get('chat') or {}).get('id')
+    testo = (messaggio.get('text') or '').strip()
+    if not chat or not testo.startswith('/'):
+        return
+    pezzi = testo.split()
+    comando = pezzi[0].split('@')[0].lower()
+
+    if comando == '/start' and len(pezzi) > 1:
+        utente = utente_da_token(pezzi[1])
+        if utente:
+            utente.telegram_chat_id = str(chat)
+            db.session.commit()
+            risposta = (
+                '✅ Telegram collegato, %s!\n\n'
+                'Da adesso ricevi qui gli avvisi: ordine pronto e '
+                'promemoria del pasto, con i bottoni per confermare o '
+                'disdire il ritiro.' % utente.display_name)
+        else:
+            risposta = (
+                'Questo collegamento non è più valido.\n\n'
+                'Scrivi /id per conoscere il tuo ID Telegram e incollalo '
+                'nel tuo profilo, oppure chiedi al banco una nuova email '
+                'di collegamento.')
+    elif comando in ('/start', '/id', '/help'):
+        risposta = (
+            'Il tuo <b>ID Telegram</b> è <code>%s</code>\n\n'
+            'Copialo nel tuo profilo su QuickLunch, nel campo '
+            '"Telegram Chat ID", e salva: da quel momento ricevi qui gli '
+            'avvisi degli ordini e i promemoria del pasto.' % chat)
+    else:
+        risposta = ('Comando non riconosciuto. Scrivi /id per conoscere il '
+                    'tuo ID Telegram.')
+
+    telegram_api('sendMessage', {'chat_id': chat, 'text': risposta,
+                                 'parse_mode': 'HTML'})
+
+
+@bp.route('/telegram/webhook/<segreto>', methods=['POST'])
+def telegram_webhook(segreto):
+    """Riceve i callback dei bottoni del bot Telegram."""
+    from hmac import compare_digest
+    from app.notifications import telegram_api
+
+    atteso = _segreto_webhook()
+    if not atteso or not compare_digest(str(segreto), atteso):
+        return jsonify({'ok': False}), 403
+
+    aggiornamento = request.get_json(silent=True) or {}
+    if aggiornamento.get('message'):
+        _gestisci_messaggio_bot(aggiornamento['message'])
+        return jsonify({'ok': True})
+    callback = aggiornamento.get('callback_query') or {}
+    dati = (callback.get('data') or '').strip()
+    if not dati:
+        return jsonify({'ok': True})          # niente da fare: si ignora
+
+    pezzi = dati.split(':')
+    esito = 'Comando non riconosciuto.'
+    if len(pezzi) == 3 and pezzi[0] == 'pasto' and pezzi[2] in ('si', 'no'):
+        try:
+            bid = int(pezzi[1])
+        except ValueError:
+            bid = 0
+        booking = CorporateMealBooking.query.get(bid) if bid else None
+        if not booking:
+            esito = 'Prenotazione non trovata.'
+        else:
+            chat = ((callback.get('message') or {}).get('chat') or {}).get('id')
+            _scelta, esito = _conferma_pasto(booking, pezzi[2], chat)
+            messaggio = callback.get('message') or {}
+            if messaggio.get('message_id'):
+                # Si riscrive il messaggio con l'esito e si togliono i
+                # bottoni, cosi' non si puo' rispondere due volte.
+                telegram_api('editMessageText', {
+                    'chat_id': chat,
+                    'message_id': messaggio['message_id'],
+                    'text': (messaggio.get('text') or '') + '\n\n➡️ ' + esito,
+                    'reply_markup': {'inline_keyboard': []},
+                })
+
+    telegram_api('answerCallbackQuery', {
+        'callback_query_id': callback.get('id', ''),
+        'text': esito,
+    })
+    return jsonify({'ok': True})

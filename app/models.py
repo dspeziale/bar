@@ -852,6 +852,8 @@ class CorporateMealBooking(db.Model):
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     reminder_sent = db.Column(db.Boolean, default=False)
     pickup_token  = db.Column(db.String(16), default='', server_default='')
+    # Risposta ai bottoni del promemoria Telegram: '', 'si' o 'no'.
+    conferma_utente = db.Column(db.String(4), default='', server_default='')
     __table_args__ = (db.UniqueConstraint('user_id', 'meal_id', name='uq_corp_booking'),)
     user = db.relationship('User')
     meal = db.relationship('DailyFixedMeal', back_populates='bookings')
