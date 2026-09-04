@@ -709,6 +709,19 @@
             </li>
             {% endif %}
 
+            {# ── SLOT DI RITIRO ── #}
+            {# Non dipende dai tavoli: gli orari di ritiro servono anche a
+               chi fa solo asporto. #}
+            {% if p('manage_slots') %}
+            <li class="nav-item">
+              <a href="{{ url_for('admin.slots') }}"
+                 class="nav-link {{ 'active' if ep == 'admin.slots' }}">
+                <i class="nav-icon fas fa-clock" style="color:#f39c12;"></i>
+                <p>Slot di Ritiro</p>
+              </a>
+            </li>
+            {% endif %}
+
             {# ── TAVOLI & PRENOTAZIONI ── #}
             {% if tables_enabled and (p('manage_tables_admin') or p('manage_reservations_admin') or p('manage_slots')) %}
             <li class="nav-item">

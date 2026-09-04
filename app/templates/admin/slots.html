@@ -1,52 +1,99 @@
 {% extends "base.html" %}
-{% block title %}Slot Orari{% endblock %}
-{% block page_title %}Slot di Ritiro{% endblock %}
+{% block title %}Slot di ritiro{% endblock %}
+{% block page_title %}Slot di ritiro degli ordini{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
-<li class="breadcrumb-item active">Slot Orari</li>
+<li class="breadcrumb-item active">Slot di ritiro</li>
 {% endblock %}
 
 {% block content %}
+<div class="d-flex align-items-start justify-content-between mb-3" style="gap:1rem;flex-wrap:wrap;">
+  <div class="callout callout-info mb-0" style="flex:1;min-width:250px;">
+    <i class="fas fa-info-circle mr-1"></i>
+    Gli slot orari regolano la raccolta degli <strong>ordini</strong> (non i tavoli).
+    Attiva/disattiva uno slot o modifica la capacità massima di ordini contemporanei.
+  </div>
+  <form method="POST" action="{{ url_for('admin.slot_new') }}"
+        class="d-flex align-items-center" style="gap:.4rem;flex-shrink:0;">
+    {{ csrf_field() }}
+    <input type="time" name="time_str" class="form-control form-control-sm"
+           style="width:110px;" required placeholder="HH:MM">
+    <input type="number" name="max_orders" class="form-control form-control-sm"
+           style="width:80px;" min="1" value="20" title="Capacità massima ordini">
+    <button class="btn btn-sm btn-success" title="Aggiungi slot">
+      <i class="fas fa-plus mr-1"></i>Aggiungi slot
+    </button>
+  </form>
+</div>
+
 <div class="row">
-  {% for slot in slots %}
-  <div class="col-md-3 col-sm-4 col-6 mb-3">
-    <div class="card card-outline card-{{ 'success' if slot.is_active else 'secondary' }} text-center">
-      <div class="card-body py-3">
-        <div style="font-size:1.8rem;font-weight:700;color:{{ '#28a745' if slot.is_active else '#6c757d' }};">
-          {{ slot.time_str }}
-        </div>
-        <div class="text-muted mb-2" style="font-size:.85rem;">
-          Capacità: <strong>{{ slot.max_orders }}</strong><br>
-          Oggi: <strong>{{ slot.orders_today() }}</strong> ordini
-        </div>
-        <div class="mb-3">
-          {% set pct = (slot.orders_today() * 100 // slot.max_orders) if slot.max_orders else 0 %}
-          <div class="progress" style="height:8px;">
-            <div class="progress-bar bg-{{ 'danger' if pct >= 90 else ('warning' if pct >= 60 else 'success') }}"
-                 style="width:{{ pct }}%;"></div>
-          </div>
-          <small class="text-muted">{{ pct }}% occupato</small>
-        </div>
+{% for slot in order_slots %}
+<div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-3">
+  <div class="card card-outline card-{{ 'success' if slot.is_active else 'secondary' }} h-100">
+    <div class="card-body py-3 text-center">
 
-        <form method="POST" action="{{ url_for('admin.slot_capacity', sid=slot.id) }}" class="d-flex gap-2 mb-2">
-          {{ csrf_field() }}
-          <input type="number" name="max_orders" value="{{ slot.max_orders }}"
-                 min="1" class="form-control form-control-sm">
-          <button class="btn btn-sm btn-outline-info" title="Salva capacità">
-            <i class="fas fa-save"></i>
-          </button>
-        </form>
-
-        <form method="POST" action="{{ url_for('admin.slot_toggle', sid=slot.id) }}">
-          {{ csrf_field() }}
-          <button class="btn btn-sm btn-block btn-{{ 'warning' if slot.is_active else 'success' }}">
-            <i class="fas fa-{{ 'eye-slash' if slot.is_active else 'eye' }} me-1"></i>
-            {{ 'Disattiva' if slot.is_active else 'Attiva' }}
-          </button>
-        </form>
+      <div style="font-size:2rem;font-weight:800;
+                  color:{{ '#28a745' if slot.is_active else '#6c757d' }};">
+        {{ slot.time_str }}
       </div>
+      {% if not slot.is_active %}
+      <div class="badge badge-secondary mb-2">Disattivo</div>
+      {% endif %}
+
+      <div class="mt-2 mb-1" style="font-size:.82rem;"><strong>Capacità ordini</strong></div>
+      <form method="POST" action="{{ url_for('admin.slot_capacity', sid=slot.id) }}"
+            class="d-flex mb-1" style="gap:.3rem;">
+        {{ csrf_field() }}
+        <input type="number" name="max_orders" value="{{ slot.max_orders }}"
+               min="1" class="form-control form-control-sm text-center">
+        <button class="btn btn-sm btn-outline-info" title="Salva capacità">
+          <i class="fas fa-save"></i>
+        </button>
+      </form>
+
+      {% set oggi_count = slot.orders_today() %}
+      {% set pct = (oggi_count * 100 // slot.max_orders) if slot.max_orders else 0 %}
+      <div class="progress mb-1" style="height:6px;"
+           title="{{ oggi_count }}/{{ slot.max_orders }} ordini oggi">
+        <div class="progress-bar bg-{{ 'danger' if pct >= 90 else ('warning' if pct >= 60 else 'success') }}"
+             style="width:{{ pct }}%;"></div>
+      </div>
+      <small class="text-muted">{{ oggi_count }}/{{ slot.max_orders }} ordini oggi</small>
+
+      <div class="mt-2 mb-1" style="font-size:.82rem;"><strong>Durata seduta (min)</strong></div>
+      <form method="POST" action="{{ url_for('admin.slot_durata', sid=slot.id) }}"
+            class="d-flex mb-2" style="gap:.3rem;">
+        {{ csrf_field() }}
+        <input type="number" name="seat_duration_minutes"
+               value="{{ slot.seat_duration_minutes or '' }}"
+               min="0" placeholder="0=∞" class="form-control form-control-sm text-center">
+        <button class="btn btn-sm btn-outline-secondary" title="Salva durata">
+          <i class="fas fa-save"></i>
+        </button>
+      </form>
+
+      <form method="POST" action="{{ url_for('admin.slot_toggle', sid=slot.id) }}">
+        {{ csrf_field() }}
+        <button class="btn btn-sm btn-block btn-{{ 'warning' if slot.is_active else 'success' }}">
+          <i class="fas fa-{{ 'eye-slash' if slot.is_active else 'eye' }} mr-1"></i>
+          {{ 'Disattiva' if slot.is_active else 'Attiva' }}
+        </button>
+      </form>
+      <form method="POST" action="{{ url_for('admin.slot_delete', sid=slot.id) }}" class="mt-1"
+            data-confirm="Eliminare lo slot {{ slot.time_str }}?">
+        {{ csrf_field() }}
+        <button class="btn btn-xs btn-block btn-outline-danger">
+          <i class="fas fa-trash mr-1"></i>Elimina
+        </button>
+      </form>
+
     </div>
   </div>
-  {% endfor %}
+</div>
+{% else %}
+<div class="col-12">
+  <div class="callout callout-warning">Nessuno slot orari configurato.</div>
+</div>
+{% endfor %}
 </div>
 {% endblock %}

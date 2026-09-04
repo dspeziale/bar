@@ -1218,7 +1218,15 @@ def category_delete(cid):
 @bp.route('/slots')
 @require_permission('manage_slots')
 def slots():
-    return redirect(url_for('admin.tavoli', tab='slot'))
+    """Gli slot di ritiro degli ordini, con pagina propria.
+
+    Stavano in una linguetta della sezione Tavoli, che e' protetta dal flag
+    della gestione tavoli: chi fa solo asporto e disattiva i tavoli non
+    poteva piu' toccare gli orari di ritiro, che sono il cuore del suo
+    servizio.
+    """
+    order_slots = TimeSlot.query.order_by(TimeSlot.time_str).all()
+    return render_template('admin/slots.html', order_slots=order_slots)
 
 
 @bp.route('/slots/<int:sid>/toggle', methods=['POST'])
