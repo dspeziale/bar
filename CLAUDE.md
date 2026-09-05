@@ -457,6 +457,13 @@ Due trappole già capitate, entrambe da tenere presenti se tocchi questi flussi:
 
 ### PDF dei manuali e allegati email
 
+Il **manuale completo del gestore** è `docs/generate_manuale_gestore_pdf.py` →
+`docs/manuali/manuale_gestore.pdf` (16 sezioni per area, stesso kit di guida utente e catalogo,
+importato da `generate_guida_utente_pdf`). Va rigenerato dopo ogni funzionalità nuova o cambiata
+nel backoffice, insieme alla guida utente; `verify_manuale_gestore_pdf` nello scratchpad
+controlla aree, fatti, contatti e l'assenza di credenziali. Il `.docx` della giornata del
+gestore (`generate_manuale_gestore.py`) resta la scaletta oraria, non il riferimento completo.
+
 `send_email(..., allegati=[percorsi])` allega file; gli allegati mancanti vengono ignorati,
 perché non devono impedire l'invio. L'email di benvenuto allega
 `app/static/docs/guida_cliente.pdf`.
