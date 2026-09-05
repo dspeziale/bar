@@ -1053,10 +1053,24 @@ REGIMI_DIETA = [
 ]
 
 OBIETTIVI_DIETA = [
-    ('mantenimento', 'Mantenere il peso',  0.0),
-    ('dimagrimento', 'Perdere peso',      -0.15),
-    ('aumento',      'Aumentare la massa', 0.10),
+    ('mantenimento',       'Mantenere il peso',                                   0.0),
+    ('dimagrimento',       'Perdere peso',                                       -0.15),
+    ('dimagrimento_forte', 'Perdere peso più in fretta, restando bilanciato',    -0.25),
+    ('aumento',            'Aumentare la massa',                                  0.10),
 ]
+
+# Che cosa comporta ogni obiettivo, per il modulo delle preferenze.
+OBIETTIVI_DESCRIZIONE = {
+    'mantenimento': 'Fabbisogno pieno: si mangia quanto si consuma.',
+    'dimagrimento': 'Il 15% in meno del fabbisogno, mai sotto il metabolismo basale; '
+                    'niente dolci nel piano.',
+    'dimagrimento_forte': 'Il 25% in meno del fabbisogno, mai sotto il metabolismo basale. '
+                          'Per restare bilanciato il piano pretende almeno 25 g di proteine a '
+                          'pranzo, grassi entro un terzo delle calorie, sempre una verdura, '
+                          'frutta al posto del dolce e pranzi che non superano la quota di '
+                          'più del 10%.',
+    'aumento': 'Il 10% in più del fabbisogno, con attenzione alle proteine.',
+}
 
 ATTIVITA_DIETA = [
     ('sedentaria', 'Sedentaria (ufficio, poco movimento)', 1.2),

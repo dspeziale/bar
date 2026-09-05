@@ -337,8 +337,11 @@ def sez_dieta(pdf, idx):
          'esclude da sola gli allergeni corrispondenti; sotto trovi anche i '
          '14 allergeni ufficiali da escludere uno per uno.'),
         ('Scegli regime e obiettivo',
-         'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo o '
-         'aumentare la massa.'),
+         'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo (-15%), '
+         'perderlo piu in fretta restando bilanciato (-25%, mai sotto il '
+         'metabolismo basale: almeno 25 g di proteine a pranzo, grassi entro '
+         'un terzo delle calorie, sempre una verdura, frutta al posto del '
+         'dolce) oppure aumentare la massa.'),
         ('Peso, altezza, attivita (facoltativi)',
          'Con questi dati e la data di nascita il fabbisogno e calcolato su '
          'misura; senza, e un valore medio e la pagina lo dice. Le calorie '

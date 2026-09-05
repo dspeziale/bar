@@ -147,6 +147,11 @@ def fabbisogno(profilo, user):
                + (5 if profilo.sesso == 'M' else -161))
         esito['bmr'] = int(round(bmr))
         target = int(round(bmr * fattore * (1 + correzione)))
+        # Un deficit non scende mai sotto il metabolismo basale: sarebbe una
+        # dieta da seguire sotto controllo medico, non da bar.
+        fermato_al_bmr = correzione < 0 and target < esito['bmr']
+        if fermato_al_bmr:
+            target = esito['bmr']
         esito['spiegazione'] = (
             'Metabolismo basale %d kcal (peso, altezza, età e sesso), '
             'per attività %s = %d kcal al giorno%s.' % (
@@ -158,6 +163,9 @@ def fabbisogno(profilo, user):
                  if correzione < 0 else
                  (', aumentato del %d%% per la massa' % int(correzione * 100)
                   if correzione > 0 else ''))))
+        if fermato_al_bmr:
+            esito['spiegazione'] += (' Fermato al metabolismo basale (%d kcal): sotto non si '
+                                     'scende senza un medico.' % esito['bmr'])
     else:
         base = {'M': 2500, 'F': 2000}.get(profilo.sesso, 2200)
         target = int(round(base * fattore / 1.2 * (1 + correzione)))
@@ -431,7 +439,15 @@ def componi_pranzo(candidati, target, rnd=None, usati=(), budget=None,
     usati nella settimana, budget superato, poche proteine, dolce per chi
     vuole perdere peso. Un pizzico di caso rompe i pareggi, così due clienti
     con lo stesso profilo non ricevono lo stesso identico piano.
+
+    Con `dimagrimento_forte` il pranzo deve anche essere bilanciato: almeno
+    25 g di proteine, grassi entro un terzo delle calorie, una verdura,
+    frutta piuttosto che yogurt o dolce, e non oltre il 10% sopra la quota.
+    Un deficit deciso senza queste regole diventa un pranzo piccolo e
+    sbilanciato, che e' proprio quello che non si vuole proporre.
     """
+    forte = obiettivo == 'dimagrimento_forte'
+    soglia_massima = 1.10 if forte else 1.25
     rnd = rnd or random.Random()
     usati = set(usati)
     per_ruolo = {'principale': [], 'contorno': [], 'chiusura': [], 'bevanda': []}
@@ -461,9 +477,20 @@ def componi_pranzo(candidati, target, rnd=None, usati=(), budget=None,
             s += 0.5 + (prezzo - budget) / budget
         if prot < 20:
             s += 0.15
-        if obiettivo == 'dimagrimento' and any(
-                p.category and p.category.name == 'Dolci' for p in combo):
-            s += 0.3
+        categorie = {p.category.name for p in combo if p.category}
+        if obiettivo in ('dimagrimento', 'dimagrimento_forte') and 'Dolci' in categorie:
+            s += 0.6 if forte else 0.3
+        if forte:
+            if prot < 25:
+                s += 0.25
+            grassi = sum(p.grassi_g or 0 for p in combo)
+            if kcal and grassi * 9 > 0.35 * kcal:
+                s += 0.2
+            if not any(ruolo(p) == 'contorno' for p in combo):
+                s += 0.15
+            if any(ruolo(p) == 'chiusura' and p.category and p.category.name != 'Frutta'
+                   for p in combo):
+                s += 0.1
         return s
 
     migliore, migliore_s = None, None
@@ -471,7 +498,7 @@ def componi_pranzo(candidati, target, rnd=None, usati=(), budget=None,
         for co in [None] + per_ruolo['contorno']:
             for ch in [None] + per_ruolo['chiusura']:
                 combo = [x for x in (pr, co, ch) if x is not None]
-                if sum(p.kcal for p in combo) > target * 1.25:
+                if sum(p.kcal for p in combo) > target * soglia_massima:
                     continue
                 s = punteggio(combo) + 0.02 * rnd.random()
                 if migliore_s is None or s < migliore_s:

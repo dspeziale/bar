@@ -261,7 +261,10 @@
           <div class="form-check mb-1">
             <input type="radio" name="obiettivo" value="{{ k }}" class="form-check-input" id="ob-{{ k }}"
                    {{ 'checked' if (profilo and profilo.obiettivo == k) or (not profilo and k == 'mantenimento') }}>
-            <label class="form-check-label" for="ob-{{ k }}">{{ label }}</label>
+            <label class="form-check-label" for="ob-{{ k }}">
+              <strong>{{ label }}</strong>
+              <small class="text-muted d-block">{{ obiettivi_descr.get(k, '') }}</small>
+            </label>
           </div>
           {% endfor %}
         </div>

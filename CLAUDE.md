@@ -374,6 +374,14 @@ conto; il backoffice ha `/admin/diete`. Flag `dieta_enabled`, quarto della lista
 - Il compositore penalizza il **principale** ripetuto nella settimana (0,35) molto più di
   contorno e frutta (0,08): con lo stesso peso preferiva un pranzo troppo leggero pur di
   variare la frutta. Il caso rompe i pareggi; i test passano `seed=` e `oggi=`.
+- Quattro obiettivi (`OBIETTIVI_DIETA`, descrizioni in `OBIETTIVI_DESCRIZIONE`). **Ogni
+  deficit è fermato al metabolismo basale** quando è calcolabile: sotto non si scende senza
+  un medico, e la spiegazione lo dice. `dimagrimento_forte` (−25%) è "bilanciato" per
+  costruzione, non per etichetta: nel compositore la soglia sopra la quota scende dal 25% al
+  10% e si penalizzano meno di 25 g di proteine, grassi oltre il 35% delle kcal, l'assenza di
+  un contorno, la chiusura che non sia frutta (morbida: lo yogurt resta ammesso) e il dolce
+  (forte). Chi aggiunge un obiettivo lo aggiunga alla lista e alle descrizioni, non a un
+  secondo elenco nel template.
 - L'ordine con un allergene escluso nel carrello richiede `conferma_dieta=1`: è un avviso da
   leggere, non un divieto. Il collegamento giorno→ordine passa da `session['dieta_giorno_id']`.
 - L'avviso del lunedì gira nel polling dei promemoria (`_check_diet_weekly`, dopo le 7 di

@@ -1807,8 +1807,10 @@ Dati
   Il pane del builder porta l'allergene glutine (prima non lo diceva).
 - DietProfile (uno per utente): condizioni (celiachia, lattosio, uova, frutta a
   guscio, pesce/frutti di mare, soia -> allergeni esclusi), esclusioni libere,
-  regime (onnivoro/vegetariano/vegano), obiettivo (mantenimento/dimagrimento
-  -15%/aumento +10%), sesso, peso, altezza, attivita', kcal manuali (hanno la
+  regime (onnivoro/vegetariano/vegano), obiettivo (mantenimento / dimagrimento
+  -15% / dimagrimento_forte -25% / aumento +10%; ogni deficit e' fermato al
+  metabolismo basale quando e' calcolabile), sesso, peso, altezza, attivita',
+  kcal manuali (hanno la
   precedenza), quota pranzo (default 40%), budget per pranzo, giorni in cui il
   cliente pranza al bar, avvisi, note per il locale, attivo.
 - DietPlan (utente + lunedi', unico) con DietPlanDay: voci in JSON (prodotto,
@@ -1833,7 +1835,10 @@ Regole
   chiusura (frutta/yogurt/dolci), piu' la bevanda a zero kcal piu' economica.
   Punteggio = scarto dalla quota + penalita' (principale ripetuto nella
   settimana 0,35; contorno o chiusura ripetuti 0,08; budget superato; meno di
-  20 g di proteine; dolce a chi vuole perdere peso) + un pizzico di caso. I
+  20 g di proteine; dolce a chi vuole perdere peso) + un pizzico di caso. Con
+  dimagrimento_forte il pranzo deve essere bilanciato: almeno 25 g di
+  proteine, grassi entro il 35% delle calorie, una verdura, frutta invece di
+  yogurt o dolce, e non oltre il 10% sopra la quota (altrimenti 25%). I
   giorni gia' ordinati non si toccano; quelli trascorsi sono "saltati".
 - "Ordina" mette nel carrello i prodotti del giorno ancora disponibili e
   ricorda il giorno in sessione: alla conferma il giorno diventa ordinato.

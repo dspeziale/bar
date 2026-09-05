@@ -17,6 +17,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Prenotazione, PrenotazioneItem, PushSubscription,
                         DietProfile, DietPlan, DietPlanDay, ALLERGENS,
                         CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
+                        OBIETTIVI_DESCRIZIONE,
                         ATTIVITA_DIETA, GIORNI_SETTIMANA)
 from app.dieta import profilo_attivo
 from config import Config
@@ -1121,6 +1122,7 @@ def dieta():
                            piano=piano, riepilogo=riepilogo, oggi=date.today(),
                            condizioni=CONDIZIONI_DIETA, regimi=REGIMI_DIETA,
                            obiettivi=OBIETTIVI_DIETA, attivita=ATTIVITA_DIETA,
+                           obiettivi_descr=OBIETTIVI_DESCRIZIONE,
                            giorni_settimana=GIORNI_SETTIMANA, allergeni=ALLERGENS)
 
 

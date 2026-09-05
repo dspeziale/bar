@@ -950,7 +950,10 @@ def s10_dieta(doc):
              'aggiungerne altri dall\'elenco dei 14 ufficiali', accent=HEX_GREEN)
     spacer(doc, 4)
     step_row(doc, 3, 'Scegli regime e obiettivo',
-             'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo o aumentare la massa',
+             'Onnivoro, vegetariano o vegano; mantenere il peso, perderlo (−15%), perderlo più in '
+             'fretta restando bilanciato (−25%, mai sotto il metabolismo basale, con almeno 25 g di '
+             'proteine a pranzo, grassi entro un terzo delle calorie, sempre una verdura e frutta al '
+             'posto del dolce) oppure aumentare la massa',
              accent=HEX_GREEN)
     spacer(doc, 4)
     step_row(doc, 4, 'Se vuoi, inserisci peso, altezza, sesso e attività',
