@@ -630,6 +630,10 @@ def testo_piano(piano, con_intestazione=True):
         righe.append('• <b>%s %s</b> — %s · %d kcal · %s€'
                      % (d.etichetta_giorno, d.giorno.strftime('%d/%m'), nomi,
                         d.kcal_totali, ('%.2f' % d.prezzo_totale).replace('.', ',')))
+    if con_intestazione:
+        from app.models import DISCLAIMER_DIETA
+        righe.append('')
+        righe.append('<i>%s</i>' % DISCLAIMER_DIETA)
     return '\n'.join(righe)
 
 

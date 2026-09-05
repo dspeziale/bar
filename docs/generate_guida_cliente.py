@@ -964,9 +964,13 @@ def s10_dieta(doc):
     spacer(doc, 8)
 
     h2(doc, '10.2  Cosa cambia nel menu e nel carrello')
-    step_row(doc, 1, 'Nel menu ogni piatto ha le calorie e un giudizio',
-             '"Adatto a te" in verde, oppure in rosso il motivo: "contiene glutine", "non indicato come '
-             'vegetariano". Il pulsante "Solo adatti a me" nasconde tutto il resto', accent=HEX_GREEN)
+    step_row(doc, 1, 'Ogni piatto mostra i valori nutrizionali e un giudizio',
+             'Calorie, proteine, carboidrati e grassi per porzione, con il bollino vegetariano o vegano, '
+             'sono visibili a tutti nel menu, nel carrello, nel cesto e nel pasto aziendale; nel builder '
+             'ogni ingrediente ha le sue calorie e il totale si aggiorna mentre componi. Con la dieta attiva '
+             'compare anche "Adatto a te" in verde, oppure in rosso il motivo: "contiene glutine", "non '
+             'indicato come vegetariano". Il pulsante "Solo adatti a me" nasconde tutto il resto',
+             accent=HEX_GREEN)
     spacer(doc, 4)
     step_row(doc, 2, 'Nel carrello vedi le calorie del pranzo rispetto alla tua quota',
              'Leggero, in linea o abbondante; se hai già ordinato qualcosa oggi, anche il totale della '
@@ -994,9 +998,15 @@ def s10_dieta(doc):
              'email. Nella pagina trovi anche le calorie di oggi rispetto al tuo fabbisogno, calcolate '
              'dagli ordini che hai fatto davvero.', style='info')
     spacer(doc, 6)
-    info_box(doc, 'Le calorie sono stime per porzione indicate dal locale e non sostituiscono il parere '
-             'di un medico o di un nutrizionista. Un piatto senza valori indicati non entra nel piano e '
-             'nel carrello viene segnalato a parte.', style='warning')
+    info_box(doc, 'AVVERTENZA — NESSUNA VALIDITÀ MEDICA. Le indicazioni della dieta settimanale sono '
+             'stime automatiche a scopo puramente informativo, calcolate sui valori nutrizionali dichiarati '
+             'dal locale e su formule generali. Non hanno alcuna validità medica, non sono una prescrizione '
+             'e non sostituiscono il parere di un medico o di un nutrizionista: per qualsiasi esigenza di '
+             'salute rivolgiti a un professionista. In caso di allergie o intolleranze verifica sempre con '
+             'il personale prima di consumare: l\'applicazione segnala gli allergeni dichiarati, ma non può '
+             'garantire l\'assenza di contaminazioni. Per salvare le preferenze devi confermare di averla '
+             'letta. Un piatto senza valori indicati non entra nel piano e nel carrello viene segnalato a '
+             'parte.', style='warning')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

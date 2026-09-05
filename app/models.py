@@ -1065,6 +1065,20 @@ ATTIVITA_DIETA = [
     ('intensa',    'Intensa (lavoro fisico o sport quotidiano)', 1.725),
 ]
 
+# Il disclaimer della dieta: un solo testo, mostrato in app, nei messaggi e
+# ripreso dai manuali. Non va ammorbidito: la dieta e' un aiuto a scegliere
+# dal listino, non uno strumento sanitario.
+DISCLAIMER_DIETA = (
+    'Le indicazioni della dieta settimanale sono stime automatiche a scopo '
+    'puramente informativo, calcolate sui valori nutrizionali dichiarati dal '
+    'locale e su formule generali. Non hanno alcuna validità medica, non sono '
+    'una prescrizione e non sostituiscono il parere di un medico o di un '
+    'nutrizionista: per qualsiasi esigenza di salute rivolgiti a un '
+    'professionista. In caso di allergie o intolleranze, verifica sempre con '
+    'il personale prima di consumare: l\'applicazione segnala gli allergeni '
+    'dichiarati, ma non può garantire l\'assenza di contaminazioni.'
+)
+
 GIORNI_SETTIMANA = [('lun', 'Lunedì'), ('mar', 'Martedì'), ('mer', 'Mercoledì'),
                     ('gio', 'Giovedì'), ('ven', 'Venerdì'), ('sab', 'Sabato'),
                     ('dom', 'Domenica')]

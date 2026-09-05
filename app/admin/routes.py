@@ -281,7 +281,7 @@ def products_dt():
     filtered = q.count()
 
     col_map = {0: Product.name, 1: Category.name, 2: Product.price,
-               3: Product.daily_quantity, 5: Product.is_active}
+               3: Product.daily_quantity, 5: Product.kcal, 6: Product.is_active}
     order_expr = col_map.get(col, Product.name)
     q = q.order_by(order_expr.desc() if dirn == 'desc' else order_expr.asc())
 

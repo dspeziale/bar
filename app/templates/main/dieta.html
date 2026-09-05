@@ -29,6 +29,16 @@
 {% set gm = {'leggero': ('Leggero', 'info'), 'in_linea': ('In linea', 'success'),
              'abbondante': ('Abbondante', 'warning')} %}
 
+<div id="disclaimer" class="alert alert-warning border-warning mb-3" style="font-size:.88rem;">
+  <div class="d-flex" style="gap:.7rem;">
+    <i class="fas fa-triangle-exclamation fa-lg mt-1"></i>
+    <div>
+      <strong>Avvertenza: nessuna validità medica.</strong><br>
+      {{ disclaimer_dieta }}
+    </div>
+  </div>
+</div>
+
 {% if profilo and not profilo.attivo %}
 <div class="alert alert-secondary d-flex align-items-center justify-content-between">
   <span><i class="fas fa-pause-circle mr-1"></i>La dieta è <strong>sospesa</strong>: menu e carrello non mostrano avvisi.</span>
@@ -181,7 +191,7 @@
 <p class="text-muted" style="font-size:.85rem;">
   <i class="fas fa-lightbulb mr-1 text-warning"></i>
   Il piano usa solo piatti del listino con i valori nutrizionali indicati dal locale, compatibili con le tue esigenze, e non ripete lo stesso piatto nella settimana.
-  Le stime caloriche sono indicative: non sostituiscono il parere di un medico o di un nutrizionista.
+  <strong>Nessuna validità medica</strong>: sono stime, non una prescrizione — <a href="#disclaimer">leggi l'avvertenza</a>.
 </p>
 {% endif %}
 {% endif %}
@@ -332,6 +342,14 @@
                value="{{ profilo.note if profilo else '' }}" placeholder="es. contaminazione da glutine da evitare anche in cucina">
       </div>
 
+      <div class="custom-control custom-checkbox mb-3">
+        <input type="checkbox" class="custom-control-input" id="presa_atto" name="presa_atto" value="1" required>
+        <label class="custom-control-label" for="presa_atto" style="font-size:.9rem;">
+          Ho letto l'<a href="#disclaimer">avvertenza</a>: le indicazioni della dieta sono stime senza
+          validità medica, non sostituiscono medico o nutrizionista, e per allergie gravi verifico
+          sempre con il personale.
+        </label>
+      </div>
       <div class="d-flex flex-wrap" style="gap:.5rem;">
         <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>Salva</button>
         <button type="submit" name="genera" value="1" class="btn btn-outline-success">

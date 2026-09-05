@@ -380,6 +380,21 @@ conto; il backoffice ha `/admin/diete`. Flag `dieta_enabled`, quarto della lista
   Roma) e usa `DietPlan.notificato` contro i doppi invii; accetta `adesso=` per i test.
 - Le nuove tabelle hanno FK verso utenti e ordini: `_delete_tenant_data()` in `demo_seed.py`
   le cancella prima di ordini e utenti. Chi aggiunge un modello alla dieta aggiorni anche lì.
+- **I valori nutrizionali sono espliciti ovunque si veda un piatto**, anche senza dieta: la
+  macro `nutrizione(o, compatto, mostra_regime)` di `templates/_nutrizione.html` (kcal in
+  evidenza, P/C/G in grammi, bollino vegetariano/vegano, oppure "valori nutrizionali non
+  indicati") va usata in menu, carrello, cesto, pasto aziendale e in ogni nuova vista; il
+  listino staff ha la colonna *Valori* (`col_map` 5 = `Product.kcal`). Nei due builder ogni
+  ingrediente porta `data-kcal` e il totale delle calorie si aggiorna in JavaScript sommando
+  gli elementi selezionati: gli ingredienti senza valore vengono contati come "senza valori",
+  non come zero.
+- **Disclaimer**: `DISCLAIMER_DIETA` in `models.py` è l'unico testo (nessuna validità medica,
+  non sostituisce medico o nutrizionista, nessuna garanzia sulle contaminazioni) ed è in ogni
+  template come `disclaimer_dieta`. Compare in testa a `/dieta`, nel pannello del carrello,
+  nel menu con dieta attiva, in testa a `/admin/diete`, in coda al piano inviato
+  (`testo_piano`) e nei manuali. `dieta_profilo` rifiuta il salvataggio senza
+  `presa_atto=1`: la casella è obbligatoria e i test la inviano esplicitamente. Non
+  ammorbidirlo e non renderlo opzionale.
 
 ### Email ai clienti: due momenti, nessun silenzio
 

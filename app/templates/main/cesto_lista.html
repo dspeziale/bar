@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_nutrizione.html' import nutrizione %}
 {% block title %}Cesto Cucina{% endblock %}
 {% block page_title %}Cesto Cucina{% endblock %}
 {% block breadcrumb %}
@@ -33,6 +34,7 @@
                 <span class="progress-description" style="font-size:.78rem; color:#555;">
                   <strong>{{ items|length }}</strong> disponibil{{ 'e' if items|length == 1 else 'i' }}
                 </span>
+                <span class="d-block" style="line-height:1.2;">{{ nutrizione(prod, compatto=True, mostra_regime=False) }}</span>
               </div>
             </div>
           </div>

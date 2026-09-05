@@ -756,8 +756,23 @@ def sez_cliente(pdf, idx):
                'settimana propone un pranzo per ogni giorno, ordinabile con '
                'un tocco. Funziona sui piatti con i valori nutrizionali '
                'compilati: il listino di partenza li ha, i piatti del gestore '
-               'li ricevono dalla scheda prodotto. Il backoffice li riassume '
-               'in Clienti > Diete clienti.')
+               'li ricevono dalla scheda prodotto. I valori (kcal, proteine, '
+               'carboidrati, grassi, vegetariano/vegano) sono visibili a tutti '
+               'i clienti nel menu, nel carrello, nel cesto e nel builder. Il '
+               'backoffice li riassume in Clienti > Diete clienti.')
+
+    callout(pdf, 'Avvertenza: nessuna validita medica',
+            'La dieta settimanale e un aiuto a scegliere dal listino, non uno '
+            'strumento sanitario: le sue indicazioni sono stime automatiche '
+            'su valori dichiarati dal locale e formule generali, senza alcuna '
+            'validita medica, e non sostituiscono medico o nutrizionista. Il '
+            'cliente deve confermare di averlo letto per salvare le proprie '
+            'preferenze; lo staff lo trova in testa alla pagina Diete '
+            'clienti. L\'applicazione segnala gli allergeni dichiarati ma non '
+            'puo garantire l\'assenza di contaminazioni: per chi ha allergie '
+            'gravi la sicurezza sta nella preparazione e nella parola del '
+            'personale, non nei badge dell\'applicazione.',
+            RED, (253, 238, 240))
 
     callout(pdf, 'Il tuo nome sulle liste',
             'Sul display della cucina, sul tagliando e sulle liste stampate '

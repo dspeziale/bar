@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_nutrizione.html' import nutrizione %}
 {% block title %}Pasto Aziendale{% endblock %}
 {% block page_title %}Il mio pasto aziendale{% endblock %}
 {% block breadcrumb %}
@@ -120,16 +121,16 @@
         </div>
         {% endif %}
 
-        {% if profilo_dieta and compat_pasti.get(meal.id) %}
         <div class="mb-2">
-          {% if compat_pasti[meal.id].ok %}
-          <span class="badge badge-success"><i class="fas fa-leaf mr-1"></i>Adatto a te</span>
-          {% else %}
-          <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>{{ compat_pasti[meal.id].motivi|join(', ') }}</span>
+          {{ nutrizione(meal) }}
+          {% if profilo_dieta and compat_pasti.get(meal.id) %}
+            {% if compat_pasti[meal.id].ok %}
+            <span class="badge badge-success ml-1"><i class="fas fa-leaf mr-1"></i>Adatto a te</span>
+            {% else %}
+            <span class="badge badge-danger ml-1"><i class="fas fa-ban mr-1"></i>{{ compat_pasti[meal.id].motivi|join(', ') }}</span>
+            {% endif %}
           {% endif %}
-          {% if meal.kcal is not none %}<span class="badge badge-light border ml-1">{{ meal.kcal }} kcal</span>{% endif %}
         </div>
-        {% endif %}
 
         {# ── Form prenotazione / stato ── #}
         {% if is_booked_this %}

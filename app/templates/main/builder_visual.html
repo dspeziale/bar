@@ -424,12 +424,14 @@
            data-iid="{{ ing.id }}"
            data-name="{{ ing.name }}"
            data-price="{{ ing.price_extra }}"
+           data-kcal="{{ ing.kcal if ing.kcal is not none else '' }}"
            data-cid="{{ cat.id }}"
            data-max="{{ cat.max_choices }}"
            onclick="mcToggle(this)">
         <div class="mc-card-check">✓</div>
         <span class="mc-card-emoji" id="mce{{ ing.id }}">🍽️</span>
         <div class="mc-card-name">{{ ing.name }}</div>
+        {% if ing.kcal is not none %}<div class="text-muted" style="font-size:.68rem;">{{ ing.kcal }} kcal</div>{% endif %}
         {% if ing.price_extra > 0 %}
         <div class="mc-card-price">+{{ ing.price_extra|num_it }}€</div>
         {% endif %}
@@ -463,6 +465,7 @@
     <div id="mc-total-block" class="mc-total-block">
       <div class="mc-total-lbl">Totale</div>
       <div class="mc-total-num" id="mc-total-num">{{ base_price|num_it }}€</div>
+      <div class="mc-total-lbl" id="mc-total-kcal" style="opacity:.75;">0 kcal stimate</div>
     </div>
     <form method="POST" action="{{ url_for('main.builder_add') }}" id="mc-form" style="padding:0 1.5rem 1.5rem;">
       {{ csrf_field() }}
@@ -669,6 +672,14 @@ function mcUpdatePrice(){
   document.getElementById('mc-nav-price').textContent = v;
   var tn = document.getElementById('mc-total-num');
   if(tn) tn.textContent = v;
+  // Calorie: somma dei valori dichiarati delle card selezionate.
+  var kcal = 0, mancanti = 0;
+  document.querySelectorAll('.mc-card.mc-sel').forEach(function(c){
+    var k = c.getAttribute('data-kcal');
+    if(k === '' || k === null){ mancanti += 1; } else { kcal += parseInt(k, 10) || 0; }
+  });
+  var tk = document.getElementById('mc-total-kcal');
+  if(tk) tk.textContent = kcal + ' kcal stimate' + (mancanti ? ' (+' + mancanti + ' senza valori)' : '');
 }
 
 /* ── Summary ── */

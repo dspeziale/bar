@@ -1841,6 +1841,28 @@ Regole
   piano a chi ha avvisi attivi e lo manda con send_reminder_to_user; il flag
   notificato evita i doppi invii.
 
+Valori nutrizionali espliciti (per tutti, anche senza dieta)
+- La macro templates/_nutrizione.html mostra kcal in evidenza, proteine,
+  carboidrati e grassi in grammi e il bollino vegetariano/vegano, oppure
+  "valori nutrizionali non indicati". Usata in menu, carrello (anche per i
+  composti del builder, sommando gli ingredienti per nome), cesto e pasto
+  aziendale. Nei due builder ogni ingrediente porta le sue kcal e il totale
+  stimato si aggiorna mentre si compone; gli ingredienti senza valore sono
+  conteggiati come "senza valori", non come zero. Il listino del backoffice ha
+  la colonna Valori (ordinabile per kcal).
+
+Disclaimer (nessuna validita' medica)
+- DISCLAIMER_DIETA (app/models.py) e' l'unico testo: stime automatiche a scopo
+  informativo su valori dichiarati dal locale e formule generali; nessuna
+  validita' medica, non una prescrizione, non sostituisce medico o
+  nutrizionista; per allergie e intolleranze verificare con il personale,
+  l'applicazione non garantisce l'assenza di contaminazioni.
+- Compare in testa a /dieta, nel pannello dieta del carrello, nel menu con
+  dieta attiva (rimando), in testa a /admin/diete per lo staff, in coda al
+  piano inviato su Telegram/email e nelle guide (cliente e utente).
+- Il salvataggio delle preferenze richiede la casella di presa d'atto
+  (presa_atto=1); senza, la richiesta viene rifiutata con un avviso.
+
 Pagine
 - Cliente: /dieta (profilo, fabbisogno, oggi, piano), menu con badge "Adatto a
   te"/motivo e filtro "Solo adatti a me", carrello con pannello dieta, home con

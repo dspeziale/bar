@@ -219,8 +219,14 @@ def cart():
             total += subtotal
 
     custom_cart = session.get('custom_cart', [])
+    kcal_composti = {}
     for ci in custom_cart:
         total += ci['total_price']
+        try:
+            from app.dieta import nutrienti_composto
+            kcal_composti[ci['uid']] = nutrienti_composto(ci.get('ingredients', []))
+        except Exception:
+            kcal_composti[ci['uid']] = None
 
     tid = _effective_tenant_id()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
@@ -234,7 +240,7 @@ def cart():
                            total=round(total, 2),
                            slots=slots,
                            wallet=current_user.wallet_balance,
-                           analisi_dieta=analisi)
+                           analisi_dieta=analisi, kcal_composti=kcal_composti)
 
 
 # ── Ordine ────────────────────────────────────────────────────────────────────
@@ -1127,6 +1133,10 @@ def dieta_profilo():
 
     profilo = current_user.diet_profile
     nuovo = profilo is None
+    if request.form.get('presa_atto') != '1':
+        flash('Per salvare devi confermare di aver letto che le indicazioni della '
+              'dieta non hanno validità medica.', 'warning')
+        return redirect(url_for('main.dieta'))
     if nuovo:
         profilo = DietProfile(user_id=current_user.id,
                               tenant_id=_effective_tenant_id())

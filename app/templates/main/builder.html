@@ -61,11 +61,13 @@
             {% if ing.is_active %}
             <label class="ing-chip" data-cat="{{ cat.id }}" data-max="{{ cat.max_choices }}"
                    data-price="{{ ing.price_extra }}" data-name="{{ ing.name }}"
+                   data-kcal="{{ ing.kcal if ing.kcal is not none else '' }}"
                    for="ing_{{ ing.id }}">
               <input type="checkbox" name="ing_{{ ing.id }}" id="ing_{{ ing.id }}"
                      value="{{ ing.id }}" style="display:none;">
               {% if ing.is_vegetarian %}<span class="veg-dot" title="Vegetariano"></span>{% endif %}
               {{ ing.name }}
+              {% if ing.kcal is not none %}<span class="text-muted ml-1" style="font-size:.7rem;">{{ ing.kcal }} kcal</span>{% endif %}
               {% if ing.price_extra > 0 %}<span class="extra-badge">+{{ ing.price_extra|num_it }}€</span>{% endif %}
             </label>
             {% endif %}
@@ -99,6 +101,10 @@
           <div class="d-flex justify-content-between align-items-center mt-2" style="font-size:1.2rem;">
             <span><strong>Totale:</strong></span>
             <strong id="total-price-desk" style="color:#e94560;">{{ base_price|num_it }}€</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center text-muted" style="font-size:.85rem;">
+            <span>Calorie stimate:</span>
+            <strong id="kcal-desk" title="Somma dei valori dichiarati per gli ingredienti scelti">0 kcal</strong>
           </div>
           <button type="submit" class="btn btn-block mt-3"
                   style="background:linear-gradient(135deg,#e94560,#0f3460);color:#fff;font-size:1rem;font-weight:700;">
@@ -209,6 +215,16 @@ function updateSummary() {
   if (sd) sd.innerHTML = names.length
     ? names.map(function(n){ return '<span class="badge badge-light border mr-1 mb-1">'+n+'</span>'; }).join('')
     : '<span class="text-muted">Nessun ingrediente selezionato</span>';
+
+  // Calorie: somma dei valori dichiarati degli ingredienti selezionati.
+  var kcal = 0, mancanti = 0;
+  document.querySelectorAll('.ing-chip input[type=checkbox]:checked').forEach(function(cb) {
+    var chip = cb.closest('.ing-chip');
+    var v = chip ? chip.dataset.kcal : '';
+    if (v === '' || v === undefined) { mancanti += 1; } else { kcal += parseInt(v, 10) || 0; }
+  });
+  var kd = document.getElementById('kcal-desk');
+  if (kd) kd.textContent = kcal + ' kcal' + (mancanti ? ' (+' + mancanti + ' senza valori)' : '');
 }
 updateSummary();
 </script>

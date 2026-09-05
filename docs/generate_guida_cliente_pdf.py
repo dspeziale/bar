@@ -347,9 +347,12 @@ def sez_dieta(pdf, idx):
 
     h2(pdf, 'Che cosa cambia', C, idx)
     elenco(pdf, [
-        ('Nel menu: ', 'ogni piatto mostra le calorie e "Adatto a te", oppure '
-         'il motivo per cui non lo e ("contiene glutine"). Il pulsante Solo '
-         'adatti a me nasconde il resto.'),
+        ('Nel menu: ', 'ogni piatto mostra calorie, proteine, carboidrati e '
+         'grassi per porzione (li vedono tutti, anche senza dieta) e, con la '
+         'dieta attiva, "Adatto a te" oppure il motivo per cui non lo e '
+         '("contiene glutine"). Il pulsante Solo adatti a me nasconde il '
+         'resto. Nel builder ogni ingrediente ha le sue calorie e il totale '
+         'si aggiorna mentre componi.'),
         ('Nel carrello: ', 'le calorie del pranzo rispetto alla tua quota - '
          'leggero, in linea, abbondante - e il totale della giornata. Se '
          'c\'e un allergene che escludi, l\'ordine chiede una conferma '
@@ -373,11 +376,19 @@ def sez_dieta(pdf, idx):
          'piano ti arriva su Telegram o per email.'),
     ], C)
 
-    callout(pdf, 'Stime, non prescrizioni',
-            'Le calorie sono valori per porzione indicati dal locale e non '
-            'sostituiscono il parere di un medico o di un nutrizionista. Un '
-            'piatto senza valori non entra nel piano e nel carrello viene '
-            'conteggiato a parte.', ORANGE, (255, 247, 235))
+    callout(pdf, 'Avvertenza: nessuna validita medica',
+            'Le indicazioni della dieta settimanale sono stime automatiche a '
+            'scopo puramente informativo, calcolate sui valori nutrizionali '
+            'dichiarati dal locale e su formule generali. Non hanno alcuna '
+            'validita medica, non sono una prescrizione e non sostituiscono '
+            'il parere di un medico o di un nutrizionista: per qualsiasi '
+            'esigenza di salute rivolgiti a un professionista. In caso di '
+            'allergie o intolleranze verifica sempre con il personale prima '
+            'di consumare: l\'applicazione segnala gli allergeni dichiarati, '
+            'ma non puo garantire l\'assenza di contaminazioni. Per salvare '
+            'le preferenze devi confermare di aver letto questa avvertenza. '
+            'Un piatto senza valori non entra nel piano e nel carrello viene '
+            'conteggiato a parte.', RED, (253, 238, 240))
 
 
 def sez_domande(pdf, idx):

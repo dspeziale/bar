@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_nutrizione.html' import nutrizione %}
 {% block title %}Carrello{% endblock %}
 {% block page_title %}Il tuo Carrello{% endblock %}
 {% block breadcrumb %}
@@ -34,7 +35,8 @@
             <tr>
               <td>
                 <strong>{{ item.product.name }}</strong><br>
-                <small class="text-muted">{{ item.product.category.name }}</small>
+                <small class="text-muted">{{ item.product.category.name }}</small><br>
+                {{ nutrizione(item.product, compatto=True) }}
               </td>
               <td>{{ item.product.price|num_it }}€</td>
               <td>
@@ -93,6 +95,13 @@
                 <span class="badge badge-light border mr-1 mb-1">{{ ing.name }}</span>
                 {% endfor %}
               </small>
+              {% set kc = kcal_composti.get(ci.uid) if kcal_composti else None %}
+              {% if kc and kc.noto %}
+              <div style="font-size:.76rem;">
+                <span class="badge badge-light border"><strong>{{ kc.kcal }}</strong> kcal</span>
+                <span class="text-muted ml-1">P {{ kc.proteine|round|int }} g · C {{ kc.carboidrati|round|int }} g · G {{ kc.grassi|round|int }} g</span>
+              </div>
+              {% endif %}
             </td>
             <td><strong>{{ ci.total_price|num_it }}€</strong>
               {% if ci.extra_price > 0 %}
@@ -161,6 +170,10 @@
         {% for av in a.avvisi %}
         <div class="alert alert-{{ av.livello }} py-1 px-2 mt-2 mb-0" style="font-size:.85rem;">{{ av.testo }}</div>
         {% endfor %}
+        <div class="text-muted mt-2" style="font-size:.74rem;line-height:1.35;">
+          <i class="fas fa-info-circle mr-1"></i>Stime indicative, senza validità medica:
+          <a href="{{ url_for('main.dieta') }}#disclaimer">leggi l'avvertenza</a>.
+        </div>
         {% if a.alternative %}
         <div class="mt-2" style="font-size:.85rem;">
           <strong>Alternative adatte a te:</strong>

@@ -80,10 +80,12 @@ def create_app(config_object='config.Config'):
     # ── Funzionalita' attivabili: flag disponibile in ogni template ───────
     @app.context_processor
     def _inject_feature_flags():
+        from app.models import DISCLAIMER_DIETA
         return {'tables_enabled': tables_enabled(),
                 'cesto_enabled': cesto_enabled(),
                 'wallet_enabled': wallet_enabled(),
-                'dieta_enabled': dieta_enabled()}
+                'dieta_enabled': dieta_enabled(),
+                'disclaimer_dieta': DISCLAIMER_DIETA}
 
     # Registra Google OAuth (se configurato)
     oauth.register(

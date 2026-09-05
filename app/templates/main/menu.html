@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_nutrizione.html' import nutrizione %}
 {% block title %}Menu{% endblock %}
 {% block page_title %}Menu di Oggi{% endblock %}
 {% block breadcrumb %}
@@ -21,6 +22,13 @@
 {% endblock %}
 
 {% block content %}
+{% if profilo_dieta %}
+<div class="alert alert-light border py-2 mb-3" style="font-size:.8rem;">
+  <i class="fas fa-info-circle mr-1 text-muted"></i>
+  I valori nutrizionali e i giudizi "adatto a te" sono indicativi e senza validità medica:
+  <a href="{{ url_for('main.dieta') }}#disclaimer">leggi l'avvertenza</a>.
+</div>
+{% endif %}
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('main.cart') }}" class="btn btn-success btn-block">
@@ -75,9 +83,8 @@
             {% endif %}
           </div>
           <h6 class="card-title mt-1 mb-1">{{ p.name }}</h6>
-          {% if p.kcal is not none or compat.get(p.id) %}
           <div class="mb-1" style="font-size:.76rem;">
-            {% if p.kcal is not none %}<span class="badge badge-light border">{{ p.kcal }} kcal</span>{% endif %}
+            {{ nutrizione(p) }}
             {% if compat.get(p.id) %}
               {% if compat[p.id].ok %}
               <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Adatto a te</span>
@@ -86,7 +93,6 @@
               {% endif %}
             {% endif %}
           </div>
-          {% endif %}
           {% if p.description %}
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
@@ -139,9 +145,8 @@
             {% endif %}
           </div>
           <h6 class="card-title mt-1 mb-1">{{ p.name }}</h6>
-          {% if p.kcal is not none or compat.get(p.id) %}
           <div class="mb-1" style="font-size:.76rem;">
-            {% if p.kcal is not none %}<span class="badge badge-light border">{{ p.kcal }} kcal</span>{% endif %}
+            {{ nutrizione(p) }}
             {% if compat.get(p.id) %}
               {% if compat[p.id].ok %}
               <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Adatto a te</span>
@@ -150,7 +155,6 @@
               {% endif %}
             {% endif %}
           </div>
-          {% endif %}
           {% if p.description %}
           <p class="card-text text-muted mb-2" style="font-size:.8rem;">{{ p.description }}</p>
           {% endif %}
