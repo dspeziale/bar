@@ -928,6 +928,8 @@ def settings_locandina_pdf():
         indirizzo=' '.join(p for p in (get_setting('company_address'),
                                        get_setting('company_city')) if p),
         telefono=get_setting('company_phone'),
+        partita_iva=get_setting('company_vat'),
+        email=get_setting('company_email'),
         bot=nome_bot(),
         wallet_attivo=wallet_enabled(),
         dieta_attiva=dieta_enabled(),

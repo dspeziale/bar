@@ -462,6 +462,9 @@ La **locandina con il QR di registrazione** (`app/locandina.py`, rotta
 fpdf2 e il kit dei manuali; il QR è la matrice di `qrcode` disegnata come rettangoli, così non
 servono immagini né Pillow per il codice. `qrcode` è in `requirements.txt` per questo: non
 toglierlo pensando che sia inutilizzato (la pagina HTML del QR usa invece qrcodejs nel browser).
+La locandina è un documento **del locale**: in piè di pagina vanno i dati completi dell'azienda
+(ragione sociale, indirizzo, P. IVA, telefono, email da Impostazioni → Azienda) e **nessun
+riferimento a DS Consulting**, a differenza dei manuali; `smoke_locandina` lo verifica.
 
 Il **manuale completo del gestore** è `docs/generate_manuale_gestore_pdf.py` →
 `docs/manuali/manuale_gestore.pdf` (16 sezioni per area, stesso kit di guida utente e catalogo,

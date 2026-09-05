@@ -26,7 +26,6 @@ ORANGE = (214, 122, 32)
 WHITE = (255, 255, 255)
 FONT = 'PTSansNarrow'
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'fonts')
-CONTATTI = 'DS Consulting · Daniele Speziale · dspeziale@gmail.com · +39 352 0150489'
 ML, MR = 16, 16
 W = 210 - ML - MR
 
@@ -57,8 +56,14 @@ def _disegna_qr(pdf, url, x, y, lato):
 
 
 def genera_locandina(url_registrazione, nome_locale='', indirizzo='', telefono='',
-                     bot='dslunch_bot', wallet_attivo=True, dieta_attiva=True):
-    """Il PDF della locandina come bytes."""
+                     bot='dslunch_bot', wallet_attivo=True, dieta_attiva=True,
+                     partita_iva='', email=''):
+    """Il PDF della locandina come bytes.
+
+    E' un foglio del locale, non del fornitore: in pie' di pagina vanno i dati
+    completi dell'azienda (ragione sociale, indirizzo, partita IVA, telefono,
+    email) e nessun riferimento a chi ha fatto l'applicazione.
+    """
     pdf = FPDF(format='A4')
     pdf.set_auto_page_break(False)
     pdf.add_font(FONT, '', os.path.join(FONT_DIR, 'PTSansNarrow-Regular.ttf'))
@@ -211,20 +216,29 @@ def genera_locandina(url_registrazione, nome_locale='', indirizzo='', telefono='
         'I tuoi dati restano al locale e servono solo per il servizio. Per qualsiasi '
         'dubbio, chiedi al banco: siamo qui.'))
 
+    # Pie' di pagina: i dati completi dell'azienda, e nulla di chi ha fatto l'app.
     pdf.set_draw_color(*LGRAY)
     pdf.set_line_width(0.2)
-    pdf.line(ML, 276, 210 - MR, 276)
-    pdf.set_xy(ML, 278)
-    pdf.set_font(FONT, 'B', 10)
+    pdf.line(ML, 273, 210 - MR, 273)
+    pdf.set_xy(ML, 275)
+    pdf.set_font(FONT, 'B', 11)
     pdf.set_text_color(*NAVY)
-    riga_locale = nome_locale
-    dettagli = ' · '.join(p for p in (_pulisci(indirizzo), _pulisci(telefono)) if p)
-    if dettagli:
-        riga_locale += ' · ' + dettagli
-    pdf.cell(W, 5, riga_locale)
-    pdf.set_xy(ML, 283.5)
+    pdf.cell(W, 5.5, nome_locale)
+    riga1 = ' · '.join(p for p in (_pulisci(indirizzo),
+                                   ('P. IVA %s' % _pulisci(partita_iva)) if partita_iva else '') if p)
+    riga2 = ' · '.join(p for p in (('Tel. %s' % _pulisci(telefono)) if telefono else '',
+                                   _pulisci(email)) if p)
+    pdf.set_font(FONT, '', 9.5)
+    pdf.set_text_color(*DGRAY)
+    y_f = 281
+    for riga in (riga1, riga2):
+        if riga:
+            pdf.set_xy(ML, y_f)
+            pdf.cell(W, 4.6, riga)
+            y_f += 4.6
+    pdf.set_xy(ML, 290)
     pdf.set_font(FONT, '', 7.5)
     pdf.set_text_color(*MGRAY)
-    pdf.cell(W, 4, 'QuickLunch · Sistema di prenotazione pasti · © 2024–26 ' + CONTATTI)
+    pdf.cell(W, 4, 'Servizio di ordinazione e ritiro QuickLunch')
 
     return bytes(pdf.output())
