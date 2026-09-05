@@ -514,7 +514,12 @@ def esegui_automatismi(adesso=None, base_url=None):
     if (get_setting('comunicazioni_auto_il') or '') == oggi.isoformat():
         return 0
     creati = 0
-    for tenant in Tenant.query.all():
+    from app.tenancy import tenant_corrente
+    tid = tenant_corrente()
+    tenants = [db.session.get(Tenant, tid)] if tid else Tenant.query.all()
+    for tenant in tenants:
+        if tenant is None:
+            continue
         for chiave, modello, etichetta, _d in AUTOMATISMI:
             if not automatismo_attivo(chiave):
                 continue

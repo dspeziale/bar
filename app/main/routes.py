@@ -15,7 +15,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         DailyFixedMeal, CorporateMealBooking, Tenant, BancoSession,
                         CorporateMembership, PrepLabel, User,
                         Prenotazione, PrenotazioneItem, PushSubscription,
-                        DietProfile, DietPlan, DietPlanDay, ALLERGENS,
+                        DietProfile, DietPlan, DietPlanDay, ALLERGENS, AppSetting,
                         CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
                         OBIETTIVI_DESCRIZIONE, NON_GRADITI, GRUPPI_NON_GRADITI,
                         ATTIVITA_DIETA, GIORNI_SETTIMANA, ATTENZIONI_DIETA,
@@ -78,11 +78,14 @@ def dieta_required(f):
 
 
 def _effective_tenant_id():
-    """Superadmin ha tenant_id=None → usa il tenant 'default' per le query utente."""
-    if current_user.tenant_id:
-        return current_user.tenant_id
-    default_t = Tenant.query.filter_by(slug='default').first()
-    return default_t.id if default_t else None
+    """Il tenant della richiesta (app/tenancy.py): quello dell'utente, o quello
+    in cui l'amministratore dei tenant e' entrato."""
+    from app.tenancy import tenant_corrente, tenant_predefinito
+    tid = tenant_corrente()
+    if tid:
+        return tid
+    t = tenant_predefinito()
+    return t.id if t else None
 
 
 # ── Home ──────────────────────────────────────────────────────────────────────
@@ -2018,9 +2021,17 @@ def telegram_webhook(segreto):
     from hmac import compare_digest
     from app.notifications import telegram_api
 
-    atteso = _segreto_webhook()
-    if not atteso or not compare_digest(str(segreto), atteso):
+    # Telegram chiama senza sessione: il tenant si ricava dal segreto, che e'
+    # diverso per ogni locale, e da li' in avanti si lavora nel suo scope.
+    from app.tenancy import senza_filtro, imposta_tenant
+    with senza_filtro():
+        righe = AppSetting.query.filter_by(key='telegram_webhook_secret').all()
+    riga = next((r for r in righe if (r.value or '').strip()
+                 and compare_digest(str(segreto), r.value.strip())), None)
+    if riga is None:
         return jsonify({'ok': False}), 403
+    if riga.tenant_id:
+        imposta_tenant(riga.tenant_id)
 
     aggiornamento = request.get_json(silent=True) or {}
     if aggiornamento.get('message'):
@@ -2079,9 +2090,13 @@ def comunicazioni_disiscriviti(token):
     """Il link firmato in fondo a ogni email: toglie il consenso senza chiedere
     il login, perche' chi vuole smettere di ricevere non deve faticare."""
     from app.comunicazioni import utente_da_token
-    user = utente_da_token(token)
+    from app.tenancy import senza_filtro, imposta_tenant
+    with senza_filtro():
+        user = utente_da_token(token)
     if user is None:
         return render_template('main/disiscritto.html', ok=False, user=None), 400
+    if user.tenant_id:
+        imposta_tenant(user.tenant_id)
     user.comunicazioni_ok = False
     db.session.commit()
     return render_template('main/disiscritto.html', ok=True, user=user)

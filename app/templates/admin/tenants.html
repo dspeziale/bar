@@ -1,168 +1,155 @@
 {% extends 'base.html' %}
-{% block title %}Tenant | Admin{% endblock %}
+{% block title %}Tenant{% endblock %}
+{% block page_title %}Tenant: i locali dell'installazione{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Tenant</li>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-
-    {# ── Lista tenant ────────────────────────────────────────────────────────── #}
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-          <h3 class="card-title mb-0">
-            <i class="fas fa-building mr-2" style="color:#e94560;"></i>Tenant registrati
-          </h3>
-          <form action="{{ url_for('admin.seed_demo') }}" method="POST" class="mb-0">
-            {{ csrf_field() }}
-            <button type="submit" class="btn btn-sm btn-outline-secondary"
-                    data-confirm-click="Resettare e ricaricare i dati demo? Verranno PRIMA eliminati i 3 tenant demo esistenti (e tutti i dati collegati), poi ricreati da zero con 36 clienti e circa 90 prodotti alimentari."
-                    title="Resetta e ripopola con dati di demo">
-              <i class="fas fa-sync-alt mr-1"></i>Reset &amp; Carica Demo
-            </button>
-          </form>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-hover mb-0">
-            <thead>
-              <tr>
-                <th>Nome / Slug</th>
-                <th>Colore</th>
-                <th>Admin tenant</th>
-                <th>Utenti</th>
-                <th>Stato</th>
-                <th>Link registrazione</th>
-                <th class="text-right">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for t in tenants %}
-              {% set tadmin = tenant_admins.get(t.id) %}
-              <tr>
-                <td>
-                  <strong>{{ t.name }}</strong><br>
-                  <small class="text-muted"><code>/t/{{ t.slug }}</code></small>
-                </td>
-                <td>
-                  <span style="display:inline-block;width:24px;height:24px;border-radius:4px;
-                               background:{{ t.primary_color }};border:1px solid rgba(0,0,0,.15);"
-                        title="{{ t.primary_color }}"></span>
-                </td>
-                <td>
-                  {% if tadmin %}
-                    <i class="fas fa-user-shield text-success mr-1"></i>
-                    <small><strong>{{ tadmin.email }}</strong></small><br>
-                    <span class="badge badge-{{ 'success' if tadmin.is_active else 'secondary' }} badge-sm">
-                      {{ 'Attivo' if tadmin.is_active else 'Sospeso' }}
-                    </span>
-                  {% else %}
-                    <form action="{{ url_for('admin.tenant_create_admin', tid=t.id) }}"
-                          method="POST" class="d-inline">
-                      {{ csrf_field() }}
-                      <button type="submit" class="btn btn-xs btn-outline-warning"
-                              title="Crea admin per questo tenant"
-                              data-confirm-click="Creare l\'admin per {{ t.name }}? La password verrà mostrata una sola volta.">
-                        <i class="fas fa-user-plus mr-1"></i>Crea admin
-                      </button>
-                    </form>
-                  {% endif %}
-                </td>
-                <td>{{ t.user_count }}</td>
-                <td>
-                  {% if t.is_active %}
-                    <span class="badge badge-success">Attivo</span>
-                  {% else %}
-                    <span class="badge badge-secondary">Disattivo</span>
-                  {% endif %}
-                </td>
-                <td>
-                  <a href="{{ t.register_url }}" target="_blank" class="text-truncate d-inline-block"
-                     style="max-width:180px;" title="{{ t.register_url }}">
-                    <i class="fas fa-external-link-alt mr-1"></i>Apri
-                  </a>
-                  <button class="btn btn-xs btn-outline-secondary ml-1"
-                          onclick="navigator.clipboard.writeText('{{ t.register_url }}');
-                                   this.innerHTML='<i class=\'fas fa-check\'></i>';
-                                   setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i>',1500);"
-                          title="Copia link">
-                    <i class="fas fa-copy"></i>
-                  </button>
-                </td>
-                <td class="text-right">
-                  <button class="btn btn-xs btn-outline-primary"
-                          data-toggle="modal" data-target="#editModal{{ t.id }}">
-                    <i class="fas fa-pen"></i>
-                  </button>
-                  {% if not t.is_active %}
-                  <form action="{{ url_for('admin.tenant_delete', tid=t.id) }}" method="POST"
-                        class="d-inline"
-                        data-confirm="Eliminare il tenant {{ t.name }}?">
-                    {{ csrf_field() }}
-                    <button type="submit" class="btn btn-xs btn-outline-danger">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </form>
-                  {% endif %}
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="7" class="text-center text-muted py-4">Nessun tenant ancora.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    {# ── Crea nuovo tenant ────────────────────────────────────────────────────── #}
-    <div class="col-lg-4">
-      <div class="card card-outline card-primary sticky-top" style="top:70px;">
-        <div class="card-header">
-          <h3 class="card-title"><i class="fas fa-plus-circle mr-1"></i> Nuovo tenant</h3>
-        </div>
-        <div class="card-body">
-          <form action="{{ url_for('admin.tenant_new') }}" method="POST">
-            {{ csrf_field() }}
-            <div class="form-group">
-              <label>Nome azienda <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" placeholder="Es. Bar Rossi" required>
-            </div>
-            <div class="form-group">
-              <label>Slug URL <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <div class="input-group-prepend">
-                  <span class="input-group-text text-muted">/t/</span>
-                </div>
-                <input type="text" name="slug" id="slugInput" class="form-control"
-                       placeholder="bar-rossi" pattern="[a-z0-9\-]+" required>
-              </div>
-              <small class="form-text text-muted">Solo lettere minuscole, numeri e trattini.</small>
-            </div>
-            <div class="form-group">
-              <label>Colore primario</label>
-              <div class="input-group">
-                <div class="input-group-prepend">
-                  <input type="color" name="primary_color" value="#e94560"
-                         class="form-control form-control-color" style="width:50px;padding:2px;">
-                </div>
-                <input type="text" id="colorText" class="form-control" value="#e94560" readonly>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>URL logo <small class="text-muted">(opzionale)</small></label>
-              <input type="url" name="logo_url" class="form-control" placeholder="https://...">
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">
-              <i class="fas fa-building mr-1"></i> Crea tenant
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-  </div>{# /row #}
+<div class="alert alert-light border py-2 mb-3" style="font-size:.9rem;">
+  <i class="fas fa-shield-halved mr-1" style="color:#e94560;"></i>
+  Ogni tenant è un locale con <strong>dati completamente separati</strong>: catalogo, clienti, ordini, impostazioni,
+  bot Telegram, orari. Tu sei l'unico amministratore dei tenant: li crei, entri in ciascuno per lavorarci
+  (selettore in alto a destra) e nomini il suo amministratore, che vede e modifica solo il proprio locale.
 </div>
 
-{# ── Modal di modifica per ogni tenant ──────────────────────────────────────── #}
+{% if credenziali %}
+<div class="alert alert-warning">
+  <strong><i class="fas fa-key mr-1"></i>Amministratore di «{{ credenziali.tenant }}» creato</strong> — comunica queste
+  credenziali: non verranno più mostrate.<br>
+  Email <code>{{ credenziali.email }}</code> · Password <code>{{ credenziali.password }}</code>
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline card-danger">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title mb-0"><i class="fas fa-building mr-2" style="color:#e94560;"></i>Tenant registrati</h3>
+        <form action="{{ url_for('admin.seed_demo') }}" method="POST" class="mb-0"
+              data-confirm="Resettare e ricaricare i dati demo? Vengono eliminati i tenant demo e svuotato il tenant predefinito.">
+          {{ csrf_field() }}
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Resetta e ripopola con dati di demo">
+            <i class="fas fa-sync-alt mr-1"></i>Reset e carica demo
+          </button>
+        </form>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Locale</th>
+              <th>Amministratore</th>
+              <th class="text-center">Clienti</th>
+              <th class="text-center">Staff</th>
+              <th class="text-center">Prodotti</th>
+              <th class="text-center">Ordini</th>
+              <th>Stato</th>
+              <th class="text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tenants %}
+            {% set tadmin = tenant_admins.get(t.id) %}
+            {% set n = conteggi.get(t.id, {}) %}
+            <tr class="{{ 'table-active' if t.id == tenant_attivo_id }}">
+              <td>
+                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{{ t.primary_color }};margin-right:.4rem;vertical-align:middle;"></span>
+                <strong>{{ t.name }}</strong>
+                {% if t.id == tenant_attivo_id %}<span class="badge badge-dark ml-1">attivo</span>{% endif %}
+                {% if t.slug == 'default' %}<span class="badge badge-light border ml-1">predefinito</span>{% endif %}<br>
+                <small class="text-muted"><code>/t/{{ t.slug }}</code> ·
+                  <a href="{{ t.register_url }}" target="_blank" title="{{ t.register_url }}">link di registrazione <i class="fas fa-external-link-alt"></i></a>
+                </small>
+              </td>
+              <td>
+                {% if tadmin %}
+                <i class="fas fa-user-shield text-success mr-1"></i><small><strong>{{ tadmin.email }}</strong></small>
+                {% else %}
+                <button class="btn btn-xs btn-outline-warning" data-toggle="modal" data-target="#adminModal{{ t.id }}">
+                  <i class="fas fa-user-plus mr-1"></i>Nomina
+                </button>
+                {% endif %}
+              </td>
+              <td class="text-center">{{ n.clienti }}</td>
+              <td class="text-center">{{ n.staff }}</td>
+              <td class="text-center">{{ n.prodotti }}</td>
+              <td class="text-center">{{ n.ordini }}</td>
+              <td>
+                <span class="badge badge-{{ 'success' if t.is_active else 'secondary' }}">{{ 'Attivo' if t.is_active else 'Disattivo' }}</span>
+              </td>
+              <td class="text-right" style="white-space:nowrap;">
+                <form method="POST" action="{{ url_for('admin.tenant_entra', tid=t.id) }}" class="d-inline">
+                  {{ csrf_field() }}
+                  <button class="btn btn-xs btn-primary" title="Lavora in questo tenant"><i class="fas fa-right-to-bracket mr-1"></i>Entra</button>
+                </form>
+                <button class="btn btn-xs btn-outline-primary" data-toggle="modal" data-target="#editModal{{ t.id }}" title="Modifica"><i class="fas fa-pen"></i></button>
+                {% if not t.is_active and t.slug != 'default' %}
+                <form action="{{ url_for('admin.tenant_delete', tid=t.id) }}" method="POST" class="d-inline"
+                      data-confirm="Eliminare il tenant {{ t.name }} con TUTTI i suoi dati (clienti, ordini, catalogo)?">
+                  {{ csrf_field() }}
+                  <button type="submit" class="btn btn-xs btn-outline-danger" title="Elimina"><i class="fas fa-trash"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted py-4">Nessun tenant ancora.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-outline card-primary" style="position:sticky;top:70px;">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-plus-circle mr-1"></i>Nuovo tenant</h3></div>
+      <div class="card-body">
+        <form action="{{ url_for('admin.tenant_new') }}" method="POST">
+          {{ csrf_field() }}
+          <div class="form-group">
+            <label>Nome del locale <span class="text-danger">*</span></label>
+            <input type="text" name="name" id="tenantName" class="form-control" placeholder="Es. Bar Rossi" required>
+          </div>
+          <div class="form-group">
+            <label>Slug <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <div class="input-group-prepend"><span class="input-group-text text-muted">/t/</span></div>
+              <input type="text" name="slug" id="slugInput" class="form-control" placeholder="bar-rossi" pattern="[a-z0-9][a-z0-9\-]+" required>
+            </div>
+            <small class="form-text text-muted">Solo minuscole, numeri e trattini: è l'indirizzo di registrazione dei clienti.</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-5">
+              <label>Colore</label>
+              <input type="color" name="primary_color" value="#e94560" class="form-control" style="padding:2px;height:38px;">
+            </div>
+            <div class="form-group col-7">
+              <label>URL logo <small class="text-muted">(opz.)</small></label>
+              <input type="url" name="logo_url" class="form-control" placeholder="https://...">
+            </div>
+          </div>
+          <hr>
+          <div class="text-muted text-uppercase mb-2" style="font-size:.75rem;letter-spacing:.05em;">Amministratore del locale (facoltativo)</div>
+          <div class="form-group">
+            <input type="email" name="admin_email" class="form-control" placeholder="titolare@barrossi.it">
+          </div>
+          <div class="form-group">
+            <input type="text" name="admin_password" class="form-control" placeholder="Password (vuota = generata)">
+            <small class="form-text text-muted">Le credenziali vengono mostrate una sola volta dopo la creazione.</small>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-building mr-1"></i>Crea il tenant</button>
+          <small class="text-muted d-block mt-2">Nasce con catalogo di partenza, slot, tavoli, ingredienti del builder, articoli del banco e impostazioni proprie.</small>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% for t in tenants %}
 <div class="modal fade" id="editModal{{ t.id }}" tabindex="-1">
   <div class="modal-dialog">
@@ -170,55 +157,61 @@
       <form action="{{ url_for('admin.tenant_edit', tid=t.id) }}" method="POST">
         {{ csrf_field() }}
         <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-pen mr-1"></i> Modifica: {{ t.name }}</h5>
+          <h5 class="modal-title"><i class="fas fa-pen mr-1"></i>Modifica: {{ t.name }}</h5>
           <button type="button" class="close" data-dismiss="modal">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>Nome azienda</label>
-            <input type="text" name="name" class="form-control" value="{{ t.name }}" required>
-          </div>
-          <div class="form-group">
-            <label>Colore primario</label>
-            <input type="color" name="primary_color" class="form-control form-control-color"
-                   value="{{ t.primary_color }}" style="width:60px;">
-          </div>
-          <div class="form-group">
-            <label>URL logo</label>
-            <input type="url" name="logo_url" class="form-control" value="{{ t.logo_url or '' }}">
-          </div>
+          <div class="form-group"><label>Nome</label><input type="text" name="name" class="form-control" value="{{ t.name }}" required></div>
+          <div class="form-group"><label>Colore</label><input type="color" name="primary_color" class="form-control" value="{{ t.primary_color }}" style="width:70px;padding:2px;height:38px;"></div>
+          <div class="form-group"><label>URL logo</label><input type="url" name="logo_url" class="form-control" value="{{ t.logo_url or '' }}"></div>
           <div class="form-group">
             <label>Stato</label>
-            <select name="is_active" class="form-control">
+            <select name="is_active" class="form-control" {{ 'disabled' if t.slug == 'default' }}>
               <option value="1" {% if t.is_active %}selected{% endif %}>Attivo</option>
-              <option value="0" {% if not t.is_active %}selected{% endif %}>Disattivo</option>
+              <option value="0" {% if not t.is_active %}selected{% endif %}>Disattivo (necessario per eliminarlo)</option>
             </select>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save mr-1"></i> Salva
-          </button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="adminModal{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('admin.tenant_create_admin', tid=t.id) }}" method="POST">
+        {{ csrf_field() }}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-user-shield mr-1"></i>Amministratore di {{ t.name }}</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted" style="font-size:.88rem;">Ha tutti i permessi del backoffice, ma vede e modifica solo i dati di questo locale.</p>
+          <div class="form-group"><label>Email</label><input type="email" name="admin_email" class="form-control" required></div>
+          <div class="form-group"><label>Password <small class="text-muted">(vuota = generata)</small></label><input type="text" name="admin_password" class="form-control"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-warning"><i class="fas fa-user-plus mr-1"></i>Nomina</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 {% endfor %}
+{% endblock %}
 
+{% block extra_js %}
 <script>
-// Auto-slug dal nome
-document.querySelector('[name="name"]')?.addEventListener('input', function() {
-  const slug = this.value.toLowerCase()
-    .replace(/[àáâã]/g, 'a').replace(/[èéê]/g, 'e')
-    .replace(/[ìíî]/g, 'i').replace(/[òóô]/g, 'o').replace(/[ùúû]/g, 'u')
+document.getElementById('tenantName').addEventListener('input', function () {
+  document.getElementById('slugInput').value = this.value.toLowerCase()
+    .replace(/[àáâã]/g, 'a').replace(/[èéê]/g, 'e').replace(/[ìíî]/g, 'i')
+    .replace(/[òóô]/g, 'o').replace(/[ùúû]/g, 'u')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  document.getElementById('slugInput').value = slug;
-});
-// Sync color picker → text
-document.querySelector('[name="primary_color"]')?.addEventListener('input', function() {
-  document.getElementById('colorText').value = this.value;
 });
 </script>
 {% endblock %}

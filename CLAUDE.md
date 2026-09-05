@@ -99,8 +99,8 @@ backoffice fino al riavvio *successivo*. Dopo un `reset_totale()` l'effetto è u
 apparentemente vuoto. Tutti i blocchi (categorie, slot, tavoli, categorie ingredienti panino
 e poke, articoli del banco) ora passano il tenant esplicitamente: **fallo anche nei blocchi
 nuovi**.
-Effetto collaterale noto: anche i due superadmin globali, che per progetto hanno
-`tenant_id = None`, si ritrovano agganciati al tenant di default dopo un riavvio.
+L'unico utente che resta senza tenant è l'amministratore dei tenant (`is_superadmin`): il
+loop lo salta esplicitamente.
 
 ### Vincolo del pool su Vercel (ha già rotto un deploy)
 
@@ -114,32 +114,66 @@ connessione esplicita (`db.session.remove()` prima di aprirla), mai i due mescol
 riproduzione locale si ottiene forzando `poolclass=QueuePool, pool_size=1, max_overflow=0`
 sull'engine SQLite.
 
-### Multi-tenancy
+### Multi-tenancy: dati isolati per tenant (`app/tenancy.py`)
 
-Quasi tutte le tabelle hanno `tenant_id` nullable. Il super admin globale ha
-`tenant_id = None` e ricade sul tenant di slug `default` tramite due helper gemelli:
-`_active_tenant_id()` (admin) e `_effective_tenant_id()` (main).
+Ogni tenant è un locale con dati **completamente separati**: catalogo, clienti, ordini,
+impostazioni (`AppSetting` è per tenant, vincolo unico `(tenant_id, key)`), bot Telegram,
+orari, funzionalità attive. L'isolamento non dipende dal filtro scritto in ogni query:
 
-**Ogni record nuovo che appartiene a un tenant deve ricevere il `tenant_id` esplicitamente
-alla creazione**: non esiste un default né un event listener. Le viste del backoffice
-filtrano per tenant, quindi un record creato senza `tenant_id` non compare da nessuna parte.
+- **Scope della richiesta**: `risolvi_tenant_richiesta()` (before_request) mette in
+  `g.tenant_scope` il tenant dell'utente collegato, quello scelto dall'amministratore dei
+  tenant (`session['tenant_attivo']`), quello dello slug in `/t/<slug>` per gli anonimi,
+  altrimenti il tenant predefinito (`tenant_predefinito()`: slug `default`, o il primo).
+- **Filtro automatico**: un gancio `do_orm_execute` aggiunge `tenant_id = <scope>` a ogni
+  SELECT/UPDATE/DELETE dell'ORM per **tutti** i modelli con la colonna `tenant_id`
+  (`with_loader_criteria`, anche su alias e join). `db.get_or_404` su un id altrui dà 404,
+  `Query.delete()` tocca solo il proprio tenant. Unica eccezione: `User` con `tenant_id NULL`
+  (solo l'amministratore dei tenant) resta visibile ovunque, altrimenti non si ricaricherebbe.
+- **Assegnazione automatica**: `before_flush` dà lo scope a ogni riga nuova senza `tenant_id`;
+  senza scope (CLI, test, procedure) i figli ereditano il tenant del genitore (`_genitori()`:
+  Transaction←User, DailyStock←Product, CorporateMealBooking←DailyFixedMeal, ecc.).
+- **Fuori dal filtro**: `senza_filtro()` per chi deve vedere tutto (backup, guadagni per
+  tenant, gestione dei tenant, demo, manutenzione: decoratore `_senza_filtro_tenant` in
+  `admin/routes.py`); `con_tenant(id)` per lavorare in un tenant preciso fuori da una
+  richiesta (seed di base, automatismi). `utente_globale(**filtri)` cerca un utente in tutti
+  i tenant: email, username e google_id sono unici sull'installazione, quindi login, MFA,
+  registrazione e i controlli di duplicato **devono** usarlo, altrimenti un cliente di un altro
+  tenant "non esiste" e si crea un doppione che viola il vincolo.
+- Il webhook Telegram non ha sessione: ricava il tenant dal segreto (`telegram_webhook_secret`
+  è diverso per locale) e imposta lo scope con `imposta_tenant()`. Il link di disiscrizione
+  fa lo stesso dall'utente del token.
 
-Per i **clienti** servono due campi insieme, perché `clients_dt` filtra
-`is_client=True, tenant_id=<tenant>`: senza `tenant_id` l'utente è invisibile finché il loop
-`orphan_tables` non lo aggancia al riavvio (su Vercel, imprevedibile); senza `is_client=True`
-— che nel modello ha default **False** — non compare mai. È già capitato su tutti e cinque i
-punti che creano un cliente: `auth.register` e `auth.google_callback` (che non hanno un
-tenant nel contesto e usano l'helper `_tenant_predefinito()`), `tenant.register` e
-`tenant.google_callback` (che hanno `tenant.id` ma dimenticavano `is_client`) e
-`admin.client_new`. Effetto tipico: la notifica Telegram di nuova registrazione arriva —
-`send_telegram` non filtra nulla — ma il titolare non trova il cliente e non può attivarlo.
-Se aggiungi un percorso di registrazione, valorizza entrambi i campi e la coppia
-`is_active`/redirect: una pagina che promette "in attesa di attivazione" richiede
-`is_active=False`, altrimenti l'utente entra scavalcando l'approvazione.
+**L'unico amministratore dei tenant** è `User.is_superadmin=True` con `tenant_id NULL`
+(`admin@dsconsulting.it`, creato e ripristinato dal seed; ogni altro `is_admin` senza tenant
+viene agganciato al tenant predefinito). Crea i locali (`/admin/tenants`: nascono con il
+catalogo di partenza e le impostazioni proprie tramite `_seed_tenant()`), nomina il loro
+amministratore, entra in ciascuno dal selettore in alto a destra (`tenant_entra`), e solo lui
+vede backup/ripristino/azzeramento, guadagni, manutenzione, demo (`_superadmin_required`).
+`is_admin=True` con tenant è l'amministratore **del suo** locale: tutti i permessi, solo sui
+suoi dati. Nei template il blocco DS Consulting e il tab Dati sono sotto
+`current_user.is_superadmin`, non `is_admin`.
 
-Lo scoping non è ancora uniforme: gli endpoint DataTables (`*_dt`) filtrano per tenant,
-mentre alcune viste (dashboard, tavoli, prodotti) interrogano senza filtro. In uno scenario
-multi-tenant reale questo mescola i dati fra tenant.
+Il seed è in due parti: `_seed_defaults()` (tenant predefinito, orfani, permessi, ruoli,
+amministratore dei tenant) e `_seed_tenant(tenant)` per **ogni** tenant, dentro
+`con_tenant(tenant.id)`: le verifiche "esiste già?" vedono solo il suo, quindi un tenant nuovo
+riceve categorie, listino, slot, tavoli, builder, banco e impostazioni senza duplicare quelli
+degli altri. Gli account demo (`banco@`, `cucina@`, `sala@bar.local`) esistono solo nel
+tenant `default`. Il loop degli orfani legge le tabelle dai metadati (tutte quelle con
+`tenant_id`), fa ereditare ai figli il tenant del genitore e lascia senza tenant solo il
+superadmin. Su PostgreSQL la migrazione `_impostazioni_per_tenant()` toglie il vecchio
+vincolo `app_settings.key UNIQUE`; su SQLite ricostruisce la tabella.
+
+Per i **clienti** restano due campi da valorizzare insieme: `is_client=True` (default
+**False**: senza, il cliente non compare mai nella lista) e `tenant_id`, che ora arriva da solo
+dal `before_flush` ma va comunque scritto esplicito dove il tenant è noto. Una pagina che
+promette "in attesa di attivazione" richiede `is_active=False`.
+
+Conseguenza per i test: le righe create in `app_context()` senza scope hanno `tenant_id`
+solo se passato esplicitamente o ereditabile da un genitore; un `Poll` o un `AppSetting`
+creati "nudi" restano invisibili nelle richieste. Le rotte del solo amministratore dei
+tenant si provano con `admin@dsconsulting.it` / `DSConsulting2025!`; `admin@bar.local` /
+`admin123` è l'amministratore del tenant predefinito. `smoke_tenant_isolamento` copre il
+tutto.
 
 ### RBAC
 
@@ -570,8 +604,9 @@ non esistono e l'icona resta incollata. `smoke_dashboard_ui.py` controlla tutti 
 ## Note operative
 
 - `tips.txt` contiene URL di produzione e credenziali in chiaro, ed è versionato.
-- Il seed crea due superadmin con password hardcoded (`admin@bar.local` / `admin@dsconsulting.it`);
-  il `SECRET_KEY` di default in `config.py` è un placeholder da sostituire via env.
+- Il seed crea con password hardcoded l'amministratore dei tenant (`admin@dsconsulting.it`) e
+  l'amministratore del tenant predefinito (`admin@bar.local`); il `SECRET_KEY` di default in
+  `config.py` è un placeholder da sostituire via env.
 - `config.py` fa `.lstrip(BOM)` su ogni variabile d'ambiente: alcune vengono incollate con un
   BOM iniziale dal pannello Vercel.
 - Diversi file sorgente iniziano con un BOM UTF-8: preservalo quando riscrivi un file intero.

@@ -1,15 +1,36 @@
-App online: https://bar-tau-cyan.vercel.app
-Login: admin@bar.local / admin123
+App online: https://dslunch.vercel.app  (alias storico: https://bar-tau-cyan.vercel.app)
 Git: configurato con dspeziale@gmail.com / Daniele Speziale
 
 
+MULTI-TENANT: DATI ISOLATI PER LOCALE
+Ogni tenant (locale) ha catalogo, clienti, ordini, impostazioni, bot Telegram e orari
+propri: chi lavora in un tenant non vede nulla degli altri.
+
+Amministratore dei tenant (unico, senza tenant): crea i locali, entra in ciascuno dal
+selettore "Tenant:" in alto a destra, nomina l'amministratore di ogni locale, fa backup,
+ripristino, azzeramento, vede Guadagni, Manutenzione e la pagina Tenant.
+  admin@dsconsulting.it   DSConsulting2025!   amministratore dei tenant (DS Consulting)
+
+Tenant predefinito "Food Service" (slug default): registrazione clienti da /auth/register.
+  admin@bar.local         admin123            amministratore del locale (tutto, solo sui suoi dati)
+
+Come si crea un nuovo locale: DS Consulting > Tenant > Nuovo tenant (nome, slug, colore,
+facoltativa email+password dell'amministratore). Il locale nasce con il catalogo di
+partenza, slot, tavoli, ingredienti del builder, articoli del banco e impostazioni
+proprie. I clienti si registrano da /t/<slug>/register (link nella pagina Tenant).
+Le credenziali dell'amministratore del locale compaiono una sola volta: annotarle.
+
+
 Postazione	Email	Password	Ruolo
-PC Admin / Backoffice	admin@bar.local	admin123	superadmin
+PC amministratore dei tenant	admin@dsconsulting.it	DSConsulting2025!	amministratore dei tenant
+PC Admin / Backoffice (Food Service)	admin@bar.local	admin123	amministratore del locale
 Tablet Banco POS	banco@bar.local	Banco2024!	cassiere
 Display Cucina KDS	cucina@bar.local	Cucina2024!	cuoco
 Tablet Staff Sala	sala@bar.local	Sala2024!	manager
 Smartphone Cliente 1	cliente1@bar.local	Cliente1!	utente · wallet 30€
 Smartphone Cliente 2	cliente2@bar.local	Cliente2!	utente · wallet 15€
 
+Gli account banco/cucina/sala esistono solo nel tenant Food Service: gli altri locali
+creano il proprio personale da Persone > Personale.
 
-ciao
+Versione: 1.0.2 (Config.APP_VERSION in config.py, mostrata nel pie' di pagina).

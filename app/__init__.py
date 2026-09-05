@@ -113,6 +113,25 @@ def create_app(config_object='config.Config'):
     from app.tenant import bp as tenant_bp
     app.register_blueprint(tenant_bp, url_prefix='/t')
 
+    # ── Il tenant della richiesta: deciso qui, prima di ogni query ─────────
+    @app.before_request
+    def _tenant_della_richiesta():
+        from app.tenancy import risolvi_tenant_richiesta
+        risolvi_tenant_richiesta()
+
+    @app.context_processor
+    def _inject_tenant():
+        from flask import session as _sess
+        from flask_login import current_user
+        from app.tenancy import tenant_corrente, tenant_predefinito
+        from app.models import Tenant
+        tid = tenant_corrente() or _sess.get('tenant_attivo')
+        t = db.session.get(Tenant, tid) if tid else tenant_predefinito()
+        lista = []
+        if current_user.is_authenticated and getattr(current_user, 'is_superadmin', False):
+            lista = Tenant.query.order_by(Tenant.name).all()
+        return {'tenant_attivo': t, 'tenants_disponibili': lista}
+
     # ── Reminder (lazy polling: max 1 check/min per processo) ─────────────────
     @app.before_request
     def _maybe_remind_table_bookings():
@@ -629,6 +648,13 @@ def _check_backup_reminder(adesso=None):
     from app.notifications import send_telegram
 
     from app.orari import momento_settimanale
+    from app.tenancy import tenant_corrente, tenant_predefinito
+    # Il backup e' dell'intera installazione e lo fa l'amministratore dei
+    # tenant: il promemoria va sul canale del tenant predefinito, non su
+    # quello di ogni locale.
+    _tp = tenant_predefinito()
+    if _tp is not None and tenant_corrente() not in (None, _tp.id):
+        return
     now = adesso or _dtt.now(_ROME)
     if not momento_settimanale('backup_promemoria_giorno', 'backup_promemoria_ora', now):
         return
@@ -910,6 +936,15 @@ def _migrate_tenant_columns():
     _ensure('users', 'canale_preferito', "VARCHAR(16) DEFAULT 'auto'")
     _ensure('users', 'reparto', "VARCHAR(120) DEFAULT ''")
 
+    # Multi-tenant con dati isolati: l'amministratore dei tenant e il tenant
+    # sulle tabelle che ne erano prive (il filtro automatico vale solo per
+    # chi ha la colonna).
+    _ensure('users', 'is_superadmin', 'BOOLEAN DEFAULT FALSE')
+    for _t in ('transactions', 'push_subscriptions', 'consumable_movements',
+               'corporate_memberships', 'corporate_meal_bookings'):
+        _ensure(_t, 'tenant_id', 'INTEGER')
+    _impostazioni_per_tenant(insp, existing_tables, is_pg)
+
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)
     if 'push_subscriptions' not in existing_tables:
@@ -944,12 +979,49 @@ def _migrate_tenant_columns():
             print(f'[migration] push_subscriptions: {exc}')
 
 
-def _seed_defaults():
-    from app.models import (User, Category, Product, TimeSlot, Table,
-                            IngredientCategory, Ingredient,
-                            Permission, Role, AppSetting, Tenant, BancoItem)
+def _impostazioni_per_tenant(insp, existing_tables, is_pg):
+    """app_settings.key era UNIQUE: con le impostazioni per tenant la stessa
+    chiave esiste una volta per locale, quindi il vincolo passa a
+    (tenant_id, key). Su PostgreSQL si toglie il vincolo; su SQLite, che non
+    sa togliere un vincolo, si ricostruisce la tabella."""
     from sqlalchemy import text
-    from config import Config
+    if 'app_settings' not in existing_tables:
+        return
+    try:
+        indici = insp.get_unique_constraints('app_settings') + insp.get_indexes('app_settings')
+    except Exception:
+        indici = []
+    solo_key = [i for i in indici if i.get('column_names') == ['key']
+                and (i.get('unique') or 'column_names' in i and i.get('name', '') != '')]
+    solo_key = [i for i in solo_key if i.get('unique', True)]
+    if not solo_key:
+        return
+    try:
+        with db.engine.connect() as conn:
+            if is_pg:
+                for i in solo_key:
+                    nome = i.get('name') or 'app_settings_key_key'
+                    conn.execute(text(f'ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS "{nome}"'))
+                    conn.execute(text(f'DROP INDEX IF EXISTS "{nome}"'))
+            else:
+                conn.execute(text('ALTER TABLE app_settings RENAME TO app_settings__vecchia'))
+                conn.execute(text(
+                    'CREATE TABLE app_settings (id INTEGER PRIMARY KEY, key VARCHAR(64) NOT NULL, '
+                    'value TEXT, label VARCHAR(128), tenant_id INTEGER REFERENCES tenants(id), '
+                    'CONSTRAINT uq_app_settings_tenant_key UNIQUE (tenant_id, key))'))
+                conn.execute(text('INSERT INTO app_settings (id, key, value, label, tenant_id) '
+                                  'SELECT id, key, value, label, tenant_id FROM app_settings__vecchia'))
+                conn.execute(text('DROP TABLE app_settings__vecchia'))
+                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_app_settings_key ON app_settings (key)'))
+            conn.commit()
+        print('[migration] app_settings: vincolo unico su (tenant_id, key)')
+    except Exception as exc:
+        print(f'[migration] app_settings per tenant: {exc}')
+
+
+def _seed_defaults():
+    from app.models import User, Permission, Role, Tenant
+    from sqlalchemy import text
 
     # ── Tenant di default ─────────────────────────────────────────────────
     default_tenant = Tenant.query.filter_by(slug='default').first()
@@ -965,19 +1037,40 @@ def _seed_defaults():
     elif default_tenant.name != 'Food Service':
         default_tenant.name = 'Food Service'
 
-    # Assegna tenant_id=default_tenant.id a tutti i record orfani
-    orphan_tables = [
-        'users', 'categories', 'products', 'orders', 'time_slots',
-        'daily_stocks', 'ingredient_categories', 'ingredients',
-        'tables', 'table_reservations',
+    # Righe orfane (tenant_id NULL): prima i figli prendono il tenant del
+    # genitore, poi quel che resta va al tenant di default. L'elenco delle
+    # tabelle viene dai metadati, cosi' un modello nuovo e' coperto da solo.
+    # Gli utenti a parte: l'amministratore dei tenant resta senza tenant.
+    _figli = [
+        ('transactions', 'users', 'user_id'),
+        ('push_subscriptions', 'users', 'user_id'),
+        ('daily_stocks', 'products', 'product_id'),
+        ('consumable_movements', 'consumable_items', 'item_id'),
+        ('corporate_memberships', 'corporate_accounts', 'corporate_id'),
+        ('corporate_meal_bookings', 'daily_fixed_meals', 'meal_id'),
     ]
-    for tbl in orphan_tables:
+    for _tbl, _padre, _fk in _figli:
         try:
             db.session.execute(text(
-                f"UPDATE {tbl} SET tenant_id = :tid WHERE tenant_id IS NULL"
+                f"UPDATE {_tbl} SET tenant_id = (SELECT p.tenant_id FROM {_padre} p "
+                f"WHERE p.id = {_tbl}.{_fk}) WHERE tenant_id IS NULL"))
+        except Exception:
+            db.session.rollback()
+    for tabella in db.metadata.sorted_tables:
+        if 'tenant_id' not in tabella.c or tabella.name == 'users':
+            continue
+        try:
+            db.session.execute(text(
+                f"UPDATE {tabella.name} SET tenant_id = :tid WHERE tenant_id IS NULL"
             ), {'tid': default_tenant.id})
         except Exception:
             db.session.rollback()
+    try:
+        db.session.execute(text(
+            "UPDATE users SET tenant_id = :tid WHERE tenant_id IS NULL "
+            "AND (is_superadmin = false OR is_superadmin IS NULL)"), {'tid': default_tenant.id})
+    except Exception:
+        db.session.rollback()
 
     # Chi si e' registrato dal link di un tenant nasceva con is_client=False
     # (il default del modello) e restava invisibile nella lista clienti del
@@ -1062,21 +1155,80 @@ def _seed_defaults():
         if _r and _p_cesto not in _r.permissions:
             _r.permissions.append(_p_cesto)
 
-    # ── Super admin globale (unico, tenant_id=None) ───────────────────────
-    if not User.query.filter_by(is_admin=True).first():
+    # ── L'unico amministratore dei tenant (tenant_id NULL) ────────────────
+    # Crea i locali, entra in ciascuno, fa backup e ripristino. Ogni altro
+    # amministratore e' l'amministratore del proprio tenant: chi era "globale"
+    # viene agganciato al tenant di default, che e' quello che gestiva.
+    sa = User.query.filter_by(email='admin@dsconsulting.it').first()
+    if sa is None:
+        sa = User(username='super_admin', email='admin@dsconsulting.it',
+                  is_admin=True, is_superadmin=True, tenant_id=None,
+                  wallet_balance=0.0, loyalty_points=0)
+        sa.set_password('DSConsulting2025!')
+        db.session.add(sa)
+        db.session.flush()
+    sa.is_admin = True
+    sa.is_superadmin = True
+    sa.tenant_id = None
+    for _u in User.query.filter(User.id != sa.id).all():
+        if _u.is_superadmin:
+            _u.is_superadmin = False
+        if _u.is_admin and _u.tenant_id is None:
+            _u.tenant_id = default_tenant.id
+
+    # ── L'amministratore del tenant di default ────────────────────────────
+    if not User.query.filter_by(email='admin@bar.local').first():
         admin = User(username='admin', email='admin@bar.local',
-                     is_admin=True, tenant_id=None,
+                     is_admin=True, tenant_id=default_tenant.id,
                      wallet_balance=0.0, loyalty_points=0)
         admin.set_password('admin123')
         db.session.add(admin)
 
-    # ── Super admin DS Consulting ──────────────────────────────────────────
-    if not User.query.filter_by(username='super_admin').first():
-        sa = User(username='super_admin', email='admin@dsconsulting.it',
-                  is_admin=True, tenant_id=None,
-                  wallet_balance=0.0, loyalty_points=0)
-        sa.set_password('DSConsulting2025!')
-        db.session.add(sa)
+    # ── Nuovi permessi (idempotente su DB esistenti) ───────────────────────
+    extra_perms = [
+        ('manage_settings',    'Configurazioni sistema (Telegram/Email)', 'sistema'),
+        ('manage_polls',       'Gestisci sondaggi',                       'comunicazioni'),
+        ('send_notifications', 'Invia notifiche Telegram/Email',          'comunicazioni'),
+        ('manage_clients',     'Gestisci clienti (anagrafica)',            'sistema'),
+    ]
+    for pname, plabel, pcat in extra_perms:
+        if not Permission.query.filter_by(name=pname).first():
+            db.session.add(Permission(name=pname, label=plabel, category=pcat))
+
+    # ── Rimozione utenti demo obsoleti (eseguita una volta sola) ─────────
+    for _demo_email in ('cliente1@bar.local', 'cliente2@bar.local'):
+        _demo_user = User.query.filter_by(email=_demo_email).first()
+        if _demo_user:
+            db.session.delete(_demo_user)
+            db.session.flush()
+    db.session.flush()
+
+    # ── Dati di base di ogni tenant: catalogo, slot, tavoli, builder, banco,
+    #    impostazioni. Ogni blocco e' idempotente dentro il proprio tenant.
+    for _t in Tenant.query.order_by(Tenant.id).all():
+        _seed_tenant(_t)
+
+    # Seconda passata: gli ingredienti poke vengono creati dopo la prima, e
+    # al primo avvio resterebbero senza valori fino al riavvio successivo.
+    _backfill_nutrizione()
+
+    db.session.commit()
+
+
+def _seed_tenant(tenant):
+    """I dati di base di un tenant, dentro il suo scope: le verifiche
+    "esiste gia'?" vedono solo il suo, e ogni riga nuova nasce con il suo
+    tenant_id. Si usa per il tenant di default a ogni avvio e per ogni tenant
+    creato dall'amministratore dei tenant."""
+    from app.tenancy import con_tenant
+    with con_tenant(tenant.id):
+        _seed_tenant_corpo(tenant)
+
+
+def _seed_tenant_corpo(default_tenant):
+    from app.models import (User, Category, Product, TimeSlot, Table,
+                            IngredientCategory, Ingredient, Role, AppSetting, BancoItem)
+    from config import Config
 
     # ── Categorie prodotti ────────────────────────────────────────────────
     if not Category.query.first():
@@ -1388,36 +1540,21 @@ def _seed_defaults():
         ]
         db.session.add_all(poke_ings)
 
-    # ── Nuovi permessi (idempotente su DB esistenti) ───────────────────────
-    extra_perms = [
-        ('manage_settings',    'Configurazioni sistema (Telegram/Email)', 'sistema'),
-        ('manage_polls',       'Gestisci sondaggi',                       'comunicazioni'),
-        ('send_notifications', 'Invia notifiche Telegram/Email',          'comunicazioni'),
-        ('manage_clients',     'Gestisci clienti (anagrafica)',            'sistema'),
-    ]
-    for pname, plabel, pcat in extra_perms:
-        if not Permission.query.filter_by(name=pname).first():
-            db.session.add(Permission(name=pname, label=plabel, category=pcat))
-
-    # ── Rimozione utenti demo obsoleti (eseguita una volta sola) ─────────
-    for _demo_email in ('cliente1@bar.local', 'cliente2@bar.local'):
-        _demo_user = User.query.filter_by(email=_demo_email).first()
-        if _demo_user:
-            db.session.delete(_demo_user)
-            db.session.flush()
-
-    # ── Account di lavoro (idempotente) ──────────────────────────────────
+    # ── Account di lavoro del tenant di default (idempotente) ────────────
+    # Email e username sono unici su tutta l'installazione: gli account demo
+    # esistono solo nel tenant di default, gli altri locali creano i propri.
     _crew = [
         # (email, username, password, role_name, is_client, wallet)
         ('banco@bar.local',   'banco_staff',  'Banco2024!',  'cassiere', False, 0.0),
         ('cucina@bar.local',  'cuoco_mario',  'Cucina2024!', 'cuoco',    False, 0.0),
         ('sala@bar.local',    'staff_sala',   'Sala2024!',   'manager',  False, 0.0),
-    ]
+    ] if default_tenant.slug == 'default' else []
+    from app.tenancy import utente_globale
     for email, username, password, role_name, is_client, wallet in _crew:
-        if not User.query.filter_by(email=email).first():
+        if not utente_globale(email=email):
             role = Role.query.filter_by(name=role_name).first()
             base = username; n = 2
-            while User.query.filter_by(username=base).first():
+            while utente_globale(username=base):
                 base = f'{username}{n}'; n += 1
             u = User(
                 username=base, email=email,
@@ -1484,6 +1621,7 @@ def _seed_defaults():
         ('telegram_bot_username', 'dslunch_bot', 'Nome utente del bot Telegram'),
         ('public_base_url',       '',     'Indirizzo pubblico dell app, per i link nelle email inviate fuori dal web'),
         ('telegram_chat_id',       '',      'Chat ID canale Telegram'),
+        ('telegram_webhook_secret', '',     'Segreto del webhook Telegram (generato all attivazione)'),
         ('gmail_user',             '',      'Account Gmail mittente'),
         ('gmail_app_password',     '',      'App Password Gmail'),
         # Bonus benvenuto
@@ -1518,20 +1656,21 @@ def _seed_defaults():
         # DS Consulting – piattaforma
         ('platform_fee_percentage', '0.0',  'Percentuale fee DS Consulting sul fatturato tenant (%)'),
         ('tenant_monthly_fee',      '0.0',  'Canone fisso mensile per tenant (€)'),
+        # Comunicazioni: automatismi spenti di partenza
+        ('com_auto_benvenuto',  '0', 'Automatismo: benvenuto dopo 7 giorni'),
+        ('com_auto_compleanno', '0', 'Automatismo: auguri di compleanno'),
+        ('com_auto_ci_manchi',  '0', 'Automatismo: "ci manchi" dopo 30 giorni'),
     ]
     for skey, sval, slabel in default_settings:
         if not AppSetting.query.filter_by(key=skey).first():
-            db.session.add(AppSetting(key=skey, value=sval, label=slabel))
+            db.session.add(AppSetting(key=skey, value=sval, label=slabel,
+                                      tenant_id=default_tenant.id))
 
     # Orari dell'esercizio (app/orari.py): gli stessi default del modulo, cosi'
     # la programmazione parte coerente anche su un database vuoto.
     from app.orari import CHIAVI_ORARI as _CHIAVI_ORARI
     for _k, _v, _lab, _g, _t in _CHIAVI_ORARI:
         if not AppSetting.query.filter_by(key=_k).first():
-            db.session.add(AppSetting(key=_k, value=_v, label=_lab))
-
-    # Seconda passata: gli ingredienti poke vengono creati dopo la prima, e
-    # al primo avvio resterebbero senza valori fino al riavvio successivo.
-    _backfill_nutrizione()
-
-    db.session.commit()
+            db.session.add(AppSetting(key=_k, value=_v, label=_lab,
+                                      tenant_id=default_tenant.id))
+    db.session.flush()

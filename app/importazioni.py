@@ -541,11 +541,14 @@ def _importa_cliente(d, tid, esito):
     email = _testo(d['Email'], 120).lower()
     if '@' not in email or '.' not in email.split('@')[-1]:
         raise ValueError('email "%s" non valida' % email)
-    u = User.query.filter(db.func.lower(User.email) == email).first()
+    from app.tenancy import senza_filtro
+    with senza_filtro():
+        u = User.query.filter(db.func.lower(User.email) == email).first()
+        occupato = User.query.filter_by(username=email).first() is not None
     creato = u is None
     if creato:
         username = email
-        if User.query.filter_by(username=username).first():
+        if occupato:
             username = email.split('@')[0] + '_' + secrets.token_hex(2)
         u = User(username=username, email=email, is_client=True, tenant_id=tid)
         pw = secrets.token_urlsafe(8)

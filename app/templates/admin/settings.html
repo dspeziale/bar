@@ -54,7 +54,7 @@
       <i class="fas fa-toggle-on mr-1"></i>Funzionalità
     </a>
   </li>
-  {% if current_user.is_admin %}
+  {% if current_user.is_superadmin %}
   <li class="nav-item">
     <a class="nav-link" id="t-dati" data-toggle="tab"
        href="#tab-dati" role="tab">
@@ -781,7 +781,7 @@
     </div>
   </div>{# /tab-funzioni #}
 
-  {% if current_user.is_admin %}
+  {% if current_user.is_superadmin %}
   {# ══ DATI ═══════════════════════════════════════════════════════════════ #}
   <div class="tab-pane fade" id="tab-dati" role="tabpanel">
 

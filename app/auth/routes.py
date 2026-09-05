@@ -6,6 +6,7 @@ from app.auth import bp
 from app.models import Tenant, User
 from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email)
+from app.tenancy import utente_globale, senza_filtro
 
 
 MESSAGGIO_REGISTRATO = (
@@ -23,18 +24,19 @@ def _tenant_predefinito():
     _active_tenant_id nel backoffice); se non c'e' ma esiste un solo tenant,
     quello.
     """
-    t = Tenant.query.filter_by(slug='default').first()
-    if t:
-        return t.id
-    tutti = Tenant.query.limit(2).all()
-    return tutti[0].id if len(tutti) == 1 else None
+    from app.tenancy import tenant_corrente, tenant_predefinito
+    tid = tenant_corrente()
+    if tid:
+        return tid
+    t = tenant_predefinito()
+    return t.id if t else None
 
 
 def _make_username(email):
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0].lower()).strip('.') or 'utente'
     base = base[:30]
     username, n = base, 1
-    while User.query.filter_by(username=username).first():
+    while utente_globale(username=username):
         username = f'{base}{n}'
         n += 1
     return username
@@ -47,7 +49,7 @@ def login():
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        user = User.query.filter_by(email=email).first()
+        user = utente_globale(email=email)
         if user and user.check_password(password) and user.is_active:
             if user.totp_enabled:
                 session['_mfa_uid']  = user.id
@@ -84,7 +86,7 @@ def register():
             error = 'Password troppo corta (min 6 caratteri).'
         elif password != password2:
             error = 'Le password non coincidono.'
-        elif User.query.filter_by(email=email).first():
+        elif utente_globale(email=email):
             error = 'Email già registrata. Prova ad accedere.'
         if error:
             flash(error, 'danger')
@@ -151,8 +153,8 @@ def google_callback():
     first_name = user_info.get('given_name', '')
     last_name  = user_info.get('family_name', '')
 
-    user = (User.query.filter_by(google_id=google_id).first()
-            or User.query.filter_by(email=email).first())
+    user = (utente_globale(google_id=google_id)
+            or utente_globale(email=email))
 
     if user:
         if not user.is_active:
@@ -232,7 +234,8 @@ def mfa_verify():
     uid = session.get('_mfa_uid')
     if not uid:
         return redirect(url_for('auth.login'))
-    user = User.query.get(uid)
+    with senza_filtro():
+        user = db.session.get(User, uid)
     if not user or not user.totp_enabled:
         session.pop('_mfa_uid', None)
         return redirect(url_for('auth.login'))

@@ -78,7 +78,11 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=True)
+    # is_admin: amministratore del proprio tenant (tutti i permessi, dati del
+    # suo locale). is_superadmin: l'unico amministratore dei tenant, con
+    # tenant_id NULL, che crea i locali ed entra in ciascuno.
     is_admin = db.Column(db.Boolean, default=False)
+    is_superadmin = db.Column(db.Boolean, default=False, server_default='0')
     is_active = db.Column(db.Boolean, default=True)
     is_client = db.Column(db.Boolean, default=False)
     wallet_balance   = db.Column(db.Float, default=0.0)
@@ -185,11 +189,6 @@ class User(UserMixin, db.Model):
             any(p.name in BACKOFFICE for p in role.permissions)
             for role in self.roles
         )
-
-    @property
-    def is_superadmin(self):
-        """True solo per il super admin globale (admin@bar.local)."""
-        return self.is_admin
 
     @property
     def all_permission_names(self):
@@ -325,6 +324,7 @@ class DailyStock(db.Model):
     stock_date = db.Column(db.Date, nullable=False, default=date.today)
     quantity_available = db.Column(db.Integer, nullable=False)
     quantity_reserved = db.Column(db.Integer, default=0)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     __table_args__ = (db.UniqueConstraint('product_id', 'stock_date'),)
     product = db.relationship('Product', back_populates='daily_stocks')
 
@@ -563,6 +563,7 @@ class Transaction(db.Model):
     description = db.Column(db.String(256), default='')
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     user = db.relationship('User', back_populates='transactions')
     order = db.relationship('Order', back_populates='transactions')
@@ -679,6 +680,7 @@ class PushSubscription(db.Model):
     p256dh     = db.Column(db.String(256), nullable=False)
     auth       = db.Column(db.String(64),  nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     user = db.relationship('User', backref='push_subscriptions')
 
 
@@ -735,6 +737,7 @@ class ConsumableMovement(db.Model):
     notes      = db.Column(db.String(256), default='')
     created_at = db.Column(db.DateTime,    default=datetime.utcnow)
     user_id    = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     item       = db.relationship('ConsumableItem', back_populates='movements')
     user       = db.relationship('User')
 
@@ -801,6 +804,7 @@ class CorporateMembership(db.Model):
     user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     corporate_id = db.Column(db.Integer, db.ForeignKey('corporate_accounts.id'), nullable=False)
     is_active    = db.Column(db.Boolean, default=True)
+    tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     __table_args__ = (db.UniqueConstraint('user_id', 'corporate_id'),)
     user      = db.relationship('User', back_populates='corporate_membership')
     corporate = db.relationship('CorporateAccount', back_populates='memberships')
@@ -893,6 +897,7 @@ class CorporateMealBooking(db.Model):
     pickup_token  = db.Column(db.String(16), default='', server_default='')
     # Risposta ai bottoni del promemoria Telegram: '', 'si' o 'no'.
     conferma_utente = db.Column(db.String(4), default='', server_default='')
+    tenant_id     = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     __table_args__ = (db.UniqueConstraint('user_id', 'meal_id', name='uq_corp_booking'),)
     user = db.relationship('User')
     meal = db.relationship('DailyFixedMeal', back_populates='bookings')
@@ -911,11 +916,17 @@ class CorporateMealBooking(db.Model):
 # ── Impostazioni applicazione ──────────────────────────────────────────────────
 
 class AppSetting(db.Model):
+    """Impostazioni per tenant: la stessa chiave esiste una volta per
+    locale (ragione sociale, bot Telegram, orari, funzionalita' attive...).
+    Il filtro automatico dei tenant fa si' che get_setting(key) legga quella
+    del locale corrente."""
     __tablename__ = 'app_settings'
-    id    = db.Column(db.Integer, primary_key=True)
-    key   = db.Column(db.String(64),  unique=True, nullable=False)
-    value = db.Column(db.Text,        default='')
-    label = db.Column(db.String(128), default='')
+    id        = db.Column(db.Integer, primary_key=True)
+    key       = db.Column(db.String(64),  nullable=False, index=True)
+    value     = db.Column(db.Text,        default='')
+    label     = db.Column(db.String(128), default='')
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    __table_args__ = (db.UniqueConstraint('tenant_id', 'key', name='uq_app_settings_tenant_key'),)
 
 
 # ── Sondaggi / Referendum ─────────────────────────────────────────────────────
@@ -927,6 +938,7 @@ class Poll(db.Model):
     poll_date  = db.Column(db.Date,   nullable=False)
     is_active  = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    tenant_id  = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     choices    = db.relationship('PollChoice', backref='poll',
                                   cascade='all,delete-orphan',
                                   order_by='PollChoice.id')

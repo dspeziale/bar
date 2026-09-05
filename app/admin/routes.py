@@ -30,10 +30,21 @@ from app.notifications import (send_telegram, send_telegram_to_user, send_web_pu
 # ── Tenant scope helpers ──────────────────────────────────────────────────────
 
 def _tenant_filter():
-    """Per query filter_by: vuoto per il super admin globale, tenant_id per gli altri."""
-    if current_user.is_admin:
-        return {}
-    return {'tenant_id': current_user.tenant_id}
+    """Per query filter_by: sempre il tenant della richiesta. Il filtro
+    automatico di app/tenancy.py fa gia' lo stesso lavoro su ogni query: qui
+    resta per leggibilita' dove il codice lo dichiara esplicitamente."""
+    return {'tenant_id': _active_tenant_id()}
+
+
+def _senza_filtro_tenant(f):
+    """La vista lavora su tutti i tenant: solo per l'amministratore dei tenant
+    (backup, guadagni, gestione dei locali, demo)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        from app.tenancy import senza_filtro
+        with senza_filtro():
+            return f(*args, **kwargs)
+    return decorated
 
 
 # Le sole classi Bootstrap valide insieme come badge-*, text-* e
@@ -43,13 +54,14 @@ COLORI_CATEGORIA = ['primary', 'secondary', 'success', 'danger', 'warning',
 
 
 def _active_tenant_id():
-    """Ritorna il tenant_id da usare per categorie/prodotti.
-    Super admin (tenant_id=None) → tenant 'default'.
-    """
-    if current_user.tenant_id:
-        return current_user.tenant_id
-    default_t = Tenant.query.filter_by(slug='default').first()
-    return default_t.id if default_t else None
+    """Il tenant della richiesta (app/tenancy.py): quello dell'utente, oppure
+    quello in cui l'amministratore dei tenant e' entrato."""
+    from app.tenancy import tenant_corrente, tenant_predefinito
+    tid = tenant_corrente()
+    if tid:
+        return tid
+    t = tenant_predefinito()
+    return t.id if t else None
 
 
 # ── User cascade delete ───────────────────────────────────────────────────────
@@ -970,12 +982,13 @@ def client_new():
     if not email or '@' not in email or not first_name or not last_name:
         flash('Email, nome e cognome sono obbligatori.', 'danger')
         return redirect(url_for('admin.clients'))
-    if User.query.filter_by(email=email).first():
+    from app.tenancy import utente_globale
+    if utente_globale(email=email):
         flash(f'Email "{email}" già registrata.', 'warning')
         return redirect(url_for('admin.clients'))
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0]).strip('.') or 'cliente'
     username, n = base[:30], 1
-    while User.query.filter_by(username=username).first():
+    while __import__('app.tenancy', fromlist=['utente_globale']).utente_globale(username=username):
         username = f'{base[:28]}{n}'; n += 1
     birth_raw = request.form.get('birth_date', '').strip()
     birth_date = None
@@ -1155,12 +1168,13 @@ def user_new():
     if not email or '@' not in email or not password:
         flash('Email e password obbligatori.', 'danger')
         return redirect(url_for('admin.users'))
-    if User.query.filter_by(email=email).first():
+    from app.tenancy import utente_globale
+    if utente_globale(email=email):
         flash(f'Email "{email}" già registrata.', 'warning')
         return redirect(url_for('admin.users'))
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0]).strip('.') or 'utente'
     username, n = base[:30], 1
-    while User.query.filter_by(username=username).first():
+    while __import__('app.tenancy', fromlist=['utente_globale']).utente_globale(username=username):
         username = f'{base[:28]}{n}'; n += 1
     u = User(username=username, email=email)
     u.set_password(password)
@@ -1870,7 +1884,7 @@ def band_new():
     if not start or not end or not dur or dur < 1:
         flash('Compila tutti i campi della fascia oraria.', 'danger')
         return redirect(url_for('admin.tavoli', tab='fasce'))
-    tid = current_user.tenant_id if not current_user.is_admin else None
+    tid = _active_tenant_id()
     # calcola sort_order come posizione temporale
     existing = TableTimeBand.query.count()
     band = TableTimeBand(start_time=start, end_time=end,
@@ -2192,9 +2206,9 @@ def settings():
         except ValueError:
             ultimo_backup = None
 
-    # Sezione "Dati": elenco dei carichi generati, solo per il super admin
+    # Sezione "Dati": elenco dei carichi generati, solo per l'amministratore dei tenant
     carichi = []
-    if current_user.is_admin:
+    if current_user.is_superadmin:
         carichi = (CaricoMensile.query
                    .order_by(CaricoMensile.creato_il.desc()).all())
     oggi = date.today()
@@ -2739,19 +2753,186 @@ def importazioni_carica(tipo):
     return render_template('admin/importazioni.html', modelli=imp.MODELLI, esito=esito, tipo=tipo)
 
 
-# ── Tenant management (solo superadmin) ───────────────────────────────────────
+# ── Tenant: i locali dell'installazione (solo l'amministratore dei tenant) ──
 
 def _superadmin_required(f):
+    """Solo l'amministratore dei tenant (User.is_superadmin): gestione dei
+    locali, backup, guadagni, manutenzione, demo."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
+        if not current_user.is_authenticated or not current_user.is_superadmin:
             abort(403)
         return f(*args, **kwargs)
     return login_required(decorated)
 
 
+def _tenant_o_404(tid):
+    t = db.session.get(Tenant, tid)
+    if t is None:
+        abort(404)
+    return t
+
+
+@bp.route('/tenants')
+@_superadmin_required
+@_senza_filtro_tenant
+def tenants():
+    from flask import session as _sess
+    tenants = Tenant.query.order_by(Tenant.id).all()
+    admins = {}
+    for u in User.query.filter(User.is_admin == True, User.is_superadmin == False).order_by(User.id).all():  # noqa: E712
+        admins.setdefault(u.tenant_id, u)
+    conteggi = {}
+    for t in tenants:
+        conteggi[t.id] = {
+            'clienti': User.query.filter_by(tenant_id=t.id, is_client=True).count(),
+            'staff': User.query.filter_by(tenant_id=t.id, is_client=False).count(),
+            'prodotti': Product.query.filter_by(tenant_id=t.id).count(),
+            'ordini': Order.query.filter_by(tenant_id=t.id).count(),
+        }
+    return render_template('admin/tenants.html', tenants=tenants, tenant_admins=admins,
+                           conteggi=conteggi, tenant_attivo_id=_active_tenant_id(),
+                           credenziali=_sess.pop('tenant_credenziali', None))
+
+
+def _slug_valido(slug):
+    import re as _re
+    return bool(_re.match(r'^[a-z0-9][a-z0-9-]{1,62}$', slug or ''))
+
+
+def _crea_admin_tenant(tenant, email, password):
+    """L'amministratore di un tenant: tutti i permessi, solo sui suoi dati."""
+    import re as _re
+    from app.tenancy import utente_globale
+    email = (email or '').strip().lower()
+    if not email or '@' not in email:
+        raise ValueError('email non valida')
+    if utente_globale(email=email):
+        raise ValueError('email gia\' registrata')
+    base = _re.sub(r'[^a-z0-9]', '.', email.split('@')[0]).strip('.') or 'admin'
+    username, n = base[:30], 1
+    while utente_globale(username=username):
+        username = f'{base[:28]}{n}'
+        n += 1
+    password = (password or '').strip() or _secrets.token_urlsafe(9)
+    u = User(username=username, email=email, is_admin=True, is_superadmin=False,
+             is_active=True, is_client=False, tenant_id=tenant.id,
+             first_name='Amministratore', last_name=tenant.name[:64])
+    u.set_password(password)
+    db.session.add(u)
+    return u, password
+
+
+@bp.route('/tenants/new', methods=['POST'])
+@_superadmin_required
+@_senza_filtro_tenant
+def tenant_new():
+    from flask import session as _sess
+    from app import _seed_tenant
+    name = (request.form.get('name') or '').strip()[:128]
+    slug = (request.form.get('slug') or '').strip().lower()
+    color = (request.form.get('primary_color') or '#e94560').strip()[:20]
+    logo = (request.form.get('logo_url') or '').strip()[:256]
+    if not name or not _slug_valido(slug):
+        flash('Nome e slug sono obbligatori; lo slug ammette solo minuscole, numeri e trattini.', 'danger')
+        return redirect(url_for('admin.tenants'))
+    if Tenant.query.filter_by(slug=slug).first():
+        flash(f'Lo slug "{slug}" e\' gia\' usato.', 'danger')
+        return redirect(url_for('admin.tenants'))
+    t = Tenant(name=name, slug=slug, primary_color=color, logo_url=logo, is_active=True)
+    db.session.add(t)
+    db.session.flush()
+    # Il locale nasce con il catalogo di partenza, slot, tavoli, builder,
+    # banco e impostazioni proprie: isolato, ma non vuoto.
+    _seed_tenant(t)
+    with_admin = (request.form.get('admin_email') or '').strip()
+    if with_admin:
+        try:
+            u, pw = _crea_admin_tenant(t, with_admin, request.form.get('admin_password'))
+            _sess['tenant_credenziali'] = {'tenant': t.name, 'email': u.email, 'password': pw}
+        except ValueError as exc:
+            db.session.rollback()
+            flash(f'Tenant non creato: amministratore con {exc}.', 'danger')
+            return redirect(url_for('admin.tenants'))
+    db.session.commit()
+    flash(f'Tenant "{name}" creato con i dati di base. Registrazione clienti: /t/{slug}/register', 'success')
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/tenants/<int:tid>/edit', methods=['POST'])
+@_superadmin_required
+@_senza_filtro_tenant
+def tenant_edit(tid):
+    t = _tenant_o_404(tid)
+    t.name = (request.form.get('name') or t.name).strip()[:128]
+    t.primary_color = (request.form.get('primary_color') or t.primary_color).strip()[:20]
+    t.logo_url = (request.form.get('logo_url') or '').strip()[:256]
+    attivo = request.form.get('is_active', '1') == '1'
+    if not attivo and t.slug == 'default':
+        flash('Il tenant predefinito non si puo\' disattivare.', 'warning')
+    else:
+        t.is_active = attivo
+    db.session.commit()
+    flash(f'Tenant "{t.name}" aggiornato.', 'success')
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/tenants/<int:tid>/admin', methods=['POST'])
+@_superadmin_required
+@_senza_filtro_tenant
+def tenant_create_admin(tid):
+    from flask import session as _sess
+    t = _tenant_o_404(tid)
+    try:
+        u, pw = _crea_admin_tenant(t, request.form.get('admin_email'), request.form.get('admin_password'))
+    except ValueError as exc:
+        flash(f'Amministratore non creato: {exc}.', 'danger')
+        return redirect(url_for('admin.tenants'))
+    db.session.commit()
+    _sess['tenant_credenziali'] = {'tenant': t.name, 'email': u.email, 'password': pw}
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/tenants/<int:tid>/delete', methods=['POST'])
+@_superadmin_required
+@_senza_filtro_tenant
+def tenant_delete(tid):
+    from flask import session as _sess
+    from app.demo_seed import _delete_tenant_data
+    t = _tenant_o_404(tid)
+    if t.slug == 'default':
+        flash('Il tenant predefinito non si elimina.', 'danger')
+        return redirect(url_for('admin.tenants'))
+    if t.is_active:
+        flash('Disattiva il tenant prima di eliminarlo: e\' una sicurezza contro i clic sbagliati.', 'warning')
+        return redirect(url_for('admin.tenants'))
+    nome = t.name
+    _delete_tenant_data([t.id], delete_tenants=True, clients_only=False)
+    db.session.commit()
+    if _sess.get('tenant_attivo') == tid:
+        _sess.pop('tenant_attivo', None)
+    flash(f'Tenant "{nome}" eliminato con tutti i suoi dati.', 'info')
+    return redirect(url_for('admin.tenants'))
+
+
+@bp.route('/tenants/<int:tid>/entra', methods=['POST'])
+@_superadmin_required
+@_senza_filtro_tenant
+def tenant_entra(tid):
+    """L'amministratore dei tenant lavora in un locale alla volta: da qui in
+    avanti ogni pagina del backoffice mostra e modifica solo quel tenant."""
+    from flask import session as _sess
+    t = _tenant_o_404(tid)
+    _sess['tenant_attivo'] = t.id
+    flash(f'Stai lavorando nel tenant "{t.name}".', 'info')
+    return redirect(request.form.get('next') or url_for('admin.dashboard'))
+
+
+# ── Demo e strumenti dell'amministratore dei tenant ────────────────────────────
+
 @bp.route('/seed-demo', methods=['POST'])
 @_superadmin_required
+@_senza_filtro_tenant
 def seed_demo():
     from app.demo_seed import reset_demo_data, seed_demo_data
     reset_demo_data()
@@ -2762,6 +2943,7 @@ def seed_demo():
 
 @bp.route('/superadmin/guadagni')
 @_superadmin_required
+@_senza_filtro_tenant
 def ds_guadagni():
     from calendar import monthrange
     from app.notifications import get_numeric_setting
@@ -2895,7 +3077,7 @@ def magazzino_edit(iid=None):
             return render_template('admin/magazzino_edit.html', item=item, suppliers=suppliers)
 
         if item is None:
-            item = ConsumableItem(tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            item = ConsumableItem(tenant_id=_active_tenant_id())
             db.session.add(item)
 
         item.name          = name
@@ -2990,7 +3172,7 @@ def fornitore_edit(sid=None):
             return render_template('admin/fornitore_edit.html', supplier=sup)
 
         if sup is None:
-            sup = Supplier(tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+            sup = Supplier(tenant_id=_active_tenant_id())
             db.session.add(sup)
 
         sup.name  = name
@@ -3057,7 +3239,7 @@ def convenzione_edit(cid=None):
 
         if corp is None:
             corp = CorporateAccount(
-                tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+                tenant_id=_active_tenant_id())
             db.session.add(corp)
 
         corp.name             = name
@@ -3148,7 +3330,7 @@ def convenzione_pasto(cid):
         else:
             meal = DailyFixedMeal(
                 corporate_id=cid, meal_date=sel_date,
-                tenant_id=current_user.tenant_id if not current_user.is_admin else None)
+                tenant_id=_active_tenant_id())
             db.session.add(meal)
 
         meal.name         = name
@@ -3233,7 +3415,7 @@ def convenzione_configurazioni(cid):
             price        = float(p) if (p := request.form.get('price', '').strip()) else None,
             max_bookings = int(m) if (m := request.form.get('max_bookings', '').strip()) else None,
             sort_order   = int(request.form.get('sort_order', 0) or 0),
-            tenant_id    = None if current_user.is_admin else current_user.tenant_id,
+            tenant_id    = _active_tenant_id(),
             **_nutrizione_da_form(request.form),
         )
         db.session.add(cfg)
@@ -3307,10 +3489,9 @@ def configurazione_json(cid, cfg_id):
 # ── Manutenzione ──────────────────────────────────────────────────────────────
 
 @bp.route('/maintenance', methods=['GET', 'POST'])
-@login_required
+@_superadmin_required
+@_senza_filtro_tenant
 def maintenance():
-    if not current_user.is_admin:
-        abort(403)
 
     if request.method == 'POST':
         op = request.form.get('operation', '')
@@ -3494,7 +3675,8 @@ def maintenance():
             if not email or '@' not in email or len(password) < 6:
                 flash('Email valida e password (min 6 caratteri) obbligatorie.', 'danger')
             else:
-                user = User.query.filter_by(email=email).first()
+                from app.tenancy import utente_globale
+                user = utente_globale(email=email)
                 if user:
                     user.is_admin  = True
                     user.is_active = True
@@ -3504,7 +3686,7 @@ def maintenance():
                 else:
                     base  = _re.sub(r'[^a-z0-9]', '.', username.lower()).strip('.') or 'admin'
                     uname, n = base[:30], 1
-                    while User.query.filter_by(username=uname).first():
+                    while __import__('app.tenancy', fromlist=['utente_globale']).utente_globale(username=uname):
                         uname = f'{base[:28]}{n}'; n += 1
                     new_admin = User(username=uname, email=email,
                                      is_admin=True, is_active=True)
@@ -4895,6 +5077,7 @@ def dati_carico_elimina(cid):
 
 @bp.route('/dati/reset', methods=['POST'])
 @_superadmin_required
+@_senza_filtro_tenant
 def dati_reset_totale():
     """Svuota tutte le tabelle e ricrea i dati di base."""
     from app.data_tools import reset_totale
@@ -4917,6 +5100,7 @@ def dati_reset_totale():
 
 @bp.route('/dati/backup')
 @_superadmin_required
+@_senza_filtro_tenant
 def dati_backup():
     """Scarica una copia integrale del database in formato JSON."""
     import json as _json
@@ -4937,6 +5121,7 @@ def dati_backup():
 
 @bp.route('/dati/restore', methods=['POST'])
 @_superadmin_required
+@_senza_filtro_tenant
 def dati_restore():
     """Sostituisce il contenuto del database con quello di un file di backup.
 
@@ -5436,6 +5621,7 @@ def _mese_richiesto():
 
 @bp.route('/superadmin/guadagni/scontrini')
 @_superadmin_required
+@_senza_filtro_tenant
 def ds_scontrini():
     """Elenco dei singoli incassi del mese con la provvigione di ciascuno."""
     year, month = _mese_richiesto()
@@ -5445,6 +5631,7 @@ def ds_scontrini():
 
 @bp.route('/superadmin/guadagni/scontrini/pdf')
 @_superadmin_required
+@_senza_filtro_tenant
 def ds_scontrini_pdf():
     """Le transazioni del mese in PDF, con la provvigione di ciascuna."""
     import os

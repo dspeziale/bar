@@ -485,14 +485,20 @@ def registra_backup_eseguito():
     """Annota quando e' stato scaricato l'ultimo backup: la pagina Dati lo
     mostra e il promemoria del venerdi' lo usa per decidere se insistere."""
     from app.models import AppSetting
+    from app.tenancy import con_tenant, tenant_predefinito
     valore = datetime.utcnow().isoformat(sep=' ', timespec='minutes')
-    riga = AppSetting.query.filter_by(key='ultimo_backup_il').first()
-    if riga:
-        riga.value = valore
-    else:
-        db.session.add(AppSetting(key='ultimo_backup_il', value=valore,
-                                  label='Ultimo backup scaricato (UTC)'))
-    db.session.commit()
+    # Il backup e' dell'intera installazione: la sua data vive nelle
+    # impostazioni del tenant predefinito, dove la legge la pagina Dati.
+    tp = tenant_predefinito()
+    with con_tenant(tp.id if tp else None):
+        riga = AppSetting.query.filter_by(key='ultimo_backup_il').first()
+        if riga:
+            riga.value = valore
+        else:
+            db.session.add(AppSetting(key='ultimo_backup_il', value=valore,
+                                      label='Ultimo backup scaricato (UTC)',
+                                      tenant_id=tp.id if tp else None))
+        db.session.commit()
 
 
 def copia_di_sicurezza_pre_restore(destinatario):

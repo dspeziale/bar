@@ -1009,6 +1009,21 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
                     ','.join(str(i) for i in user_ids))))
 
     if delete_tenants:
+        # Con i dati isolati per tenant vanno via anche impostazioni, sondaggi
+        # e ogni altra tabella che porta il tenant: si scorrono i metadati in
+        # ordine inverso di dipendenza, cosi' un modello nuovo e' coperto.
+        from app import models as _m
+        poll_ids = [r[0] for r in db.session.query(_m.Poll.id).filter(
+            _m.Poll.tenant_id.in_(tenant_ids)).all()]
+        if poll_ids:
+            _m.PollVote.query.filter(_m.PollVote.poll_id.in_(poll_ids)).delete(synchronize_session=False)
+            _m.PollChoice.query.filter(_m.PollChoice.poll_id.in_(poll_ids)).delete(synchronize_session=False)
+            _m.Poll.query.filter(_m.Poll.id.in_(poll_ids)).delete(synchronize_session=False)
+        _m.AppSetting.query.filter(_m.AppSetting.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
+        db.session.flush()
+        for tabella in reversed(db.metadata.sorted_tables):
+            if 'tenant_id' in tabella.c and tabella.name not in ('tenants', 'users'):
+                db.session.execute(tabella.delete().where(tabella.c.tenant_id.in_(tenant_ids)))
         Tenant.query.filter(
             Tenant.id.in_(tenant_ids)).delete(synchronize_session=False)
 

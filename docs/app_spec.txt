@@ -1389,18 +1389,54 @@ Ruoli di sistema (is_system=True, non eliminabili):
   cuoco:      ordini (view+manage)
   utente:     nessun permesso
 
-### 8.7 Multi-tenant
+### 8.7 Multi-tenant con dati isolati (app/tenancy.py)
 
-Ogni record ha tenant_id nullable che punta al suo tenant.
-Il superadmin (tenant_id=None) usa _effective_tenant_id() per trovare
-il tenant 'default' e filtrare correttamente.
+Ogni tenant e' un locale con dati completamente separati: catalogo,
+clienti, ordini, impostazioni (AppSetting per tenant, vincolo unico su
+tenant_id+key), bot Telegram, orari, funzionalita' attive.
 
-Risorse globali (tenant_id=None nelle query utente, create con tenant
-specifico nell'admin):
-  Table, TableTimeBand, BancoItem
+- Scope: risolvi_tenant_richiesta() (before_request) mette in g.tenant_scope
+  il tenant dell'utente, quello scelto dall'amministratore dei tenant
+  (session['tenant_attivo']), quello di /t/<slug> per gli anonimi, altrimenti
+  il tenant predefinito (slug 'default').
+- Filtro automatico: do_orm_execute aggiunge tenant_id = scope a ogni
+  SELECT/UPDATE/DELETE dell'ORM per tutti i modelli con tenant_id
+  (with_loader_criteria, alias e join compresi); db.get_or_404 su un id di
+  un altro tenant da' 404. Eccezione: User con tenant NULL (superadmin)
+  resta visibile.
+- before_flush assegna lo scope alle righe nuove; senza scope i figli
+  ereditano il tenant del genitore (Transaction<-User, DailyStock<-Product,
+  CorporateMealBooking<-DailyFixedMeal, ...).
+- senza_filtro(): backup, guadagni, tenant, demo, manutenzione (decoratore
+  _senza_filtro_tenant). con_tenant(id): seed e automatismi.
+  utente_globale(): ricerche di utenti su tutti i tenant (login, MFA,
+  registrazione, duplicati): email/username/google_id sono unici globali.
+- Webhook Telegram: il tenant si ricava dal segreto (telegram_webhook_secret
+  e' per tenant); disiscrizione: dall'utente del token.
+- Colonne tenant_id aggiunte: transactions, push_subscriptions,
+  consumable_movements, corporate_memberships, corporate_meal_bookings,
+  polls, daily_stocks; users.is_superadmin.
+
+L'unico amministratore dei tenant: User.is_superadmin=True, tenant_id NULL
+(admin@dsconsulting.it). /admin/tenants: crea il tenant (nasce con catalogo
+di partenza, slot, tavoli, builder, banco e impostazioni via _seed_tenant),
+nomina l'amministratore del locale (is_admin, tenant_id del locale,
+credenziali mostrate una volta), modifica, disattiva, elimina (solo se
+disattivo, mai il predefinito; _delete_tenant_data scorre i metadati),
+entra nel tenant (tenant_entra -> session['tenant_attivo']; selettore nella
+barra in alto). Solo lui vede Dati (backup/ripristino/azzeramento),
+Guadagni, Manutenzione, Tenant, demo. admin@bar.local e' l'amministratore
+del tenant predefinito.
+
+Seed: _seed_defaults() (tenant predefinito, orfani da metadati, permessi,
+ruoli, superadmin unico) + _seed_tenant(t) per ogni tenant dentro
+con_tenant(t.id). Account demo banco/cucina/sala solo nel tenant default.
+Migrazione _impostazioni_per_tenant(): via il vincolo unico su
+app_settings.key (PostgreSQL DROP CONSTRAINT; SQLite ricostruzione).
 
 Flusso registrazione tenant:
-  /t/<slug>/register → blueprint tenant
+  /t/<slug>/register → blueprint tenant (scope = quel tenant)
+  /auth/register → tenant predefinito
 
 
 ================================================================================

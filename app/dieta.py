@@ -642,9 +642,11 @@ def genera_piano(user, profilo, week_start=None, seed=None, oggi=None):
     week_start = week_start or inizio_settimana(oggi)
     tenant_id = user.tenant_id
     if tenant_id is None:
-        from app.models import Tenant
-        t = Tenant.query.filter_by(slug='default').first()
-        tenant_id = t.id if t else None
+        from app.tenancy import tenant_corrente, tenant_predefinito
+        tenant_id = tenant_corrente()
+        if tenant_id is None:
+            t = tenant_predefinito()
+            tenant_id = t.id if t else None
 
     fabb = fabbisogno(profilo, user)
     candidati = candidati_piano(profilo, tenant_id)

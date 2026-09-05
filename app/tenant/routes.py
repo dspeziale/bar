@@ -4,6 +4,7 @@ from flask_login import login_user, current_user
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
+from app.tenancy import utente_globale
 from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email,
                                send_account_activated_email)
@@ -24,7 +25,7 @@ def _make_username(email, tenant_id=None):
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0].lower()).strip('.') or 'utente'
     base = base[:30]
     username, n = base, 1
-    while User.query.filter_by(username=username).first():
+    while utente_globale(username=username):
         username = f'{base}{n}'
         n += 1
     return username
@@ -58,7 +59,7 @@ def register(slug):
             error = 'Password troppo corta (min 6 caratteri).'
         elif password != password2:
             error = 'Le password non coincidono.'
-        elif User.query.filter_by(email=email).first():
+        elif utente_globale(email=email):
             error = 'Email già registrata. Prova ad accedere.'
 
         if error:
@@ -153,8 +154,8 @@ def google_callback():
     first_name = user_info.get('given_name', '')
     last_name  = user_info.get('family_name', '')
 
-    user = (User.query.filter_by(google_id=google_id).first() or
-            User.query.filter_by(email=email).first())
+    user = (utente_globale(google_id=google_id) or
+            utente_globale(email=email))
 
     if user:
         if not user.google_id:

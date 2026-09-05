@@ -118,11 +118,14 @@ def sez_prima_di_aprire(pdf, idx):
 
     h2(pdf, 'Accesso e sicurezza', C, idx)
     passi(pdf, [
-        ('Entra con l\'utenza amministrativa e cambia subito la password',
-         'Il primo avvio crea due utenze amministrative con password predefinite '
-         '(sono nella documentazione tecnica, non qui): dal proprio Profilo si cambia '
-         'la password e si attiva la verifica in due passi (MFA con app di '
-         'autenticazione). Fallo prima di dare l\'indirizzo a chiunque.'),
+        ('Entra con l\'utenza dell\'amministratore del locale e cambia subito la password',
+         'Ogni locale (tenant) e un mondo a parte: catalogo, clienti, ordini, impostazioni, '
+         'bot Telegram e orari sono suoi e nessun altro locale li vede. L\'amministratore '
+         'dei tenant (DS Consulting) crea il locale con il catalogo di partenza e consegna '
+         'al titolare le credenziali del suo amministratore, che ha tutti i permessi ma solo '
+         'sui dati del proprio locale. Dal Profilo si cambia la password e si attiva la '
+         'verifica in due passi (MFA con app di autenticazione). Fallo prima di dare '
+         'l\'indirizzo a chiunque.'),
         ('Crea il personale con il ruolo giusto',
          'Persone > Personale: cassiere, cuoco, manager sono ruoli pronti con i loro '
          'permessi; Persone > Ruoli & Permessi li adatta o ne crea altri. Un utente vede '
@@ -713,19 +716,20 @@ def sez_dati(pdf, idx):
     C = TEAL
     apri_sezione(pdf, 15, 'Dati e sicurezza', 'Backup, ripristino, '
                  'azzeramento, ruoli.', C,
-                 'Al titolare e all\'amministratore di sistema. Sono le '
-                 'operazioni che non si fanno ogni giorno ma che salvano '
+                 'All\'amministratore dei tenant (DS Consulting), che e il solo a '
+                 'vedere il tab Dati, e al titolare per sapere che cosa chiedere. '
+                 'Sono le operazioni che non si fanno ogni giorno ma che salvano '
                  'la settimana.', idx)
 
     h2(pdf, 'Backup e ripristino', C, idx)
     passi(pdf, [
         ('Scarica il backup ogni settimana',
-         'Impostazioni > Dati > Scarica il backup: un file JSON con tutte le tabelle, '
-         'clienti, ordini, catalogo con i valori nutrizionali, convenzioni, diete, '
-         'impostazioni. La pagina mostra la data dell\'ultimo backup e nel giorno scelto '
-         'negli Orari, se ne sono passati piu di sei, il canale Telegram riceve un '
-         'promemoria. Il file contiene dati personali e credenziali: conservalo come un '
-         'registro contabile, fuori dal server.'),
+         'Impostazioni > Dati > Scarica il backup: un file JSON con tutte le tabelle di '
+         'tutti i locali, clienti, ordini, catalogo con i valori nutrizionali, convenzioni, '
+         'diete, impostazioni. La pagina mostra la data dell\'ultimo backup e nel giorno '
+         'scelto negli Orari, se ne sono passati piu di sei, il canale Telegram del locale '
+         'predefinito riceve un promemoria. Il file contiene dati personali e credenziali: '
+         'conservalo come un registro contabile, fuori dal server.'),
         ('Guarda l\'anteprima prima di ripristinare',
          'Scelto il file, la pagina dice quando e stato creato, tabelle, righe, utenti, ordini '
          'e prodotti, e avvisa se e vecchio o precedente a una funzione (per esempio la '
@@ -746,8 +750,12 @@ def sez_dati(pdf, idx):
 
     h2(pdf, 'Ruoli e permessi', C, idx)
     tabella(pdf, ['Ruolo', 'Che cosa fa', 'Permessi tipici'],
-            [['Super admin', 'Tutto, su tutti i locali; e il solo che vede Dati, Locali e '
-              'Guadagni.', 'Nessun controllo: bypassa i permessi.'],
+            [['Amministratore dei tenant', 'Uno solo, senza locale: crea i locali, entra in '
+              'ciascuno dal selettore in alto, nomina il loro amministratore; e il solo che '
+              'vede Dati, Tenant, Guadagni, Manutenzione.', 'Nessun controllo: bypassa i permessi.'],
+             ['Amministratore del locale', 'Tutto, ma solo sui dati del proprio locale: '
+              'catalogo, clienti, personale, impostazioni, report.', 'Nessun controllo dentro '
+              'il locale; non vede gli altri locali ne il tab Dati.'],
              ['Manager', 'Amministra il locale: catalogo, clienti, convenzioni, '
               'impostazioni, report.', 'Gestione prodotti, categorie, ingredienti, stock, '
               'tavoli, slot, clienti, sondaggi, notifiche, impostazioni, report.'],

@@ -488,6 +488,31 @@
         </button>
       </li>
       {% endif %}
+      {% if current_user.is_authenticated and current_user.is_superadmin and tenants_disponibili %}
+      {# ── Il tenant in cui l'amministratore dei tenant sta lavorando ── #}
+      <li class="nav-item dropdown mr-2" id="ql-tenant-switch">
+        <a class="nav-link dropdown-toggle py-1 px-2" href="#" data-toggle="dropdown" role="button"
+           style="border:1px solid rgba(0,0,0,.14);border-radius:20px;font-size:.82rem;">
+          <i class="fas fa-building mr-1" style="color:#e94560;"></i>
+          <span class="QuickLunch-nav-label">Tenant:</span> <strong>{{ tenant_attivo.name if tenant_attivo else '—' }}</strong>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" style="min-width:260px;">
+          <h6 class="dropdown-header">Lavora nel tenant</h6>
+          {% for t in tenants_disponibili %}
+          <form method="POST" action="{{ url_for('admin.tenant_entra', tid=t.id) }}" class="m-0">
+            {{ csrf_field() }}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="dropdown-item d-flex align-items-center {{ 'active' if tenant_attivo and tenant_attivo.id == t.id }}">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ t.primary_color }};margin-right:.5rem;"></span>
+              {{ t.name }}{% if not t.is_active %} <small class="ml-1">(disattivo)</small>{% endif %}
+            </button>
+          </form>
+          {% endfor %}
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="{{ url_for('admin.tenants') }}"><i class="fas fa-cog mr-1"></i>Gestisci i tenant</a>
+        </div>
+      </li>
+      {% endif %}
       <li class="nav-item d-flex align-items-center" style="gap:.45rem;">
         <button id="QuickLunch-theme-toggle" onclick="bsrToggleTheme()" style="margin-right:.1rem;">
           <i class="fas fa-moon" id="QuickLunch-theme-icon"></i>
@@ -509,7 +534,9 @@
           {% endif %}
           <span class="d-none d-md-inline" style="font-size:.88rem;font-weight:600;color:var(--QuickLunch-nav-text,#3d4a5c);">
             {{ current_user.full_name }}
-            {% if current_user.is_admin %}
+            {% if current_user.is_superadmin %}
+            <span class="badge badge-dark ml-1" style="font-size:.6rem;vertical-align:middle;">Amministratore tenant</span>
+            {% elif current_user.is_admin %}
             <span class="badge badge-danger ml-1" style="font-size:.6rem;vertical-align:middle;">Admin</span>
             {% elif current_user.roles %}
             <span class="badge badge-{{ current_user.roles[0].color }} ml-1" style="font-size:.6rem;vertical-align:middle;">{{ current_user.roles[0].label }}</span>
@@ -864,14 +891,21 @@
             </li>
             {% endif %}
 
-            {% if current_user.is_admin %}
-            {# ── DS CONSULTING ── #}
-            <li class="nav-item has-treeview {{ 'menu-open' if ep in ('admin.ds_guadagni','admin.maintenance') }}">
-              <a href="#" class="nav-link {{ 'active' if ep in ('admin.ds_guadagni','admin.maintenance') }}">
+            {% if current_user.is_superadmin %}
+            {# ── DS CONSULTING: solo l'amministratore dei tenant ── #}
+            <li class="nav-item has-treeview {{ 'menu-open' if ep in ('admin.ds_guadagni','admin.maintenance','admin.tenants') }}">
+              <a href="#" class="nav-link {{ 'active' if ep in ('admin.ds_guadagni','admin.maintenance','admin.tenants') }}">
                 <i class="nav-icon fas fa-crown" style="color:#e94560;"></i>
                 <p>DS Consulting<i class="right fas fa-angle-left"></i></p>
               </a>
               <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.tenants') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.tenants' }}">
+                    <i class="fas fa-building nav-icon" style="color:#e94560;"></i>
+                    <p>Tenant</p>
+                  </a>
+                </li>
                 <li class="nav-item">
                   <a href="{{ url_for('admin.ds_guadagni') }}"
                      class="nav-link {{ 'active' if ep == 'admin.ds_guadagni' }}">
