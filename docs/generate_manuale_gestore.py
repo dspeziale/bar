@@ -483,8 +483,9 @@ def build():
           'Funzionalita). Se lavorate ', False),
          ('senza portafoglio', True),
          (', i clienti pagano alla cassa: saldi, ricariche, fidi, punti e '
-          'bonus non esistono, ma ordini, banco e cesto registrano comunque '
-          'le vendite nei report.', False)],
+          'bonus non esistono, e sparisce anche il Banco con il QR, che e un '
+          'pagamento dal portafoglio; ordini e cesto registrano comunque le '
+          'vendite nei report.', False)],
         [('Le attivita di questo manuale contrassegnate con ', False),
          ('"solo con portafoglio attivo"', True),
          (' in quel caso si saltano: la scaletta resta valida per tutto il '

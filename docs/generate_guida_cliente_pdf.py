@@ -279,9 +279,11 @@ def sez_pagare(pdf, idx):
     h2(pdf, 'Con il pagamento in cassa', C, idx)
     testo(pdf, 'Alcuni locali preferiscono non gestire credito: in quel caso '
                'nel menu dell\'app non trovi la voce Wallet. Ordini come '
-               'sempre e paghi al banco quando ritiri. Tutto il resto — '
-               'menu, orari, avvisi, pasto aziendale — funziona allo stesso '
-               'modo.')
+               'sempre e paghi al banco quando ritiri. Non c\'e nemmeno '
+               '"Paga al banco" col QR: il conto al banco si salda in '
+               'contanti o con la carta, come in qualunque bar. Tutto il '
+               'resto — menu, orari, avvisi, pasto aziendale — funziona allo '
+               'stesso modo.')
 
     callout(pdf, 'Come capire quale dei due',
             'Se nel menu c\'e "Wallet & Fedelta", il locale usa il '

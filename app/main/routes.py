@@ -1330,12 +1330,14 @@ def guida():
 
 @bp.route('/banco/scan')
 @login_required
+@wallet_required
 def banco_scan():
     return render_template('main/banco_scan.html')
 
 
 @bp.route('/banco/pay/<token>')
 @login_required
+@wallet_required
 def banco_pay(token):
     import json
     sess = BancoSession.query.filter_by(token=token).first_or_404()
@@ -1351,6 +1353,7 @@ def banco_pay(token):
 
 @bp.route('/banco/pay/<token>/confirm', methods=['POST'])
 @login_required
+@wallet_required
 def banco_pay_confirm(token):
     import json
     sess = BancoSession.query.filter_by(token=token).first_or_404()

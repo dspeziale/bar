@@ -590,6 +590,10 @@ def sez_cassa(pdf, idx):
                  'l\'ora di punta.', idx)
 
     h2(pdf, 'Il conto al banco con il QR', C, idx)
+    testo(pdf, 'Esiste solo nei locali con il portafoglio prepagato attivo: '
+               'e un pagamento dal credito del cliente. Dove si paga alla '
+               'cassa la voce Banco non compare e il conto si salda come in '
+               'qualunque bar.')
     passi(pdf, [
         ('Componi il conto sul tablet',
          'Gli articoli rapidi - caffe, cappuccino, brioche - si toccano una '
@@ -740,7 +744,7 @@ def sez_cliente(pdf, idx):
         ('Dal cesto: ', 'si prende il pezzo pronto, si inquadra il QR '
          'dell\'etichetta e si conferma.'),
         ('Al banco: ', 'il personale compone il conto e mostra un QR da '
-         'inquadrare.'),
+         'inquadrare (solo nei locali con il portafoglio prepagato).'),
     ])
 
     h2(pdf, 'Pagare', C, idx)

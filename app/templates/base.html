@@ -573,7 +573,8 @@
               </a>
             </li>
 
-            {# ── BANCO POS ── #}
+            {# ── BANCO POS: e' un pagamento dal portafoglio, senza wallet non esiste ── #}
+            {% if wallet_enabled %}
             <li class="nav-item">
               <a href="{{ url_for('admin.banco') }}"
                  class="nav-link {{ 'active' if ep in ('admin.banco','admin.banco_charge','admin.banco_items','admin.banco_item_new','admin.banco_item_edit','admin.banco_item_delete') }}">
@@ -581,6 +582,7 @@
                 <p>Banco</p>
               </a>
             </li>
+            {% endif %}
 
             {# ── CESTO CUCINA ── #}
             {% if p('manage_cesto') %}

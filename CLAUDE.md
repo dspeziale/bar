@@ -277,6 +277,11 @@ Il saldo si muove **solo** attraverso i metodi di `User` (`credit_wallet`, `debi
 `add_points`, `redeem_points`): ognuno crea la `Transaction` corrispondente, così lo storico
 resta coerente.
 
+**Il banco è parte del wallet**: il POS con QR (`admin.banco*`) e "Paga al banco"
+(`main.banco_scan`/`banco_pay*`) sono un pagamento dal portafoglio, quindi portano tutti
+`@wallet_required` e la voce di menu e il pulsante in home sono sotto `{% if wallet_enabled %}`.
+Le consumazioni al banco di chi paga in cassa non passano dall'app.
+
 Il portafoglio è **opzionale**: col flag `wallet_enabled` a `'0'` l'app non muove denaro
 (niente controlli di capienza, addebiti, rimborsi, ricariche, bonus di benvenuto o punti) e
 si paga alla cassa. Le vendite però restano registrate: ordini e sessioni banco esistono

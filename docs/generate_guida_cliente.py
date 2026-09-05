@@ -687,6 +687,10 @@ def s6_wallet(doc):
 def s7_banco(doc):
     h1(doc, '7', 'Paga al Banco — Pagamento QR', '📲', accent=HEX_PURPL)
 
+    info_box(doc, 'Questa funzione esiste solo nei locali con il portafoglio prepagato attivo: dove '
+             'si paga alla cassa non compare, e il conto al banco si salda come in qualunque bar.',
+             style='info')
+    spacer(doc, 6)
     role_badge(doc, '📲', 'Paga al Banco',
                'Con "Paga al Banco" puoi pagare dal tuo telefono un conto aperto dallo staff, '
                'senza dover fare un ordine normale dal menu. Lo staff genera un QR code sul tablet: '

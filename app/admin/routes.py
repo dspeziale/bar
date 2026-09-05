@@ -551,6 +551,7 @@ def magazzino_dt():
 # ── BANCO ITEMS DT ────────────────────────────────────────────────────────────
 @bp.route('/banco/items/dt')
 @require_permission('manage_products')
+@wallet_required
 def banco_items_dt():
     tid                    = _active_tenant_id()
     draw, start, length, search, col, dirn = _dt_params()
@@ -1335,6 +1336,7 @@ def slot_delete(sid):
 
 @bp.route('/banco')
 @staff_required
+@wallet_required
 def banco():
     tid   = _active_tenant_id()
     items = BancoItem.query.filter_by(is_active=True, tenant_id=tid)\
@@ -1353,6 +1355,7 @@ def banco():
 
 @bp.route('/banco/session', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_session_new():
     import json
     cart_json = request.form.get('cart_json', '[]')
@@ -1380,6 +1383,7 @@ def banco_session_new():
 
 @bp.route('/banco/session/<token>/status')
 @staff_required
+@wallet_required
 def banco_session_status(token):
     sess = BancoSession.query.filter_by(token=token).first_or_404()
     if sess.status == 'pending' and _dt.utcnow() > sess.expires_at:
@@ -1393,6 +1397,7 @@ def banco_session_status(token):
 
 @bp.route('/banco/session/<token>/cancel', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_session_cancel(token):
     sess = BancoSession.query.filter_by(token=token).first_or_404()
     if sess.status == 'pending':
@@ -1403,6 +1408,7 @@ def banco_session_cancel(token):
 
 @bp.route('/banco/items')
 @staff_required
+@wallet_required
 def banco_items():
     tid   = _active_tenant_id()
     items = BancoItem.query.filter_by(tenant_id=tid)\
@@ -1412,6 +1418,7 @@ def banco_items():
 
 @bp.route('/banco/items/new', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_item_new():
     name  = request.form.get('name', '').strip()
     price = request.form.get('price', type=float)
@@ -1433,6 +1440,7 @@ def banco_item_new():
 
 @bp.route('/banco/items/<int:iid>/edit', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_item_edit(iid):
     item = db.get_or_404(BancoItem, iid)
     item.name       = request.form.get('name', item.name).strip()
@@ -1448,6 +1456,7 @@ def banco_item_edit(iid):
 
 @bp.route('/banco/items/<int:iid>/delete', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_item_delete(iid):
     item = db.get_or_404(BancoItem, iid)
     name = item.name
@@ -1461,6 +1470,7 @@ def banco_item_delete(iid):
 
 @bp.route('/banco/pasto-lookup')
 @staff_required
+@wallet_required
 def banco_pasto_lookup():
     token   = request.args.get('token', '').strip().upper()
     if not token:
@@ -1484,6 +1494,7 @@ def banco_pasto_lookup():
 
 @bp.route('/banco/pasto-consegna', methods=['POST'])
 @staff_required
+@wallet_required
 def banco_pasto_consegna():
     bid = request.form.get('booking_id', type=int)
     booking = CorporateMealBooking.query.get_or_404(bid)

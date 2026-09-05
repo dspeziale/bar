@@ -1790,6 +1790,10 @@ Cinque moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
                     rimborso, ricarica, fido, bonus di benvenuto o punto; si
                     paga alla cassa e ogni riferimento al wallet sparisce
                     dalle pagine (client e backoffice, tab Fedelta' compreso).
+                    Sparisce anche il banco: il POS con QR e "Paga al banco"
+                    sono un pagamento dal portafoglio, quindi le 14 rotte
+                    /banco* (cliente e staff) hanno @wallet_required e la voce
+                    Banco e il pulsante in home non compaiono.
                     Le vendite restano registrate: ordini e sessioni banco
                     nelle rispettive tabelle, il cesto come Transaction di
                     solo registro (User.registra_consumo, che non tocca il

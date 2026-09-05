@@ -127,9 +127,11 @@
             <i class="fas fa-chair mr-1"></i>Prenota Tavolo
           </a>
           {% endif %}
+          {% if wallet_enabled %}
           <a href="{{ url_for('main.banco_scan') }}" class="btn btn-outline-dark">
             <i class="fas fa-qrcode mr-1"></i>Paga al Banco
           </a>
+          {% endif %}
           {% if cesto_enabled %}
           <a href="{{ url_for('main.cesto_lista') }}" class="btn btn-outline-success">
             <i class="fas fa-shopping-basket mr-1"></i>Cesto
