@@ -22,6 +22,9 @@ _secret_key = os.environ.get('SECRET_KEY', 'cambiamiinproduzione-32caratteri!').
 
 
 class Config:
+    # Versione mostrata nel piè di pagina: aggiornala qui a ogni rilascio.
+    APP_VERSION = '1.0.2'
+
     SECRET_KEY = _secret_key
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False

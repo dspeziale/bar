@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Comunicazioni{% endblock %}
+{% block page_title %}Comunicazioni ai clienti{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Comunicazioni</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .modello-card { border:1px solid #e3e6ea; border-radius:8px; padding:.7rem .8rem; height:100%;
+                  display:flex; flex-direction:column; gap:.3rem; transition:box-shadow .15s; }
+  .modello-card:hover { box-shadow:0 2px 10px rgba(15,52,96,.12); }
+  .modello-card .titolo { font-weight:700; color:#0f3460; font-size:.95rem; }
+  .modello-card .descr  { font-size:.8rem; color:#6c757d; flex:1; }
+  .segmento-riga { display:flex; justify-content:space-between; font-size:.85rem; padding:.25rem 0;
+                   border-bottom:1px dashed #eee; }
+  .stato-bozza { background:#adb5bd; } .stato-programmata { background:#f39c12; } .stato-inviata { background:#27ae60; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set stati = {'bozza': 'Bozza', 'programmata': 'Programmata', 'inviata': 'Inviata'} %}
+{% set seg_map = {} %}{% for k, l, d in segmenti %}{% set _ = seg_map.update({k: l}) %}{% endfor %}
+
+{% if not base_url_ok %}
+<div class="alert alert-warning py-2" style="font-size:.9rem;">
+  <i class="fas fa-link mr-1"></i>Per i link nelle email inviate dagli automatismi serve l'indirizzo pubblico
+  dell'app in Impostazioni → Azienda (<code>public_base_url</code>). Gli invii fatti da qui usano l'indirizzo corrente.
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-8">
+
+    {# ── Modelli ── #}
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-pen-nib mr-2"></i>Scrivi ai clienti</h3>
+        <div class="card-tools">
+          <a href="{{ url_for('admin.comunicazione_nuova') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus mr-1"></i>Messaggio libero
+          </a>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3" style="font-size:.88rem;">
+          Scegli un modello: arriva già scritto, con il gruppo di clienti e il canale consigliati.
+          Lo modifichi, lo provi su di te, poi lo invii subito o lo programmi.
+          Telegram a chi l'ha collegato, email agli altri; chi ha revocato il consenso non riceve nulla.
+        </p>
+        <div class="row" style="row-gap:.7rem;">
+          {% for k, label, icona, quando, ogg, corpo, pt, pl, seg, can in modelli if k != 'libero' %}
+          <div class="col-md-6 col-xl-4">
+            <div class="modello-card">
+              <div class="titolo"><i class="fas {{ icona }} mr-2" style="color:#e94560;"></i>{{ label }}</div>
+              <div class="descr">{{ quando }}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted"><i class="fas fa-users mr-1"></i>{{ seg_map.get(seg, seg) }} · {{ conteggi.get(seg, 0) }}</small>
+                <a href="{{ url_for('admin.comunicazione_nuova', modello=k) }}" class="btn btn-xs btn-outline-primary">Usa <i class="fas fa-arrow-right ml-1"></i></a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# ── Campagne ── #}
+    <div class="card card-outline card-secondary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-paper-plane mr-2"></i>Campagne</h3>
+      </div>
+      <div class="card-body p-0">
+        {% if campagne %}
+        <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr><th>Titolo</th><th>Destinatari</th><th>Canale</th><th>Stato</th><th class="text-right">Esiti</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for c in campagne %}
+          <tr>
+            <td>
+              <a href="{{ url_for('admin.comunicazione_dettaglio', cid=c.id) }}"><strong>{{ c.titolo }}</strong></a>
+              {% if c.automatica %}<span class="badge badge-light border ml-1" title="Creata da un automatismo"><i class="fas fa-robot mr-1"></i>auto</span>{% endif %}
+              <div class="text-muted" style="font-size:.78rem;">{{ c.oggetto }}</div>
+            </td>
+            <td style="font-size:.85rem;">{{ seg_map.get(c.segmento, c.segmento) }}{% if c.poll %}<br><small class="text-muted"><i class="fas fa-square-poll-vertical mr-1"></i>{{ c.poll.title }}</small>{% endif %}</td>
+            <td style="font-size:.85rem;">{{ {'auto': 'Automatico', 'email': 'Email', 'telegram': 'Telegram', 'entrambi': 'Entrambi'}.get(c.canale, c.canale) }}</td>
+            <td>
+              <span class="badge stato-{{ c.stato }} text-white">{{ stati.get(c.stato, c.stato) }}</span>
+              <div class="text-muted" style="font-size:.75rem;">
+                {% if c.stato == 'programmata' and c.programmata_il %}{{ c.programmata_il.strftime('%d/%m %H:%M') }}
+                {% elif c.stato == 'inviata' and c.inviata_il %}{{ c.inviata_il|dt_rome('%d/%m %H:%M') }}
+                {% else %}{{ c.created_at|dt_rome('%d/%m') }}{% endif %}
+              </div>
+            </td>
+            <td class="text-right" style="font-size:.85rem;white-space:nowrap;">
+              {% if c.stato == 'inviata' %}
+              <span title="Email"><i class="fas fa-envelope text-muted mr-1"></i>{{ c.n_email }}</span>
+              <span class="ml-2" title="Telegram"><i class="fab fa-telegram text-muted mr-1"></i>{{ c.n_telegram }}</span>
+              {% if c.n_saltati %}<span class="ml-2 text-muted" title="Saltati">{{ c.n_saltati }} saltati</span>{% endif %}
+              {% if c.n_falliti %}<span class="ml-2 text-danger" title="Falliti">{{ c.n_falliti }} falliti</span>{% endif %}
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-right" style="white-space:nowrap;">
+              <form method="POST" action="{{ url_for('admin.comunicazione_duplica', cid=c.id) }}" class="d-inline">
+                {{ csrf_field() }}
+                <button class="btn btn-xs btn-outline-secondary" title="Duplica"><i class="fas fa-copy"></i></button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.comunicazione_elimina', cid=c.id) }}" class="d-inline"
+                    data-confirm="Eliminare la comunicazione e il suo registro invii?">
+                {{ csrf_field() }}
+                <button class="btn btn-xs btn-outline-danger" title="Elimina"><i class="fas fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">Nessuna campagna ancora: scegli un modello qui sopra.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    {# ── Automatismi ── #}
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-robot mr-2"></i>Automatismi</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.comunicazioni_automatismi') }}">
+          {{ csrf_field() }}
+          {% for chiave, modello, etichetta, descr, attivo in automatismi %}
+          <input type="hidden" name="{{ chiave }}" value="0">
+          <div class="custom-control custom-switch mb-2">
+            <input type="checkbox" class="custom-control-input" id="{{ chiave }}" name="{{ chiave }}" value="1" {{ 'checked' if attivo }}>
+            <label class="custom-control-label" for="{{ chiave }}"><strong>{{ etichetta }}</strong>
+              <small class="text-muted d-block">{{ descr }}</small></label>
+          </div>
+          {% endfor %}
+          <button class="btn btn-success btn-sm btn-block mt-2"><i class="fas fa-save mr-1"></i>Salva</button>
+        </form>
+        <small class="text-muted d-block mt-2">
+          Partono una volta al giorno dalle <strong>{{ ora_auto.strftime('%H:%M') }}</strong>
+          (Impostazioni → Orari → Appuntamenti della settimana), alla prima visita di qualcuno dopo quell'ora.
+          Ogni giro crea una campagna che trovi nell'elenco.
+        </small>
+      </div>
+    </div>
+
+    {# ── Segmenti ── #}
+    <div class="card card-outline card-info">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-users mr-2"></i>Chi puoi raggiungere</h3>
+      </div>
+      <div class="card-body pt-2">
+        {% for k, label, descr in segmenti %}
+        <div class="segmento-riga" title="{{ descr }}">
+          <span>{{ label }}</span><strong>{{ conteggi.get(k, 0) }}</strong>
+        </div>
+        {% endfor %}
+        <small class="text-muted d-block mt-2">Contano solo i clienti attivi che accettano le comunicazioni.</small>
+      </div>
+    </div>
+
+    {# ── Sondaggi ── #}
+    {% if polls %}
+    <div class="card card-outline card-warning">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-square-poll-vertical mr-2"></i>Sondaggi aperti</h3>
+      </div>
+      <div class="card-body pt-2">
+        {% for p in polls %}
+        <div class="d-flex justify-content-between align-items-center py-1" style="border-bottom:1px dashed #eee;">
+          <div style="font-size:.88rem;"><strong>{{ p.title }}</strong><br><small class="text-muted">per il {{ p.poll_date.strftime('%d/%m') }} · {{ p.total_votes() }} voti</small></div>
+          <a href="{{ url_for('admin.comunicazione_nuova', modello='sondaggio', poll=p.id) }}" class="btn btn-xs btn-warning" style="white-space:nowrap;">
+            <i class="fas fa-paper-plane mr-1"></i>Invita a votare
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

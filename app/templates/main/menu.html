@@ -47,17 +47,17 @@
     <!-- Filtro categorie -->
     <div class="d-flex flex-wrap gap-2" id="cat-filters">
       <button class="btn btn-outline-secondary category-pill active" data-cat="all">
-        <i class="fas fa-th me-1"></i> Tutto
+        <i class="fas fa-th mr-1"></i> Tutto
       </button>
       {% if profilo_dieta %}
       <button class="btn btn-outline-success ml-auto" id="btn-adatti" type="button"
               title="Nasconde i piatti che contengono quello che escludi">
-        <i class="fas fa-leaf me-1"></i> Solo adatti a me
+        <i class="fas fa-leaf mr-1"></i> Solo adatti a me
       </button>
       {% endif %}
       {% for cat in categories %}
       <button class="btn btn-outline-{{ cat.color }} category-pill" data-cat="{{ cat.id }}">
-        <i class="fas {{ cat.icon }} me-1"></i> {{ cat.name }}
+        <i class="fas {{ cat.icon }} mr-1"></i> {{ cat.name }}
       </button>
       {% endfor %}
     </div>
@@ -69,7 +69,7 @@
 {% if cat_products %}
 <div class="product-section" data-section="{{ cat.id }}" id="section-{{ cat.id }}">
   <h5 class="text-{{ cat.color }} mb-3">
-    <i class="fas {{ cat.icon }} me-2"></i>{{ cat.name }}
+    <i class="fas {{ cat.icon }} mr-2"></i>{{ cat.name }}
   </h5>
   <div class="row">
     {% for p in cat_products %}
@@ -134,7 +134,7 @@
   {% set cat_products = products | selectattr('category_id','equalto',cat.id) | list %}
   {% if cat_products %}
   <h5 class="text-{{ cat.color }} mb-3 mt-2">
-    <i class="fas {{ cat.icon }} me-2"></i>{{ cat.name }}
+    <i class="fas {{ cat.icon }} mr-2"></i>{{ cat.name }}
   </h5>
   <div class="row">
     {% for p in cat_products %}

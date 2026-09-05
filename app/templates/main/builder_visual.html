@@ -483,7 +483,7 @@
 <div class="mc-bottom">
   <div class="mc-bottom-left">
     <button class="mc-btn mc-btn-prev" onclick="mcPrev()" id="mc-bp" style="display:none;">
-      <i class="fas fa-chevron-left"></i><span>Indietro</span>
+      <i class="fas fa-chevron-left mr-1"></i><span>Indietro</span>
     </button>
     <div class="mc-price-badge">
       <div class="mc-price-lbl">Totale</div>
@@ -495,7 +495,7 @@
       <span>Avanti</span><i class="fas fa-chevron-right"></i>
     </button>
     <button class="mc-btn mc-btn-add" onclick="document.getElementById('mc-form').submit()" id="mc-ba" style="display:none;">
-      <i class="fas fa-cart-plus"></i><span>Aggiungi al carrello</span>
+      <i class="fas fa-cart-plus mr-1"></i><span>Aggiungi al carrello</span>
     </button>
   </div>
 </div>
@@ -556,7 +556,7 @@ function mcRenderBar(){
   el.innerHTML = '';
   MC_CATS.forEach(function(cat, i){
     var cls = (i < MC_CUR ? 'done' : '') + (i === MC_CUR ? ' active' : '');
-    var dot = i < MC_CUR ? '<i class="fas fa-check" style="font-size:.7rem;"></i>' : (i+1);
+    var dot = i < MC_CUR ? '<i class="fas fa-check mr-1" style="font-size:.7rem;"></i>' : (i+1);
     el.innerHTML += '<div class="mc-step ' + cls + '" onclick="mcGoTo(' + i + ')" title="' + cat.name + '">'
       + '<div class="mc-step-dot">' + dot + '</div>'
       + '<div class="mc-step-lbl">' + cat.name + '</div>'

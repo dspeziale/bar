@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Referto analisi{% endblock %}
+{% block page_title %}Referto analisi e proposta dieta{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('main.dieta') }}">La mia dieta</a></li>
+<li class="breadcrumb-item active">Referto analisi</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .esito-ok { color:#27ae60; } .esito-limite { color:#f39c12; } .esito-alto, .esito-basso { color:#e94560; }
+  .valore-riga td { vertical-align: middle; }
+  .param-input { max-width: 110px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set stati = {'ok': ('nella norma', 'success'), 'limite': ('al limite', 'warning'),
+                'alto': ('alto', 'danger'), 'basso': ('basso', 'danger')} %}
+
+<div class="alert alert-warning border-warning py-2 mb-3" style="font-size:.88rem;">
+  <i class="fas fa-triangle-exclamation mr-1"></i><strong>Avvertenza: nessuna validità medica.</strong>
+  Qui i valori delle tue analisi vengono confrontati con intervalli di riferimento generali, non con quelli
+  del tuo laboratorio, e tradotti in preferenze per il piano dei pranzi. Non è una lettura medica del referto:
+  ogni valore fuori soglia va discusso con il tuo medico. {{ disclaimer_dieta }}
+</div>
+
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-file-medical mr-2"></i>Carica il referto o scrivi i valori</h3>
+      </div>
+      <form method="POST" action="{{ url_for('main.dieta_referto_carica') }}" enctype="multipart/form-data">
+        {{ csrf_field() }}
+        <div class="card-body">
+          <div class="form-group">
+            <label>Referto in PDF <small class="text-muted">(quello scaricato dal laboratorio; le foto non si leggono)</small></label>
+            <input type="file" name="referto" class="form-control-file" accept=".pdf,.txt">
+            <small class="text-muted">Il file viene letto e <strong>scartato subito</strong>: non viene conservato. Restano solo i valori riconosciuti, che vedi qui sotto e puoi cancellare quando vuoi.</small>
+          </div>
+          <div class="text-muted text-uppercase mt-3 mb-2" style="font-size:.78rem;letter-spacing:.05em;">Oppure (o in aggiunta) scrivi i valori a mano</div>
+          <div class="table-responsive">
+          <table class="table table-sm mb-2" style="font-size:.88rem;">
+            <thead class="thead-light"><tr><th>Parametro</th><th>Valore</th><th>Unità</th><th class="text-muted">Riferimento generale</th></tr></thead>
+            <tbody>
+            {% for p in parametri %}
+            {% set r = p.range.get(sesso if sesso in ('M','F') else '', p.range.get('')) %}
+            <tr class="valore-riga">
+              <td>{{ p.etichetta }}</td>
+              <td><input type="text" name="v_{{ p.chiave }}" class="form-control form-control-sm param-input" inputmode="decimal" placeholder="—"></td>
+              <td class="text-muted">{{ p.unita }}</td>
+              <td class="text-muted">
+                {% if r[0] is not none and r[1] is not none %}{{ r[0]|num_it }}–{{ r[1]|num_it }}
+                {% elif r[1] is not none %}fino a {{ r[1]|num_it }}
+                {% else %}almeno {{ r[0]|num_it }}{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+          <small class="text-muted d-block mb-3">Gli intervalli cambiano con il sesso: {% if sesso in ('M','F') %}qui sono quelli per «{{ sesso }}» come indicato nelle preferenze{% else %}indica il sesso nelle preferenze della dieta per usare quelli giusti{% endif %}.</small>
+          <div class="form-group">
+            <label>Note <small class="text-muted">(facoltative, es. data delle analisi)</small></label>
+            <input type="text" name="note" class="form-control form-control-sm" maxlength="500" placeholder="es. analisi del 12/03/2026">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="consenso" value="1" class="form-check-input" id="consenso" required>
+            <label class="form-check-label" for="consenso" style="font-size:.88rem;">
+              Ho letto che il file non viene conservato, che restano solo i valori riconosciuti e che la lettura non ha validità medica.
+            </label>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary"><i class="fas fa-magnifying-glass-chart mr-1"></i>Leggi e proponi</button>
+          <a href="{{ url_for('main.dieta') }}" class="btn btn-link">Torna alla dieta</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    {% if ultimo %}
+    {% set prop = ultimo.dict_proposta %}
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-leaf mr-2 text-success"></i>Proposta per la tua dieta</h3>
+      </div>
+      <div class="card-body">
+        <div class="text-muted mb-2" style="font-size:.8rem;">
+          Dall'ultimo referto ({{ ultimo.caricato_il|dt_rome('%d/%m/%Y') }}{% if ultimo.nome_file %}, {{ ultimo.nome_file }}{% endif %}{% if ultimo.note %} — {{ ultimo.note }}{% endif %})
+        </div>
+        {% if prop.attenzioni %}
+        <div class="mb-2"><strong style="font-size:.9rem;">Attenzioni da attivare</strong>
+          <div class="mt-1">
+          {% for k in prop.attenzioni %}{% set a = attenzioni_map.get(k) %}{% if a %}
+            <span class="badge badge-warning mr-1 mb-1" title="{{ a[2] }}"><i class="fas fa-exclamation-circle mr-1"></i>{{ a[1] }}</span>
+          {% endif %}{% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if prop.equilibrio %}
+        <div class="mb-2" style="font-size:.9rem;"><strong>Equilibrio del pranzo:</strong> {{ equilibri.get(prop.equilibrio, prop.equilibrio) }}</div>
+        {% endif %}
+        <ul class="pl-3 mb-2" style="font-size:.88rem;">
+          {% for c in prop.consigli %}<li class="mb-1">{{ c }}</li>{% endfor %}
+        </ul>
+        {% if ultimo.applicato_il %}
+        <div class="text-success" style="font-size:.85rem;"><i class="fas fa-check mr-1"></i>Applicata alla dieta il {{ ultimo.applicato_il|dt_rome('%d/%m/%Y') }}.</div>
+        {% elif prop.attenzioni or prop.equilibrio %}
+        <form method="POST" action="{{ url_for('main.dieta_referto_applica', rid=ultimo.id) }}">
+          {{ csrf_field() }}
+          <button class="btn btn-success btn-block"><i class="fas fa-check mr-1"></i>Applica alla mia dieta e rifai il piano</button>
+        </form>
+        <small class="text-muted d-block mt-1">Accende le attenzioni proposte (le altre restano) e rigenera i pranzi della settimana.</small>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-vials mr-2"></i>Valori letti</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:.88rem;">
+          <tbody>
+          {% for e in ultimo.lista_esiti %}
+          <tr>
+            <td>{{ e.etichetta }}</td>
+            <td class="text-right"><strong class="esito-{{ e.stato }}">{{ e.valore|num_it }}</strong> <small class="text-muted">{{ e.unita }}</small></td>
+            <td><span class="badge badge-{{ stati[e.stato][1] }}">{{ stati[e.stato][0] }}</span></td>
+            <td class="text-muted" style="font-size:.78rem;">rif. {{ e.riferimento }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="card"><div class="card-body text-muted text-center py-4">
+      <i class="fas fa-file-medical fa-2x mb-2" style="color:#ddd;"></i><br>
+      Nessun referto ancora. Carica il PDF o scrivi i valori: ti proponiamo quali attenzioni attivare.
+    </div></div>
+    {% endif %}
+
+    {% if referti|length > 1 or (referti and ultimo) %}
+    <div class="card card-outline card-light">
+      <div class="card-header"><h3 class="card-title" style="font-size:.95rem;"><i class="fas fa-history mr-2"></i>Referti letti</h3></div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush" style="font-size:.85rem;">
+          {% for r in referti %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+            <span>{{ r.caricato_il|dt_rome('%d/%m/%Y') }} · {{ r.dict_valori|length }} valori{% if r.nome_file %} · {{ r.nome_file }}{% endif %}{% if r.applicato_il %} <span class="badge badge-success ml-1">applicato</span>{% endif %}</span>
+            <form method="POST" action="{{ url_for('main.dieta_referto_elimina', rid=r.id) }}" data-confirm="Eliminare i valori di questo referto?">
+              {{ csrf_field() }}
+              <button class="btn btn-xs btn-outline-danger" title="Elimina"><i class="fas fa-trash"></i></button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

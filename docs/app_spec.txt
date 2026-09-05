@@ -1954,3 +1954,126 @@ Ripristino: Impostazioni > Dati > Ripristina dal file, con RIPRISTINA digitato.
   della copia di sicurezza. La sessione viene chiusa con logout esplicito.
 - Da fare a locale chiuso: tutto cio' che e' stato registrato dopo il backup
   va perso.
+
+
+PROFILO DIETA ARRICCHITO E REFERTO (app/dieta.py, app/referto.py)
+-----------------------------------------------------------------
+- DietProfile in piu': attenzioni (chiavi di ATTENZIONI_DIETA: glicemia,
+  pressione, colesterolo, gravidanza, reflusso, digestione_lenta, acido_urico,
+  fegato; ognuna elenca famiglie di NON_GRADITI da evitare: gradimento() le
+  tratta come i gusti, con motivo "da limitare per ..."), equilibrio
+  (bilanciato / proteico >= 30 g / pochi_carbo <= 40% kcal / mediterraneo:
+  contorno sempre, carne rossa e fritti penalizzati) usato da
+  componi_pranzo(equilibrio=...), allenamento (no/mattina/pranzo/sera: a
+  pranzo -15% sulla quota), porzione (piccola 0,85 / normale / abbondante
+  1,15 sulla quota del pranzo), peso_obiettivo_kg (stima settimane a 7700
+  kcal/kg sul deficit rispetto al mantenimento), girovita_cm (rapporto
+  vita/altezza), pasti_giorno (quota_consigliata: 2 -> 50%, 3 -> 40%, 4 ->
+  35%), colazione_al_bar. indicatori(profilo) da' IMC e rapporto vita/altezza
+  con una lettura in parole e la dicitura "indicatori generali, non una
+  valutazione clinica".
+- User in piu': reparto (per consegne/ritiri), canale_preferito
+  (auto/email/telegram), comunicazioni_ok (consenso alle comunicazioni del
+  locale; il campo nascosto "0" + casella "1" si legge con getlist()[-1]).
+- Referto: /dieta/referto (GET/POST), /dieta/referto/<id>/applica, /elimina.
+  Il cliente carica il PDF del laboratorio (pypdf, testo) o scrive i valori;
+  estrai_valori() cerca i PARAMETRI (glicemia, hba1c, colesterolo tot/HDL/LDL,
+  trigliceridi, acido urico, emoglobina, ferritina, vitamina D, creatinina,
+  ALT, pressione) prendendo il primo numero plausibile dopo l'etichetta;
+  valuta() li confronta con intervalli generali per sesso (ok / limite / alto
+  / basso); proposta() li traduce in attenzioni, equilibrio e consigli;
+  applica() accende le attenzioni (senza spegnere le altre) e l'equilibrio,
+  poi il piano viene rigenerato. DietReferto conserva valori, esiti e
+  proposta in JSON; il file NON viene salvato. Serve il profilo con
+  l'avvertenza accettata e una casella di consenso sul trattamento. Nessuna
+  validita' medica: il disclaimer della dieta vale anche qui.
+
+
+COMUNICAZIONI AI CLIENTI (app/comunicazioni.py)
+-----------------------------------------------
+- Modelli: Comunicazione (tenant, titolo, modello, oggetto, corpo con
+  segnaposto, pulsante testo/link, canale auto/email/telegram/entrambi,
+  segmento, stato bozza/programmata/inviata, programmata_il, inviata_il,
+  automatica, poll_id, conteggi n_email/n_telegram/n_saltati/n_falliti) e
+  ComunicazioneInvio (registro per destinatario: canale, esito ok/saltato/
+  fallito, dettaglio).
+- SEGMENTI: tutti, attivi_30, inattivi_30, mai_ordinato, nuovi_7,
+  convenzionati, dieta, senza_dieta, compleanno_7, telegram, senza_telegram.
+  destinatari() parte dai clienti attivi del tenant con comunicazioni_ok.
+- MODELLI (12): libero, benvenuto, menu_settimana, novita, ci_manchi,
+  compleanno, sondaggio, chiusura, promemoria_pasti, invito_dieta,
+  invito_telegram, grazie; ognuno con segmento e canale consigliati.
+  SEGNAPOSTO: {nome} {locale} {orari} {indirizzo} {telefono} {bot}
+  {link_app} {link_menu} {link_dieta} {link_pasto} {link_profilo}
+  {link_telegram} {sondaggio} {data_sondaggio} {scelte_sondaggio}
+  {link_sondaggio}.
+- canali_per(user, com): auto = preferenza del cliente, altrimenti Telegram
+  se collegato (e bot configurato) altrimenti email; telegram = solo chi e'
+  collegato (gli altri "saltati"); entrambi.
+- html_email() usa il guscio delle email dell'app con pulsante e il link
+  firmato di disiscrizione (itsdangerous, salt 'comunicazioni-disiscrizione')
+  -> GET /comunicazioni/disiscriviti/<token> senza login mette
+  comunicazioni_ok=False. testo_telegram() e' HTML minimale con <b> e <a>.
+- invia(com, base_url, utenti=None, prova_per=None): la prova va solo al
+  gestore e non lascia tracce; l'invio vero registra ogni destinatario e
+  chiude la campagna (stato inviata).
+- esegui_automatismi(adesso): esegui_programmate() ogni chiamata (stato
+  programmata con programmata_il <= ora locale), poi una volta al giorno dopo
+  comunicazioni_ora (CHIAVI_ORARI, gruppo settimana, default 10:00) gli
+  AUTOMATISMI accesi (AppSetting com_auto_benvenuto / com_auto_compleanno /
+  com_auto_ci_manchi, default spenti): benvenuto a chi si e' iscritto 7
+  giorni fa, auguri il giorno del compleanno (non piu' di una volta l'anno),
+  "ci manchi" a chi ha l'ultimo ordine fra 30 e 45 giorni fa (non piu' di
+  una volta ogni 60). Gate giornaliero in AppSetting comunicazioni_auto_il.
+  Chiamato da _check_comunicazioni() nel polling dei promemoria.
+- Backoffice (permesso send_notifications): /admin/comunicazioni (modelli,
+  campagne, automatismi, conteggi dei segmenti, sondaggi aperti),
+  /comunicazioni/nuova?modello=&poll=, /comunicazioni/<id>,
+  /comunicazioni/salva e /<id>/salva con azione bozza|prova|invia|programma,
+  /comunicazioni/anteprima (POST dal modulo, rende l'email o il testo
+  Telegram per il gestore), /<id>/duplica, /<id>/elimina,
+  /comunicazioni/automatismi. Sidebar Comunicazioni > Campagne; nei Sondaggi
+  il pulsante "Invita a votare" apre una campagna precompilata; il tab
+  Broadcast rimanda alle Campagne.
+- Il profilo del cliente ha l'interruttore del consenso e il canale
+  preferito; la guida lo spiega.
+
+
+IMPORTAZIONI DA EXCEL (app/importazioni.py)
+-------------------------------------------
+- Sei modelli (MODELLI): prodotti, ingredienti (con Builder
+  panino/insalata/poke), banco, consumabili (fornitore creato se manca),
+  clienti (password provvisoria per i nuovi, iscrizione alla convenzione per
+  nome), pasti_convenzione (MealConfiguration; l'azienda deve esistere).
+- genera_modello(tipo, tenant_id) -> .xlsx con fogli Dati (intestazione,
+  obbligatorie in rosso con asterisco, convalide SI/NO ed elenchi chiusi),
+  Esempio, Istruzioni (come si usa, colonna per colonna, allergeni ammessi,
+  categorie/fornitori/convenzioni gia' presenti).
+- importa(tipo, bytes, tenant_id, solo_verifica): colonne riconosciute dal
+  nome normalizzato (accenti, asterischi, maiuscole ignorati); una
+  transazione per riga (commit riga per riga, rollback della riga con
+  errore; niente SAVEPOINT perche' con SQLite non e' affidabile); in sola
+  verifica nessun commit e rollback finale. Aggiorna l'elemento con lo stesso
+  nome (case-insensitive) nel tenant. Resoconto: creati, aggiornati, errori
+  (riga, motivo), avvisi (categorie/fornitori creati), password.
+- Rotte (permesso manage_products): /admin/importazioni,
+  /admin/importazioni/modello/<tipo>.xlsx, POST /admin/importazioni/<tipo>
+  (file, verifica). Sidebar Prodotti > Importa da Excel.
+- Dipendenze nuove: openpyxl (Excel), pypdf (lettura del referto).
+
+
+DASHBOARD, PIE' DI PAGINA, ICONE
+--------------------------------
+- Dashboard: due griglie di riquadri compatti e uniformi ("Oggi": ordini, da
+  preparare, incasso, prenotazioni tavoli, pasti aziendali prenotati,
+  prodotti in esaurimento, avvisi magazzino; "Clienti e locale": clienti
+  attivi, da attivare (arancione se > 0), credito nei wallet, operatori,
+  prodotti a listino), che si riempiono senza buchi qualunque sia il numero
+  di moduli attivi; poi il pasto aziendale personale, gli ordini di oggi, i
+  pasti aziendali, stock, sondaggio e azioni rapide ("Scrivi ai clienti").
+- Pie' di pagina allineato a sinistra, carattere .95rem, a destra "Versione
+  X.Y.Z" da Config.APP_VERSION (config.py), esposta ai template come
+  app_version dal context processor.
+- Icone: fra un'icona Font Awesome e il testo che la segue c'e' sempre uno
+  spazio (mr-1/mr-2); le classi di Bootstrap 5 me-*/ms-* non esistono in
+  Bootstrap 4 e non vanno usate.

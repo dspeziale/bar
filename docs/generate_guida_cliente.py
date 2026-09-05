@@ -288,7 +288,12 @@ def s2_profilo(doc):
             ['Nome',            'Il nome visualizzato agli altri (es. operatori del locale)'],
             ['Cognome',         'Cognome anagrafico'],
             ['Numero di telefono', 'Utile per eventuali comunicazioni del locale'],
-            ['Data di nascita', 'Facoltativa — usata per promozioni e auguri'],
+            ['Data di nascita', 'Facoltativa — usata per gli auguri e per il calcolo della dieta'],
+            ['Reparto / ufficio', 'Facoltativo — aiuta il locale a trovarti per consegne e ritiri'],
+            ['Avvisi',          'Telegram se collegato e altrimenti email (predefinito), solo Telegram o solo email'],
+            ['Comunicazioni del locale', 'Interruttore: novità del menu, sondaggi e promozioni. Se lo spegni non le ricevi più; '
+                                          'gli avvisi di servizio (ordine pronto, promemoria) arrivano comunque. Lo stesso link '
+                                          'è in fondo a ogni email'],
             ['Indirizzo',       'Facoltativo — non richiesto per l\'uso normale dell\'app'],
         ],
         col_widths=[4.8, 12.8])
@@ -979,6 +984,17 @@ def s10_dieta(doc):
     step_row(doc, 6, 'Indica in quali giorni pranzi qui e salva',
              'Il piano della settimana viene composto solo per quei giorni. Puoi anche fissare un budget '
              'per pranzo', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 7, 'Se vuoi, aggiungi le "attenzioni" e come vuoi il pranzo',
+             'Glicemia alta o diabete, pressione alta, colesterolo alto, gravidanza o allattamento, reflusso, '
+             'digestione lenta, acido urico alto, fegato affaticato: ognuna fa evitare al piano certe famiglie '
+             'di piatti (dolci e bibite per la glicemia, salumi e formaggi stagionati per la pressione...) e le '
+             'segnala nel menu. Scegli anche l\'equilibrio del pranzo (bilanciato, più proteine, pochi '
+             'carboidrati, mediterraneo), quando ti alleni (a pausa pranzo il pranzo si alleggerisce), la '
+             'porzione (piccola, normale, abbondante), il peso che vuoi raggiungere, il girovita e quanti '
+             'pasti fai al giorno. Con peso e altezza la pagina mostra l\'indice di massa corporea e il '
+             'rapporto vita/altezza — indicatori generali, non una valutazione clinica — e con il peso '
+             'obiettivo una stima di quante settimane servono a quel ritmo', accent=HEX_GREEN)
     spacer(doc, 8)
 
     h2(doc, '10.2  Cosa cambia nel menu e nel carrello')
@@ -997,7 +1013,29 @@ def s10_dieta(doc):
              accent=HEX_GREEN)
     spacer(doc, 8)
 
-    h2(doc, '10.3  Il piano della settimana')
+    h2(doc, '10.3  Le tue analisi: il referto')
+    step_row(doc, 1, 'Apri "Referto analisi" dalla pagina della dieta (o dal profilo)',
+             'Carica il PDF del laboratorio oppure scrivi tu i valori: glicemia, emoglobina glicata, '
+             'colesterolo totale, HDL e LDL, trigliceridi, acido urico, emoglobina, ferritina, vitamina D, '
+             'creatinina, transaminasi, pressione', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 2, 'Leggi la proposta',
+             'Ogni valore viene confrontato con intervalli di riferimento generali (per il tuo sesso) e '
+             'segnato come nella norma, al limite, alto o basso. Ne esce una proposta: quali attenzioni '
+             'accendere, quale equilibrio del pranzo usare, qualche consiglio in parole', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 3, '"Applica alla mia dieta" aggiorna le preferenze e rifà il piano',
+             'Le attenzioni proposte si accendono (quelle che avevi restano) e i pranzi della settimana '
+             'vengono ricomposti. Puoi caricare un referto nuovo quando vuoi e cancellare i vecchi',
+             accent=HEX_GREEN)
+    spacer(doc, 6)
+    info_box(doc, 'Il file viene letto e scartato subito: non resta salvato da nessuna parte. Restano solo i '
+             'valori riconosciuti, che vedi in pagina e puoi eliminare. Non è una lettura medica del referto: '
+             'gli intervalli sono generali, non quelli del tuo laboratorio, e ogni valore fuori soglia va '
+             'discusso con il tuo medico.', style='warning')
+    spacer(doc, 8)
+
+    h2(doc, '10.4  Il piano della settimana')
     step_row(doc, 1, 'Premi "Componi il piano"',
              'Per ogni giorno scelto ricevi un pranzo completo — piatto principale, contorno o frutta, '
              'acqua — vicino alla tua quota di calorie, senza gli allergeni che escludi e senza ripetere '
@@ -1246,7 +1284,8 @@ def s13_riassunto(doc):
             ['Prenotare il pasto aziendale',         'Pasto Aziendale',                           '9.2'],
             ['Annullare pasto aziendale',            'Pasto Aziendale → Annulla (entro 30 min)', '9.4'],
             ['Impostare la dieta',                   'La mia dieta → Imposta la tua dieta',       '10.1'],
-            ['Avere il piano della settimana',       'La mia dieta → Componi il piano',           '10.3'],
+            ['Caricare le analisi e avere una proposta', 'La mia dieta → Referto analisi',         '10.3'],
+            ['Avere il piano della settimana',       'La mia dieta → Componi il piano',           '10.4'],
             ['Votare un sondaggio',                  'Sondaggi (o Vota il Menu)',                 '11'],
             ['Attivare notifiche Telegram',          'Chiedi al cassiere / admin',                '12.2'],
             ['Collegare Telegram',                   'Profilo → Collega Telegram',               '12.3'],

@@ -98,6 +98,13 @@ class User(UserMixin, db.Model):
     telegram_chat_id = db.Column(db.String(64),  default='')
     # Codice che il cliente invia al bot per farsi riconoscere:
     # evita di dovergli chiedere il proprio ID Telegram.
+    # Comunicazioni del locale (novita', sondaggi, promozioni): consenso
+    # revocabile dal profilo o dal link in fondo a ogni email; i messaggi di
+    # servizio (ordine pronto, promemoria) non dipendono da questo.
+    comunicazioni_ok = db.Column(db.Boolean, default=True, server_default='1')
+    canale_preferito = db.Column(db.String(16), default='auto', server_default='auto')
+    # Dove trovarlo per il ritiro o la consegna in azienda (reparto, piano, ufficio).
+    reparto          = db.Column(db.String(120), default='', server_default='')
     telegram_link_code = db.Column(db.String(16), default='',
                                    server_default='')
 
@@ -1219,6 +1226,62 @@ DISCLAIMER_DIETA = (
     'dichiarati, ma non può garantire l\'assenza di contaminazioni.'
 )
 
+# Attenzioni alimentari: condizioni per cui alcune famiglie di piatti vanno
+# limitate. Non sono diagnosi e non cambiano le calorie: il piano evita le
+# famiglie indicate (chiavi di NON_GRADITI) e il menu le segnala.
+# (chiave, etichetta, che cosa comporta, famiglie da evitare)
+ATTENZIONI_DIETA = [
+    ('glicemia',    'Glicemia alta o diabete',
+     'Niente dolci, cioccolato e bibite zuccherate; frutta come chiusura.',
+     ['dolci', 'cioccolato', 'bibite']),
+    ('pressione',   'Pressione alta',
+     'Limita il sale: salumi, formaggi stagionati, fritti e salse pronte.',
+     ['salumi', 'formaggi', 'fritti', 'salse']),
+    ('colesterolo', 'Colesterolo alto',
+     'Limita fritti, salumi, formaggi grassi e dolci.',
+     ['fritti', 'salumi', 'formaggi', 'dolci']),
+    ('gravidanza',  'Gravidanza o allattamento',
+     'Evita crudi e poco cotti (salumi crudi, crostacei, pesce crudo) e alcolici.',
+     ['salumi', 'crostacei', 'alcolici']),
+    ('reflusso',    'Reflusso o stomaco delicato',
+     'Evita fritti, piccante, caffè, cipolla e aglio, agrodolce.',
+     ['fritti', 'piccante', 'caffe', 'cipolla_aglio', 'aceto']),
+    ('digestione_lenta', 'Digestione lenta',
+     'Evita fritti, salse pesanti e legumi in quantità.',
+     ['fritti', 'salse', 'legumi']),
+    ('acido_urico',  'Acido urico alto',
+     'Limita carne rossa, crostacei, salumi, alcolici e bibite zuccherate.',
+     ['manzo', 'maiale', 'crostacei', 'salumi', 'alcolici', 'bibite']),
+    ('fegato',       'Fegato affaticato (transaminasi alte)',
+     'Niente alcolici; pochi fritti e dolci.',
+     ['alcolici', 'fritti', 'dolci']),
+]
+ATTENZIONI_DIETA_MAP = {a[0]: a for a in ATTENZIONI_DIETA}
+
+# Come il cliente vuole distribuire i nutrienti nel pranzo.
+# (chiave, etichetta, descrizione)
+EQUILIBRI_DIETA = [
+    ('bilanciato',   'Bilanciato',       'Nessuna preferenza: conta la quota di calorie.'),
+    ('proteico',     'Più proteine',      'Almeno 30 g di proteine a pranzo; utile a chi si allena.'),
+    ('pochi_carbo',  'Pochi carboidrati', 'I carboidrati entro il 40% delle calorie del pranzo.'),
+    ('mediterraneo', 'Mediterraneo',      'Sempre una verdura, poca carne rossa e pochi fritti.'),
+]
+
+# Quando ci si allena, rispetto al pranzo.
+ALLENAMENTO_DIETA = [
+    ('no',      'Non mi alleno o non conta'),
+    ('mattina', 'La mattina, prima del pranzo'),
+    ('pranzo',  'In pausa pranzo (pranzo più leggero)'),
+    ('sera',    'La sera, dopo il lavoro'),
+]
+
+# Quanto grande il cliente vuole il pranzo, rispetto alla quota calcolata.
+PORZIONI_DIETA = [
+    ('piccola',    'Piccola',     0.85),
+    ('normale',    'Normale',     1.00),
+    ('abbondante', 'Abbondante',  1.15),
+]
+
 GIORNI_SETTIMANA = [('lun', 'Lunedì'), ('mar', 'Martedì'), ('mer', 'Mercoledì'),
                     ('gio', 'Giovedì'), ('ven', 'Venerdì'), ('sab', 'Sabato'),
                     ('dom', 'Domenica')]
@@ -1254,6 +1317,19 @@ class DietProfile(db.Model):
     parole_non_gradite = db.Column(db.String(512), default='', server_default='')
     # Quando il cliente ha accettato l'avvertenza (finestra alla prima visita).
     presa_atto_il = db.Column(db.DateTime, nullable=True)
+    # Dati facoltativi che affinano il piano: peso che il cliente vuole
+    # raggiungere, girovita (rapporto vita/altezza), quanti pasti fa al giorno
+    # (suggerisce la quota del pranzo), quanto grande vuole la porzione.
+    peso_obiettivo_kg = db.Column(db.Float, nullable=True)
+    girovita_cm       = db.Column(db.Float, nullable=True)
+    pasti_giorno      = db.Column(db.Integer, nullable=True)
+    porzione          = db.Column(db.String(16), default='normale', server_default='normale')
+    colazione_al_bar  = db.Column(db.Boolean, default=False, server_default='0')
+    # Attenzioni (chiavi di ATTENZIONI_DIETA), equilibrio dei nutrienti
+    # (EQUILIBRI_DIETA) e quando si allena (ALLENAMENTO_DIETA).
+    attenzioni        = db.Column(db.String(128), default='', server_default='')
+    equilibrio        = db.Column(db.String(16), default='bilanciato', server_default='bilanciato')
+    allenamento       = db.Column(db.String(16), default='no', server_default='no')
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1285,6 +1361,38 @@ class DietProfile(db.Model):
     def lista_non_graditi(self):
         chiavi = [c.strip() for c in (self.non_graditi or '').split(',') if c.strip()]
         return [NON_GRADITI_MAP[c] for c in chiavi if c in NON_GRADITI_MAP]
+
+    @property
+    def lista_attenzioni(self):
+        chiavi = [c.strip() for c in (self.attenzioni or '').split(',') if c.strip()]
+        return [ATTENZIONI_DIETA_MAP[c] for c in chiavi if c in ATTENZIONI_DIETA_MAP]
+
+    @property
+    def famiglie_da_limitare(self):
+        """Le famiglie di NON_GRADITI implicate dalle attenzioni, con il
+        motivo: [(famiglia, etichetta attenzione)]."""
+        coppie = []
+        for _k, etichetta, _d, famiglie in self.lista_attenzioni:
+            for f in famiglie:
+                if f in NON_GRADITI_MAP and all(f != c[0] for c in coppie):
+                    coppie.append((NON_GRADITI_MAP[f], etichetta))
+        return coppie
+
+    @property
+    def etichetta_equilibrio(self):
+        return dict((k, l) for k, l, _d in EQUILIBRI_DIETA).get(self.equilibrio or 'bilanciato', 'Bilanciato')
+
+    @property
+    def etichetta_porzione(self):
+        return dict((k, l) for k, l, _f in PORZIONI_DIETA).get(self.porzione or 'normale', 'Normale')
+
+    @property
+    def fattore_porzione(self):
+        return dict((k, f) for k, _l, f in PORZIONI_DIETA).get(self.porzione or 'normale', 1.0)
+
+    @property
+    def etichetta_allenamento(self):
+        return dict(ALLENAMENTO_DIETA).get(self.allenamento or 'no', ALLENAMENTO_DIETA[0][1])
 
     @property
     def lista_parole_non_gradite(self):
@@ -1373,3 +1481,100 @@ class DietPlanDay(db.Model):
         nomi = dict(GIORNI_SETTIMANA)
         chiavi = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']
         return nomi[chiavi[self.giorno.weekday()]]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Comunicazioni ai clienti
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Comunicazione(db.Model):
+    """Una campagna: un messaggio a un segmento di clienti, per email e/o
+    Telegram, subito, programmata o generata da un automatismo."""
+    __tablename__ = 'comunicazioni'
+    id             = db.Column(db.Integer, primary_key=True)
+    tenant_id      = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    titolo         = db.Column(db.String(160), nullable=False)        # nome interno
+    modello        = db.Column(db.String(32), default='libero')       # chiave di MODELLI
+    oggetto        = db.Column(db.String(200), nullable=False)        # oggetto email / titolo
+    corpo          = db.Column(db.Text, default='')                   # testo con segnaposto
+    pulsante_testo = db.Column(db.String(60), default='')
+    pulsante_link  = db.Column(db.String(300), default='')            # anche {link_menu} ecc.
+    canale         = db.Column(db.String(16), default='auto')         # auto/email/telegram/entrambi
+    segmento       = db.Column(db.String(32), default='tutti')        # chiave di SEGMENTI
+    stato          = db.Column(db.String(16), default='bozza')        # bozza/programmata/inviata
+    programmata_il = db.Column(db.DateTime, nullable=True)
+    inviata_il     = db.Column(db.DateTime, nullable=True)
+    automatica     = db.Column(db.Boolean, default=False)
+    poll_id        = db.Column(db.Integer, db.ForeignKey('polls.id'), nullable=True)
+    creata_da      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    n_email        = db.Column(db.Integer, default=0)
+    n_telegram     = db.Column(db.Integer, default=0)
+    n_saltati      = db.Column(db.Integer, default=0)
+    n_falliti      = db.Column(db.Integer, default=0)
+
+    poll  = db.relationship('Poll')
+    invii = db.relationship('ComunicazioneInvio', back_populates='comunicazione',
+                            cascade='all, delete-orphan')
+
+    @property
+    def n_inviati(self):
+        return (self.n_email or 0) + (self.n_telegram or 0)
+
+
+class ComunicazioneInvio(db.Model):
+    """Il registro: a chi, su quale canale, con quale esito."""
+    __tablename__ = 'comunicazione_invii'
+    id               = db.Column(db.Integer, primary_key=True)
+    comunicazione_id = db.Column(db.Integer, db.ForeignKey('comunicazioni.id'), nullable=False, index=True)
+    user_id          = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    canale           = db.Column(db.String(16), default='email')
+    esito            = db.Column(db.String(16), default='ok')           # ok/fallito/saltato
+    dettaglio        = db.Column(db.String(200), default='')
+    inviato_il       = db.Column(db.DateTime, default=datetime.utcnow)
+
+    comunicazione = db.relationship('Comunicazione', back_populates='invii')
+    user          = db.relationship('User')
+
+
+class DietReferto(db.Model):
+    """Un referto di analisi letto per il cliente: restano i valori che ha
+    confermato, gli esiti e la proposta; il file non viene conservato."""
+    __tablename__ = 'diet_referti'
+    id           = db.Column(db.Integer, primary_key=True)
+    user_id      = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    tenant_id    = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    caricato_il  = db.Column(db.DateTime, default=datetime.utcnow)
+    origine      = db.Column(db.String(16), default='manuale')      # file / manuale
+    nome_file    = db.Column(db.String(200), default='')
+    valori       = db.Column(db.Text, default='{}')                 # JSON {chiave: valore}
+    esiti        = db.Column(db.Text, default='[]')                 # JSON [esito]
+    proposta     = db.Column(db.Text, default='{}')                 # JSON proposta
+    note         = db.Column(db.String(500), default='')
+    applicato_il = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('diet_referti', lazy='dynamic'))
+
+    @property
+    def dict_valori(self):
+        import json
+        try:
+            return json.loads(self.valori or '{}')
+        except ValueError:
+            return {}
+
+    @property
+    def lista_esiti(self):
+        import json
+        try:
+            return json.loads(self.esiti or '[]')
+        except ValueError:
+            return []
+
+    @property
+    def dict_proposta(self):
+        import json
+        try:
+            return json.loads(self.proposta or '{}')
+        except ValueError:
+            return {}

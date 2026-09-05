@@ -287,10 +287,10 @@
     form.querySelectorAll('[name="allergens"]').forEach(function (cb) {
       cb.checked = cfg.allergens.indexOf(cb.value) !== -1;
     });
-    btn.innerHTML = '<i class="fas fa-check"></i>';
+    btn.innerHTML = '<i class="fas fa-check mr-1"></i>';
     btn.classList.replace('btn-outline-secondary', 'btn-success');
     setTimeout(function () {
-      btn.innerHTML = '<i class="fas fa-download"></i>';
+      btn.innerHTML = '<i class="fas fa-download mr-1"></i>';
       btn.classList.replace('btn-success', 'btn-outline-secondary');
     }, 1800);
   });

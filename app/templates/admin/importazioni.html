@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Importa da Excel{% endblock %}
+{% block page_title %}Importa da Excel{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Importa da Excel</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .imp-card .card-header { border-top: 3px solid #1d6f42; }
+  .imp-colonne { font-size: .8rem; color: #6c757d; }
+  .imp-colonne .obbl { color: #e94560; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-light border py-2 mb-3" style="font-size:.9rem;">
+  <i class="fas fa-file-excel mr-1" style="color:#1d6f42;"></i>
+  <strong>Tre passi:</strong> scarica il modello del tipo che ti serve, compila il foglio <em>Dati</em> (le colonne in
+  rosso sono obbligatorie; il foglio <em>Istruzioni</em> spiega ogni colonna), ricaricalo qui. Una riga con lo stesso
+  nome di un elemento già presente lo <strong>aggiorna</strong>; le righe con errori vengono saltate e spiegate.
+  Con <em>Solo verifica</em> controlli il file senza scrivere nulla.
+</div>
+
+{% if esito %}
+<div class="card card-outline {{ 'card-info' if esito.solo_verifica else ('card-success' if not esito.errori else 'card-warning') }}">
+  <div class="card-header">
+    <h3 class="card-title">
+      <i class="fas fa-clipboard-check mr-2"></i>Resoconto — {{ esito.etichetta }}{% if esito.solo_verifica %} <span class="badge badge-info ml-2">solo verifica</span>{% endif %}
+    </h3>
+  </div>
+  <div class="card-body">
+    <div class="row text-center mb-3">
+      <div class="col-3"><div class="h4 mb-0">{{ esito.righe }}</div><small class="text-muted">righe lette</small></div>
+      <div class="col-3"><div class="h4 mb-0 text-success">{{ esito.creati }}</div><small class="text-muted">{{ 'da creare' if esito.solo_verifica else 'creati' }}</small></div>
+      <div class="col-3"><div class="h4 mb-0 text-primary">{{ esito.aggiornati }}</div><small class="text-muted">{{ 'da aggiornare' if esito.solo_verifica else 'aggiornati' }}</small></div>
+      <div class="col-3"><div class="h4 mb-0 {{ 'text-danger' if esito.errori }}">{{ esito.errori|length }}</div><small class="text-muted">con errori</small></div>
+    </div>
+    {% if esito.errori %}
+    <div class="table-responsive">
+    <table class="table table-sm mb-2" style="font-size:.88rem;">
+      <thead class="thead-light"><tr><th style="width:80px;">Riga</th><th>Errore</th></tr></thead>
+      <tbody>{% for n, msg in esito.errori %}<tr><td>{{ n if n else '—' }}</td><td>{{ msg }}</td></tr>{% endfor %}</tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% if esito.avvisi %}
+    <div class="text-muted" style="font-size:.85rem;"><i class="fas fa-info-circle mr-1"></i>{{ esito.avvisi|unique|join('; ') }}.</div>
+    {% endif %}
+    {% if esito.password %}
+    <div class="alert alert-warning mt-3 mb-0" style="font-size:.88rem;">
+      <strong><i class="fas fa-key mr-1"></i>Password provvisorie dei clienti nuovi</strong> — comunicale tu, qui non vengono più mostrate:
+      <ul class="mb-0 mt-1">{% for email, pw in esito.password %}<li><code>{{ email }}</code> → <code>{{ pw }}</code></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="row" style="row-gap:1rem;">
+  {% for chiave, etichetta, icona, descr, colonne, esempi in modelli %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card imp-card h-100 mb-0">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas {{ icona }} mr-2" style="color:#1d6f42;"></i>{{ etichetta }}</h3>
+      </div>
+      <div class="card-body">
+        <p style="font-size:.88rem;">{{ descr }}</p>
+        <div class="imp-colonne mb-3">
+          {% for nome, obbl, sp, t in colonne %}<span class="{{ 'obbl' if obbl }}">{{ nome }}{{ '*' if obbl }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+        </div>
+        <a href="{{ url_for('admin.importazioni_modello', tipo=chiave) }}" class="btn btn-outline-success btn-sm btn-block mb-3">
+          <i class="fas fa-download mr-1"></i>Scarica il modello
+        </a>
+        <form method="POST" action="{{ url_for('admin.importazioni_carica', tipo=chiave) }}" enctype="multipart/form-data">
+          {{ csrf_field() }}
+          <div class="form-group mb-2">
+            <input type="file" name="file" class="form-control-file" accept=".xlsx" required style="font-size:.85rem;">
+          </div>
+          <div class="form-check mb-2">
+            <input type="checkbox" name="verifica" value="1" class="form-check-input" id="verifica-{{ chiave }}">
+            <label class="form-check-label" for="verifica-{{ chiave }}" style="font-size:.85rem;">Solo verifica, non scrivere</label>
+          </div>
+          <button class="btn btn-success btn-sm btn-block"><i class="fas fa-upload mr-1"></i>Carica</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

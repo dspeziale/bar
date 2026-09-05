@@ -3,110 +3,138 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Riquadri compatti e tutti della stessa altezza: la griglia si riempie
+     senza buchi qualunque sia il numero di moduli attivi. */
+  .kpi .small-box { margin-bottom: 0; height: 100%; display: flex; flex-direction: column; }
+  .kpi .small-box .inner { padding: .7rem .9rem .5rem; flex: 1; }
+  .kpi .small-box .inner h3 { font-size: 1.75rem; margin-bottom: .1rem; }
+  .kpi .small-box .inner p  { font-size: .86rem; margin-bottom: 0; }
+  .kpi .small-box .icon i   { font-size: 48px; top: 12px; right: 12px; }
+  .kpi .small-box .small-box-footer { font-size: .8rem; }
+  .kpi > [class*="col-"] { margin-bottom: 1rem; }
+  .sezione-titolo { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: #8b9099;
+                    font-weight: 700; margin: .25rem 0 .6rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- KPI -->
-<div class="row">
-  <div class="col-lg-3 col-6">
+{# ── Oggi ── #}
+<div class="sezione-titolo"><i class="fas fa-sun mr-1"></i>Oggi</div>
+<div class="row kpi">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box bg-gradient-info">
-      <div class="inner"><h3>{{ orders_today|length }}</h3><p>Ordini Oggi</p></div>
+      <div class="inner"><h3>{{ orders_today|length }}</h3><p>Ordini</p></div>
       <div class="icon"><i class="fas fa-receipt"></i></div>
       <a href="{{ url_for('admin.orders') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-3 col-6">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box bg-gradient-warning">
-      <div class="inner"><h3>{{ pending|length }}</h3><p>In attesa</p></div>
+      <div class="inner"><h3>{{ pending|length }}</h3><p>Da preparare</p></div>
       <div class="icon"><i class="fas fa-clock"></i></div>
       <a href="{{ url_for('admin.orders') }}?status=confirmed" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-3 col-6">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box bg-gradient-success">
-      <div class="inner"><h3>{{ revenue_today|num_it }}€</h3><p>Incasso Oggi</p></div>
+      <div class="inner"><h3>{{ revenue_today|num_it }}€</h3><p>Incasso</p></div>
       <div class="icon"><i class="fas fa-euro-sign"></i></div>
       <a href="{{ url_for('admin.report') }}" class="small-box-footer">Report <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-3 col-6">
+  {% if tables_enabled %}
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box bg-gradient-teal">
+      <div class="inner"><h3>{{ res_today }}</h3><p>Prenotazioni tavoli</p></div>
+      <div class="icon"><i class="fas fa-chair"></i></div>
+      <a href="{{ url_for('admin.reservations') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  {% endif %}
+  {% if corp_meals_today %}
+  {% set n_pasti = corp_meals_today|map(attribute='bookings')|map('selectattr', 'status', 'ne', 'cancelled')|map('list')|map('length')|sum %}
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box bg-gradient-primary">
+      <div class="inner"><h3>{{ n_pasti }}</h3><p>Pasti aziendali prenotati</p></div>
+      <div class="icon"><i class="fas fa-building"></i></div>
+      <a href="{{ url_for('admin.convenzioni') }}" class="small-box-footer">Convenzioni <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  {% endif %}
+  {% if stock_alerts %}
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box bg-gradient-danger">
+      <div class="inner"><h3>{{ stock_alerts|length }}</h3><p>Prodotti in esaurimento</p></div>
+      <div class="icon"><i class="fas fa-triangle-exclamation"></i></div>
+      <a href="{{ url_for('admin.stock') }}" class="small-box-footer">Stock <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  {% endif %}
+  {% if magazzino_enabled %}
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box {{ 'bg-gradient-danger' if consumable_alerts > 0 else 'bg-gradient-secondary' }}">
+      <div class="inner"><h3>{{ consumable_alerts }}</h3><p>Avvisi magazzino</p></div>
+      <div class="icon"><i class="fas fa-warehouse"></i></div>
+      <a href="{{ url_for('admin.magazzino') }}" class="small-box-footer">Magazzino <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Clienti e locale ── #}
+<div class="sezione-titolo"><i class="fas fa-users mr-1"></i>Clienti e locale</div>
+<div class="row kpi">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box bg-gradient-primary">
       <div class="inner"><h3>{{ clients_count }}</h3><p>Clienti attivi</p></div>
       <div class="icon"><i class="fas fa-users"></i></div>
       <a href="{{ url_for('admin.clients') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-</div>
-
-<!-- KPI riga 2 -->
-<div class="row">
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box {{ 'bg-gradient-orange' if pending_clients else 'bg-gradient-secondary' }}">
+      <div class="inner"><h3>{{ pending_clients }}</h3><p>Client{{ 'i' if pending_clients != 1 else 'e' }} da attivare</p></div>
+      <div class="icon"><i class="fas fa-user-clock"></i></div>
+      <a href="{{ url_for('admin.clients') }}" class="small-box-footer">{{ 'Attiva' if pending_clients else 'Clienti' }} <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
+  </div>
   {% if wallet_enabled %}
-  <div class="col-lg-3 col-6">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box" style="background:linear-gradient(135deg,#6c3483,#9b59b6);color:#fff;">
-      <div class="inner">
-        <h3>{{ total_wallet|num_it }}€</h3>
-        <p>Wallet totale clienti</p>
-      </div>
+      <div class="inner"><h3>{{ total_wallet|num_it }}€</h3><p>Credito nei wallet</p></div>
       <div class="icon"><i class="fas fa-wallet"></i></div>
-      <a href="{{ url_for('admin.users') }}" class="small-box-footer" style="color:rgba(255,255,255,.7);">
-        Gestisci wallet <i class="fas fa-arrow-circle-right"></i>
-      </a>
+      <a href="{{ url_for('admin.users') }}" class="small-box-footer" style="color:rgba(255,255,255,.7);">Ricariche <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
   {% endif %}
-  {% if tables_enabled %}
-  <div class="col-lg-3 col-6">
-    <div class="small-box bg-gradient-teal">
-      <div class="inner"><h3>{{ res_today }}</h3><p>Prenotazioni Oggi</p></div>
-      <div class="icon"><i class="fas fa-chair"></i></div>
-      <a href="{{ url_for('admin.reservations') }}" class="small-box-footer">Vedi <i class="fas fa-arrow-circle-right"></i></a>
-    </div>
-  </div>
-  {% endif %}
-  {% if magazzino_enabled %}
-  <div class="col-lg-3 col-6">
-    <div class="small-box {{ 'bg-gradient-danger' if consumable_alerts > 0 else 'bg-gradient-secondary' }}">
-      <div class="inner"><h3>{{ consumable_alerts }}</h3><p>Alert magazzino</p></div>
-      <div class="icon"><i class="fas fa-warehouse"></i></div>
-      <a href="{{ url_for('admin.magazzino') }}" class="small-box-footer">Magazzino <i class="fas fa-arrow-circle-right"></i></a>
-    </div>
-  </div>
-  {% endif %}
-  <div class="col-lg-3 col-6">
+  <div class="col-xl-3 col-md-4 col-6">
     <div class="small-box bg-gradient-dark">
-      <div class="inner"><h3>{{ staff_count }}</h3><p>Operatori staff</p></div>
+      <div class="inner"><h3>{{ staff_count }}</h3><p>Operatori</p></div>
       <div class="icon"><i class="fas fa-user-tie"></i></div>
       <a href="{{ url_for('admin.users') }}" class="small-box-footer">Gestisci <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-</div>
-
-<!-- KPI riga 3: clienti in attesa -->
-{% if pending_clients %}
-<div class="row">
-  <div class="col-lg-3 col-6">
-    <div class="small-box bg-gradient-orange">
-      <div class="inner">
-        <h3>{{ pending_clients }}</h3>
-        <p>Client{{ 'i' if pending_clients != 1 else 'e' }} in attesa</p>
-      </div>
-      <div class="icon"><i class="fas fa-user-clock"></i></div>
-      <a href="{{ url_for('admin.clients') }}" class="small-box-footer">
-        Attiva <i class="fas fa-arrow-circle-right"></i>
-      </a>
+  <div class="col-xl-3 col-md-4 col-6">
+    <div class="small-box bg-gradient-secondary">
+      <div class="inner"><h3>{{ products_count }}</h3><p>Prodotti a listino</p></div>
+      <div class="icon"><i class="fas fa-burger"></i></div>
+      <a href="{{ url_for('admin.products') }}" class="small-box-footer">Listino <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
 </div>
-{% endif %}
 
 {% if today_meal_booking %}
 <div class="row mb-3">
   <div class="col-12">
     {% set meal = today_meal_booking.meal %}
     {% set lbl  = today_meal_booking.label() %}
-    <div class="card card-outline card-success">
+    <div class="card card-outline card-success mb-0">
       <div class="card-body py-2 d-flex align-items-center" style="gap:1rem;">
         <i class="fas fa-utensils fa-lg text-success"></i>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:.82rem;color:#888;">Pasto aziendale oggi</div>
+          <div style="font-size:.82rem;color:#888;">Il tuo pasto aziendale di oggi</div>
           <strong>{{ meal.name }}</strong>
           {% if meal.courses %}
           <span class="text-muted ml-1" style="font-size:.83rem;">—
@@ -118,9 +146,7 @@
           <span class="badge badge-{{ lbl[1] }} d-block mb-1">{{ lbl[0] }}</span>
           <small class="text-muted">× {{ today_meal_booking.quantity }}</small>
         </div>
-        <a href="{{ url_for('main.pasto_aziendale') }}" class="btn btn-sm btn-outline-success ml-1">
-          <i class="fas fa-eye"></i>
-        </a>
+        <a href="{{ url_for('main.pasto_aziendale') }}" class="btn btn-sm btn-outline-success ml-1"><i class="fas fa-eye"></i></a>
       </div>
     </div>
   </div>
@@ -128,7 +154,7 @@
 {% elif meal_booking_reminder %}
 <div class="row mb-3">
   <div class="col-12">
-    <div class="card card-outline card-warning">
+    <div class="card card-outline card-warning mb-0">
       <div class="card-body py-2 d-flex align-items-center justify-content-between" style="gap:1rem;">
         <div class="d-flex align-items-center" style="gap:.75rem;">
           <i class="fas fa-utensils fa-lg text-warning"></i>
@@ -144,11 +170,11 @@
 {% endif %}
 
 <div class="row">
-  <!-- Ordini oggi per slot -->
+  {# ── Ordini di oggi ── #}
   <div class="col-lg-8">
     <div class="card card-outline card-primary">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-receipt me-2"></i>Ordini di Oggi</h3>
+        <h3 class="card-title"><i class="fas fa-receipt mr-2"></i>Ordini di oggi</h3>
         <div class="card-tools">
           <a href="{{ url_for('admin.orders') }}" class="btn btn-primary btn-sm">Tutti</a>
         </div>
@@ -157,42 +183,34 @@
         {% if orders_today %}
         <table class="table table-sm table-hover mb-0 auto-dt">
           <thead class="thead-dark">
-            <tr><th>Codice</th><th>Utente</th><th>Slot</th><th>Prodotti</th><th>Totale</th><th>Stato</th><th class="no-sort"></th></tr>
+            <tr><th>Codice</th><th>Cliente</th><th>Slot</th><th>Prodotti</th><th>Totale</th><th>Stato</th><th class="no-sort"></th></tr>
           </thead>
           <tbody>
           {% for o in orders_today %}
           {% set lbl = o.label() %}
           <tr>
-            <td>
-              <code style="font-size:.75rem;color:#e94560;font-weight:700;white-space:nowrap;">
-                {{ o.order_code or ('#' ~ o.id) }}
-              </code>
-            </td>
+            <td><code style="font-size:.75rem;color:#e94560;font-weight:700;white-space:nowrap;">{{ o.order_code or ('#' ~ o.id) }}</code></td>
             <td>{{ o.user.display_name }}</td>
             <td>{{ o.slot.time_str }}</td>
             <td>
-              {% for item in o.items %}
-              <small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}
-              {% endfor %}
+              {% for item in o.items %}<small>{{ item.quantity }}× {{ item.product.name }}</small>{% if not loop.last %}, {% endif %}{% endfor %}
             </td>
             <td>{{ o.total_price|num_it }}€</td>
             <td><span class="badge badge-{{ lbl[1] }}">{{ lbl[0] }}</span></td>
             <td>
-              <div class="d-flex gap-1">
-                {% if o.status == 'confirmed' %}
-                <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-                  {{ csrf_field() }}
-                  <input type="hidden" name="status" value="ready">
-                  <button class="btn btn-xs btn-success" title="Pronto"><i class="fas fa-check"></i></button>
-                </form>
-                {% elif o.status == 'ready' %}
-                <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
-                  {{ csrf_field() }}
-                  <input type="hidden" name="status" value="completed">
-                  <button class="btn btn-xs btn-secondary" title="Consegnato"><i class="fas fa-check-double"></i></button>
-                </form>
-                {% endif %}
-              </div>
+              {% if o.status == 'confirmed' %}
+              <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="status" value="ready">
+                <button class="btn btn-xs btn-success" title="Pronto"><i class="fas fa-check"></i></button>
+              </form>
+              {% elif o.status == 'ready' %}
+              <form method="POST" action="{{ url_for('admin.order_status', oid=o.id) }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="status" value="completed">
+                <button class="btn btn-xs btn-secondary" title="Consegnato"><i class="fas fa-check-double"></i></button>
+              </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -203,107 +221,13 @@
         {% endif %}
       </div>
     </div>
-  </div>
 
-  <div class="col-lg-4">
-    <!-- Alert stock -->
-    {% if stock_alerts %}
-    <div class="card card-outline card-danger">
-      <div class="card-header">
-        <h3 class="card-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Stock in esaurimento</h3>
-      </div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          {% for p, avail in stock_alerts %}
-          <li class="list-group-item d-flex justify-content-between py-2">
-            <span>{{ p.name }}</span>
-            <span class="badge badge-{{ 'danger' if avail == 0 else 'warning' }}">
-              {{ avail }} rimaste
-            </span>
-          </li>
-          {% endfor %}
-        </ul>
-        <div class="card-footer">
-          <a href="{{ url_for('admin.stock') }}" class="btn btn-sm btn-danger btn-block">
-            <i class="fas fa-boxes-stacked me-1"></i>Gestisci Stock
-          </a>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Sondaggio attivo -->
-    {% if poll_stats %}
-    <div class="card card-outline card-warning">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <h3 class="card-title">
-          <i class="fas fa-poll mr-2 text-warning"></i>Referendum Menu
-        </h3>
-        <span class="badge badge-warning">{{ poll_stats.total }} vot{{ 'o' if poll_stats.total == 1 else 'i' }}</span>
-      </div>
-      <div class="card-body pb-2">
-        <small class="text-muted d-block mb-2">
-          <i class="fas fa-calendar-day mr-1"></i>
-          {{ poll_stats.poll.title }} —
-          <strong>{{ poll_stats.poll.poll_date.strftime('%d/%m/%Y') }}</strong>
-        </small>
-        {% for c in poll_stats.choices %}
-        <div class="mb-2">
-          <div class="d-flex justify-content-between" style="font-size:.82rem;">
-            <span>{{ c.emoji }} {{ c.text }}</span>
-            <span class="text-muted">{{ c.count }} ({{ c.pct }}%)</span>
-          </div>
-          <div class="progress" style="height:8px;">
-            <div class="progress-bar bg-warning" style="width:{{ c.pct }}%;"></div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <div class="card-footer p-2">
-        <a href="{{ url_for('admin.polls') }}" class="btn btn-sm btn-warning btn-block">
-          <i class="fas fa-poll mr-1"></i>Gestisci Sondaggi
-        </a>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Quick actions -->
-    <div class="card card-outline card-secondary">
-      <div class="card-header"><h3 class="card-title">Azioni Rapide</h3></div>
-      <div class="card-body">
-        <a href="{{ url_for('admin.stock') }}" class="btn btn-block btn-outline-warning mb-2">
-          <i class="fas fa-boxes-stacked me-2"></i>Aggiorna Stock
-        </a>
-        <a href="{{ url_for('admin.orders') }}" class="btn btn-block btn-outline-info mb-2">
-          <i class="fas fa-receipt me-2"></i>Gestisci Ordini
-        </a>
-        <a href="{{ url_for('admin.products') }}" class="btn btn-block btn-outline-primary mb-2">
-          <i class="fas fa-burger me-2"></i>Gestisci Prodotti
-        </a>
-        {% if wallet_enabled %}
-        <a href="{{ url_for('admin.users') }}" class="btn btn-block btn-outline-success">
-          <i class="fas fa-wallet me-2"></i>Ricarica Wallet Utenti
-        </a>
-        {% else %}
-        <a href="{{ url_for('admin.users') }}" class="btn btn-block btn-outline-success">
-          <i class="fas fa-users me-2"></i>Gestisci Utenti
-        </a>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
-{% if corp_meals_today %}
-<div class="row mt-2">
-  <div class="col-12">
+    {% if corp_meals_today %}
     <div class="card card-outline card-primary">
       <div class="card-header d-flex align-items-center justify-content-between">
-        <h3 class="card-title mb-0">
-          <i class="fas fa-building me-2"></i>Pasti Aziendali — Oggi
-        </h3>
+        <h3 class="card-title mb-0"><i class="fas fa-building mr-2"></i>Pasti aziendali di oggi</h3>
         <a href="{{ url_for('admin.convenzioni') }}" class="btn btn-sm btn-outline-primary">
-          <i class="fas fa-layer-group me-1"></i>Tutte le convenzioni
+          <i class="fas fa-layer-group mr-1"></i>Tutte le convenzioni
         </a>
       </div>
       <div class="card-body p-0">
@@ -311,10 +235,9 @@
         {% set corp = meal_group | first | attr('corporate') %}
         <div class="{{ 'border-top' if not loop.first }}" style="padding:.75rem 1rem;">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <strong><i class="fas fa-building text-primary me-1"></i>{{ corp.name }}</strong>
-            <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}"
-               class="btn btn-xs btn-outline-secondary">
-              <i class="fas fa-eye me-1"></i>Gestisci
+            <strong><i class="fas fa-building text-primary mr-1"></i>{{ corp.name }}</strong>
+            <a href="{{ url_for('admin.convenzione_pasto', cid=corp.id) }}" class="btn btn-xs btn-outline-secondary">
+              <i class="fas fa-eye mr-1"></i>Gestisci
             </a>
           </div>
           <div class="row" style="row-gap:.4rem;">
@@ -325,33 +248,21 @@
             {% set n_total    = active_bks | length %}
             {% set pct = (n_total / meal.max_bookings * 100) | int if meal.max_bookings else 0 %}
             <div class="col-md-6 col-lg-4">
-              <div class="p-2 rounded border {{ 'border-success' if meal.is_active else 'border-secondary' }}"
-                   style="font-size:.85rem;">
+              <div class="p-2 rounded border {{ 'border-success' if meal.is_active else 'border-secondary' }}" style="font-size:.85rem;">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <span class="{{ '' if meal.is_active else 'text-muted' }}">
-                    {% if not meal.is_active %}
-                    <i class="fas fa-eye-slash text-muted me-1"></i>
-                    {% endif %}
+                    {% if not meal.is_active %}<i class="fas fa-eye-slash text-muted mr-1"></i>{% endif %}
                     <strong>{{ meal.name }}</strong>
                   </span>
-                  <span class="badge {{ 'badge-danger' if n_total >= meal.max_bookings else 'badge-success' }}">
-                    {{ n_total }}/{{ meal.max_bookings }}
-                  </span>
+                  <span class="badge {{ 'badge-danger' if n_total >= meal.max_bookings else 'badge-success' }}">{{ n_total }}/{{ meal.max_bookings }}</span>
                 </div>
                 <div class="progress mb-1" style="height:5px;">
-                  <div class="progress-bar {{ 'bg-danger' if pct >= 100 else 'bg-success' }}"
-                       style="width:{{ [pct, 100] | min }}%;"></div>
+                  <div class="progress-bar {{ 'bg-danger' if pct >= 100 else 'bg-success' }}" style="width:{{ [pct, 100] | min }}%;"></div>
                 </div>
                 <div class="d-flex" style="gap:.4rem;">
-                  {% if n_booked %}
-                  <span class="badge badge-info">{{ n_booked }} attese</span>
-                  {% endif %}
-                  {% if n_consumed %}
-                  <span class="badge badge-success">{{ n_consumed }} consumate</span>
-                  {% endif %}
-                  {% if n_total == 0 %}
-                  <span class="text-muted" style="font-size:.78rem;">Nessuna prenotazione</span>
-                  {% endif %}
+                  {% if n_booked %}<span class="badge badge-info">{{ n_booked }} attese</span>{% endif %}
+                  {% if n_consumed %}<span class="badge badge-success">{{ n_consumed }} consumate</span>{% endif %}
+                  {% if n_total == 0 %}<span class="text-muted" style="font-size:.78rem;">Nessuna prenotazione</span>{% endif %}
                 </div>
               </div>
             </div>
@@ -361,7 +272,73 @@
         {% endfor %}
       </div>
     </div>
+    {% endif %}
+  </div>
+
+  {# ── Colonna destra ── #}
+  <div class="col-lg-4">
+    {% if stock_alerts %}
+    <div class="card card-outline card-danger">
+      <div class="card-header">
+        <h3 class="card-title text-danger"><i class="fas fa-triangle-exclamation mr-2"></i>Stock in esaurimento</h3>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for p, avail in stock_alerts %}
+          <li class="list-group-item d-flex justify-content-between py-2">
+            <span>{{ p.name }}</span>
+            <span class="badge badge-{{ 'danger' if avail == 0 else 'warning' }}">{{ avail }} rimaste</span>
+          </li>
+          {% endfor %}
+        </ul>
+        <div class="card-footer">
+          <a href="{{ url_for('admin.stock') }}" class="btn btn-sm btn-danger btn-block"><i class="fas fa-boxes-stacked mr-1"></i>Gestisci stock</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if poll_stats %}
+    <div class="card card-outline card-warning">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h3 class="card-title"><i class="fas fa-square-poll-vertical mr-2 text-warning"></i>Sondaggio in corso</h3>
+        <span class="badge badge-warning">{{ poll_stats.total }} vot{{ 'o' if poll_stats.total == 1 else 'i' }}</span>
+      </div>
+      <div class="card-body pb-2">
+        <small class="text-muted d-block mb-2">
+          <i class="fas fa-calendar-day mr-1"></i>{{ poll_stats.poll.title }} — <strong>{{ poll_stats.poll.poll_date.strftime('%d/%m/%Y') }}</strong>
+        </small>
+        {% for c in poll_stats.choices %}
+        <div class="mb-2">
+          <div class="d-flex justify-content-between" style="font-size:.82rem;">
+            <span>{{ c.emoji }} {{ c.text }}</span><span class="text-muted">{{ c.count }} ({{ c.pct }}%)</span>
+          </div>
+          <div class="progress" style="height:8px;"><div class="progress-bar bg-warning" style="width:{{ c.pct }}%;"></div></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="card-footer p-2">
+        <a href="{{ url_for('admin.polls') }}" class="btn btn-sm btn-warning btn-block"><i class="fas fa-square-poll-vertical mr-1"></i>Gestisci sondaggi</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-bolt mr-2"></i>Azioni rapide</h3></div>
+      <div class="card-body">
+        <a href="{{ url_for('admin.orders') }}" class="btn btn-block btn-outline-info mb-2 text-left"><i class="fas fa-receipt mr-2"></i>Gestisci ordini</a>
+        <a href="{{ url_for('admin.stock') }}" class="btn btn-block btn-outline-warning mb-2 text-left"><i class="fas fa-boxes-stacked mr-2"></i>Aggiorna stock</a>
+        <a href="{{ url_for('admin.products') }}" class="btn btn-block btn-outline-primary mb-2 text-left"><i class="fas fa-burger mr-2"></i>Gestisci prodotti</a>
+        {% if current_user.has_permission('send_notifications') %}
+        <a href="{{ url_for('admin.comunicazioni') }}" class="btn btn-block btn-outline-dark mb-2 text-left"><i class="fas fa-paper-plane mr-2"></i>Scrivi ai clienti</a>
+        {% endif %}
+        {% if wallet_enabled %}
+        <a href="{{ url_for('admin.users') }}" class="btn btn-block btn-outline-success text-left"><i class="fas fa-wallet mr-2"></i>Ricarica wallet</a>
+        {% else %}
+        <a href="{{ url_for('admin.users') }}" class="btn btn-block btn-outline-success text-left"><i class="fas fa-users mr-2"></i>Gestisci utenti</a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
-{% endif %}
 {% endblock %}

@@ -65,6 +65,7 @@ CHIAVI_ORARI = [
     ('dieta_avviso_ora',         '07:00', 'a partire dalle',                             'settimana',  'ora'),
     ('backup_promemoria_giorno', 'ven',   'Il promemoria del backup arriva di',          'settimana',  'giorno'),
     ('backup_promemoria_ora',    '09:00', 'a partire dalle',                             'settimana',  'ora'),
+    ('comunicazioni_ora',        '10:00', 'Le comunicazioni automatiche e programmate partono dalle', 'settimana', 'ora'),
     ('table_reminder_minutes',   '10',    'Prenotazione tavolo: promemoria (minuti prima)', 'promemoria', 'min'),
     ('order_reminder_minutes',   '15',    'Ritiro ordine: promemoria (minuti prima)',    'promemoria', 'min'),
     ('meal_reminder_minutes',    '15',    'Pasto aziendale: promemoria (minuti prima)',  'promemoria', 'min'),

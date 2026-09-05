@@ -288,6 +288,26 @@ def sez_catalogo(pdf, idx):
                'cappuccino, brioche...) con prezzo, icona e ordine. Sono separati dal listino '
                'degli ordini: un caffe al banco non e un prodotto ordinabile a slot.')
 
+    h2(pdf, 'Caricamento massivo da Excel', C, idx)
+    passi(pdf, [
+        ('Prodotti > Importa da Excel: sei modelli',
+         'Prodotti del listino, ingredienti del builder, articoli del banco, consumabili del '
+         'magazzino, clienti, piatti delle convenzioni. Ogni modello .xlsx ha tre fogli: Dati '
+         '(da compilare), Esempio (due righe gia compilate, non importate) e Istruzioni '
+         '(colonna per colonna, con le categorie, i fornitori e le convenzioni gia presenti).'),
+        ('Compila e ricarica',
+         'Le colonne in rosso con l\'asterisco sono obbligatorie; le altre si possono lasciare '
+         'vuote o togliere: le colonne si riconoscono dal nome, non dalla posizione. SI/NO per le '
+         'caselle, prezzi con virgola o punto, allergeni con le chiavi o le etichette separate da '
+         'virgola. Una riga con lo stesso nome di un elemento gia presente lo aggiorna.'),
+        ('Solo verifica, poi il resoconto',
+         'Con "Solo verifica" il file viene controllato senza scrivere nulla. Il resoconto dice '
+         'quante righe sono state create, aggiornate e quali hanno errori, riga per riga e con il '
+         'motivo ("manca Prezzo", "allergene sconosciuto", "convenzione non trovata"): si '
+         'correggono e si ricaricano solo quelle. Le categorie e i fornitori che non esistono '
+         'vengono creati; le convenzioni no, vanno create prima.'),
+    ], C)
+
     callout(pdf, 'Dopo un azzeramento',
             'Il reset totale e il reset della Manutenzione ricreano il catalogo di partenza '
             'con i valori nutrizionali. Se un catalogo appare vuoto subito dopo un reset, '
@@ -327,6 +347,18 @@ def sez_clienti(pdf, idx):
         ('Clienti creati dal backoffice',
          'Persone > Clienti > Nuovo crea l\'account gia attivo: assegna sempre una password, '
          'altrimenti il cliente entra solo con Google.'),
+        ('Molti clienti insieme: da Excel',
+         'Prodotti > Importa da Excel > Clienti: nome, cognome, email, telefono, data di nascita, '
+         'reparto, azienda convenzionata, attivo. A ogni cliente nuovo viene assegnata una '
+         'password provvisoria, mostrata una sola volta nel resoconto: va comunicata a mano. '
+         'Utile per i dipendenti di un\'azienda convenzionata, che vengono iscritti alla '
+         'convenzione nello stesso passaggio.'),
+        ('Che cosa scrive il cliente nel profilo',
+         'Oltre a nome, telefono, data di nascita e indirizzo: il reparto o ufficio (per '
+         'consegne e ritiri), come preferisce ricevere gli avvisi (Telegram se collegato, '
+         'altrimenti email; solo Telegram; solo email) e se accetta le comunicazioni del locale. '
+         'Chi dice di no non riceve novita, sondaggi e promozioni; gli avvisi di servizio '
+         'arrivano comunque.'),
     ], C)
 
     h2(pdf, 'Come compaiono i nomi', C, idx)
@@ -338,10 +370,12 @@ def sez_clienti(pdf, idx):
     h2(pdf, 'Diete clienti', C, idx)
     testo(pdf, 'Persone > Diete clienti (con la dieta attiva): chi ha dichiarato cosa — '
                'condizioni come celiachia o intolleranza al lattosio in rosso, allergeni '
-               'esclusi in giallo, gusti in grigio (pesce, carne, formaggi, ... e le parole '
-               'libere del cliente) — con fabbisogno, giorni e note per il locale; i pranzi '
-               'del piano di oggi (proposti e ordinati) e il conteggio dei prodotti senza '
-               'valori nutrizionali, che la dieta non puo proporre.')
+               'esclusi in giallo, attenzioni (glicemia, pressione, colesterolo, gravidanza, '
+               'reflusso, acido urico, fegato) in arancione, gusti in grigio (pesce, carne, '
+               'formaggi, ... e le parole libere del cliente) — con fabbisogno, equilibrio del '
+               'pranzo, porzione, giorni e note per il locale; i pranzi del piano di oggi '
+               '(proposti e ordinati) e il conteggio dei prodotti senza valori nutrizionali, '
+               'che la dieta non puo proporre.')
     callout(pdf, 'Non e uno strumento sanitario',
             'La dieta e un aiuto a scegliere dal listino: stime automatiche su valori '
             'dichiarati dal locale e formule generali, senza alcuna validita medica. Il '
@@ -540,16 +574,72 @@ def sez_magazzino(pdf, idx):
 
 def sez_comunicazioni(pdf, idx):
     C = BLUE
-    apri_sezione(pdf, 12, 'Comunicazioni', 'Sondaggi, broadcast, notifiche.', C,
-                 'A chi parla con i clienti.', idx)
+    apri_sezione(pdf, 12, 'Comunicazioni', 'Campagne per gruppi di clienti, modelli '
+                 'pronti, automatismi, sondaggi, notifiche.', C,
+                 'A chi parla con i clienti. La regola: pochi messaggi, mirati, con un '
+                 'motivo; e mai a chi ha detto di no.', idx)
+
+    h2(pdf, 'Campagne: scrivere ai clienti', C, idx)
+    passi(pdf, [
+        ('Scegli un modello',
+         'Comunicazioni > Campagne: dodici modelli gia scritti, ognuno con il gruppo di clienti e '
+         'il canale consigliati — Benvenuto (ai nuovi iscritti), Menu della settimana, Novita nel '
+         'menu, Ci manchi (a chi non ordina da un mese), Buon compleanno, Invito a votare (per un '
+         'sondaggio), Avviso di chiusura, Prenota i pasti della settimana (ai convenzionati), La tua '
+         'dieta settimanale (a chi non l\'ha provata), Collega Telegram (a chi riceve tutto per '
+         'email), Grazie (ai clienti abituali), Messaggio libero.'),
+        ('Adatta il testo',
+         'Oggetto, testo, pulsante con link. I segnaposto in graffe si compilano per ciascun '
+         'destinatario: {nome}, {locale}, {orari} (dalla scheda Orari), {link_menu}, {link_dieta}, '
+         '{link_telegram}, {sondaggio}, {link_sondaggio}... Basta un clic sul segnaposto per '
+         'inserirlo. Una riga vuota separa i paragrafi; le righe che iniziano con "- " diventano '
+         'un elenco.'),
+        ('Scegli a chi e come',
+         'I gruppi: tutti, clienti abituali (hanno ordinato negli ultimi 30 giorni), chi non '
+         'ordina da un mese, registrati senza ordini, iscritti da meno di 7 giorni, convenzionati, '
+         'con o senza dieta, compleanno entro 7 giorni, collegati o no a Telegram. Accanto a '
+         'ognuno il numero di persone. Il canale Automatico manda su Telegram a chi l\'ha '
+         'collegato e per email agli altri, rispettando la preferenza scritta nel profilo; in '
+         'alternativa solo email, solo Telegram (chi non e collegato viene saltato) o entrambi.'),
+        ('Prova, anteprima, invio',
+         '"Prova su di me" manda il messaggio a te; "Anteprima" mostra l\'email come la vedra il '
+         'cliente. Poi "Invia ora" (con conferma e numero di destinatari), oppure "Programma" con '
+         'giorno e ora: la campagna parte alla prima visita di qualcuno dopo quell\'ora, come i '
+         'promemoria. Una campagna inviata non si modifica: si duplica.'),
+        ('Il registro',
+         'Ogni campagna inviata mostra a chi e arrivata e su quale canale, chi e stato saltato e '
+         'perche (Telegram non collegato, senza email), e i fallimenti con il motivo del server.'),
+    ], C)
+
+    h2(pdf, 'Automatismi', C, idx)
+    testo(pdf, 'Tre interruttori, spenti di partenza: Benvenuto dopo 7 giorni (a chi si e '
+               'iscritto una settimana fa), Auguri di compleanno (il giorno stesso, una volta '
+               'l\'anno), "Ci manchi" dopo 30 giorni (a chi non ordina da 30-45 giorni, non piu '
+               'di una volta ogni due mesi). Partono una volta al giorno dall\'ora impostata in '
+               'Impostazioni > Orari > Appuntamenti della settimana (le 10:00 di partenza) e ogni '
+               'giro crea una campagna che resta nell\'elenco con il suo registro.')
+
+    h2(pdf, 'Il consenso del cliente', C, idx)
+    callout(pdf, 'Chi dice no non riceve nulla',
+            'Nel profilo il cliente sceglie se ricevere le comunicazioni del locale e in fondo a '
+            'ogni email c\'e il link "Non voglio piu ricevere le comunicazioni", che funziona '
+            'senza accesso. Le campagne e gli automatismi lo rispettano sempre; gli avvisi di '
+            'servizio (ordine pronto, promemoria del pasto, piano della dieta richiesto dal '
+            'cliente) non passano da qui e continuano ad arrivare. Per i link nelle email degli '
+            'automatismi serve l\'indirizzo pubblico dell\'app in Impostazioni > Azienda.',
+            BLUE, (235, 243, 252))
+
+    h2(pdf, 'Sondaggi, broadcast, notifiche', C, idx)
     passi(pdf, [
         ('Sondaggi',
          'Comunicazioni > Sondaggi: una domanda con opzioni (emoji e testo), voto unico per '
          'cliente, risultati in tempo reale; si puo chiedere di confermare la prenotazione del '
-         'tavolo con il voto. Si notifica su Telegram con un pulsante.'),
+         'tavolo con il voto. Il pulsante "Invita a votare" apre una campagna gia compilata con '
+         'titolo, scelte e link del sondaggio; restano anche l\'avviso sul canale Telegram dello '
+         'staff e l\'email a tutti.'),
         ('Broadcast',
-         'Impostazioni > Broadcast: un messaggio a tutti i clienti su Telegram (chi e '
-         'collegato) e per email. Da usare con misura.'),
+         'Impostazioni > Broadcast: un messaggio a tutti, subito, sul canale Telegram e per '
+         'email. Per i gruppi, i modelli e la programmazione si usano le Campagne.'),
         ('Notifiche automatiche',
          'Nuovo cliente e nuovo ordine sul canale dello staff; al cliente conferma d\'ordine '
          '(con le kcal se ha la dieta), stati della cucina, promemoria, piano della dieta, '
@@ -566,11 +656,28 @@ def sez_dieta(pdf, idx):
         ('Il cliente dichiara: ', 'condizioni (celiachia, lattosio, uova, frutta a guscio, '
          'pesce e frutti di mare, soia), altri allergeni, regime (onnivoro, vegetariano, '
          'vegano), obiettivo (mantenere, perdere -15%, perdere piu in fretta restando '
-         'bilanciato -25% mai sotto il metabolismo basale, aumentare), dati corporei '
-         'facoltativi, gusti non graditi per gruppo e parole libere, piatti esclusi, giorni '
-         'in cui pranza qui, budget.'),
+         'bilanciato -25% mai sotto il metabolismo basale, aumentare), attenzioni (glicemia '
+         'alta o diabete, pressione alta, colesterolo alto, gravidanza o allattamento, '
+         'reflusso, digestione lenta, acido urico alto, fegato affaticato: ognuna fa evitare '
+         'al piano certe famiglie di piatti e le segnala nel menu), equilibrio del pranzo '
+         '(bilanciato, piu proteine, pochi carboidrati, mediterraneo), quando si allena, dati '
+         'corporei facoltativi (sesso, peso, altezza, peso obiettivo, girovita, pasti al '
+         'giorno, porzione piccola/normale/abbondante, colazione al bar), gusti non graditi '
+         'per gruppo e parole libere, piatti esclusi, giorni in cui pranza qui, budget.'),
+        ('Il referto delle analisi: ', 'dalla pagina della dieta il cliente puo caricare il PDF '
+         'del laboratorio o scrivere i valori a mano (glicemia, emoglobina glicata, '
+         'colesterolo totale/HDL/LDL, trigliceridi, acido urico, emoglobina, ferritina, '
+         'vitamina D, creatinina, transaminasi, pressione). L\'applicazione li confronta con '
+         'intervalli di riferimento generali e propone quali attenzioni accendere e quale '
+         'equilibrio del pranzo usare, con qualche consiglio in parole; "Applica" aggiorna il '
+         'profilo e rifa il piano. Il file viene letto e scartato: restano solo i valori, che il '
+         'cliente puo cancellare. Nessuna lettura medica: ogni valore fuori soglia va discusso '
+         'con il medico, e la pagina lo ripete.'),
         ('Riceve: ', 'il fabbisogno (Mifflin-St Jeor per attivita e obiettivo, o le kcal del '
-         'nutrizionista), il menu con "Adatto a te" o il motivo, i gusti in grigio, il '
+         'nutrizionista, con la quota del pranzo modulata da porzione e allenamento), gli '
+         'indicatori generali (indice di massa corporea, rapporto vita/altezza) e una stima di '
+         'quante settimane servono per il peso obiettivo a quel ritmo, il menu con "Adatto a te" '
+         'o il motivo, i gusti e le attenzioni in grigio, il '
          'carrello con le kcal rispetto alla quota e la conferma esplicita se c\'e un '
          'allergene escluso, il piano della settimana ordinabile con un tocco, le calorie di '
          'oggi in home, l\'avviso settimanale.'),

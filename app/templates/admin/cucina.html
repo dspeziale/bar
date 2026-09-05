@@ -351,7 +351,7 @@ document.querySelectorAll('.btn-notifica-ritiro').forEach(function(btn) {
     var oid  = this.dataset.oid;
     var self = this;
     self.disabled = true;
-    self.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    self.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>';
     fetch('/admin/ordini/' + oid + '/notifica-ritiro', {
       method: 'POST',
       headers: { 'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}',
@@ -360,25 +360,25 @@ document.querySelectorAll('.btn-notifica-ritiro').forEach(function(btn) {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
-        self.innerHTML = '<i class="fas fa-check"></i>';
+        self.innerHTML = '<i class="fas fa-check mr-1"></i>';
         self.style.background = '#27ae60';
         self.style.color = '#fff';
         self.title = d.message;
         setTimeout(function() {
           self.disabled = false;
-          self.innerHTML = '<i class="fas fa-bell"></i>';
+          self.innerHTML = '<i class="fas fa-bell mr-1"></i>';
           self.style.background = '';
           self.style.color = '';
         }, 4000);
       } else {
         self.disabled = false;
-        self.innerHTML = '<i class="fas fa-bell"></i>';
+        self.innerHTML = '<i class="fas fa-bell mr-1"></i>';
         alert(d.message || 'Errore invio notifica.');
       }
     })
     .catch(function() {
       self.disabled = false;
-      self.innerHTML = '<i class="fas fa-bell"></i>';
+      self.innerHTML = '<i class="fas fa-bell mr-1"></i>';
     });
   });
 });

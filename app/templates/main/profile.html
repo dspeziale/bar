@@ -92,6 +92,12 @@
         <span class="badge badge-secondary ml-auto">Non impostata</span>
         {% endif %}
       </a>
+      {% if current_user.diet_profile %}
+      <a href="{{ url_for('main.dieta_referto') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+        <i class="fas fa-file-medical mr-2" style="color:#0f3460;"></i>
+        Referto analisi e proposta dieta
+      </a>
+      {% endif %}
       {% endif %}
       {% if current_user.totp_enabled %}
       <a href="#" class="list-group-item list-group-item-action d-flex align-items-center"
@@ -177,10 +183,35 @@
               </small>
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>Reparto / ufficio</label>
+              <input type="text" name="reparto" class="form-control" maxlength="120"
+                     value="{{ current_user.reparto or '' }}" placeholder="es. Amministrazione, 2° piano">
+              <small class="text-muted">Aiuta il locale a trovarti per consegne e ritiri.</small>
+            </div>
+            <div class="form-group col-md-6">
+              <label>Come preferisci ricevere gli avvisi</label>
+              <select name="canale_preferito" class="form-control">
+                <option value="auto" {{ 'selected' if (current_user.canale_preferito or 'auto') == 'auto' }}>Telegram se collegato, altrimenti email</option>
+                <option value="telegram" {{ 'selected' if current_user.canale_preferito == 'telegram' }}>Solo Telegram</option>
+                <option value="email" {{ 'selected' if current_user.canale_preferito == 'email' }}>Solo email</option>
+              </select>
+            </div>
+          </div>
           <div class="form-group">
             <label>Indirizzo</label>
             <textarea name="address" class="form-control" rows="2"
                       placeholder="Via, Città, CAP">{{ current_user.address or '' }}</textarea>
+          </div>
+          <div class="form-group">
+            <input type="hidden" name="comunicazioni_ok" value="0">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="comunicazioni_ok" name="comunicazioni_ok" value="1"
+                     {{ 'checked' if current_user.comunicazioni_ok is none or current_user.comunicazioni_ok }}>
+              <label class="custom-control-label" for="comunicazioni_ok">Voglio ricevere le comunicazioni del locale (novità del menu, sondaggi, promozioni)</label>
+            </div>
+            <small class="text-muted">Gli avvisi di servizio — ordine pronto, promemoria del pasto — arrivano comunque. Puoi cambiare idea quando vuoi, anche dal link in fondo a ogni email.</small>
           </div>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save mr-1"></i>Salva modifiche

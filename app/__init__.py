@@ -86,7 +86,8 @@ def create_app(config_object='config.Config'):
                 'wallet_enabled': wallet_enabled(),
                 'dieta_enabled': dieta_enabled(),
                 'magazzino_enabled': magazzino_enabled(),
-                'disclaimer_dieta': DISCLAIMER_DIETA}
+                'disclaimer_dieta': DISCLAIMER_DIETA,
+                'app_version': app.config.get('APP_VERSION', '')}
 
     # Registra Google OAuth (se configurato)
     oauth.register(
@@ -125,6 +126,7 @@ def create_app(config_object='config.Config'):
             _check_order_reminders()
             _check_meal_reminders()
             _check_backup_reminder()
+            _check_comunicazioni()
             if dieta_enabled():
                 _check_diet_weekly()
         except Exception:
@@ -662,6 +664,14 @@ def _check_backup_reminder(adesso=None):
         db.session.commit()
 
 
+def _check_comunicazioni(adesso=None):
+    """Campagne programmate e automatismi (benvenuto, compleanno, "ci
+    manchi"): una volta al giorno dopo `comunicazioni_ora`, a carico del
+    traffico come gli altri promemoria. `adesso` serve ai test."""
+    from app.comunicazioni import esegui_automatismi
+    esegui_automatismi(adesso)
+
+
 def _check_diet_weekly(adesso=None):
     """Il lunedì mattina prepara il piano della settimana a chi ha la dieta
     attiva e vuole gli avvisi, e glielo manda su Telegram o per email.
@@ -887,6 +897,18 @@ def _migrate_tenant_columns():
     _ensure('diet_profiles', 'prodotti_esclusi', "TEXT DEFAULT ''")
     _ensure('diet_profiles', 'parole_non_gradite', "VARCHAR(512) DEFAULT ''")
     _ensure('diet_profiles', 'presa_atto_il', 'DATETIME')
+    _ensure('diet_profiles', 'peso_obiettivo_kg', 'FLOAT')
+    _ensure('diet_profiles', 'girovita_cm', 'FLOAT')
+    _ensure('diet_profiles', 'pasti_giorno', 'INTEGER')
+    _ensure('diet_profiles', 'porzione', "VARCHAR(16) DEFAULT 'normale'")
+    _ensure('diet_profiles', 'colazione_al_bar', 'BOOLEAN DEFAULT FALSE')
+    _ensure('diet_profiles', 'attenzioni', "VARCHAR(128) DEFAULT ''")
+    _ensure('diet_profiles', 'equilibrio', "VARCHAR(16) DEFAULT 'bilanciato'")
+    _ensure('diet_profiles', 'allenamento', "VARCHAR(16) DEFAULT 'no'")
+    # Comunicazioni: consenso e canale sul cliente, reparto per il ritiro
+    _ensure('users', 'comunicazioni_ok', 'BOOLEAN DEFAULT TRUE')
+    _ensure('users', 'canale_preferito', "VARCHAR(16) DEFAULT 'auto'")
+    _ensure('users', 'reparto', "VARCHAR(120) DEFAULT ''")
 
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)

@@ -19,7 +19,7 @@ from app.models import (User, Product, Category, Order, OrderItem,
                         Transaction, CustomOrderItem, CustomOrderItemIngredient,
                         BancoItem, BancoSession, PrepLabel,
                         Prenotazione, PrenotazioneItem,
-                        CaricoMensile,
+                        CaricoMensile, Comunicazione, ComunicazioneInvio,
                         ALLERGENS)
 from app.notifications import (send_telegram, send_telegram_to_user, send_web_push_to_user,
                                 send_email_to_all_users, send_supplier_low_stock_alert,
@@ -2498,6 +2498,245 @@ def poll_notify_email(pid):
     sent, failed, _ = send_email_to_all_users(subject, html)
     flash(f'Email inviate: {sent} ok, {failed} fallite.', 'success' if not failed else 'warning')
     return redirect(url_for('admin.polls'))
+
+
+# ── Comunicazioni ai clienti: campagne, modelli, automatismi ─────────────────
+
+def _comunicazione_o_404(cid):
+    com = db.get_or_404(Comunicazione, cid)
+    if not current_user.is_admin and com.tenant_id != _active_tenant_id():
+        abort(404)
+    return com
+
+
+def _form_comunicazione(com, nuova):
+    from app import comunicazioni as com_mod
+    tid = _active_tenant_id()
+    return render_template('admin/comunicazione_form.html', com=com, nuova=nuova,
+                           segmenti=com_mod.SEGMENTI, canali=com_mod.CANALI,
+                           conteggi=com_mod.conteggi_segmenti(tid),
+                           segnaposto=com_mod.SEGNAPOSTO, modelli=com_mod.MODELLI_MAP,
+                           polls=Poll.query.order_by(Poll.poll_date.desc()).limit(20).all())
+
+
+@bp.route('/comunicazioni')
+@require_permission('send_notifications')
+def comunicazioni():
+    from app import comunicazioni as com_mod
+    tid = _active_tenant_id()
+    campagne = (Comunicazione.query.filter_by(tenant_id=tid)
+                .order_by(Comunicazione.created_at.desc()).limit(100).all())
+    automatismi = [(k, m, e, d, com_mod.automatismo_attivo(k))
+                   for k, m, e, d in com_mod.AUTOMATISMI]
+    return render_template('admin/comunicazioni.html', campagne=campagne,
+                           conteggi=com_mod.conteggi_segmenti(tid), segmenti=com_mod.SEGMENTI,
+                           modelli=com_mod.MODELLI, automatismi=automatismi,
+                           polls=Poll.query.filter_by(is_active=True)
+                           .order_by(Poll.poll_date.desc()).all(),
+                           ora_auto=orari_mod.leggi_orari()['comunicazioni_ora'],
+                           base_url_ok=bool(com_mod.indirizzo_base()))
+
+
+@bp.route('/comunicazioni/nuova')
+@require_permission('send_notifications')
+def comunicazione_nuova():
+    from app import comunicazioni as com_mod
+    poll = None
+    pid = request.args.get('poll', type=int)
+    if pid:
+        poll = db.session.get(Poll, pid)
+    modello = request.args.get('modello') or ('sondaggio' if poll else 'libero')
+    com = com_mod.nuova_da_modello(modello, _active_tenant_id(), poll, current_user.id)
+    return _form_comunicazione(com, nuova=True)
+
+
+@bp.route('/comunicazioni/<int:cid>')
+@require_permission('send_notifications')
+def comunicazione_dettaglio(cid):
+    com = _comunicazione_o_404(cid)
+    return _form_comunicazione(com, nuova=False)
+
+
+def _leggi_form_comunicazione(com):
+    from app import comunicazioni as com_mod
+    f = request.form
+    com.titolo = (f.get('titolo') or '').strip()[:160] or 'Senza titolo'
+    com.modello = (f.get('modello') or 'libero')[:32]
+    com.oggetto = (f.get('oggetto') or '').strip()[:200]
+    com.corpo = (f.get('corpo') or '').replace('\r', '')
+    com.pulsante_testo = (f.get('pulsante_testo') or '').strip()[:60]
+    com.pulsante_link = (f.get('pulsante_link') or '').strip()[:300]
+    com.canale = f.get('canale') if f.get('canale') in dict(com_mod.CANALI) else 'auto'
+    com.segmento = f.get('segmento') if f.get('segmento') in com_mod.SEGMENTI_MAP else 'tutti'
+    pid = f.get('poll_id', type=int)
+    poll = db.session.get(Poll, pid) if pid else None
+    com.poll_id = poll.id if poll else None
+    com.poll = poll
+
+
+@bp.route('/comunicazioni/anteprima', methods=['POST'])
+@require_permission('send_notifications')
+def comunicazione_anteprima():
+    """L'email come la vedrebbe chi la riceve: si costruisce dal modulo, senza
+    salvare nulla, e la si rende al gestore stesso."""
+    from app import comunicazioni as com_mod
+    com = Comunicazione(tenant_id=_active_tenant_id())
+    _leggi_form_comunicazione(com)
+    if request.form.get('modo') == 'telegram':
+        testo = com_mod.testo_telegram(com, current_user)
+        return render_template('admin/comunicazione_anteprima.html', telegram=testo)
+    _oggetto, html = com_mod.html_email(com, current_user)
+    return html
+
+
+@bp.route('/comunicazioni/salva', methods=['POST'])
+@bp.route('/comunicazioni/<int:cid>/salva', methods=['POST'])
+@require_permission('send_notifications')
+def comunicazione_salva(cid=None):
+    from app import comunicazioni as com_mod
+    tid = _active_tenant_id()
+    if cid is None:
+        com = Comunicazione(tenant_id=tid, creata_da=current_user.id, titolo='', oggetto='')
+        db.session.add(com)
+    else:
+        com = _comunicazione_o_404(cid)
+        if com.stato == 'inviata':
+            flash('Una comunicazione già inviata non si modifica: duplicala.', 'warning')
+            return redirect(url_for('admin.comunicazione_dettaglio', cid=com.id))
+    _leggi_form_comunicazione(com)
+    if not com.oggetto:
+        db.session.rollback()
+        flash('Serve almeno l\'oggetto.', 'danger')
+        return redirect(request.referrer or url_for('admin.comunicazioni'))
+    azione = request.form.get('azione', 'bozza')
+    db.session.flush()
+
+    if azione == 'prova':
+        esito = com_mod.invia(com, prova_per=current_user)
+        db.session.commit()
+        if esito['email'] or esito['telegram']:
+            flash('Prova inviata a te (%s).' % ', '.join(
+                c for c in ('email', 'telegram') if esito[c]), 'success')
+        else:
+            flash('Prova non inviata: %s' % '; '.join(
+                d[2] for d in esito['dettagli'] if d[2]) or 'nessun canale', 'danger')
+        return redirect(url_for('admin.comunicazione_dettaglio', cid=com.id))
+
+    if azione == 'invia':
+        esito = com_mod.invia(com)
+        db.session.commit()
+        flash('Inviata: %d email, %d Telegram; %d saltati, %d falliti.' % (
+            esito['email'], esito['telegram'], esito['saltati'], esito['falliti']),
+            'success' if not esito['falliti'] else 'warning')
+        return redirect(url_for('admin.comunicazione_dettaglio', cid=com.id))
+
+    if azione == 'programma':
+        grezzo = (request.form.get('programmata_il') or '').strip()
+        try:
+            quando = _dt.strptime(grezzo, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            db.session.commit()
+            flash('Indica giorno e ora della programmazione.', 'danger')
+            return redirect(url_for('admin.comunicazione_dettaglio', cid=com.id))
+        com.stato = 'programmata'
+        com.programmata_il = quando
+        db.session.commit()
+        flash('Programmata per il %s: parte alla prima visita dopo quell\'ora.'
+              % quando.strftime('%d/%m/%Y alle %H:%M'), 'success')
+        return redirect(url_for('admin.comunicazioni'))
+
+    com.stato = 'bozza'
+    com.programmata_il = None
+    db.session.commit()
+    flash('Bozza salvata.', 'success')
+    return redirect(url_for('admin.comunicazione_dettaglio', cid=com.id))
+
+
+@bp.route('/comunicazioni/<int:cid>/duplica', methods=['POST'])
+@require_permission('send_notifications')
+def comunicazione_duplica(cid):
+    orig = _comunicazione_o_404(cid)
+    copia = Comunicazione(tenant_id=orig.tenant_id, titolo=(orig.titolo + ' (copia)')[:160],
+                          modello=orig.modello, oggetto=orig.oggetto, corpo=orig.corpo,
+                          pulsante_testo=orig.pulsante_testo, pulsante_link=orig.pulsante_link,
+                          canale=orig.canale, segmento=orig.segmento, poll_id=orig.poll_id,
+                          creata_da=current_user.id)
+    db.session.add(copia)
+    db.session.commit()
+    return redirect(url_for('admin.comunicazione_dettaglio', cid=copia.id))
+
+
+@bp.route('/comunicazioni/<int:cid>/elimina', methods=['POST'])
+@require_permission('send_notifications')
+def comunicazione_elimina(cid):
+    com = _comunicazione_o_404(cid)
+    db.session.delete(com)
+    db.session.commit()
+    flash('Comunicazione eliminata.', 'info')
+    return redirect(url_for('admin.comunicazioni'))
+
+
+@bp.route('/comunicazioni/automatismi', methods=['POST'])
+@require_permission('send_notifications')
+def comunicazioni_automatismi():
+    from app import comunicazioni as com_mod
+    for chiave, _m, etichetta, _d in com_mod.AUTOMATISMI:
+        # campo nascosto "0" + interruttore "1": vince l'ultimo valore inviato
+        valore = '1' if (request.form.getlist(chiave) or ['0'])[-1] == '1' else '0'
+        riga = AppSetting.query.filter_by(key=chiave).first()
+        if riga:
+            riga.value = valore
+        else:
+            db.session.add(AppSetting(key=chiave, value=valore, label='Automatismo: ' + etichetta))
+    db.session.commit()
+    flash('Automatismi aggiornati.', 'success')
+    return redirect(url_for('admin.comunicazioni'))
+
+
+# ── Importazioni da Excel ─────────────────────────────────────────────────────
+
+@bp.route('/importazioni')
+@require_permission('manage_products')
+def importazioni():
+    from app import importazioni as imp
+    return render_template('admin/importazioni.html', modelli=imp.MODELLI, esito=None, tipo=None)
+
+
+@bp.route('/importazioni/modello/<tipo>.xlsx')
+@require_permission('manage_products')
+def importazioni_modello(tipo):
+    from flask import send_file
+    import io as _io
+    from app import importazioni as imp
+    if tipo not in imp.MODELLI_MAP:
+        abort(404)
+    contenuto = imp.genera_modello(tipo, _active_tenant_id())
+    return send_file(_io.BytesIO(contenuto), as_attachment=True,
+                     download_name='quicklunch-modello-%s.xlsx' % tipo,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@bp.route('/importazioni/<tipo>', methods=['POST'])
+@require_permission('manage_products')
+def importazioni_carica(tipo):
+    from app import importazioni as imp
+    if tipo not in imp.MODELLI_MAP:
+        abort(404)
+    f = request.files.get('file')
+    if f is None or not f.filename:
+        flash('Scegli il file Excel da caricare.', 'warning')
+        return redirect(url_for('admin.importazioni'))
+    solo_verifica = request.form.get('verifica') == '1'
+    esito = imp.importa(tipo, f.read(), _active_tenant_id(), solo_verifica=solo_verifica)
+    if solo_verifica:
+        flash('Verifica completata: nessun dato scritto.', 'info')
+    elif esito['errori'] and not (esito['creati'] or esito['aggiornati']):
+        flash('Nessuna riga importata: correggi gli errori e riprova.', 'danger')
+    else:
+        flash('Importazione completata: %d creati, %d aggiornati, %d righe con errori.' % (
+            esito['creati'], esito['aggiornati'], len(esito['errori'])),
+            'success' if not esito['errori'] else 'warning')
+    return render_template('admin/importazioni.html', modelli=imp.MODELLI, esito=esito, tipo=tipo)
 
 
 # ── Tenant management (solo superadmin) ───────────────────────────────────────

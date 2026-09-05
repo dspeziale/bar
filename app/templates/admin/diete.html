@@ -78,9 +78,10 @@
               {% for k in r.profilo.lista_esclusioni %}<span class="badge badge-warning mr-1">senza {{ k|replace('_',' ') }}</span>{% endfor %}
               {% for g in r.profilo.lista_non_graditi %}<span class="badge badge-secondary mr-1" title="Gusto, non esigenza">no {{ g[1]|lower }}</span>{% endfor %}
               {% for parola in r.profilo.lista_parole_non_gradite %}<span class="badge badge-secondary mr-1" title="Parola del cliente">no {{ parola }}</span>{% endfor %}
+              {% for a in r.profilo.lista_attenzioni %}<span class="badge badge-warning mr-1" title="{{ a[2] }}">{{ a[1] }}</span>{% endfor %}
               {% if not r.profilo.lista_condizioni and not r.profilo.lista_esclusioni %}<span class="text-muted">—</span>{% endif %}
             </td>
-            <td>{{ r.profilo.etichetta_regime }}<br><small class="text-muted">{{ r.profilo.etichetta_obiettivo }}</small></td>
+            <td>{{ r.profilo.etichetta_regime }}<br><small class="text-muted">{{ r.profilo.etichetta_obiettivo }}{% if r.profilo.equilibrio and r.profilo.equilibrio != 'bilanciato' %} · {{ r.profilo.etichetta_equilibrio|lower }}{% endif %}{% if r.profilo.porzione and r.profilo.porzione != 'normale' %} · porzione {{ r.profilo.etichetta_porzione|lower }}{% endif %}{% if r.profilo.colazione_al_bar %} · colazione qui{% endif %}</small></td>
             <td class="text-right">{{ r.fabbisogno.target }} kcal<br><small class="text-muted">pranzo {{ r.fabbisogno.pranzo }}</small></td>
             <td><small>{{ r.profilo.lista_giorni|join(' ') }}</small></td>
             <td><small class="text-muted">{{ r.profilo.note }}</small></td>

@@ -107,6 +107,12 @@
       </div>
       <div class="card-footer py-1 text-muted" style="font-size:.8rem;">
         <i class="fas fa-info-circle mr-1"></i>{{ fabb.spiegazione }}
+        {% if fabb.note_pranzo %}<br><i class="fas fa-utensils mr-1"></i>Pranzo: {{ fabb.note_pranzo|join(', ') }}.{% endif %}
+        {% if fabb.settimane_stimate %}<br><i class="fas fa-flag-checkered mr-1"></i>Obiettivo {{ profilo.peso_obiettivo_kg|num_it }} kg: con circa {{ fabb.deficit_giorno }} kcal al giorno in meno, indicativamente {{ fabb.settimane_stimate }} settimane (stima, non una promessa).{% endif %}
+        {% if indic and (indic.bmi or indic.wtr) %}<br><i class="fas fa-ruler-combined mr-1"></i>
+          {% if indic.bmi %}IMC <strong>{{ indic.bmi|num_it }}</strong> ({{ indic.bmi_classe }}){% endif %}{% if indic.bmi and indic.wtr %} · {% endif %}
+          {% if indic.wtr %}vita/altezza <strong>{{ indic.wtr|num_it }}</strong> ({{ indic.wtr_classe }}){% endif %}
+          — indicatori generali, non una valutazione clinica.{% endif %}
       </div>
     </div>
   </div>
@@ -131,8 +137,14 @@
           {% if profilo.lista_prodotti_esclusi %}
           <span class="badge badge-secondary mr-1 mb-1">{{ profilo.lista_prodotti_esclusi|length }} piatt{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }} esclus{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }}</span>
           {% endif %}
+          {% for a in profilo.lista_attenzioni %}
+          <span class="badge badge-warning mr-1 mb-1" title="{{ a[2] }}"><i class="fas fa-exclamation-circle mr-1"></i>{{ a[1] }}</span>
+          {% endfor %}
           <span class="badge badge-info mr-1 mb-1">{{ profilo.etichetta_regime }}</span>
           <span class="badge badge-light border mr-1 mb-1">{{ profilo.etichetta_obiettivo }}</span>
+          {% if profilo.equilibrio and profilo.equilibrio != 'bilanciato' %}<span class="badge badge-light border mr-1 mb-1">{{ profilo.etichetta_equilibrio }}</span>{% endif %}
+          {% if profilo.porzione and profilo.porzione != 'normale' %}<span class="badge badge-light border mr-1 mb-1">porzione {{ profilo.etichetta_porzione|lower }}</span>{% endif %}
+          {% if profilo.allenamento and profilo.allenamento != 'no' %}<span class="badge badge-light border mr-1 mb-1"><i class="fas fa-dumbbell mr-1"></i>{{ profilo.etichetta_allenamento|lower }}</span>{% endif %}
           {% if profilo.budget_pranzo %}<span class="badge badge-light border mb-1">max {{ profilo.budget_pranzo|num_it }}€ a pranzo</span>{% endif %}
         </div>
         {% if riepilogo.consumo.voci %}
@@ -143,6 +155,7 @@
       </div>
       <div class="card-footer py-1">
         <a href="#preferenze" class="btn btn-link btn-sm p-0" data-toggle="collapse"><i class="fas fa-sliders-h mr-1"></i>Modifica preferenze</a>
+        <a href="{{ url_for('main.dieta_referto') }}" class="btn btn-link btn-sm p-0 ml-3" title="Carica le analisi: ti proponiamo le attenzioni da attivare"><i class="fas fa-file-medical mr-1"></i>Referto analisi</a>
       </div>
     </div>
   </div>
@@ -312,6 +325,38 @@
       </div>
 
       <hr>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">2 bis · Attenzioni <small class="text-lowercase" style="letter-spacing:0;">(il piano evita le famiglie indicate e il menu le segnala; non sostituiscono le indicazioni del tuo medico)</small></h6>
+      {% set asel = (profilo.attenzioni or '').split(',') if profilo else [] %}
+      <div class="row">
+        {% for k, label, descr, famiglie in attenzioni %}
+        <div class="col-md-6 col-lg-4">
+          <div class="form-check mb-1">
+            <input type="checkbox" name="attenzioni" value="{{ k }}" class="form-check-input" id="att-{{ k }}" {{ 'checked' if k in asel }}>
+            <label class="form-check-label" for="att-{{ k }}"><strong>{{ label }}</strong><small class="text-muted d-block">{{ descr }}</small></label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-row mt-2">
+        <div class="form-group col-md-6">
+          <label>Equilibrio del pranzo</label>
+          <select name="equilibrio" class="form-control form-control-sm">
+            {% for k, label, descr in equilibri %}
+            <option value="{{ k }}" {{ 'selected' if (profilo and profilo.equilibrio == k) or (not profilo and k == 'bilanciato') }}>{{ label }} — {{ descr }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-6">
+          <label>Quando ti alleni</label>
+          <select name="allenamento" class="form-control form-control-sm">
+            {% for k, label in allenamenti %}
+            <option value="{{ k }}" {{ 'selected' if (profilo and profilo.allenamento == k) or (not profilo and k == 'no') }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <hr>
       <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">3 · Fabbisogno <small class="text-lowercase" style="letter-spacing:0;">(facoltativo, ma rende il calcolo su misura)</small></h6>
       <div class="form-row">
         <div class="form-group col-6 col-md-2">
@@ -341,6 +386,39 @@
           </select>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group col-6 col-md-2">
+          <label>Peso obiettivo (kg)</label>
+          <input type="number" name="peso_obiettivo_kg" class="form-control form-control-sm" min="30" max="250" step="0.5"
+                 value="{{ profilo.peso_obiettivo_kg if profilo and profilo.peso_obiettivo_kg else '' }}" placeholder="facoltativo">
+        </div>
+        <div class="form-group col-6 col-md-2">
+          <label>Girovita (cm)</label>
+          <input type="number" name="girovita_cm" class="form-control form-control-sm" min="40" max="200" step="1"
+                 value="{{ profilo.girovita_cm|int if profilo and profilo.girovita_cm else '' }}" placeholder="facoltativo">
+        </div>
+        <div class="form-group col-6 col-md-2">
+          <label>Pasti al giorno</label>
+          <input type="number" name="pasti_giorno" class="form-control form-control-sm" min="1" max="6" step="1"
+                 value="{{ profilo.pasti_giorno if profilo and profilo.pasti_giorno else '' }}" placeholder="es. 3">
+        </div>
+        <div class="form-group col-6 col-md-3">
+          <label>Porzione del pranzo</label>
+          <select name="porzione" class="form-control form-control-sm">
+            {% for k, label, f in porzioni %}
+            <option value="{{ k }}" {{ 'selected' if (profilo and profilo.porzione == k) or (not profilo and k == 'normale') }}>{{ label }}{% if f != 1.0 %} ({{ '%+d' % ((f - 1) * 100)|round|int }}%){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-12 col-md-3">
+          <label class="d-block">&nbsp;</label>
+          <div class="form-check">
+            <input type="checkbox" name="colazione_al_bar" value="1" class="form-check-input" id="colazione_al_bar" {{ 'checked' if profilo and profilo.colazione_al_bar }}>
+            <label class="form-check-label" for="colazione_al_bar" style="font-size:.9rem;">Faccio anche colazione qui</label>
+          </div>
+        </div>
+      </div>
+      <small class="text-muted d-block mb-2">Peso obiettivo e girovita servono a stimare tempi e indicatori generali (IMC, rapporto vita/altezza); il numero di pasti suggerisce la quota del pranzo: con 2 pasti il 50%, con 3 il 40%, con 4 il 35%.</small>
       <div class="form-row">
         <div class="form-group col-md-4">
           <label>Fabbisogno impostato a mano (kcal/giorno)</label>

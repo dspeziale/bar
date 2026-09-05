@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Nuova comunicazione' if nuova else com.titolo }}{% endblock %}
+{% block page_title %}{{ 'Nuova comunicazione' if nuova else com.titolo }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.comunicazioni') }}">Comunicazioni</a></li>
+<li class="breadcrumb-item active">{{ 'Nuova' if nuova else com.titolo }}</li>
+{% endblock %}
+
+{% block content %}
+{% set seg_map = {} %}{% for k, l, d in segmenti %}{% set _ = seg_map.update({k: l}) %}{% endfor %}
+{% set inviata = (not nuova) and com.stato == 'inviata' %}
+
+{% if inviata %}
+{# ── Già inviata: riepilogo e registro ── #}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-check-circle mr-2 text-success"></i>Inviata il {{ com.inviata_il|dt_rome('%d/%m/%Y alle %H:%M') }}</h3>
+        <div class="card-tools">
+          <form method="POST" action="{{ url_for('admin.comunicazione_duplica', cid=com.id) }}" class="d-inline">
+            {{ csrf_field() }}
+            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-copy mr-1"></i>Duplica</button>
+          </form>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row" style="font-size:.9rem;">
+          <div class="col-md-6"><strong>Oggetto:</strong> {{ com.oggetto }}</div>
+          <div class="col-md-3"><strong>Destinatari:</strong> {{ seg_map.get(com.segmento, com.segmento) }}</div>
+          <div class="col-md-3"><strong>Canale:</strong> {{ dict(canali).get(com.canale, com.canale).split(':')[0] }}</div>
+        </div>
+        <hr>
+        <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;font-size:.9rem;">{{ com.corpo }}</pre>
+        {% if com.pulsante_testo %}<div class="mt-2"><span class="btn btn-danger btn-sm disabled">{{ com.pulsante_testo }}</span> <small class="text-muted ml-2">{{ com.pulsante_link }}</small></div>{% endif %}
+      </div>
+    </div>
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-list-check mr-2"></i>Registro invii</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="thead-light"><tr><th>Cliente</th><th>Canale</th><th>Esito</th><th>Quando</th></tr></thead>
+          <tbody>
+          {% for i in com.invii|sort(attribute='inviato_il', reverse=True) %}
+          <tr>
+            <td>{{ i.user.display_name if i.user else '—' }}</td>
+            <td>{% if i.canale == 'telegram' %}<i class="fab fa-telegram mr-1" style="color:#229ED9;"></i>Telegram{% elif i.canale == 'email' %}<i class="fas fa-envelope mr-1 text-muted"></i>Email{% else %}—{% endif %}</td>
+            <td>
+              {% if i.esito == 'ok' %}<span class="badge badge-success">inviato</span>
+              {% elif i.esito == 'saltato' %}<span class="badge badge-secondary">saltato</span> <small class="text-muted">{{ i.dettaglio }}</small>
+              {% else %}<span class="badge badge-danger">fallito</span> <small class="text-muted">{{ i.dettaglio }}</small>{% endif %}
+            </td>
+            <td style="font-size:.85rem;">{{ i.inviato_il|dt_rome('%d/%m %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-3">Nessun destinatario.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-1"><span>Email inviate</span><strong>{{ com.n_email }}</strong></div>
+        <div class="d-flex justify-content-between mb-1"><span>Telegram inviati</span><strong>{{ com.n_telegram }}</strong></div>
+        <div class="d-flex justify-content-between mb-1"><span>Saltati</span><strong>{{ com.n_saltati }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Falliti</span><strong class="{{ 'text-danger' if com.n_falliti }}">{{ com.n_falliti }}</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+{# ── Modulo ── #}
+<form method="POST" id="form-com"
+      action="{{ url_for('admin.comunicazione_salva') if nuova else url_for('admin.comunicazione_salva', cid=com.id) }}">
+  {{ csrf_field() }}
+  <input type="hidden" name="modello" value="{{ com.modello or 'libero' }}">
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card card-outline card-primary">
+        <div class="card-header">
+          <h3 class="card-title">
+            {% set m = modelli.get(com.modello) %}
+            <i class="fas {{ m[2] if m else 'fa-pen' }} mr-2" style="color:#e94560;"></i>{{ m[1] if m else 'Messaggio' }}
+          </h3>
+          {% if com.stato == 'programmata' %}
+          <div class="card-tools"><span class="badge badge-warning">Programmata per il {{ com.programmata_il.strftime('%d/%m/%Y %H:%M') }}</span></div>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group col-md-5">
+              <label>Titolo interno <small class="text-muted">(lo vedi solo tu)</small></label>
+              <input type="text" name="titolo" class="form-control" maxlength="160" value="{{ com.titolo }}" required>
+            </div>
+            <div class="form-group col-md-7">
+              <label>Oggetto <small class="text-muted">(oggetto dell'email, titolo su Telegram)</small></label>
+              <input type="text" name="oggetto" class="form-control" maxlength="200" value="{{ com.oggetto }}" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Testo</label>
+            <textarea name="corpo" class="form-control" rows="11" style="font-size:.95rem;line-height:1.5;">{{ com.corpo }}</textarea>
+            <small class="text-muted">Una riga vuota separa i paragrafi; le righe che iniziano con "- " diventano un elenco.</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>Testo del pulsante</label>
+              <input type="text" name="pulsante_testo" class="form-control" maxlength="60" value="{{ com.pulsante_testo }}" placeholder="es. Guarda il menu">
+            </div>
+            <div class="form-group col-md-8">
+              <label>Link del pulsante</label>
+              <input type="text" name="pulsante_link" class="form-control" maxlength="300" value="{{ com.pulsante_link }}" placeholder="{link_menu} oppure un indirizzo completo">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-outline card-secondary">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-code mr-2"></i>Segnaposto</h3></div>
+        <div class="card-body pt-2">
+          <div class="row" style="font-size:.83rem;">
+            {% for k, d in segnaposto %}
+            <div class="col-md-6 col-lg-4 mb-1"><code style="cursor:pointer;" class="segnaposto" title="Clicca per inserirlo nel testo">{{ k }}</code> <span class="text-muted">{{ d }}</span></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card card-outline card-info">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-users mr-2"></i>A chi e come</h3></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Destinatari</label>
+            <select name="segmento" class="form-control" id="segmento">
+              {% for k, label, descr in segmenti %}
+              <option value="{{ k }}" data-n="{{ conteggi.get(k, 0) }}" title="{{ descr }}" {{ 'selected' if com.segmento == k }}>{{ label }} ({{ conteggi.get(k, 0) }})</option>
+              {% endfor %}
+            </select>
+            <small class="text-muted" id="segmento-descr"></small>
+          </div>
+          <div class="form-group">
+            <label>Canale</label>
+            <select name="canale" class="form-control">
+              {% for k, label in canali %}
+              <option value="{{ k }}" {{ 'selected' if com.canale == k }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Sondaggio collegato <small class="text-muted">(per {sondaggio} e {link_sondaggio})</small></label>
+            <select name="poll_id" class="form-control">
+              <option value="">— nessuno —</option>
+              {% for p in polls %}
+              <option value="{{ p.id }}" {{ 'selected' if com.poll_id == p.id }}>{{ p.title }} ({{ p.poll_date.strftime('%d/%m') }}{{ '' if p.is_active else ', chiuso' }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-outline card-success">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-paper-plane mr-2"></i>Invio</h3></div>
+        <div class="card-body">
+          <button type="submit" name="azione" value="bozza" class="btn btn-outline-secondary btn-block btn-sm">
+            <i class="fas fa-save mr-1"></i>Salva come bozza
+          </button>
+          <div class="btn-group btn-block mt-2">
+            <button type="submit" name="azione" value="prova" class="btn btn-outline-info btn-sm" title="Ricevi tu il messaggio, per email (e Telegram se collegato)">
+              <i class="fas fa-vial mr-1"></i>Prova su di me
+            </button>
+            <button type="submit" class="btn btn-outline-info btn-sm" formaction="{{ url_for('admin.comunicazione_anteprima') }}" formtarget="_blank" title="L'email come la vedrà il cliente">
+              <i class="fas fa-eye mr-1"></i>Anteprima
+            </button>
+          </div>
+          <hr>
+          <div class="form-group mb-2">
+            <label style="font-size:.85rem;">Programma per</label>
+            <input type="datetime-local" name="programmata_il" class="form-control form-control-sm"
+                   value="{{ com.programmata_il.strftime('%Y-%m-%dT%H:%M') if com.programmata_il else '' }}">
+          </div>
+          <button type="submit" name="azione" value="programma" class="btn btn-warning btn-block btn-sm">
+            <i class="fas fa-clock mr-1"></i>Programma l'invio
+          </button>
+          <hr>
+          <button type="submit" name="azione" value="invia" class="btn btn-success btn-block" id="btn-invia">
+            <i class="fas fa-paper-plane mr-1"></i>Invia ora a <span id="n-dest">0</span> clienti
+          </button>
+          {% if not nuova %}
+          <hr>
+          <button type="submit" class="btn btn-outline-danger btn-block btn-sm" formaction="{{ url_for('admin.comunicazione_elimina', cid=com.id) }}"
+                  onclick="return confirm('Eliminare questa comunicazione?');">
+            <i class="fas fa-trash mr-1"></i>Elimina
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not inviata %}
+<script>
+(function () {
+  var sel = document.getElementById('segmento');
+  var n = document.getElementById('n-dest');
+  var descr = document.getElementById('segmento-descr');
+  function agg() {
+    var o = sel.options[sel.selectedIndex];
+    n.textContent = o.getAttribute('data-n');
+    descr.textContent = o.getAttribute('title') || '';
+  }
+  sel.addEventListener('change', agg); agg();
+  document.getElementById('btn-invia').addEventListener('click', function (e) {
+    if (!confirm('Inviare adesso a ' + n.textContent + ' clienti? L\'operazione non si annulla.')) e.preventDefault();
+  });
+  var ta = document.querySelector('textarea[name=corpo]');
+  document.querySelectorAll('code.segnaposto').forEach(function (c) {
+    c.addEventListener('click', function () {
+      var s = ta.selectionStart, e = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s) + c.textContent + ta.value.slice(e);
+      ta.focus(); ta.selectionStart = ta.selectionEnd = s + c.textContent.length;
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

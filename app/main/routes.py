@@ -18,7 +18,8 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         DietProfile, DietPlan, DietPlanDay, ALLERGENS,
                         CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
                         OBIETTIVI_DESCRIZIONE, NON_GRADITI, GRUPPI_NON_GRADITI,
-                        ATTIVITA_DIETA, GIORNI_SETTIMANA)
+                        ATTIVITA_DIETA, GIORNI_SETTIMANA, ATTENZIONI_DIETA,
+                        EQUILIBRI_DIETA, ALLENAMENTO_DIETA, PORZIONI_DIETA)
 from app.dieta import profilo_attivo
 from app import orari as orari_mod
 from config import Config
@@ -1135,11 +1136,13 @@ def _profilo_del_cliente_o_404(gid):
 @login_required
 @dieta_required
 def dieta():
-    from app.dieta import fabbisogno, inizio_settimana, riepilogo_giornata
+    from app.dieta import fabbisogno, inizio_settimana, riepilogo_giornata, indicatori
     profilo = current_user.diet_profile
     fabb = piano = riepilogo = None
+    indic = None
     if profilo:
         fabb = fabbisogno(profilo, current_user)
+        indic = indicatori(profilo)
         piano = DietPlan.query.filter_by(user_id=current_user.id,
                                          week_start=inizio_settimana()).first()
         if profilo.attivo:
@@ -1149,7 +1152,9 @@ def dieta():
     presa_atto = bool(session.get('dieta_presa_atto')
                       or (profilo is not None and profilo.presa_atto_il))
     return render_template('main/dieta.html', profilo=profilo, fabb=fabb,
-                           presa_atto=presa_atto,
+                           presa_atto=presa_atto, indic=indic,
+                           attenzioni=ATTENZIONI_DIETA, equilibri=EQUILIBRI_DIETA,
+                           allenamenti=ALLENAMENTO_DIETA, porzioni=PORZIONI_DIETA,
                            piano=piano, riepilogo=riepilogo, oggi=date.today(),
                            condizioni=CONDIZIONI_DIETA, regimi=REGIMI_DIETA,
                            obiettivi=OBIETTIVI_DIETA, attivita=ATTIVITA_DIETA,
@@ -1210,6 +1215,20 @@ def dieta_profilo():
 
     profilo.peso_kg = _numero('peso_kg', 30, 250)
     profilo.altezza_cm = _numero('altezza_cm', 120, 230)
+    profilo.peso_obiettivo_kg = _numero('peso_obiettivo_kg', 30, 250)
+    profilo.girovita_cm = _numero('girovita_cm', 40, 200)
+    profilo.pasti_giorno = _numero('pasti_giorno', 1, 6, intero=True)
+    porzione = request.form.get('porzione', 'normale')
+    profilo.porzione = porzione if porzione in {p[0] for p in PORZIONI_DIETA} else 'normale'
+    equilibrio = request.form.get('equilibrio', 'bilanciato')
+    profilo.equilibrio = (equilibrio if equilibrio in {e[0] for e in EQUILIBRI_DIETA}
+                          else 'bilanciato')
+    allenamento = request.form.get('allenamento', 'no')
+    profilo.allenamento = (allenamento if allenamento in dict(ALLENAMENTO_DIETA) else 'no')
+    profilo.colazione_al_bar = request.form.get('colazione_al_bar') == '1'
+    chiavi_att = {a[0] for a in ATTENZIONI_DIETA}
+    profilo.attenzioni = ','.join(a for a in request.form.getlist('attenzioni')
+                                  if a in chiavi_att)
     profilo.kcal_manuali = _numero('kcal_manuali', 1000, 5000, intero=True)
     quota = _numero('quota_pranzo', 25, 60, intero=True)
     profilo.quota_pranzo = (quota / 100.0) if quota else 0.40
@@ -1439,6 +1458,11 @@ def profile():
             current_user.phone      = request.form.get('phone',      '').strip()
             current_user.address    = request.form.get('address',    '').strip()
             current_user.telegram_chat_id = request.form.get('telegram_chat_id', '').strip()
+            current_user.reparto = request.form.get('reparto', '').strip()[:120]
+            # campo nascosto "0" + casella "1": vince l'ultimo valore inviato
+            current_user.comunicazioni_ok = (request.form.getlist('comunicazioni_ok') or ['1'])[-1] == '1'
+            canale = request.form.get('canale_preferito', 'auto')
+            current_user.canale_preferito = canale if canale in ('auto', 'email', 'telegram') else 'auto'
             birth_raw = request.form.get('birth_date', '').strip()
             if birth_raw:
                 try:
@@ -2046,3 +2070,159 @@ def telegram_webhook(segreto):
         'text': esito,
     })
     return jsonify({'ok': True})
+
+
+# ── Comunicazioni: disiscrizione dal link in fondo alle email ────────────────
+
+@bp.route('/comunicazioni/disiscriviti/<token>')
+def comunicazioni_disiscriviti(token):
+    """Il link firmato in fondo a ogni email: toglie il consenso senza chiedere
+    il login, perche' chi vuole smettere di ricevere non deve faticare."""
+    from app.comunicazioni import utente_da_token
+    user = utente_da_token(token)
+    if user is None:
+        return render_template('main/disiscritto.html', ok=False, user=None), 400
+    user.comunicazioni_ok = False
+    db.session.commit()
+    return render_template('main/disiscritto.html', ok=True, user=user)
+
+
+# ── Dieta: referto delle analisi ──────────────────────────────────────────────
+
+def _profilo_con_avvertenza_o_redirect():
+    profilo = current_user.diet_profile
+    if profilo is None or not profilo.presa_atto_il:
+        flash('Prima imposta la dieta e accetta l\'avvertenza: il referto serve a '
+              'perfezionarla.', 'warning')
+        return None
+    return profilo
+
+
+@bp.route('/dieta/referto')
+@login_required
+@dieta_required
+def dieta_referto():
+    from app.models import DietReferto, ATTENZIONI_DIETA_MAP, EQUILIBRI_DIETA
+    from app.referto import PARAMETRI
+    profilo = _profilo_con_avvertenza_o_redirect()
+    if profilo is None:
+        return redirect(url_for('main.dieta'))
+    referti = (DietReferto.query.filter_by(user_id=current_user.id)
+               .order_by(DietReferto.caricato_il.desc()).all())
+    return render_template('main/referto.html', profilo=profilo, referti=referti,
+                           ultimo=referti[0] if referti else None, parametri=PARAMETRI,
+                           attenzioni_map=ATTENZIONI_DIETA_MAP,
+                           equilibri=dict((k, l) for k, l, _d in EQUILIBRI_DIETA),
+                           sesso=profilo.sesso)
+
+
+@bp.route('/dieta/referto', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_referto_carica():
+    """Legge il PDF (o i valori scritti a mano), valuta, propone. Il file non
+    viene conservato: restano solo i valori."""
+    from app.models import DietReferto
+    from app.referto import (PARAMETRI, PLAUSIBILI, leggi_testo, estrai_valori, valuta,
+                             proposta, a_json)
+    profilo = _profilo_con_avvertenza_o_redirect()
+    if profilo is None:
+        return redirect(url_for('main.dieta'))
+    if request.form.get('consenso') != '1':
+        flash('Per procedere conferma di aver letto come vengono trattati i dati del referto.',
+              'warning')
+        return redirect(url_for('main.dieta_referto'))
+
+    valori = {}
+    origine, nome_file = 'manuale', ''
+    f = request.files.get('referto')
+    if f is not None and f.filename:
+        contenuto = f.read()
+        if len(contenuto) > 10 * 1024 * 1024:
+            flash('Il file supera i 10 MB.', 'danger')
+            return redirect(url_for('main.dieta_referto'))
+        testo = leggi_testo(contenuto, f.filename)
+        if not testo.strip():
+            flash('Non sono riuscito a leggere il testo del file: carica il PDF originale del '
+                  'laboratorio (non una foto) oppure scrivi i valori a mano qui sotto.', 'warning')
+        else:
+            valori = estrai_valori(testo)
+            origine, nome_file = 'file', f.filename[:200]
+            if not valori:
+                flash('Nel file non ho riconosciuto nessuno dei parametri che leggo: '
+                      'puoi scriverli a mano.', 'warning')
+    # I valori scritti a mano vincono su quelli letti dal file
+    for p in PARAMETRI:
+        grezzo = (request.form.get('v_' + p['chiave']) or '').strip().replace(',', '.')
+        if not grezzo:
+            continue
+        try:
+            v = float(grezzo)
+        except ValueError:
+            continue
+        lo, hi = PLAUSIBILI[p['chiave']]
+        if lo <= v <= hi:
+            valori[p['chiave']] = v
+    if not valori:
+        if not f or not f.filename:
+            flash('Carica un referto o inserisci almeno un valore.', 'warning')
+        return redirect(url_for('main.dieta_referto'))
+
+    esiti = valuta(valori, profilo.sesso)
+    prop = proposta(esiti, profilo)
+    r = DietReferto(user_id=current_user.id, tenant_id=_effective_tenant_id(),
+                    origine=origine, nome_file=nome_file, valori=a_json(valori),
+                    esiti=a_json(esiti), proposta=a_json(prop),
+                    note=(request.form.get('note') or '').strip()[:500])
+    db.session.add(r)
+    db.session.commit()
+    flash('Referto letto: %d valor%s riconosciut%s. Qui sotto trovi la proposta.' % (
+        len(valori), 'e' if len(valori) == 1 else 'i', 'o' if len(valori) == 1 else 'i'),
+        'success')
+    return redirect(url_for('main.dieta_referto'))
+
+
+def _referto_mio_o_404(rid):
+    from app.models import DietReferto
+    r = db.get_or_404(DietReferto, rid)
+    if r.user_id != current_user.id:
+        from flask import abort
+        abort(404)
+    return r
+
+
+@bp.route('/dieta/referto/<int:rid>/applica', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_referto_applica(rid):
+    from app.referto import applica
+    from app.dieta import genera_piano
+    from app.models import ATTENZIONI_DIETA_MAP
+    profilo = _profilo_con_avvertenza_o_redirect()
+    if profilo is None:
+        return redirect(url_for('main.dieta'))
+    r = _referto_mio_o_404(rid)
+    fatte = applica(profilo, r.dict_proposta)
+    r.applicato_il = datetime.utcnow()
+    db.session.commit()
+    if fatte:
+        genera_piano(current_user, profilo)
+        nomi = [ATTENZIONI_DIETA_MAP[k][1] for k in fatte if k in ATTENZIONI_DIETA_MAP]
+        eq = [k.split(':', 1)[1] for k in fatte if k.startswith('equilibrio:')]
+        flash('Dieta aggiornata%s%s. Il piano della settimana è stato rifatto.' % (
+            (': ' + ', '.join(nomi)) if nomi else '',
+            (' · equilibrio %s' % eq[0]) if eq else ''), 'success')
+    else:
+        flash('Le attenzioni proposte erano già attive: nessuna modifica.', 'info')
+    return redirect(url_for('main.dieta'))
+
+
+@bp.route('/dieta/referto/<int:rid>/elimina', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_referto_elimina(rid):
+    r = _referto_mio_o_404(rid)
+    db.session.delete(r)
+    db.session.commit()
+    flash('Referto eliminato.', 'info')
+    return redirect(url_for('main.dieta_referto'))

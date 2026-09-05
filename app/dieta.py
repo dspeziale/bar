@@ -105,7 +105,37 @@ def gradimento(oggetto, profilo):
     for parola in profilo.lista_parole_non_gradite:
         if parola in testo:
             return False, 'non ti piace: %s' % parola
+    for (_chiave, etichetta, parole, impliciti, _gruppo), motivo in profilo.famiglie_da_limitare:
+        if any(p in testo for p in parole) or (allergeni & set(impliciti)):
+            return False, 'da limitare per %s: %s' % (motivo.lower(), etichetta.lower())
     return True, ''
+
+
+def indicatori(profilo):
+    """Indice di massa corporea e rapporto vita/altezza, con una lettura in
+    parole. Sono indicatori generali, non una valutazione clinica: il testo
+    lo dice e il disclaimer lo ripete."""
+    esito = {'bmi': None, 'bmi_classe': '', 'wtr': None, 'wtr_classe': '',
+             'peso_da_perdere': None}
+    if profilo.peso_kg and profilo.altezza_cm:
+        m = profilo.altezza_cm / 100.0
+        bmi = profilo.peso_kg / (m * m)
+        esito['bmi'] = round(bmi, 1)
+        esito['bmi_classe'] = ('sottopeso' if bmi < 18.5 else 'normopeso' if bmi < 25
+                               else 'sovrappeso' if bmi < 30 else 'obesità')
+    if profilo.girovita_cm and profilo.altezza_cm:
+        wtr = profilo.girovita_cm / float(profilo.altezza_cm)
+        esito['wtr'] = round(wtr, 2)
+        esito['wtr_classe'] = ('nella norma' if wtr < 0.5 else 'da tenere d\'occhio' if wtr < 0.6
+                               else 'alto')
+    if profilo.peso_kg and profilo.peso_obiettivo_kg:
+        esito['peso_da_perdere'] = round(profilo.peso_kg - profilo.peso_obiettivo_kg, 1)
+    return esito
+
+
+def quota_consigliata(pasti_giorno):
+    """Quale parte del fabbisogno ha senso a pranzo, dato quanti pasti fa."""
+    return {1: 0.60, 2: 0.50, 3: 0.40, 4: 0.35}.get(pasti_giorno or 3, 0.30)
 
 
 def nutrienti(oggetto, quantita=1):
@@ -201,7 +231,30 @@ def fabbisogno(profilo, user):
     target = max(1200, min(4500, target))
     esito['target'] = target
     esito['quota'] = profilo.quota_pranzo or 0.40
-    esito['pranzo'] = int(round(target * esito['quota']))
+    pranzo = target * esito['quota']
+    # La porzione scelta e l'allenamento in pausa pranzo modulano solo il
+    # pranzo, non il fabbisogno: chi si allena a pranzo mangia più leggero.
+    fattore_pranzo = profilo.fattore_porzione
+    esito['note_pranzo'] = []
+    if fattore_pranzo != 1.0:
+        esito['note_pranzo'].append('porzione %s (%+d%%)' % (
+            profilo.etichetta_porzione.lower(), int(round((fattore_pranzo - 1) * 100))))
+    if (profilo.allenamento or 'no') == 'pranzo':
+        fattore_pranzo *= 0.85
+        esito['note_pranzo'].append('allenamento in pausa pranzo (-15%)')
+    esito['pranzo'] = int(round(pranzo * fattore_pranzo))
+    # Quanto manca all'obiettivo di peso, a questo ritmo: 7700 kcal per kg,
+    # una stima grossolana che serve solo a dare un ordine di grandezza.
+    esito['deficit_giorno'] = None
+    esito['settimane_stimate'] = None
+    if esito['bmr'] and correzione < 0 and profilo.peso_kg and profilo.peso_obiettivo_kg \
+            and profilo.peso_obiettivo_kg < profilo.peso_kg:
+        mantenimento = esito['bmr'] * fattore
+        deficit = int(round(mantenimento - target))
+        if deficit > 0:
+            esito['deficit_giorno'] = deficit
+            kg = profilo.peso_kg - profilo.peso_obiettivo_kg
+            esito['settimane_stimate'] = int(round(kg * 7700.0 / (deficit * 7)))
     return esito
 
 
@@ -466,7 +519,7 @@ def candidati_piano(profilo, tenant_id):
 
 
 def componi_pranzo(candidati, target, rnd=None, usati=(), budget=None,
-                   obiettivo='mantenimento'):
+                   obiettivo='mantenimento', equilibrio='bilanciato'):
     """Il pranzo più vicino alla quota: un principale, eventualmente un
     contorno e una chiusura, più l'acqua. Ritorna (prodotti, punteggio) o
     (None, None) se manca un principale.
@@ -527,6 +580,20 @@ def componi_pranzo(candidati, target, rnd=None, usati=(), budget=None,
             if any(ruolo(p) == 'chiusura' and p.category and p.category.name != 'Frutta'
                    for p in combo):
                 s += 0.1
+        # L'equilibrio scelto dal cliente: penalità morbide, che orientano
+        # senza svuotare il piatto.
+        if equilibrio == 'proteico' and prot < 30:
+            s += 0.3
+        elif equilibrio == 'pochi_carbo':
+            carbo = sum(p.carboidrati_g or 0 for p in combo)
+            if kcal and carbo * 4 > 0.40 * kcal:
+                s += 0.3
+        elif equilibrio == 'mediterraneo':
+            if not any(ruolo(p) == 'contorno' for p in combo):
+                s += 0.2
+            testo = ' '.join((p.name or '') + ' ' + (p.description or '') for p in combo).lower()
+            if any(w in testo for w in ('fritt', 'manzo', 'hamburger', 'salsicc', 'bistecc')):
+                s += 0.2
         return s
 
     migliore, migliore_s = None, None
@@ -620,7 +687,8 @@ def genera_piano(user, profilo, week_start=None, seed=None, oggi=None):
             db.session.add(d)
             continue
         combo, _s = componi_pranzo(candidati, fabb['pranzo'], rnd, usati,
-                                   profilo.budget_pranzo, profilo.obiettivo)
+                                   profilo.budget_pranzo, profilo.obiettivo,
+                                   profilo.equilibrio or 'bilanciato')
         if not combo:
             d.nota = ('Nessun piatto del listino è compatibile con le tue esigenze, '
                       'o il locale non ha ancora indicato i valori nutrizionali.')
@@ -649,7 +717,8 @@ def rigenera_giorno(giorno_piano, profilo, user, seed=None):
                   and v.get('ruolo') != 'bevanda'}
     rnd = random.Random(seed) if seed is not None else random.Random()
     combo, _s = componi_pranzo(candidati, fabb['pranzo'], rnd, usati,
-                               profilo.budget_pranzo, profilo.obiettivo)
+                               profilo.budget_pranzo, profilo.obiettivo,
+                               profilo.equilibrio or 'bilanciato')
     if not combo:
         return False
     giorno_piano.voci = [_voce(p) for p in combo]

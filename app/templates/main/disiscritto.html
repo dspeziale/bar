@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comunicazioni — QuickLunch</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; background: #f4f6f9; margin: 0; padding: 40px 16px; color: #333; }
+    .scheda { max-width: 520px; margin: 0 auto; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; overflow: hidden; }
+    .testa { background: #0f3460; color: #fff; padding: 20px 26px; }
+    .testa small { display: block; color: #b2c2d9; letter-spacing: 1.4px; font-size: 12px; }
+    .testa h1 { margin: 4px 0 0; font-size: 21px; }
+    .riga { height: 3px; background: #e94560; }
+    .corpo { padding: 24px 26px; font-size: 15px; line-height: 1.6; }
+    .pie { border-top: 1px solid #e3e6ea; padding: 14px 26px; font-size: 12px; color: #8b9099; }
+    a.btn { display: inline-block; background: #e94560; color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="scheda">
+    <div class="testa"><small>QUICKLUNCH</small><h1>{{ 'Comunicazioni disattivate' if ok else 'Link non valido' }}</h1></div>
+    <div class="riga"></div>
+    <div class="corpo">
+      {% if ok %}
+      <p>Fatto{% if user and user.first_name %}, {{ user.first_name }}{% endif %}: non riceverai più novità, sondaggi e promozioni del locale.</p>
+      <p>Gli avvisi di servizio — ordine pronto, promemoria del pasto — continuano ad arrivare, perché riguardano quello che hai ordinato.</p>
+      <p>Se cambi idea, riattivi le comunicazioni dal tuo profilo.</p>
+      <a class="btn" href="{{ url_for('main.profile') }}">Vai al profilo</a>
+      {% else %}
+      <p>Questo link non è valido o è stato modificato. Puoi gestire le comunicazioni dal tuo profilo, dopo aver fatto l'accesso.</p>
+      <a class="btn" href="{{ url_for('main.profile') }}">Vai al profilo</a>
+      {% endif %}
+    </div>
+    <div class="pie">QuickLunch — sistema di prenotazione pasti</div>
+  </div>
+</body>
+</html>

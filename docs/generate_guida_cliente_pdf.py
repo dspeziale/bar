@@ -355,7 +355,37 @@ def sez_dieta(pdf, idx):
         ('Peso, altezza, attivita (facoltativi)',
          'Con questi dati e la data di nascita il fabbisogno e calcolato su '
          'misura; senza, e un valore medio e la pagina lo dice. Le calorie '
-         'indicate da un nutrizionista, se le scrivi, hanno la precedenza.'),
+         'indicate da un nutrizionista, se le scrivi, hanno la precedenza. '
+         'Puoi aggiungere il peso che vuoi raggiungere, il girovita, quanti '
+         'pasti fai al giorno e la porzione (piccola, normale, abbondante): '
+         'la pagina mostra indice di massa corporea e rapporto vita/altezza - '
+         'indicatori generali, non una valutazione clinica - e una stima di '
+         'quante settimane servono per il peso obiettivo a quel ritmo.'),
+        ('Le attenzioni e l\'equilibrio del pranzo',
+         'Glicemia alta o diabete, pressione alta, colesterolo alto, '
+         'gravidanza o allattamento, reflusso, digestione lenta, acido urico '
+         'alto, fegato affaticato: ognuna fa evitare al piano certe famiglie '
+         'di piatti e le segnala nel menu. Scegli anche come vuoi il pranzo '
+         '(bilanciato, piu proteine, pochi carboidrati, mediterraneo) e quando '
+         'ti alleni: in pausa pranzo il pranzo si alleggerisce.'),
+    ], C)
+
+    h2(pdf, 'Le tue analisi: il referto', C, idx)
+    passi(pdf, [
+        ('Carica il PDF o scrivi i valori',
+         'Da "Referto analisi" nella pagina della dieta (o dal Profilo): il PDF '
+         'del laboratorio viene letto e scartato subito, non resta salvato; '
+         'restano solo i valori riconosciuti - glicemia, emoglobina glicata, '
+         'colesterolo totale, HDL e LDL, trigliceridi, acido urico, emoglobina, '
+         'ferritina, vitamina D, creatinina, transaminasi, pressione - che puoi '
+         'anche scrivere a mano e cancellare quando vuoi.'),
+        ('Leggi la proposta e applicala',
+         'Ogni valore e confrontato con intervalli di riferimento generali per il '
+         'tuo sesso (nella norma, al limite, alto, basso) e ne esce una proposta: '
+         'quali attenzioni accendere, quale equilibrio del pranzo, qualche '
+         'consiglio. "Applica alla mia dieta" aggiorna le preferenze e rifa il '
+         'piano. Non e una lettura medica: gli intervalli non sono quelli del tuo '
+         'laboratorio e ogni valore fuori soglia va discusso con il tuo medico.'),
     ], C)
 
     h2(pdf, 'Che cosa cambia', C, idx)
@@ -443,7 +473,13 @@ def sez_domande(pdf, idx):
              ['Chi vede il mio nome?',
               'Sulle liste di cucina e sui tagliandi compare in forma '
               'abbreviata ("Mario R."); per intero lo vedi solo tu nella '
-              'tua area.']],
+              'tua area.'],
+             ['Non voglio piu ricevere novita e promozioni.',
+              'Spegni "Comunicazioni del locale" nel Profilo, oppure usa il '
+              'link in fondo a ogni email. Gli avvisi di servizio - ordine '
+              'pronto, promemoria - arrivano comunque. Nel Profilo scegli '
+              'anche se ricevere gli avvisi su Telegram o per email e '
+              'indichi il tuo reparto per le consegne.']],
             [38, 66], C)
 
     _spazio(pdf, 3)

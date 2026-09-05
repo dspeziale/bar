@@ -36,6 +36,13 @@
           </span>
         </div>
         <div class="d-flex flex-wrap" style="gap:.3rem;">
+          <!-- Invito a votare: campagna per segmento, email + Telegram personale -->
+          {% if current_user.has_permission('send_notifications') %}
+          <a href="{{ url_for('admin.comunicazione_nuova', modello='sondaggio', poll=p.id) }}"
+             class="btn btn-xs btn-primary" title="Invita i clienti a votare con una campagna (email e Telegram personale)">
+            <i class="fas fa-paper-plane mr-1"></i>Invita a votare
+          </a>
+          {% endif %}
           <!-- Notifica Telegram -->
           <form method="POST" action="{{ url_for('admin.poll_notify_telegram', pid=p.id) }}">
             {{ csrf_field() }}

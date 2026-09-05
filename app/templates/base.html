@@ -557,10 +557,10 @@
             {# ── Endpoint groups for auto-open ── #}
             {% set ep = request.endpoint %}
             {% set in_ordini       = ep in ('admin.orders','admin.cucina') %}
-            {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories') %}
+            {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories','admin.importazioni') %}
             {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots','admin.tavoli') %}
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients','admin.diete') %}
-            {% set in_comunicazioni= ep in ('admin.polls','admin.settings') %}
+            {% set in_comunicazioni= ep in ('admin.polls','admin.comunicazioni','admin.comunicazione_nuova','admin.comunicazione_dettaglio') %}
             {% set in_magazzino    = ep in ('admin.magazzino','admin.magazzino_edit','admin.fornitori','admin.fornitore_edit') %}
             {% set in_convenzioni  = ep in ('admin.convenzioni','admin.convenzione_edit','admin.convenzione_pasto','admin.convenzioni_report','admin.meal_ritiro') %}
 
@@ -652,6 +652,13 @@
                      class="nav-link {{ 'active' if ep == 'admin.products' }}">
                     <i class="fas fa-burger nav-icon" style="color:#e94560;"></i>
                     <p>Prodotti</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.importazioni') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.importazioni' }}">
+                    <i class="fas fa-file-excel nav-icon" style="color:#1d6f42;"></i>
+                    <p>Importa da Excel</p>
                   </a>
                 </li>
                 {% endif %}
@@ -825,6 +832,15 @@
                 <p>Comunicazioni<i class="right fas fa-angle-left"></i></p>
               </a>
               <ul class="nav nav-treeview">
+                {% if p('send_notifications') %}
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.comunicazioni') }}"
+                     class="nav-link {{ 'active' if ep in ('admin.comunicazioni','admin.comunicazione_nuova','admin.comunicazione_dettaglio') }}">
+                    <i class="fas fa-paper-plane nav-icon" style="color:#229ED9;"></i>
+                    <p>Campagne</p>
+                  </a>
+                </li>
+                {% endif %}
                 {% if p('manage_polls') %}
                 <li class="nav-item">
                   <a href="{{ url_for('admin.polls') }}"
@@ -1072,9 +1088,14 @@
     </div>
   </div>
 
-  <footer class="main-footer text-center" style="font-size:.8rem;">
-    QuickLunch &mdash; Sistema di prenotazione pasti
-    &nbsp;&bull;&nbsp; &copy; 2024&ndash;26 DS Consulting
+  <footer class="main-footer d-flex align-items-center justify-content-between flex-wrap" style="font-size:.95rem;gap:.5rem;">
+    <span class="text-left">
+      <strong>QuickLunch</strong> &mdash; Sistema di prenotazione pasti
+      &nbsp;&bull;&nbsp; &copy; 2024&ndash;26 DS Consulting
+    </span>
+    <span class="text-right" title="Versione dell'applicazione">
+      <i class="fas fa-code-branch mr-1"></i>Versione {{ app_version }}
+    </span>
   </footer>
 </div>
 

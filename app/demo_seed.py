@@ -881,8 +881,24 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
             synchronize_session=False)
         OrderItem.query.filter(
             OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+    # comunicazioni: registro e campagne puntano a utenti e sondaggi
+    from app.models import Comunicazione, ComunicazioneInvio
+    if user_ids:
+        ComunicazioneInvio.query.filter(ComunicazioneInvio.user_id.in_(user_ids)).delete(
+            synchronize_session=False)
+        com_ids = [r[0] for r in db.session.query(Comunicazione.id).filter(
+            db.or_(Comunicazione.creata_da.in_(user_ids),
+                   Comunicazione.tenant_id.in_(tenant_ids))).all()]
+        if com_ids:
+            ComunicazioneInvio.query.filter(ComunicazioneInvio.comunicazione_id.in_(com_ids)).delete(
+                synchronize_session=False)
+            Comunicazione.query.filter(Comunicazione.id.in_(com_ids)).delete(
+                synchronize_session=False)
     # dieta: i giorni del piano puntano agli ordini, piani e profili agli utenti
-    from app.models import DietPlan, DietPlanDay, DietProfile
+    from app.models import DietPlan, DietPlanDay, DietProfile, DietReferto
+    if user_ids:
+        DietReferto.query.filter(DietReferto.user_id.in_(user_ids)).delete(
+            synchronize_session=False)
     if order_ids:
         DietPlanDay.query.filter(DietPlanDay.order_id.in_(order_ids)).update(
             {'order_id': None}, synchronize_session=False)

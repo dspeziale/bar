@@ -513,6 +513,60 @@ I promemoria (tavoli, ritiro ordini, pasti aziendali) girano in un `@app.before_
 time-gate di 60 secondi **per processo** (`_reminder_last_run`). Su Vercel questo dipende dal
 traffico e dal riciclo dei worker: non è un cron e non va trattato come tale.
 
+### Comunicazioni ai clienti (`app/comunicazioni.py`)
+
+Campagne per segmento con modelli di contenuto, canale automatico (Telegram a chi l'ha
+collegato, email agli altri, rispettando `User.canale_preferito`), programmazione e tre
+automatismi (benvenuto a 7 giorni, compleanno, "ci manchi" a 30-45 giorni). Regole:
+
+- **Si scrive solo a chi ha `User.comunicazioni_ok`**: `destinatari()` lo filtra sempre. Il
+  link in fondo a ogni email (`/comunicazioni/disiscriviti/<token>`, firmato con
+  `itsdangerous`) toglie il consenso senza login. Gli avvisi di servizio (ordine pronto,
+  promemoria, piano della dieta) **non** passano da qui e non dipendono dal consenso.
+- Ogni invio lascia una riga in `ComunicazioneInvio` (canale, esito ok/saltato/fallito,
+  motivo). La "prova su di me" non registra nulla.
+- I testi usano segnaposto in graffe (`{nome}`, `{locale}`, `{orari}`, `{link_menu}`,
+  `{link_sondaggio}`...): `valori_segnaposto()` li compila per destinatario; il modulo li
+  elenca e li inserisce con un clic. Nei template Jinja una graffa singola è testo normale.
+- Gli automatismi girano in `_check_comunicazioni()` nel polling dei promemoria, una volta al
+  giorno dopo `comunicazioni_ora` (chiave di `CHIAVI_ORARI`, gruppo `settimana`); il gate è
+  `AppSetting comunicazioni_auto_il`. Sono **spenti** di default (`com_auto_*`). Le
+  programmate partono a ogni chiamata quando `programmata_il` (ora locale, naive) è passata.
+- Fuori da una richiesta i link usano `public_base_url`: senza, le email degli automatismi
+  non hanno link. La pagina lo segnala.
+- Interruttori con campo nascosto `0` + casella `1`: leggere sempre `getlist(k)[-1]`, come
+  fa `settings_save`; `form.get()` prende il primo valore e spegne tutto.
+
+### Referto delle analisi (`app/referto.py`)
+
+Il cliente carica il PDF del laboratorio (letto con `pypdf`) o scrive i valori; `estrai_valori`
+prende il primo numero plausibile dopo l'etichetta di ciascun `PARAMETRI` (i referti stampano
+il risultato prima dell'intervallo), `valuta` confronta con intervalli generali per sesso,
+`proposta` traduce in attenzioni (`ATTENZIONI_DIETA`), equilibrio e consigli, `applica`
+accende senza spegnere. **Il file non si salva**: `DietReferto` tiene solo valori/esiti/proposta
+in JSON, e la pagina lo dice. Non è uno strumento medico: il disclaimer della dieta vale
+anche qui e i testi rimandano al medico per ogni valore fuori soglia; non ammorbidirli e non
+aggiungere "diagnosi". Le attenzioni entrano in `gradimento()` come i gusti (motivo "da
+limitare per ..."), quindi piano e menu le trattano allo stesso modo.
+
+### Importazioni da Excel (`app/importazioni.py`)
+
+Sei modelli `.xlsx` (prodotti, ingredienti, banco, consumabili, clienti, pasti convenzione)
+generati con `openpyxl` da `MODELLI` — le colonne sono definite una volta sola e valgono per
+il modello, le istruzioni e l'importazione, che riconosce le colonne dal nome normalizzato.
+`importa()` fa **una transazione per riga** (commit riga per riga, rollback della riga con
+errore): niente `begin_nested()`, perché con SQLite/pysqlite il SAVEPOINT non è affidabile e
+la "sola verifica" scriveva comunque. In sola verifica nessun commit e rollback finale. I
+clienti nuovi ricevono una password provvisoria mostrata una sola volta nel resoconto.
+
+### Versione, piè di pagina, icone
+
+`Config.APP_VERSION` in `config.py` è la versione mostrata nel piè di pagina (a destra;
+testo a sinistra): aggiornarla a ogni rilascio. È esposta ai template come `app_version` dal
+context processor. Fra un'icona Font Awesome e il testo che la segue va sempre uno spazio
+(`mr-1`/`mr-2`): la pagina usa Bootstrap 4, dove le classi `me-*`/`ms-*` di Bootstrap 5
+non esistono e l'icona resta incollata. `smoke_dashboard_ui.py` controlla tutti i template.
+
 ## Note operative
 
 - `tips.txt` contiene URL di produzione e credenziali in chiaro, ed è versionato.
