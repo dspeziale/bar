@@ -909,6 +909,34 @@ def users():
 
 # ── Clienti ───────────────────────────────────────────────────────────────────
 
+@bp.route('/settings/locandina.pdf')
+@require_permission('manage_clients')
+def settings_locandina_pdf():
+    """La locandina A4 con il QR di registrazione, nel kit dei manuali.
+
+    Generata al momento con l'indirizzo vero di registrazione e i dati
+    dell'azienda: non c'e un file da tenere aggiornato.
+    """
+    from flask import Response
+    from app.locandina import genera_locandina
+    from app.notifications import nome_bot
+
+    join_url = request.host_url.rstrip('/') + url_for('auth.join')
+    pdf = genera_locandina(
+        join_url,
+        nome_locale=get_setting('company_name'),
+        indirizzo=' '.join(p for p in (get_setting('company_address'),
+                                       get_setting('company_city')) if p),
+        telefono=get_setting('company_phone'),
+        bot=nome_bot(),
+        wallet_attivo=wallet_enabled(),
+        dieta_attiva=dieta_enabled(),
+    )
+    return Response(pdf, mimetype='application/pdf',
+                    headers={'Content-Disposition':
+                             'attachment; filename="quicklunch-locandina-registrazione.pdf"'})
+
+
 @bp.route('/clients/registration-qr')
 @require_permission('manage_clients')
 def clients_registration_qr():

@@ -452,7 +452,12 @@ def build():
               'compito e mettergli davanti il punto di accesso.', color=GRAY)
     rule(doc)
 
-    step(doc, 1, 'Stampa il QR di registrazione', [
+    step(doc, 1, 'Stampa la locandina con il QR di registrazione', [
+        [('Impostazioni › Azienda › ', False), ('Scarica la locandina (PDF A4)', True),
+         (': un foglio con lo stesso impianto dei manuali — che cos\'e QuickLunch, il QR '
+          'di registrazione del locale, i tre passi, i vostri recapiti — generato al momento '
+          'con l\'indirizzo vero. E la versione da appendere; quella che segue e la stampa '
+          'rapida dal browser.', False)],
         [('Clienti › ', False), ('QR registrazione', True),
          ('  (/admin/clients/registration-qr): pagina già impaginata per la '
           'stampa, con il QR e le istruzioni. Premi Stampa.', False)],

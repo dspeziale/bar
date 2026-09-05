@@ -746,9 +746,9 @@ def sez_cliente(pdf, idx):
     h2(pdf, 'Iscriversi', C, idx)
     passi(pdf, [
         ('Inquadra il QR del locale',
-         'La locandina appesa vicino alla cassa porta alla pagina di '
-         'iscrizione. Si entra con email e password oppure con l\'account '
-         'Google.'),
+         'La locandina appesa vicino alla cassa (Impostazioni > Azienda > '
+         'Scarica la locandina) porta alla pagina di iscrizione. Si entra con '
+         'email e password oppure con l\'account Google.'),
         ('Controlla la posta',
          'Arriva subito un\'email di conferma con la guida in PDF allegata e '
          'il pulsante per collegare Telegram. L\'account resta in attesa: '

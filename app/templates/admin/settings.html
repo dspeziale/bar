@@ -135,6 +135,33 @@
         </div>
       </div>
     </div>
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="card card-outline" style="border-top:3px solid #0f3460 !important;">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-qrcode mr-2" style="color:#0f3460;"></i>Locandina con il QR di registrazione
+            </h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted" style="font-size:.9rem;">
+              Un foglio A4 da appendere al banco e sui tavoli, con lo stesso impianto grafico
+              dei manuali: che cos'è QuickLunch in poche righe, il QR che porta alla
+              registrazione del vostro locale, i tre passi per iscriversi e i vostri
+              recapiti. Viene generata adesso con l'indirizzo reale e la ragione sociale
+              qui sopra: se cambiate qualcosa, basta scaricarla di nuovo.
+            </p>
+            <a href="{{ url_for('admin.settings_locandina_pdf') }}" class="btn btn-primary">
+              <i class="fas fa-file-pdf mr-1"></i>Scarica la locandina (PDF A4)
+            </a>
+            <a href="{{ url_for('admin.clients_registration_qr') }}" class="btn btn-outline-secondary ml-1"
+               target="_blank" rel="noopener">
+              <i class="fas fa-print mr-1"></i>Versione da stampare dal browser
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>{# /tab-azienda #}
 
   {# ══ NOTIFICHE ══════════════════════════════════════════════════════════ #}

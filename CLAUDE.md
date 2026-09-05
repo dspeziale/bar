@@ -457,6 +457,12 @@ Due trappole già capitate, entrambe da tenere presenti se tocchi questi flussi:
 
 ### PDF dei manuali e allegati email
 
+La **locandina con il QR di registrazione** (`app/locandina.py`, rotta
+`admin.settings_locandina_pdf`, pulsante in Impostazioni → Azienda) è generata a richiesta con
+fpdf2 e il kit dei manuali; il QR è la matrice di `qrcode` disegnata come rettangoli, così non
+servono immagini né Pillow per il codice. `qrcode` è in `requirements.txt` per questo: non
+toglierlo pensando che sia inutilizzato (la pagina HTML del QR usa invece qrcodejs nel browser).
+
 Il **manuale completo del gestore** è `docs/generate_manuale_gestore_pdf.py` →
 `docs/manuali/manuale_gestore.pdf` (16 sezioni per area, stesso kit di guida utente e catalogo,
 importato da `generate_guida_utente_pdf`). Va rigenerato dopo ogni funzionalità nuova o cambiata

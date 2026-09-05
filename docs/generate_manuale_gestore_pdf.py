@@ -304,10 +304,12 @@ def sez_clienti(pdf, idx):
 
     h2(pdf, 'Dall\'invito all\'attivazione', C, idx)
     passi(pdf, [
-        ('Stampa e affiggi il QR di registrazione',
-         'Clienti > QR registrazione: pagina gia impaginata. Il QR porta all\'iscrizione con '
-         'Google in un tocco oppure con email e password. Dopo la registrazione il cliente '
-         'torna alla pagina di accesso e resta in attesa.'),
+        ('Stampa e affiggi la locandina con il QR',
+         'Impostazioni > Azienda > Scarica la locandina: un A4 nel kit dei manuali con che '
+         'cos\'e QuickLunch, il QR di registrazione del locale, i tre passi e i vostri '
+         'recapiti, generato al momento con l\'indirizzo vero. In alternativa Clienti > QR '
+         'registrazione, da stampare dal browser. Dopo la registrazione il cliente torna alla '
+         'pagina di accesso e resta in attesa.'),
         ('Attiva dalla lista clienti',
          'Persone > Clienti: i non attivi sono evidenziati e contati sulla dashboard. Con '
          'Attiva il cliente entra; se appartiene a un\'azienda convenzionata lo si associa '
