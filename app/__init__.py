@@ -626,8 +626,9 @@ def _check_backup_reminder(adesso=None):
     from app.models import AppSetting
     from app.notifications import send_telegram
 
+    from app.orari import momento_settimanale
     now = adesso or _dtt.now(_ROME)
-    if now.weekday() != 4 or now.hour < 9:
+    if not momento_settimanale('backup_promemoria_giorno', 'backup_promemoria_ora', now):
         return
     oggi = now.date().isoformat()
 
@@ -675,8 +676,9 @@ def _check_diet_weekly(adesso=None):
     from app.dieta import genera_piano, inizio_settimana, testo_piano
     from app.notifications import send_reminder_to_user
 
+    from app.orari import momento_settimanale
     now = adesso or _dtt.now(_ROME)
-    if now.weekday() != 0 or now.hour < 7:
+    if not momento_settimanale('dieta_avviso_giorno', 'dieta_avviso_ora', now):
         return
     lunedi = inizio_settimana(now.date())
     profili = DietProfile.query.filter_by(attivo=True, avvisi=True).all()
@@ -1498,6 +1500,13 @@ def _seed_defaults():
     for skey, sval, slabel in default_settings:
         if not AppSetting.query.filter_by(key=skey).first():
             db.session.add(AppSetting(key=skey, value=sval, label=slabel))
+
+    # Orari dell'esercizio (app/orari.py): gli stessi default del modulo, cosi'
+    # la programmazione parte coerente anche su un database vuoto.
+    from app.orari import CHIAVI_ORARI as _CHIAVI_ORARI
+    for _k, _v, _lab, _g, _t in _CHIAVI_ORARI:
+        if not AppSetting.query.filter_by(key=_k).first():
+            db.session.add(AppSetting(key=_k, value=_v, label=_lab))
 
     # Seconda passata: gli ingredienti poke vengono creati dopo la prima, e
     # al primo avvio resterebbero senza valori fino al riavvio successivo.

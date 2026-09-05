@@ -6,6 +6,7 @@ from flask import (render_template, redirect, url_for, flash, request, abort,
 from flask_login import login_required, current_user
 from app import (db, tables_enabled, cesto_enabled, wallet_enabled, dieta_enabled,
                  magazzino_enabled, numero_italiano)
+from app import orari as orari_mod
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -1372,13 +1373,14 @@ def banco_session_new():
         token=token, staff_id=current_user.id,
         items_json=cart_json, total=total,
         status='pending',
-        created_at=now, expires_at=now + timedelta(minutes=10),
+        created_at=now,
+        expires_at=now + timedelta(minutes=orari_mod.leggi_orari()['banco_sessione_min']),
         tenant_id=_active_tenant_id(),
     )
     db.session.add(sess)
     db.session.commit()
     pay_url = request.host_url.rstrip('/') + '/banco/pay/' + token
-    return jsonify({'token': token, 'pay_url': pay_url, 'total': total, 'expires_in': 600})
+    return jsonify({'token': token, 'pay_url': pay_url, 'total': total, 'expires_in': orari_mod.leggi_orari()['banco_sessione_min'] * 60})
 
 
 @bp.route('/banco/session/<token>/status')
@@ -2134,6 +2136,22 @@ def settings():
              'risposta': get_setting('telegram_prova_risposta'),
              'chi': get_setting('telegram_prova_chi')}
 
+    # Orari dell'esercizio: i valori, le incoerenze e la giornata che ne discende.
+    _orari = orari_mod.leggi_orari()
+    _tid_orari = _active_tenant_id()
+    ctx_orari = {
+        'orari': _orari,
+        'orari_form': {k: orari_mod.formatta(k, v) for k, v in _orari.items()},
+        'orari_errori': orari_mod.valida(_orari),
+        'programma': orari_mod.programma_giornata(_orari),
+        'slot_previsti': orari_mod.slot_previsti(_orari),
+        'fasce_previste': orari_mod.fasce_previste(_orari),
+        'chiavi_orari': orari_mod.CHIAVI_ORARI, 'gruppi_orari': orari_mod.GRUPPI,
+        'giorni_settimana': orari_mod.GIORNI, 'nomi_giorni': orari_mod.NOMI_GIORNI,
+        'n_slot_attivi': TimeSlot.query.filter_by(tenant_id=_tid_orari, is_active=True).count(),
+        'n_fasce': TableTimeBand.query.filter_by(tenant_id=_tid_orari).count(),
+    }
+
     # Ultimo backup scaricato: la pagina Dati lo mostra con l'eta' in giorni.
     ultimo_backup, giorni_dal_backup = None, None
     _ub = get_setting('ultimo_backup_il')
@@ -2153,7 +2171,7 @@ def settings():
     return render_template('admin/settings.html', cfg=cfg, carichi=carichi,
                            mese_corrente='%04d-%02d' % (oggi.year, oggi.month),
                            prova=prova, ultimo_backup=ultimo_backup,
-                           giorni_dal_backup=giorni_dal_backup)
+                           giorni_dal_backup=giorni_dal_backup, **ctx_orari)
 
 
 @bp.route('/settings/save', methods=['POST'])
@@ -2178,6 +2196,40 @@ def settings_save():
     db.session.commit()
     flash('Impostazioni salvate.', 'success')
     return redirect(url_for('admin.settings'))
+
+
+@bp.route('/settings/orari', methods=['POST'])
+@require_permission('manage_settings')
+def settings_orari_save():
+    """Salva gli orari dell'esercizio. Con incoerenze non salva nulla: un
+    orario sbagliato qui cambierebbe il comportamento di tutta l'app."""
+    _orari, errori = orari_mod.salva_orari(request.form)
+    if errori:
+        flash('Orari non salvati. ' + ' '.join(errori), 'danger')
+    else:
+        flash('Orari salvati. Se hai cambiato i tempi del ritiro o dei tavoli, '
+              'sincronizza slot e fasce qui sotto.', 'success')
+    return redirect(url_for('admin.settings') + '#tab-orari')
+
+
+@bp.route('/settings/orari/slot', methods=['POST'])
+@require_permission('manage_settings')
+def settings_orari_slot():
+    """Gli slot di ritiro allineati agli orari: crea, riattiva, disattiva."""
+    creati, riattivati, disattivati = orari_mod.sincronizza_slot(_active_tenant_id())
+    flash('Slot sincronizzati: %d creati, %d riattivati, %d disattivati.'
+          % (creati, riattivati, disattivati), 'success')
+    return redirect(url_for('admin.settings') + '#tab-orari')
+
+
+@bp.route('/settings/orari/fasce', methods=['POST'])
+@require_permission('manage_settings')
+@tables_required
+def settings_orari_fasce():
+    """Le fasce dei tavoli mancanti, dagli orari."""
+    creati = orari_mod.sincronizza_fasce(_active_tenant_id())
+    flash('Fasce dei tavoli: %d creat%s.' % (creati, 'a' if creati == 1 else 'e'), 'success')
+    return redirect(url_for('admin.settings') + '#tab-orari')
 
 
 @bp.route('/settings/test-telegram', methods=['POST'])

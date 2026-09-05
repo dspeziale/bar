@@ -8,6 +8,17 @@
 {% endblock %}
 
 {% block content %}
+{% if prenotazione_pasto %}
+  {% if not prenotazione_pasto[0] %}
+  <div class="alert alert-secondary py-2 mb-3"><i class="fas fa-clock mr-1"></i>{{ prenotazione_pasto[1] }}</div>
+  {% elif orari %}
+  <p class="text-muted mb-2" style="font-size:.85rem;">
+    <i class="fas fa-clock mr-1"></i>Le prenotazioni di oggi si accettano fino alle
+    <strong>{{ orari.pasto_prenotazione_entro.strftime('%H:%M') }}</strong>; disdetta possibile fino a
+    {{ orari.pasto_annullo_min }} minuti prima del ritiro.
+  </p>
+  {% endif %}
+{% endif %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
 

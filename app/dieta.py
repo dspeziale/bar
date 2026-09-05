@@ -613,6 +613,12 @@ def genera_piano(user, profilo, week_start=None, seed=None, oggi=None):
             d.nota = 'Giorno già trascorso.'
             db.session.add(d)
             continue
+        from app.orari import giorno_aperto
+        if not giorno_aperto(giorno):
+            d.stato = 'saltato'
+            d.nota = 'Il locale è chiuso.'
+            db.session.add(d)
+            continue
         combo, _s = componi_pranzo(candidati, fabb['pranzo'], rnd, usati,
                                    profilo.budget_pranzo, profilo.obiettivo)
         if not combo:

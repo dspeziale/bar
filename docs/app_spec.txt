@@ -1892,6 +1892,39 @@ Pagine
   scheda prodotto, ingredienti e pasto del giorno.
 
 
+ORARI DELL'ESERCIZIO (app/orari.py)
+-----------------------------------
+Una sola tabella di orari (Impostazioni > Orari, al posto del vecchio tab
+Reminder), in AppSetting con le chiavi di CHIAVI_ORARI, letta con
+leggi_orari() che converte ai tipi e ripiega sul default se un valore e'
+corrotto. Gruppi: locale (apertura, chiusura, giorni, chiusure
+straordinarie), ordini e ritiro (finestra degli ordini, anticipo minimo,
+primo/ultimo slot, intervallo, capienza, anticipo cucina), pasto aziendale
+(prenotazione entro, disdetta fino a), tavoli (prima fascia, fine, durata),
+banco e cesto (durata del QR, scadenza etichette), appuntamenti della
+settimana (giorno e ora dell'avviso dieta e del promemoria backup),
+promemoria (i tre anticipi in minuti).
+
+Da qui discende la programmazione, senza altri orari cablati:
+- slot di ritiro: slot_previsti() e sincronizza_slot() creano i mancanti,
+  riattivano i previsti, disattivano quelli fuori griglia (mai cancellare);
+- fasce dei tavoli: fasce_previste() e sincronizza_fasce() aggiungono le
+  mancanti (le esistenti hanno prenotazioni);
+- carrello: solo gli slot raggiungibili (slot_ordinabili, anticipo minimo);
+  place_order rifiuta fuori finestra (finestra_ordini) e slot troppo vicini;
+  menu e carrello mostrano il motivo;
+- pasto aziendale: prenotazione entro l'ora (prenotazione_pasto_aperta),
+  disdetta fino a pasto_annullo_min;
+- banco: il QR vale banco_sessione_min; cesto: le etichette scadono dopo
+  cesto_scadenza_ore;
+- dieta: i giorni chiusi (giorno_aperto) non si pianificano;
+- avvisi settimanali: momento_settimanale() decide giorno e ora.
+valida() elenca le incoerenze (apertura < chiusura, ordini dentro il locale,
+ultimo ordine <= ultimo slot, pasto prima del primo slot, ecc.) e con errori
+il salvataggio non avviene; programma_giornata() mostra la giornata tipo che
+ne discende.
+
+
 BACKUP E RIPRISTINO (app/data_tools.py, solo super admin)
 ---------------------------------------------------------
 Backup: Impostazioni > Dati > Scarica il backup. Un file JSON con tutte le

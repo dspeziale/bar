@@ -486,6 +486,12 @@ def build():
           'bonus non esistono, e sparisce anche il Banco con il QR, che e un '
           'pagamento dal portafoglio; ordini e cesto registrano comunque le '
           'vendite nei report.', False)],
+        [('Gli orari di questa scaletta - apertura, ordini, slot di ritiro, '
+          'fasce, chiusura - sono quelli predefiniti: si cambiano in ', False),
+         ('Impostazioni › Orari', True),
+         (', e da li discende tutto il resto: slot di ritiro e fasce dei '
+          'tavoli generati, finestra degli ordini, ora limite del pasto '
+          'aziendale, avvisi della settimana.', False)],
         [('Le attivita di questo manuale contrassegnate con ', False),
          ('"solo con portafoglio attivo"', True),
          (' in quel caso si saltano: la scaletta resta valida per tutto il '

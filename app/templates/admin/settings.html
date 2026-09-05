@@ -37,9 +37,9 @@
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="t-reminder" data-toggle="tab"
-       href="#tab-reminder" role="tab">
-      <i class="fas fa-clock mr-1"></i>Reminder
+    <a class="nav-link" id="t-orari" data-toggle="tab"
+       href="#tab-orari" role="tab">
+      <i class="fas fa-clock mr-1"></i>Orari
     </a>
   </li>
   <li class="nav-item">
@@ -550,77 +550,10 @@
   </div>{# /tab-prezzi #}
 
   {# ══ REMINDER ═══════════════════════════════════════════════════════════ #}
-  <div class="tab-pane fade" id="tab-reminder" role="tabpanel">
-    <div class="row">
-      <div class="col-lg-5">
-        <div class="card card-outline card-secondary">
-          <div class="card-header">
-            <h3 class="card-title">
-              <i class="fas fa-clock mr-2"></i>Minuti di anticipo notifiche Telegram
-            </h3>
-          </div>
-          <div class="card-body">
-            <p class="text-muted mb-3">
-              Quanti minuti prima dell'orario pianificato inviare il reminder all'utente.
-              Il check avviene automaticamente ad ogni accesso (max 1 volta/minuto).
-            </p>
-            <form method="POST" action="{{ url_for('admin.settings_save') }}">
-              {{ csrf_field() }}
-              <input type="hidden" name="keys"
-                     value="table_reminder_minutes,order_reminder_minutes,meal_reminder_minutes">
-              <div class="form-group">
-                <label>
-                  <i class="fas fa-chair mr-1 text-primary"></i>
-                  Prenotazione tavolo
-                </label>
-                <div class="input-group" style="max-width:200px;">
-                  <input type="number" name="table_reminder_minutes" class="form-control"
-                         value="{{ cfg.table_reminder_minutes or 10 }}"
-                         min="1" max="120" step="1">
-                  <div class="input-group-append">
-                    <span class="input-group-text">min prima</span>
-                  </div>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>
-                  <i class="fas fa-box mr-1 text-warning"></i>
-                  Ritiro ordine
-                </label>
-                <div class="input-group" style="max-width:200px;">
-                  <input type="number" name="order_reminder_minutes" class="form-control"
-                         value="{{ cfg.order_reminder_minutes or 15 }}"
-                         min="1" max="120" step="1">
-                  <div class="input-group-append">
-                    <span class="input-group-text">min prima</span>
-                  </div>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>
-                  <i class="fas fa-utensils mr-1 text-success"></i>
-                  Pasto aziendale
-                </label>
-                <div class="input-group" style="max-width:200px;">
-                  <input type="number" name="meal_reminder_minutes" class="form-control"
-                         value="{{ cfg.meal_reminder_minutes or 15 }}"
-                         min="1" max="120" step="1">
-                  <div class="input-group-append">
-                    <span class="input-group-text">min prima</span>
-                  </div>
-                </div>
-              </div>
-              <button type="submit" class="btn btn-secondary">
-                <i class="fas fa-save mr-1"></i>Salva
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>{# /tab-reminder #}
+  <div class="tab-pane fade" id="tab-orari" role="tabpanel">
+    {% include 'admin/_tab_orari.html' %}
+  </div>
 
-  {# ══ BROADCAST ══════════════════════════════════════════════════════════ #}
   <div class="tab-pane fade" id="tab-broadcast" role="tabpanel">
     <div class="row">
 

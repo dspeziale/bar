@@ -508,6 +508,31 @@ def sez_gestore(pdf, idx):
                  'pagine: qui c\'e tutto quello che si decide prima che il '
                  'servizio cominci.', idx)
 
+    h2(pdf, 'Gli orari: una tabella sola, e tutto ne discende', C, idx)
+    testo(pdf, 'Impostazioni > Orari raccoglie ogni orario del locale: apertura '
+               'e chiusura, giorni di apertura e chiusure straordinarie, la '
+               'finestra degli ordini e i minuti minimi fra ordine e ritiro, '
+               'primo e ultimo slot con l\'intervallo e la capienza, l\'ora '
+               'entro cui si prenota il pasto aziendale e fino a quando si '
+               'disdice, le fasce dei tavoli, quanto vale il QR del banco e '
+               'un\'etichetta del cesto, il giorno e l\'ora degli avvisi '
+               'settimanali, l\'anticipo dei promemoria.')
+    elenco(pdf, [
+        ('Slot e fasce si generano da qui: ', 'un pulsante crea gli slot '
+         'mancanti, riattiva quelli previsti e disattiva quelli fuori '
+         'griglia senza cancellare nulla; un altro aggiunge le fasce dei '
+         'tavoli che mancano.'),
+        ('Il servizio li rispetta da solo: ', 'il carrello mostra solo gli '
+         'slot ancora raggiungibili, gli ordini fuori orario e nei giorni '
+         'di chiusura vengono rifiutati con il motivo, il pasto aziendale si '
+         'prenota entro l\'ora stabilita, la dieta non pianifica i giorni '
+         'chiusi, gli avvisi partono quando decidi tu.'),
+        ('Con incoerenze non si salva: ', 'la pagina elenca cosa non torna '
+         '(un ultimo ordine dopo l\'ultimo slot, un pasto da prenotare dopo '
+         'il primo ritiro) e mostra la giornata tipo che discende dai '
+         'valori inseriti.'),
+    ])
+
     h2(pdf, 'Il catalogo', C, idx)
     testo(pdf, 'L\'installazione parte con 18 categorie e un listino di '
                'circa 75 prodotti da bar caffetteria con mensa, ognuno con '

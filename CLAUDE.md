@@ -467,6 +467,30 @@ Quel PDF è **versionato**: in produzione non ci sono Word né LibreOffice per c
 del generatore `.docx`. **Dopo aver modificato un manuale, rigenera il `.docx` e poi quel
 comando**, altrimenti il PDF allegato resta indietro.
 
+### Orari dell'esercizio (`app/orari.py`)
+
+Tutti gli orari stanno in **una** tabella (`CHIAVI_ORARI`, chiavi `AppSetting`, tab
+**Orari** delle Impostazioni, che ha assorbito il vecchio tab Reminder) e la programmazione
+ne **discende**: `slot_previsti()`/`sincronizza_slot()` generano gli slot di ritiro (creano,
+riattivano, disattivano — mai cancellare, lo storico degli ordini li punta),
+`fasce_previste()`/`sincronizza_fasce()` aggiungono le fasce dei tavoli mancanti,
+`finestra_ordini()` e `slot_ordinabili()` governano carrello e `place_order`,
+`prenotazione_pasto_aperta()` il pasto aziendale, `giorno_aperto()` la dieta,
+`momento_settimanale()` il giorno/ora degli avvisi (dieta, backup), `banco_sessione_min` e
+`cesto_scadenza_ore` le durate. **Non cablare orari nel codice**: se serve un tempo nuovo si
+aggiunge una chiave a `CHIAVI_ORARI` (tupla a cinque campi: chiave, default, etichetta,
+gruppo, tipo) e il seed, il modulo del tab e `leggi_orari()` lo raccolgono da soli.
+`leggi_orari()` ripiega sul default se un valore è corrotto: la programmazione non si ferma
+per un orario scritto male. `valida()` elenca le incoerenze e `salva_orari()` non salva con
+errori. Gli orari sono ora locale (Roma) naive, come `TimeSlot.time_str`: `ora_locale()`
+converte ciò che arriva aware.
+
+Conseguenza per i test: **un test che fa un ordine dipende dal calendario**. Di sabato, di
+sera o su uno slot delle 11:45 già passato `place_order` rifiuta — giustamente. Le suite che
+ordinano spalancano la finestra all'avvio (tutti i giorni, 00:00–23:59, anticipo 0) e usano
+uno slot delle 23:59: è il blocco in testa a `smoke_dieta`, `smoke_wallet_flag` e
+`smoke_magazzino_flag`, da copiare in ogni suite nuova che ordini.
+
 ### Reminder: nessuno scheduler
 
 I promemoria (tavoli, ritiro ordini, pasti aziendali) girano in un `@app.before_request` con

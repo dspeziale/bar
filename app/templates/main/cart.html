@@ -208,6 +208,11 @@
             </div>
 
             <div id="slot-list">
+            {% if not slots %}
+            <div class="text-muted mb-2" style="font-size:.85rem;">
+              Nessuno slot di ritiro ancora raggiungibile per oggi.
+            </div>
+            {% endif %}
             {% for slot in slots %}
             <div class="custom-control custom-radio mb-1">
               <input type="radio" id="slot_{{ slot.id }}" name="slot_id" value="{{ slot.id }}"
@@ -268,8 +273,13 @@
             </label>
           </div>
           {% endif %}
+          {% if finestra_ordini and not finestra_ordini[0] %}
+          <div class="alert alert-secondary py-2 mb-3" style="font-size:.9rem;">
+            <i class="fas fa-clock mr-1"></i>{{ finestra_ordini[1] }}
+          </div>
+          {% endif %}
           <button type="submit" class="btn btn-success btn-block"
-                  {% if wallet_enabled and wallet < total %}disabled{% endif %}>
+                  {% if (wallet_enabled and wallet < total) or (finestra_ordini and not finestra_ordini[0]) %}disabled{% endif %}>
             <i class="fas fa-check mr-1"></i>Conferma Ordine
           </button>
         </form>

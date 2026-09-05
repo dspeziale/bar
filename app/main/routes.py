@@ -20,6 +20,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         OBIETTIVI_DESCRIZIONE, NON_GRADITI, GRUPPI_NON_GRADITI,
                         ATTIVITA_DIETA, GIORNI_SETTIMANA)
 from app.dieta import profilo_attivo
+from app import orari as orari_mod
 from config import Config
 
 
@@ -158,7 +159,8 @@ def menu():
             compat[p.id] = {'ok': ok, 'motivi': motivi, 'gradito': gradito, 'gusto': gusto}
     return render_template('main/menu.html', categories=categories,
                            products=products, slots=slots, cart=cart,
-                           profilo_dieta=profilo, compat=compat)
+                           profilo_dieta=profilo, compat=compat,
+                           finestra_ordini=orari_mod.finestra_ordini())
 
 
 @bp.route('/cart/add/<int:product_id>', methods=['POST'])
@@ -232,6 +234,9 @@ def cart():
 
     tid = _effective_tenant_id()
     slots = TimeSlot.query.filter_by(is_active=True, tenant_id=tid).order_by(TimeSlot.time_str).all()
+    # Solo gli slot ancora raggiungibili: fra l'ordine e il ritiro serve il
+    # tempo della cucina (ordini_anticipo_min).
+    slots = orari_mod.slot_ordinabili(slots)
     analisi = None
     profilo = profilo_attivo(current_user) if dieta_enabled() else None
     if profilo and (items or custom_cart):
@@ -242,7 +247,8 @@ def cart():
                            total=round(total, 2),
                            slots=slots,
                            wallet=current_user.wallet_balance,
-                           analisi_dieta=analisi, kcal_composti=kcal_composti)
+                           analisi_dieta=analisi, kcal_composti=kcal_composti,
+                           finestra_ordini=orari_mod.finestra_ordini())
 
 
 # ── Ordine ────────────────────────────────────────────────────────────────────
@@ -261,6 +267,12 @@ def place_order():
     notes    = request.form.get('notes', '').strip()
     banco    = (slot_raw == 'banco')
 
+    # Finestra degli ordini e giorni di chiusura vengono dagli Orari.
+    _aperta, _motivo = orari_mod.finestra_ordini()
+    if not _aperta:
+        flash(_motivo, 'warning')
+        return redirect(url_for('main.cart'))
+
     if banco:
         slot_id = None
         slot    = None
@@ -269,6 +281,11 @@ def place_order():
         slot    = db.session.get(TimeSlot, slot_id) if slot_id else None
         if not slot or not slot.is_active or slot.is_full():
             flash('Slot di ritiro non disponibile. Scegline un altro.', 'danger')
+            return redirect(url_for('main.cart'))
+        if not orari_mod.slot_ordinabili([slot]):
+            flash('Lo slot delle %s è troppo vicino: servono almeno %d minuti fra '
+                  'l\'ordine e il ritiro. Scegline uno più tardi.'
+                  % (slot.time_str, orari_mod.leggi_orari()['ordini_anticipo_min']), 'warning')
             return redirect(url_for('main.cart'))
 
     # Valida prodotti regolari
@@ -970,7 +987,7 @@ def pasto_aziendale():
         try:
             slot_time = datetime.strptime(my_booking.slot.time_str, '%H:%M').time()
             slot_dt   = datetime.combine(date.today(), slot_time)
-            can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=30)
+            can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=orari_mod.leggi_orari()['pasto_annullo_min'])
         except Exception:
             can_cancel = True
 
@@ -985,7 +1002,9 @@ def pasto_aziendale():
     return render_template('main/pasto_aziendale.html',
                            corp=corp, meals=meals, my_booking=my_booking,
                            slots=slots, today=today, can_cancel=can_cancel,
-                           compat_pasti=compat_pasti, profilo_dieta=_profilo)
+                           compat_pasti=compat_pasti, profilo_dieta=_profilo,
+                           prenotazione_pasto=orari_mod.prenotazione_pasto_aperta(),
+                           orari=orari_mod.leggi_orari())
 
 
 @bp.route('/pasto-aziendale/prenota', methods=['POST'])
@@ -1003,6 +1022,12 @@ def pasto_aziendale_prenota():
 
     if meal.corporate_id != corp.id or meal.meal_date != today or not meal.is_active:
         flash('Opzione non disponibile.', 'danger')
+        return redirect(url_for('main.pasto_aziendale'))
+
+    # Entro l'ora stabilita negli Orari: la cucina deve sapere quanti pasti fare.
+    _aperta, _motivo = orari_mod.prenotazione_pasto_aperta()
+    if not _aperta:
+        flash(_motivo, 'warning')
         return redirect(url_for('main.pasto_aziendale'))
 
     quantity = max(1, request.form.get('quantity', 1, type=int))
@@ -1075,7 +1100,7 @@ def pasto_aziendale_cancella():
             try:
                 slot_time = datetime.strptime(booking.slot.time_str, '%H:%M').time()
                 slot_dt   = datetime.combine(date.today(), slot_time)
-                can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=30)
+                can_cancel = (slot_dt - datetime.now()) >= timedelta(minutes=orari_mod.leggi_orari()['pasto_annullo_min'])
             except Exception:
                 can_cancel = True
         if can_cancel:
@@ -1544,7 +1569,7 @@ def cesto_scan(code):
     # etichette di ieri o più vecchie scadono automaticamente
     if lb.status == 'ready':
         age_hours = (datetime.now(timezone.utc) - lb.prepared_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
-        if age_hours > 24:
+        if age_hours > orari_mod.leggi_orari()['cesto_scadenza_ore']:
             lb.status = 'expired'
             db.session.commit()
     return render_template('main/cesto_scan.html', lb=lb)

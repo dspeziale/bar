@@ -1,0 +1,163 @@
+{#
+  Tab Orari delle Impostazioni: una sola tabella di orari, per gruppi, e a
+  destra il programma della giornata che ne discende, con le azioni che
+  trasformano gli orari in righe (slot di ritiro, fasce dei tavoli).
+  Il contesto arriva da admin.settings: orari_form, orari_errori, programma,
+  slot_previsti, fasce_previste, chiavi_orari, gruppi_orari, giorni_settimana,
+  nomi_giorni, n_slot_attivi, n_fasce.
+#}
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-clock mr-2"></i>Gli orari dell'esercizio</h3>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size:.9rem;">
+          Da questi valori discende tutta la programmazione: gli slot di ritiro e le fasce dei
+          tavoli si generano da qui, il carrello mostra solo gli slot ancora raggiungibili,
+          gli ordini si rifiutano fuori orario e nei giorni di chiusura, il pasto aziendale si
+          prenota entro l'ora indicata, la dieta non pianifica i giorni chiusi, gli avvisi
+          partono nel giorno e all'ora scelti. Non esistono altri orari nascosti.
+        </p>
+        {% if orari_errori %}
+        <div class="alert alert-danger py-2" style="font-size:.88rem;">
+          <strong><i class="fas fa-triangle-exclamation mr-1"></i>Orari incoerenti:</strong>
+          <ul class="mb-0 pl-3">{% for e in orari_errori %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.settings_orari_save') }}" id="form-orari">
+          {{ csrf_field() }}
+          {% for gk, gtitolo, gicona, gdescr in gruppi_orari %}
+          <div class="mt-3 mb-1 d-flex align-items-baseline" style="gap:.5rem;">
+            <i class="fas {{ gicona }} text-muted"></i>
+            <strong style="font-size:.95rem;">{{ gtitolo }}</strong>
+            <small class="text-muted">{{ gdescr }}</small>
+          </div>
+          <div class="row">
+            {% for chiave, default, etichetta, gruppo, tipo in chiavi_orari if gruppo == gk %}
+            {% if tipo == 'giorni' %}
+            <div class="col-12 mb-2">
+              <label class="mb-1" style="font-size:.85rem;">{{ etichetta }}</label>
+              <div>
+                {% for g in giorni_settimana %}
+                <div class="form-check form-check-inline">
+                  <input type="checkbox" class="form-check-input" name="giorni_apertura" value="{{ g }}"
+                         id="ga-{{ g }}" {{ 'checked' if g in orari.giorni_apertura }}>
+                  <label class="form-check-label" for="ga-{{ g }}">{{ nomi_giorni[g][:3] }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% elif tipo == 'date' %}
+            <div class="col-12 mb-2">
+              <label class="mb-1" style="font-size:.85rem;">{{ etichetta }}
+                <small class="text-muted">— date separate da virgola, formato AAAA-MM-GG</small></label>
+              <input type="text" name="{{ chiave }}" class="form-control form-control-sm"
+                     value="{{ orari_form[chiave] }}" placeholder="es. 2026-12-25, 2026-12-26">
+            </div>
+            {% elif tipo == 'giorno' %}
+            <div class="col-md-6 mb-2">
+              <label class="mb-1" style="font-size:.85rem;">{{ etichetta }}</label>
+              <select name="{{ chiave }}" class="form-control form-control-sm">
+                {% for g in giorni_settimana %}
+                <option value="{{ g }}" {{ 'selected' if orari_form[chiave] == g }}>{{ nomi_giorni[g] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% elif tipo == 'ora' %}
+            <div class="col-md-6 mb-2">
+              <label class="mb-1" style="font-size:.85rem;">{{ etichetta }}</label>
+              <input type="time" name="{{ chiave }}" class="form-control form-control-sm"
+                     value="{{ orari_form[chiave] }}" required>
+            </div>
+            {% else %}
+            <div class="col-md-6 mb-2">
+              <label class="mb-1" style="font-size:.85rem;">{{ etichetta }}</label>
+              <div class="input-group input-group-sm">
+                <input type="number" name="{{ chiave }}" class="form-control"
+                       value="{{ orari_form[chiave] }}" min="0" step="1" required>
+                <div class="input-group-append">
+                  <span class="input-group-text">{{ 'min' if tipo == 'min' else ('ore' if chiave.endswith('_ore') else '') }}</span>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary mt-3">
+            <i class="fas fa-save mr-1"></i>Salva gli orari
+          </button>
+          <small class="text-muted ml-2">Con incoerenze non si salva nulla.</small>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card card-outline" style="border-top:3px solid #0f3460 !important;">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-timeline mr-2"></i>La giornata che ne discende</h3>
+      </div>
+      <div class="card-body py-2">
+        <p class="text-muted mb-2" style="font-size:.82rem;">
+          Aperto {% for g in orari.giorni_apertura %}{{ nomi_giorni[g][:3] }}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% if orari.chiusure_straordinarie %}· {{ orari.chiusure_straordinarie|length }} chiusur{{ 'a' if orari.chiusure_straordinarie|length == 1 else 'e' }} straordinari{{ 'a' if orari.chiusure_straordinarie|length == 1 else 'e' }}{% endif %}
+        </p>
+        <table class="table table-sm mb-0" style="font-size:.86rem;">
+          <tbody>
+          {% for v in programma %}
+          <tr>
+            <td style="width:3.6rem;"><strong>{{ v.ora }}</strong></td>
+            <td><i class="fas {{ v.icona }} text-muted mr-1"></i>{{ v.testo }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-wand-magic-sparkles mr-2"></i>Dagli orari alle righe</h3>
+      </div>
+      <div class="card-body" style="font-size:.88rem;">
+        <p class="mb-1"><strong>Slot di ritiro previsti</strong> ({{ slot_previsti|length }}, capienza {{ orari.slot_capienza }}):</p>
+        <p class="text-muted mb-2">{{ slot_previsti|join(' · ') }}</p>
+        <p class="text-muted mb-2" style="font-size:.8rem;">
+          Oggi gli slot attivi sono {{ n_slot_attivi }}. La sincronizzazione crea quelli mancanti,
+          riattiva quelli previsti e disattiva quelli fuori griglia; non cancella nulla, così lo
+          storico degli ordini resta. Le capienze già impostate a mano non vengono toccate.
+        </p>
+        <form method="POST" action="{{ url_for('admin.settings_orari_slot') }}" class="mb-3">
+          {{ csrf_field() }}
+          <button class="btn btn-success btn-sm"><i class="fas fa-sync mr-1"></i>Sincronizza gli slot</button>
+          <a href="{{ url_for('admin.slots') }}" class="btn btn-link btn-sm">Vedi gli slot</a>
+        </form>
+        {% if tables_enabled %}
+        <p class="mb-1"><strong>Fasce dei tavoli previste</strong> ({{ fasce_previste|length }}):</p>
+        <p class="text-muted mb-2">{% for a, b in fasce_previste %}{{ a }}–{{ b }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+        <p class="text-muted mb-2" style="font-size:.8rem;">
+          Fasce esistenti: {{ n_fasce }}. Si aggiungono solo quelle mancanti: le fasce già
+          create hanno prenotazioni che le puntano e non si toccano.
+        </p>
+        <form method="POST" action="{{ url_for('admin.settings_orari_fasce') }}">
+          {{ csrf_field() }}
+          <button class="btn btn-success btn-sm"><i class="fas fa-sync mr-1"></i>Crea le fasce mancanti</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Le rotte degli orari tornano su #tab-orari: si riapre il tab giusto.
+window.addEventListener('load', function () {
+  if (location.hash && window.jQuery) {
+    var lnk = jQuery('a[data-toggle="tab"][href="' + location.hash + '"]');
+    if (lnk.length) { lnk.tab('show'); }
+  }
+});
+</script>
