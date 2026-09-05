@@ -1109,7 +1109,7 @@ class DietProfile(db.Model):
     condizioni    = db.Column(db.String(256), default='')    # chiavi di CONDIZIONI_DIETA
     esclusioni    = db.Column(db.String(512), default='')    # chiavi di ALLERGENS, anche libere
     regime        = db.Column(db.String(16), default='onnivoro')
-    obiettivo     = db.Column(db.String(16), default='mantenimento')
+    obiettivo     = db.Column(db.String(32), default='mantenimento')
     sesso         = db.Column(db.String(1), default='')       # 'M', 'F' o ''
     peso_kg       = db.Column(db.Float, nullable=True)
     altezza_cm    = db.Column(db.Float, nullable=True)

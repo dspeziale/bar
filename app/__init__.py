@@ -852,6 +852,29 @@ def _migrate_tenant_columns():
     for _tab in ('products', 'daily_fixed_meals', 'meal_configurations'):
         _ensure(_tab, 'is_vegetarian', 'BOOLEAN DEFAULT FALSE')
 
+    # Colonne gia' esistenti da allargare. SQLite non impone la lunghezza di un
+    # VARCHAR, PostgreSQL si': una chiave piu' lunga del previsto passa tutti
+    # i test in locale e muore in produzione con StringDataRightTruncation.
+    def _allarga(table, col, lunghezza):
+        if not is_pg or table not in existing_tables:
+            return
+        for c in insp.get_columns(table):
+            if c['name'] != col:
+                continue
+            attuale = getattr(c['type'], 'length', None)
+            if attuale is None or attuale >= lunghezza:
+                return
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(f'ALTER TABLE "{table}" ALTER COLUMN "{col}" '
+                                      f'TYPE VARCHAR({lunghezza})'))
+                    conn.commit()
+                print(f'[migration] widened {table}.{col} to VARCHAR({lunghezza})')
+            except Exception as exc:
+                print(f'[migration] ERROR widening {table}.{col}: {exc}')
+
+    _allarga('diet_profiles', 'obiettivo', 32)   # 'dimagrimento_forte' sono 18 caratteri
+
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)
     if 'push_subscriptions' not in existing_tables:

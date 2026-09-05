@@ -79,6 +79,15 @@ Lo schema è gestito a mano e **ogni chiamata a `create_app()` esegue**, in ques
 riceveranno mai. Lo stesso vale per nuovi permessi, che vanno aggiunti al blocco
 idempotente `extra_perms` e non alla lista iniziale (eseguita solo su DB vuoto).
 
+**SQLite non impone la lunghezza dei `VARCHAR`, PostgreSQL sì.** Una chiave più lunga della
+colonna (`'dimagrimento_forte'`, 18 caratteri, in `obiettivo String(16)`) passa tutti i test in
+locale e in produzione muore con `StringDataRightTruncation` al primo salvataggio. Chi aggiunge
+valori a una lista di chiavi (`OBIETTIVI_DIETA`, `REGIMI_DIETA`, stati, ecc.) controlli la
+lunghezza della colonna; `smoke_dieta` lo verifica per quelle della dieta. Per allargare una
+colonna già esistente c'è `_allarga(tabella, colonna, lunghezza)` in `_migrate_tenant_columns()`
+(solo PostgreSQL, idempotente): allargare il modello da solo non basta, la tabella in
+produzione resta com'era.
+
 Dentro `_seed_defaults()`, subito dopo la creazione del tenant di default, c'è un loop che
 assegna `tenant_id = <default>` a **tutte** le righe orfane di `orphan_tables` (users,
 orders, table_reservations, prodotti, ecc.), silenziosamente e a ogni avvio. Prima di
