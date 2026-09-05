@@ -121,6 +121,7 @@ def create_app(config_object='config.Config'):
                 _check_table_reminders()
             _check_order_reminders()
             _check_meal_reminders()
+            _check_backup_reminder()
             if dieta_enabled():
                 _check_diet_weekly()
         except Exception:
@@ -603,6 +604,52 @@ def _backfill_nutrizione():
             presenti = [a.strip().lower() for a in (i.allergens or '').split(',') if a.strip()]
             if v[5] not in presenti:
                 i.allergens = ', '.join(presenti + [v[5]]) if presenti else v[5]
+
+
+def _check_backup_reminder(adesso=None):
+    """Il venerdì dalle 9 ricorda al canale dello staff di scaricare il
+    backup, se l'ultimo ha più di sei giorni o non ne risulta nessuno.
+
+    Una volta per settimana (`backup_promemoria_il`), a carico del traffico
+    come gli altri promemoria. `adesso` serve ai test.
+    """
+    from datetime import datetime as _dtt
+    from app.models import AppSetting
+    from app.notifications import send_telegram
+
+    now = adesso or _dtt.now(_ROME)
+    if now.weekday() != 4 or now.hour < 9:
+        return
+    oggi = now.date().isoformat()
+
+    def _leggi(chiave):
+        riga = AppSetting.query.filter_by(key=chiave).first()
+        return (riga.value if riga else '') or ''
+
+    if _leggi('backup_promemoria_il') == oggi:
+        return
+    ultimo = _leggi('ultimo_backup_il')
+    if ultimo:
+        try:
+            eta = now.replace(tzinfo=None) - _dtt.fromisoformat(ultimo)
+        except ValueError:
+            eta = None
+        if eta is not None and eta.days < 6:
+            return
+    testo = ('💾 <b>Promemoria: backup settimanale</b>\n'
+             + ("L'ultimo backup è del %s." % ultimo[:10] if ultimo
+                else 'Non risulta nessun backup scaricato.')
+             + '\nImpostazioni → Dati → <b>Scarica il backup</b>, e conserva il '
+             'file fuori dal server.')
+    ok, _msg = send_telegram(testo)
+    if ok:
+        riga = AppSetting.query.filter_by(key='backup_promemoria_il').first()
+        if riga:
+            riga.value = oggi
+        else:
+            db.session.add(AppSetting(key='backup_promemoria_il', value=oggi,
+                                      label='Ultimo promemoria backup inviato'))
+        db.session.commit()
 
 
 def _check_diet_weekly(adesso=None):

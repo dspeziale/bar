@@ -1848,3 +1848,34 @@ Pagine
 - Staff: /admin/diete (permesso manage_clients): esigenze dichiarate, pranzi
   del piano di oggi, prodotti senza valori nutrizionali; campi nutrizionali in
   scheda prodotto, ingredienti e pasto del giorno.
+
+
+BACKUP E RIPRISTINO (app/data_tools.py, solo super admin)
+---------------------------------------------------------
+Backup: Impostazioni > Dati > Scarica il backup. Un file JSON con tutte le
+tabelle dai metadati (quindi anche quelle aggiunte in seguito, dieta compresa),
+piu' 'schema' (colonne per tabella), 'righe', 'app', 'creato_il', 'motore',
+'versione' (1). Il download annota 'ultimo_backup_il'; la pagina mostra data ed
+eta' dell'ultimo backup. Il venerdi' dalle 9 (ora di Roma, nel polling dei
+promemoria) il canale Telegram dello staff riceve un promemoria se l'ultimo
+backup ha piu' di sei giorni o non ne risulta nessuno; una volta per settimana
+('backup_promemoria_il').
+
+Ripristino: Impostazioni > Dati > Ripristina dal file, con RIPRISTINA digitato.
+- Anteprima nel browser appena si sceglie il file: data, motore, tabelle,
+  righe, utenti/ordini/prodotti contenuti; avvisi se la versione non e' la 1,
+  se il file ha piu' di 30 giorni, se e' precedente alla dieta.
+- Prima di cancellare, lo stato attuale viene esportato e inviato per email
+  a chi ripristina (allegato JSON, file temporaneo rimosso). Se l'invio non
+  riesce il ripristino si ferma, salvo casella "procedi anche senza copia".
+- Il contenuto viene sostituito in una sola transazione; le righe di ogni
+  tabella ricevono le stesse chiavi (l'insert a blocchi le vuole omogenee);
+  colonne del file assenti nel database vengono ignorate; tabelle del
+  database assenti nel file restano vuote. Su PostgreSQL si riallineano le
+  sequenze. Poi gira il seed come all'avvio: permessi, impostazioni e valori
+  nutrizionali del listino tornano subito.
+- Il messaggio finale elenca righe caricate, tabelle del file ignorate,
+  colonne ignorate, tabelle svuotate (con le righe che avevano) e l'esito
+  della copia di sicurezza. La sessione viene chiusa con logout esplicito.
+- Da fare a locale chiuso: tutto cio' che e' stato registrato dopo il backup
+  va perso.

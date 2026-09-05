@@ -2105,6 +2105,16 @@ def settings():
              'risposta': get_setting('telegram_prova_risposta'),
              'chi': get_setting('telegram_prova_chi')}
 
+    # Ultimo backup scaricato: la pagina Dati lo mostra con l'eta' in giorni.
+    ultimo_backup, giorni_dal_backup = None, None
+    _ub = get_setting('ultimo_backup_il')
+    if _ub:
+        try:
+            ultimo_backup = _dt.fromisoformat(_ub)
+            giorni_dal_backup = (_dt.utcnow() - ultimo_backup).days
+        except ValueError:
+            ultimo_backup = None
+
     # Sezione "Dati": elenco dei carichi generati, solo per il super admin
     carichi = []
     if current_user.is_admin:
@@ -2113,7 +2123,8 @@ def settings():
     oggi = date.today()
     return render_template('admin/settings.html', cfg=cfg, carichi=carichi,
                            mese_corrente='%04d-%02d' % (oggi.year, oggi.month),
-                           prova=prova)
+                           prova=prova, ultimo_backup=ultimo_backup,
+                           giorni_dal_backup=giorni_dal_backup)
 
 
 @bp.route('/settings/save', methods=['POST'])
@@ -4553,9 +4564,10 @@ def dati_backup():
     """Scarica una copia integrale del database in formato JSON."""
     import json as _json
     from flask import Response
-    from app.data_tools import esporta_backup
+    from app.data_tools import esporta_backup, registra_backup_eseguito
 
     dati = esporta_backup()
+    registra_backup_eseguito()
     nome = f'quicklunch-backup-{_dt.now().strftime("%Y%m%d-%H%M")}.json'
     corpo = _json.dumps(dati, ensure_ascii=False, indent=1)
     righe = sum(len(v) for v in dati['tabelle'].values())
@@ -4569,9 +4581,15 @@ def dati_backup():
 @bp.route('/dati/restore', methods=['POST'])
 @_superadmin_required
 def dati_restore():
-    """Sostituisce il contenuto del database con quello di un file di backup."""
+    """Sostituisce il contenuto del database con quello di un file di backup.
+
+    Prima di cancellare, lo stato attuale viene inviato per email a chi
+    ripristina: e' l'unica strada per tornare indietro se il file era quello
+    sbagliato. Se l'invio non riesce ci si ferma, a meno che l'operatore non
+    abbia scelto esplicitamente di procedere senza copia.
+    """
     import json as _json
-    from app.data_tools import importa_backup
+    from app.data_tools import importa_backup, copia_di_sicurezza_pre_restore
 
     if (request.form.get('conferma') or '').strip().upper() != 'RIPRISTINA':
         flash('Ripristino annullato: per procedere scrivi RIPRISTINA nel campo '
@@ -4588,6 +4606,15 @@ def dati_restore():
         flash(f'File non leggibile: {exc}', 'danger')
         return redirect(url_for('admin.settings'))
 
+    destinatario = current_user.email
+    senza_copia = request.form.get('senza_copia') == '1'
+    ok_copia, msg_copia = copia_di_sicurezza_pre_restore(destinatario)
+    if not ok_copia and not senza_copia:
+        flash('Ripristino non eseguito: la copia di sicurezza dello stato attuale '
+              f'non e\' partita ({msg_copia}). Scarica il backup a mano, oppure '
+              'spunta "procedi anche senza copia di sicurezza" e riprova.', 'danger')
+        return redirect(url_for('admin.settings'))
+
     try:
         n, note = importa_backup(dati)
     except ValueError as exc:
@@ -4600,7 +4627,16 @@ def dati_restore():
 
     msg = f'Ripristino completato: {n} righe caricate.'
     if note:
-        msg += ' ' + ' '.join(note) + '.'
+        msg += ' ' + '; '.join(note) + '.'
+    if ok_copia:
+        msg += f' Lo stato precedente e\' stato inviato a {destinatario}.'
+    else:
+        msg += f' Nessuna copia di sicurezza dello stato precedente ({msg_copia}).'
+    # Gli utenti sono stati sostituiti: la sessione va chiusa davvero, anche
+    # se l'id di chi ripristina esiste ancora, altrimenti il login lo
+    # rimanda alla dashboard e il messaggio si perde.
+    from flask_login import logout_user
+    logout_user()
     flash(msg, 'success')
     return redirect(url_for('auth.login'))
 

@@ -948,6 +948,9 @@ def build():
           False)],
         [('Tienine almeno le ultime quattro copie: un errore ci si accorge '
           'spesso con qualche giorno di ritardo.', False)],
+        [('La pagina mostra ', False), ('quando e stato scaricato l\'ultimo backup', True),
+         ('; se passano piu di sei giorni, il venerdi dalle 9 arriva un '
+          'promemoria sul canale Telegram dello staff.', False)],
     ], motivo='a fine settimana il lavoro dei cinque giorni e completo e il '
               'locale e chiuso.',
         accent=HEX_NAVY)
@@ -958,6 +961,19 @@ def build():
           'sostituito. Serve digitare RIPRISTINA per confermare, e al termine '
           'si viene disconnessi perche anche gli utenti sono stati sostituiti.',
           False)],
+        [('Appena scegli il file, la pagina ne mostra un\'', False),
+         ('anteprima', True),
+         (': data, tabelle, righe, utenti e ordini contenuti, e un avviso se '
+          'e vecchio o precedente a una funzione (per esempio la dieta), il '
+          'cui contenuto attuale andrebbe perso.', False)],
+        [('Prima di cancellare, l\'applicazione ', False),
+         ('invia per email al tuo indirizzo lo stato attuale', True),
+         (': e la strada per tornare indietro se il file era quello sbagliato. '
+          'Se l\'email non parte il ripristino si ferma, salvo che tu non '
+          'abbia spuntato di procedere comunque.', False)],
+        [('Al termine il messaggio dice quante righe sono entrate e che cosa '
+          'file e database non avevano in comune: tabelle svuotate perche il '
+          'file non le conosceva, colonne ignorate.', False)],
         [('E un\'operazione da fare a locale chiuso: tutto cio che e stato '
           'registrato dopo il backup va perso.', False)],
     ], motivo='mai durante il servizio: gli ordini in corso spariscono.',

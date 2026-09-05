@@ -214,6 +214,23 @@ chiedono: lì il messaggio spiega come riavere i valori predefiniti.
 - **Backup/restore**: `esporta_backup()` / `importa_backup()`, JSON tabella per tabella,
   indipendente dal motore. Su PostgreSQL il restore riallinea le sequenze
   (`_sistema_sequenze()`), altrimenti i nuovi inserimenti collidono sugli id.
+  Il file porta anche `schema` (colonne per tabella), `righe` e `app`; la versione resta `1`
+  perché il formato è compatibile in entrambe le direzioni. `analizza_backup()` confronta un
+  file col database senza toccare nulla ed è ciò che alimenta le **note** del restore:
+  tabelle del file sconosciute, tabelle del database che il file non conosce (svuotate, con
+  quante righe avevano — è il caso di un backup precedente a una funzione, come la dieta),
+  colonne ignorate. `_deserializza()` dà a tutte le righe di una tabella le stesse chiavi,
+  perché l'insert a blocchi le vuole omogenee. In coda al restore gira `_seed_defaults()`:
+  permessi, impostazioni e valori nutrizionali mancanti tornano subito, non al riavvio
+  successivo (su Vercel imprevedibile). Dopo il restore la rotta fa `logout_user()`
+  esplicito: l'id di chi ripristina esiste ancora nel file, il login lo rimanderebbe alla
+  dashboard e il messaggio d'esito si perderebbe.
+  La rotta manda prima per email lo stato attuale (`copia_di_sicurezza_pre_restore()`,
+  allegato temporaneo rimosso subito) e senza quella copia **si ferma**, salvo la casella
+  "procedi anche senza copia". `registra_backup_eseguito()` annota `ultimo_backup_il`;
+  `_check_backup_reminder()` (venerdì ≥ 9, `backup_promemoria_il` contro i doppi) avvisa il
+  canale staff se l'ultimo backup ha più di sei giorni. L'anteprima del file nella pagina
+  Dati è JavaScript nel browser (FileReader), così non serve un upload di prova.
 
 **L'ordine di cancellazione si ricava dai metadati**, non a mano:
 `reversed(db.metadata.sorted_tables)` rispetta le chiavi esterne e si adatta ai modelli

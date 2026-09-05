@@ -7,7 +7,10 @@ Tre procedure distinte, tutte destinate al solo super admin:
   * reset_totale()   svuota tutte le tabelle e ricrea i dati di base;
   * esporta_backup() / importa_backup()  copia integrale del database in JSON,
                      indipendente dal motore (SQLite in locale, PostgreSQL in
-                     produzione).
+                     produzione); analizza_backup() descrive un file senza
+                     toccare nulla, copia_di_sicurezza_pre_restore() manda per
+                     email lo stato attuale prima di sovrascriverlo e
+                     registra_backup_eseguito() annota l'ultimo backup.
 
 Vincolo da rispettare (vedi CLAUDE.md): in produzione il pool ha una sola
 connessione. Dove serve una connessione esplicita si chiama prima
@@ -390,15 +393,20 @@ def _serializza(valore):
     return valore
 
 
-def _deserializza(tabella, riga):
-    """Riporta le stringhe ISO al tipo della colonna (necessario su PostgreSQL)."""
+def _deserializza(tabella, riga, chiavi):
+    """Riporta le stringhe ISO al tipo della colonna (necessario su
+    PostgreSQL) e da' a ogni riga le stesse chiavi.
+
+    L'inserimento a blocchi vuole righe omogenee: una riga a cui manca una
+    colonna presente nelle altre farebbe fallire l'intero blocco. Le colonne
+    che il file ha e la tabella no vengono ignorate (le riporta analizza_backup).
+    """
     from sqlalchemy import Date, DateTime
 
     out = {}
-    for nome, valore in riga.items():
-        col = tabella.c.get(nome)
-        if col is None:
-            continue                      # colonna non piu' esistente: ignorata
+    for nome in chiavi:
+        valore = riga.get(nome)
+        col = tabella.c[nome]
         if isinstance(valore, str) and valore:
             if isinstance(col.type, DateTime):
                 valore = datetime.fromisoformat(valore)
@@ -409,12 +417,20 @@ def _deserializza(tabella, riga):
 
 
 def esporta_backup():
-    """Copia integrale del database come dizionario JSON-serializzabile."""
+    """Copia integrale del database come dizionario JSON-serializzabile.
+
+    Oltre alle righe porta lo schema (colonne per tabella) e i conteggi: il
+    ripristino li usa per dire che cosa del file non trova nel database, e
+    l'anteprima nel browser per descrivere il file prima di caricarlo.
+    """
     db.session.remove()
     dati = {
         'versione': VERSIONE_BACKUP,
+        'app': 'QuickLunch',
         'creato_il': datetime.utcnow().isoformat(sep=' '),
         'motore': db.engine.dialect.name,
+        'schema': {},
+        'righe': 0,
         'tabelle': {},
     }
     with db.engine.connect() as conn:
@@ -423,7 +439,100 @@ def esporta_backup():
             for r in conn.execute(tabella.select()):
                 righe.append({k: _serializza(v) for k, v in r._mapping.items()})
             dati['tabelle'][tabella.name] = righe
+            dati['schema'][tabella.name] = [c.name for c in tabella.c]
+            dati['righe'] += len(righe)
     return dati
+
+
+def analizza_backup(dati):
+    """Che cosa contiene un file di backup, confrontato con il database.
+
+    Non tocca nulla. Serve al ripristino per comporre le note e ai test:
+    tabelle del file sconosciute qui (`ignorate`), tabelle del database che il
+    file non ha (`assenti`: e' il caso di un backup fatto prima di una
+    funzione nuova) e colonne del file che le tabelle non hanno piu'.
+    """
+    if not isinstance(dati, dict) or 'tabelle' not in dati:
+        raise ValueError('File non riconosciuto: manca la sezione "tabelle".')
+    tabelle = dati.get('tabelle') or {}
+    if not isinstance(tabelle, dict):
+        raise ValueError('File non riconosciuto: la sezione "tabelle" non e\' un oggetto.')
+    nomi_db = {t.name: t for t in db.metadata.sorted_tables}
+    esito = {
+        'versione': dati.get('versione'),
+        'creato_il': dati.get('creato_il') or '',
+        'motore': dati.get('motore') or '',
+        'tabelle': len(tabelle),
+        'righe': sum(len(r or []) for r in tabelle.values()),
+        'ignorate': sorted(n for n in tabelle if n not in nomi_db),
+        'assenti': sorted(n for n in nomi_db if n not in tabelle),
+        'colonne_ignorate': {},
+    }
+    for nome, righe in tabelle.items():
+        t = nomi_db.get(nome)
+        if t is None or not righe:
+            continue
+        chiavi = set()
+        for r in righe:
+            chiavi.update(r.keys())
+        extra = sorted(k for k in chiavi if k not in t.c)
+        if extra:
+            esito['colonne_ignorate'][nome] = extra
+    return esito
+
+
+def registra_backup_eseguito():
+    """Annota quando e' stato scaricato l'ultimo backup: la pagina Dati lo
+    mostra e il promemoria del venerdi' lo usa per decidere se insistere."""
+    from app.models import AppSetting
+    valore = datetime.utcnow().isoformat(sep=' ', timespec='minutes')
+    riga = AppSetting.query.filter_by(key='ultimo_backup_il').first()
+    if riga:
+        riga.value = valore
+    else:
+        db.session.add(AppSetting(key='ultimo_backup_il', value=valore,
+                                  label='Ultimo backup scaricato (UTC)'))
+    db.session.commit()
+
+
+def copia_di_sicurezza_pre_restore(destinatario):
+    """Prima di sovrascrivere il database, ne manda per email lo stato attuale.
+
+    Il ripristino cancella tutto: se il file caricato era quello sbagliato,
+    questa copia e' l'unica strada per tornare indietro. Ritorna (ok, msg);
+    non riesce senza Gmail configurata o senza un destinatario.
+    """
+    import os
+    import tempfile
+    from app.notifications import send_email
+
+    if not destinatario:
+        return False, 'nessun indirizzo a cui inviarla'
+    dati = esporta_backup()
+    nome = 'quicklunch-prima-del-ripristino-%s.json' % datetime.utcnow().strftime('%Y%m%d-%H%M')
+    percorso = os.path.join(tempfile.gettempdir(), nome)
+    with open(percorso, 'w', encoding='utf-8') as f:
+        json.dump(dati, f, ensure_ascii=False)
+    try:
+        ok, msg = send_email(
+            destinatario,
+            '[QuickLunch] Copia di sicurezza prima del ripristino',
+            '<p>In allegato lo stato del database <strong>prima</strong> del '
+            'ripristino richiesto il %s: %d tabelle, %d righe.</p>'
+            '<p>Se il ripristino ha caricato il file sbagliato, questo e\' il '
+            'backup da usare per tornare indietro (Impostazioni &rsaquo; Dati '
+            '&rsaquo; Ripristina dal file).</p>'
+            % (datetime.now().strftime('%d/%m/%Y %H:%M'), len(dati['tabelle']), dati['righe']),
+            'Stato del database prima del ripristino: %d tabelle, %d righe. '
+            'Usa il file allegato per tornare indietro se serve.'
+            % (len(dati['tabelle']), dati['righe']),
+            allegati=[percorso])
+    finally:
+        try:
+            os.remove(percorso)
+        except OSError:
+            pass
+    return ok, msg
 
 
 def _sistema_sequenze():
@@ -442,10 +551,19 @@ def _sistema_sequenze():
 
 
 def importa_backup(dati):
-    """Sostituisce il contenuto del database con quello del backup."""
-    if not isinstance(dati, dict) or 'tabelle' not in dati:
-        raise ValueError('File non riconosciuto: manca la sezione "tabelle".')
-    versione = dati.get('versione')
+    """Sostituisce il contenuto del database con quello del backup.
+
+    Ritorna (righe inserite, note). Le note dicono che cosa file e database
+    non hanno in comune: tabelle del file sconosciute qui, tabelle del
+    database che il file non conosce - svuotate, con quante righe avevano -
+    e colonne ignorate. In coda ripassa dal seed, come all'avvio: permessi e
+    impostazioni aggiunti dopo il backup tornano al loro posto e i valori
+    nutrizionali del listino vengono completati subito, non al riavvio.
+    """
+    from sqlalchemy import func, select
+
+    analisi = analizza_backup(dati)
+    versione = analisi['versione']
     if versione != VERSIONE_BACKUP:
         raise ValueError(
             f'Versione del backup non supportata ({versione!r}, '
@@ -453,25 +571,51 @@ def importa_backup(dati):
 
     tabelle = dati['tabelle']
     note = []
-    ignorate = [n for n in tabelle
-                if n not in {t.name for t in db.metadata.sorted_tables}]
-    if ignorate:
+    if analisi['ignorate']:
         note.append('tabelle nel file ma non nel database, ignorate: '
-                    + ', '.join(sorted(ignorate)))
+                    + ', '.join(analisi['ignorate']))
+    if analisi['colonne_ignorate']:
+        note.append('colonne nel file ma non nel database, ignorate: '
+                    + ', '.join('%s.%s' % (t, c)
+                                for t, cols in sorted(analisi['colonne_ignorate'].items())
+                                for c in cols))
 
     db.session.remove()
     inserite = 0
+    nomi_db = {t.name: t for t in db.metadata.sorted_tables}
     with db.engine.begin() as conn:
+        # Prima di svuotare: quante righe stanno nelle tabelle che il file
+        # non conosce. E' l'informazione che spiega cosa si sta perdendo.
+        svuotate = []
+        for nome in analisi['assenti']:
+            n = conn.execute(select(func.count()).select_from(nomi_db[nome])).scalar() or 0
+            if n:
+                svuotate.append('%s (%d righe)' % (nome, n))
+        if svuotate:
+            note.append('tabelle del database che il file non conosce, svuotate: '
+                        + ', '.join(svuotate))
+
         for tabella in reversed(db.metadata.sorted_tables):
             conn.execute(tabella.delete())
         for tabella in db.metadata.sorted_tables:
             righe = tabelle.get(tabella.name) or []
             if not righe:
                 continue
-            valori = [_deserializza(tabella, r) for r in righe]
+            chiavi = [c.name for c in tabella.c if any(c.name in r for r in righe)]
+            if not chiavi:
+                continue
+            valori = [_deserializza(tabella, r, chiavi) for r in righe]
             for i in range(0, len(valori), _CHUNK):
                 conn.execute(tabella.insert(), valori[i:i + _CHUNK])
             inserite += len(valori)
 
     _sistema_sequenze()
+
+    # Come all'avvio: dati di base che il backup poteva non avere (permessi,
+    # impostazioni, valori nutrizionali del listino). Sessione pulita prima,
+    # perche' la connessione esplicita e' appena stata chiusa.
+    db.session.remove()
+    from app import _seed_defaults
+    _seed_defaults()
+    note.append('dati di base ricontrollati come all\'avvio')
     return inserite, note

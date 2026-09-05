@@ -947,8 +947,24 @@
           <div class="card-body">
             <p class="text-muted" style="font-size:.9rem;">
               Scarica una copia integrale del database in un unico file JSON:
-              tutte le tabelle, riga per riga. Funziona sia sul database locale
-              sia su quello di produzione.
+              tutte le tabelle, riga per riga — clienti, ordini, catalogo con i
+              valori nutrizionali, convenzioni, diete, impostazioni. Funziona
+              sia sul database locale sia su quello di produzione.
+            </p>
+            <p style="font-size:.9rem;">
+              {% if ultimo_backup %}
+              <i class="fas fa-history mr-1 text-muted"></i>Ultimo backup scaricato:
+              <strong>{{ ultimo_backup|dt_rome('%d/%m/%Y %H:%M') }}</strong>
+              {% if giorni_dal_backup > 6 %}
+              <span class="badge badge-warning ml-1">{{ giorni_dal_backup }} giorni fa</span>
+              {% else %}
+              <span class="badge badge-success ml-1">{{ giorni_dal_backup }} giorn{{ 'o' if giorni_dal_backup == 1 else 'i' }} fa</span>
+              {% endif %}
+              {% else %}
+              <span class="badge badge-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Nessun backup registrato</span>
+              {% endif %}
+              <br><small class="text-muted">Ogni venerdì dalle 9, se l'ultimo backup ha più di sei
+              giorni, arriva un promemoria sul canale Telegram dello staff.</small>
             </p>
             <div class="alert alert-warning py-2 px-3" style="font-size:.85rem;">
               <i class="fas fa-exclamation-triangle mr-1"></i>
@@ -976,15 +992,26 @@
           <div class="card-body">
             <p class="text-muted" style="font-size:.9rem;">
               Carica un file di backup: il contenuto attuale del database viene
-              <strong>sostituito</strong> da quello del file. Al termine si viene
-              disconnessi, perché anche gli utenti sono stati sostituiti.
+              <strong>sostituito</strong> da quello del file. Prima di cancellare,
+              lo stato attuale viene inviato per email al tuo indirizzo: è la via
+              per tornare indietro se il file era quello sbagliato. Al termine si
+              viene disconnessi, perché anche gli utenti sono stati sostituiti.
             </p>
             <form method="POST" action="{{ url_for('admin.dati_restore') }}"
                   enctype="multipart/form-data">
               {{ csrf_field() }}
               <div class="form-group">
-                <input type="file" name="backup" accept=".json,application/json"
-                       class="form-control-file" required>
+                <input type="file" name="backup" id="backup-file"
+                       accept=".json,application/json" class="form-control-file" required>
+                <div id="backup-anteprima" class="mt-2"></div>
+              </div>
+              <div class="custom-control custom-checkbox mb-2" style="font-size:.85rem;">
+                <input type="checkbox" class="custom-control-input" id="senza_copia"
+                       name="senza_copia" value="1">
+                <label class="custom-control-label" for="senza_copia">
+                  Procedi anche se la copia di sicurezza per email non riesce
+                  <small class="text-muted d-block">Da spuntare solo se hai già scaricato il backup a mano.</small>
+                </label>
               </div>
               <div class="form-group">
                 <label style="font-size:.85rem;">
@@ -997,6 +1024,57 @@
                 <i class="fas fa-upload mr-1"></i>Ripristina dal file
               </button>
             </form>
+            <script>
+            // Anteprima del file scelto, nel browser: cosa contiene e da quando,
+            // prima che parta qualsiasi cancellazione.
+            (function () {
+              var input = document.getElementById('backup-file');
+              var box = document.getElementById('backup-anteprima');
+              if (!input || !box) { return; }
+              var esc = function (s) {
+                return String(s).replace(/[&<>"]/g, function (c) {
+                  return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c];
+                });
+              };
+              input.addEventListener('change', function () {
+                box.innerHTML = '';
+                var f = input.files && input.files[0];
+                if (!f) { return; }
+                var lettore = new FileReader();
+                lettore.onload = function () {
+                  var d;
+                  try { d = JSON.parse(lettore.result); } catch (e) {
+                    box.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0">Il file non è un JSON leggibile.</div>';
+                    return;
+                  }
+                  if (!d || typeof d !== 'object' || !d.tabelle) {
+                    box.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0">Non è un backup di QuickLunch: manca la sezione "tabelle".</div>';
+                    return;
+                  }
+                  var nomi = Object.keys(d.tabelle), righe = 0;
+                  nomi.forEach(function (t) { righe += (d.tabelle[t] || []).length; });
+                  var avvisi = [];
+                  if (d.versione !== 1) { avvisi.push('Versione ' + d.versione + ': il ripristino la rifiuterà.'); }
+                  if (d.creato_il) {
+                    var quando = new Date(String(d.creato_il).slice(0, 19).replace(' ', 'T') + 'Z');
+                    var giorni = Math.floor((Date.now() - quando.getTime()) / 86400000);
+                    if (giorni > 30) { avvisi.push('Il backup ha ' + giorni + ' giorni: tutto ciò che è stato registrato dopo andrà perso.'); }
+                  }
+                  if (!d.tabelle.diet_profiles) { avvisi.push('Il file è precedente alla dieta settimanale: le preferenze alimentari attuali dei clienti verranno cancellate.'); }
+                  var html = '<div class="border rounded p-2" style="font-size:.85rem;background:#f8f9fa;">'
+                    + '<strong><i class="fas fa-search mr-1"></i>Anteprima del file</strong><br>'
+                    + 'Creato il ' + esc(d.creato_il || 'n/d') + ' · motore ' + esc(d.motore || 'n/d') + '<br>'
+                    + nomi.length + ' tabelle, ' + righe + ' righe'
+                    + (d.tabelle.users ? ' · ' + d.tabelle.users.length + ' utenti' : '')
+                    + (d.tabelle.orders ? ' · ' + d.tabelle.orders.length + ' ordini' : '')
+                    + (d.tabelle.products ? ' · ' + d.tabelle.products.length + ' prodotti' : '');
+                  avvisi.forEach(function (a) { html += '<div class="alert alert-warning py-1 px-2 mt-2 mb-0">' + esc(a) + '</div>'; });
+                  box.innerHTML = html + '</div>';
+                };
+                lettore.readAsText(f);
+              });
+            })();
+            </script>
           </div>
         </div>
       </div>

@@ -427,11 +427,11 @@ def sez_super_admin(pdf, idx):
          'locale predefinito.'),
         ('Strumenti sui dati: ', 'carico di prova di un mese, azzeramento '
          'completo del database, backup e ripristino.'),
-        ('Funzionalita attivabili: ', 'tavoli, cesto e portafoglio prepagato '
-         'si accendono e si spengono da un interruttore.'),
+        ('Funzionalita attivabili: ', 'tavoli, cesto, portafoglio prepagato '
+         'e dieta settimanale si accendono e si spengono da un interruttore.'),
     ])
 
-    h2(pdf, 'Le tre funzioni che cambiano il volto dell\'app', C, idx)
+    h2(pdf, 'Le quattro funzioni che cambiano il volto dell\'app', C, idx)
     tabella(pdf, ['Interruttore', 'Se spento', 'Dove'],
             [['Gestione tavoli', 'Spariscono prenotazioni e piantina della '
               'sala, per chi fa solo asporto.',
@@ -441,7 +441,10 @@ def sez_super_admin(pdf, idx):
               'Impostazioni > Funzionalita'],
              ['Portafoglio prepagato', 'L\'app non muove denaro: nessun '
               'saldo, ricarica o punto, si paga alla cassa. Le vendite '
-              'restano registrate.', 'Impostazioni > Funzionalita']],
+              'restano registrate.', 'Impostazioni > Funzionalita'],
+             ['Dieta settimanale', 'Spariscono la pagina del cliente, i '
+              'giudizi nel menu e nel carrello e la pagina Diete clienti; le '
+              'preferenze salvate restano.', 'Impostazioni > Funzionalita']],
             [30, 48, 26], C)
 
     callout(pdf, 'Prima di aprire al pubblico',
@@ -465,6 +468,30 @@ def sez_super_admin(pdf, idx):
          'Il passaggio dalla prova al servizio reale: svuota tutto e ricrea '
          'i dati di base, catalogo compreso. Chiede di scrivere AZZERA e '
          'riporta le utenze amministrative ai valori predefiniti.'),
+    ], C)
+
+    h2(pdf, 'Backup e ripristino', C, idx)
+    passi(pdf, [
+        ('Scarica il backup ogni settimana',
+         'Un solo file JSON con tutte le tabelle: clienti, ordini, catalogo '
+         'con i valori nutrizionali, convenzioni, diete, impostazioni. La '
+         'pagina mostra la data dell\'ultimo backup e il venerdi, se ne sono '
+         'passati piu di sei giorni, il canale Telegram dello staff riceve un '
+         'promemoria. Il file contiene dati personali e credenziali: va '
+         'conservato fuori dal server, come un registro contabile.'),
+        ('Guarda l\'anteprima prima di ripristinare',
+         'Scelto il file, la pagina dice quando e stato creato, quante '
+         'tabelle e righe contiene, e avvisa se e vecchio o precedente a una '
+         'funzione: in quel caso il contenuto attuale di quella funzione '
+         'andrebbe perso.'),
+        ('Ripristina a locale chiuso',
+         'Prima di cancellare, lo stato attuale viene inviato per email a chi '
+         'ripristina: se l\'invio non riesce ci si ferma, salvo scelta '
+         'esplicita di procedere. Al termine il messaggio elenca righe '
+         'caricate, tabelle svuotate e colonne ignorate, e si viene '
+         'disconnessi perche anche gli utenti sono stati sostituiti. I dati '
+         'di base (permessi, impostazioni, valori nutrizionali del listino) '
+         'vengono ricontrollati subito, come all\'avvio.'),
     ], C)
 
 
