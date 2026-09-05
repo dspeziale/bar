@@ -17,7 +17,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Prenotazione, PrenotazioneItem, PushSubscription,
                         DietProfile, DietPlan, DietPlanDay, ALLERGENS,
                         CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
-                        OBIETTIVI_DESCRIZIONE, NON_GRADITI,
+                        OBIETTIVI_DESCRIZIONE, NON_GRADITI, GRUPPI_NON_GRADITI,
                         ATTIVITA_DIETA, GIORNI_SETTIMANA)
 from app.dieta import profilo_attivo
 from config import Config
@@ -1119,12 +1119,17 @@ def dieta():
                                          week_start=inizio_settimana()).first()
         if profilo.attivo:
             riepilogo = riepilogo_giornata(current_user, profilo)
+    # L'avvertenza va accettata una volta: resta sul profilo, e in sessione
+    # per chi il profilo non l'ha ancora creato.
+    presa_atto = bool(session.get('dieta_presa_atto')
+                      or (profilo is not None and profilo.presa_atto_il))
     return render_template('main/dieta.html', profilo=profilo, fabb=fabb,
+                           presa_atto=presa_atto,
                            piano=piano, riepilogo=riepilogo, oggi=date.today(),
                            condizioni=CONDIZIONI_DIETA, regimi=REGIMI_DIETA,
                            obiettivi=OBIETTIVI_DIETA, attivita=ATTIVITA_DIETA,
                            obiettivi_descr=OBIETTIVI_DESCRIZIONE,
-                           non_graditi=NON_GRADITI,
+                           non_graditi=NON_GRADITI, gruppi_non_graditi=GRUPPI_NON_GRADITI,
                            prodotti_listino=Product.query.filter_by(
                                is_active=True, tenant_id=_effective_tenant_id())
                            .order_by(Product.category_id, Product.name).all(),
@@ -1195,8 +1200,16 @@ def dieta_profilo():
         tenant_id=_effective_tenant_id()).with_entities(Product.id).all()}
     profilo.prodotti_esclusi = ','.join(
         i for i in request.form.getlist('prodotti_esclusi') if i in ids_listino)
+    parole = []
+    for pezzo in (request.form.get('parole_non_gradite') or '').replace(';', ',').split(','):
+        p = pezzo.strip().lower()
+        if len(p) >= 3 and p not in parole:
+            parole.append(p)
+    profilo.parole_non_gradite = ', '.join(parole)[:512]
     profilo.note = (request.form.get('note') or '').strip()[:1000]
     profilo.attivo = True
+    if not profilo.presa_atto_il:
+        profilo.presa_atto_il = datetime.utcnow()
     db.session.commit()
 
     if request.form.get('genera') == '1':
@@ -1266,6 +1279,20 @@ def dieta_rigenera_giorno(gid):
         flash('Nuova proposta per %s.' % giorno.etichetta_giorno.lower(), 'success')
     else:
         flash('Nessuna alternativa compatibile nel listino.', 'warning')
+    return redirect(url_for('main.dieta'))
+
+
+@bp.route('/dieta/presa-atto', methods=['POST'])
+@login_required
+@dieta_required
+def dieta_presa_atto():
+    """Il cliente ha letto e accettato l'avvertenza nella finestra."""
+    session['dieta_presa_atto'] = True
+    profilo = current_user.diet_profile
+    if profilo is not None and not profilo.presa_atto_il:
+        profilo.presa_atto_il = datetime.utcnow()
+        db.session.commit()
+    flash('Grazie: puoi impostare la tua dieta.', 'success')
     return redirect(url_for('main.dieta'))
 
 

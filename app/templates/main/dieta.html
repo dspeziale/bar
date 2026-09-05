@@ -29,12 +29,43 @@
 {% set gm = {'leggero': ('Leggero', 'info'), 'in_linea': ('In linea', 'success'),
              'abbondante': ('Abbondante', 'warning')} %}
 
-<div id="disclaimer" class="alert alert-warning border-warning mb-3" style="font-size:.88rem;">
-  <div class="d-flex" style="gap:.7rem;">
-    <i class="fas fa-triangle-exclamation fa-lg mt-1"></i>
-    <div>
-      <strong>Avvertenza: nessuna validità medica.</strong><br>
-      {{ disclaimer_dieta }}
+<div id="disclaimer" class="alert alert-warning border-warning py-2 mb-3 d-flex align-items-center justify-content-between" style="font-size:.88rem;gap:.7rem;">
+  <span><i class="fas fa-triangle-exclamation mr-1"></i><strong>Avvertenza: nessuna validità medica.</strong>
+    Stime a scopo informativo, non una prescrizione.</span>
+  <button type="button" class="btn btn-outline-dark btn-sm" data-toggle="modal" data-target="#modalAvvertenza" style="white-space:nowrap;">
+    <i class="fas fa-book-open mr-1"></i>Rileggi
+  </button>
+</div>
+
+{# ── Finestra dell'avvertenza: si apre da sola finche' non e' accettata ── #}
+<div class="modal fade" id="modalAvvertenza" tabindex="-1" role="dialog" aria-labelledby="modalAvvertenzaTitolo"
+     data-backdrop="static" data-keyboard="false" data-autoapri="{{ '0' if presa_atto else '1' }}">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="modalAvvertenzaTitolo">
+          <i class="fas fa-triangle-exclamation mr-2"></i>Avvertenza: nessuna validità medica
+        </h5>
+        {% if presa_atto %}<button type="button" class="close" data-dismiss="modal" aria-label="Chiudi"><span>&times;</span></button>{% endif %}
+      </div>
+      <div class="modal-body" style="font-size:.95rem;line-height:1.55;">
+        <p>{{ disclaimer_dieta }}</p>
+        <p class="mb-0 text-muted" style="font-size:.85rem;">
+          Per impostare la tua dieta devi leggere questa avvertenza e accettarla. Potrai rileggerla in qualsiasi momento dal pulsante in testa alla pagina.
+        </p>
+      </div>
+      <div class="modal-footer">
+        {% if presa_atto %}
+        <span class="text-success mr-auto" style="font-size:.85rem;"><i class="fas fa-check mr-1"></i>Già accettata</span>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+        {% else %}
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary mr-auto">Non accetto, torna alla home</a>
+        <form method="POST" action="{{ url_for('main.dieta_presa_atto') }}">
+          {{ csrf_field() }}
+          <button type="submit" class="btn btn-success"><i class="fas fa-check mr-1"></i>Ho letto e accetto</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -92,6 +123,9 @@
           {% endfor %}
           {% for g in profilo.lista_non_graditi %}
           <span class="badge badge-secondary mr-1 mb-1" title="Gusto, non esigenza">no {{ g[1]|lower }}</span>
+          {% endfor %}
+          {% for parola in profilo.lista_parole_non_gradite %}
+          <span class="badge badge-secondary mr-1 mb-1" title="Parola tua">no {{ parola }}</span>
           {% endfor %}
           {% if profilo.lista_prodotti_esclusi %}
           <span class="badge badge-secondary mr-1 mb-1">{{ profilo.lista_prodotti_esclusi|length }} piatt{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }} esclus{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }}</span>
@@ -332,17 +366,27 @@
 
       <hr>
       <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">4 · Cosa non ti piace <small class="text-lowercase" style="letter-spacing:0;">(gusti, non esigenze: il piano li evita, il menu li segnala in grigio)</small></h6>
-      <div class="row mb-2">
-        {% set gsel_no = (profilo.non_graditi or '').split(',') if profilo else [] %}
-        {% for k, label, parole, impl in non_graditi %}
+      {% set gsel_no = (profilo.non_graditi or '').split(',') if profilo else [] %}
+      {% for gruppo in gruppi_non_graditi %}
+      <div class="text-muted mt-2 mb-1" style="font-size:.78rem;font-weight:700;">{{ gruppo }}</div>
+      <div class="row">
+        {% for k, label, parole, impl, g in non_graditi if g == gruppo %}
         <div class="col-6 col-md-4 col-lg-3">
           <div class="form-check">
             <input type="checkbox" name="non_graditi" value="{{ k }}" class="form-check-input" id="ng-{{ k }}"
                    {{ 'checked' if k in gsel_no }}>
-            <label class="form-check-label" for="ng-{{ k }}">{{ label }}</label>
+            <label class="form-check-label" for="ng-{{ k }}" title="{{ parole|join(', ') }}">{{ label }}</label>
           </div>
         </div>
         {% endfor %}
+      </div>
+      {% endfor %}
+      <div class="form-group mt-2">
+        <label style="font-size:.9rem;">Altro che non ti piace <small class="text-muted">(parole separate da virgola)</small></label>
+        <input type="text" name="parole_non_gradite" class="form-control form-control-sm" maxlength="512"
+               value="{{ profilo.parole_non_gradite if profilo else '' }}"
+               placeholder="es. cetriolo, gorgonzola, capperi">
+        <small class="text-muted">Ogni parola viene cercata nel nome, nella descrizione e nella categoria dei piatti.</small>
       </div>
       <div class="form-group">
         <label style="font-size:.9rem;">Piatti del listino che non vuoi mai nel piano</label>
@@ -380,17 +424,22 @@
                value="{{ profilo.note if profilo else '' }}" placeholder="es. contaminazione da glutine da evitare anche in cucina">
       </div>
 
-      <div class="custom-control custom-checkbox mb-3">
-        <input type="checkbox" class="custom-control-input" id="presa_atto" name="presa_atto" value="1" required>
-        <label class="custom-control-label" for="presa_atto" style="font-size:.9rem;">
-          Ho letto l'<a href="#disclaimer">avvertenza</a>: le indicazioni della dieta sono stime senza
-          validità medica, non sostituiscono medico o nutrizionista, e per allergie gravi verifico
-          sempre con il personale.
-        </label>
+      {% if presa_atto %}
+      <input type="hidden" name="presa_atto" value="1">
+      <p class="text-muted mb-2" style="font-size:.85rem;">
+        <i class="fas fa-check text-success mr-1"></i>Avvertenza letta e accettata
+        {% if profilo and profilo.presa_atto_il %}il {{ profilo.presa_atto_il|dt_rome('%d/%m/%Y') }}{% endif %}.
+        <a href="#" data-toggle="modal" data-target="#modalAvvertenza">Rileggi</a>.
+      </p>
+      {% else %}
+      <div class="alert alert-warning py-2 mb-3" style="font-size:.9rem;">
+        <i class="fas fa-lock mr-1"></i>Per salvare devi prima leggere e accettare l'avvertenza.
+        <button type="button" class="btn btn-warning btn-sm ml-2" data-toggle="modal" data-target="#modalAvvertenza">Apri l'avvertenza</button>
       </div>
+      {% endif %}
       <div class="d-flex flex-wrap" style="gap:.5rem;">
-        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>Salva</button>
-        <button type="submit" name="genera" value="1" class="btn btn-outline-success">
+        <button type="submit" class="btn btn-success" {% if not presa_atto %}disabled{% endif %}><i class="fas fa-save mr-1"></i>Salva</button>
+        <button type="submit" name="genera" value="1" class="btn btn-outline-success" {% if not presa_atto %}disabled{% endif %}>
           <i class="fas fa-magic mr-1"></i>Salva e componi il piano
         </button>
         {% if profilo and profilo.attivo %}
@@ -407,4 +456,15 @@
   </div>
 </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  var m = $('#modalAvvertenza');
+  if (m.length && m.data('autoapri') === 1) {
+    m.modal({ backdrop: 'static', keyboard: false, show: true });
+  }
+});
+</script>
 {% endblock %}

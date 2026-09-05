@@ -1050,38 +1050,125 @@ CONDIZIONI_DIETA_MAP = {c[0]: c for c in CONDIZIONI_DIETA}
 # (chiave, etichetta, parole cercate in nome/descrizione/categoria, allergeni
 # che le implicano). E' una preferenza, non un'esigenza medica: il piano le
 # rispetta, il menu le segnala in grigio, il checkout non chiede conferme.
+GRUPPI_NON_GRADITI = ['Proteine', 'Verdure e frutta', 'Cereali e basi',
+                      'Sapori, salse e bevande']
+
+# (chiave, etichetta, parole cercate in nome/descrizione/categoria, allergeni
+# che implicano la famiglia, gruppo). Le famiglie si sovrappongono di proposito
+# ("carne" copre tutto, "maiale" solo il suino): il cliente sceglie il grado.
 NON_GRADITI = [
-    ('pesce',         'Pesce e frutti di mare',
-     ['pesce', 'tonno', 'salmone', 'platessa', 'merluzzo', 'gamber', 'polpo', 'cozze',
-      'vongole', 'sgombro', 'alici', 'orata', 'branzino', 'baccal', 'calamar', 'seppi',
-      'surimi', 'poke di salmone'],
-     ['pesce', 'crostacei', 'molluschi']),
-    ('carne',         'Carne e salumi',
+    # ── Proteine ──
+    ('pesce',         'Pesce',
+     ['pesce', 'tonno', 'salmone', 'platessa', 'merluzzo', 'sgombro', 'alici', 'orata',
+      'branzino', 'baccal', 'surimi', 'trota', 'spada', 'sardin', 'acciug'],
+     ['pesce'], 'Proteine'),
+    ('crostacei',     'Crostacei e molluschi',
+     ['gamber', 'polpo', 'cozze', 'vongole', 'calamar', 'seppi', 'scampi', 'astice',
+      'ostrich', 'granchio', 'frutti di mare'],
+     ['crostacei', 'molluschi'], 'Proteine'),
+    ('carne',         'Carne (tutta)',
      ['carne', 'pollo', 'manzo', 'maiale', 'prosciutto', 'porchetta', 'bresaola',
       'roast beef', 'cotoletta', 'ragù', 'ragu', 'salame', 'speck', 'bacon', 'tacchino',
-      'wurstel', 'agnello', 'vitello', 'salsiccia', 'mortadella', 'hamburger', 'teriyaki'],
-     []),
+      'wurstel', 'agnello', 'vitello', 'salsiccia', 'mortadella', 'hamburger', 'teriyaki',
+      'pancetta', 'coppa', 'guanciale', 'bistecca', 'tartare', 'anatra', 'lasagn'],
+     [], 'Proteine'),
+    ('maiale',        'Maiale e suoi salumi',
+     ['maiale', 'porchetta', 'prosciutto', 'salame', 'speck', 'bacon', 'pancetta', 'coppa',
+      'guanciale', 'lardo', 'mortadella', 'salsiccia', 'wurstel', 'lonza'],
+     [], 'Proteine'),
+    ('pollame',       'Pollo e tacchino',
+     ['pollo', 'tacchino', 'anatra', 'pollame'], [], 'Proteine'),
+    ('manzo',         'Manzo e vitello',
+     ['manzo', 'roast beef', 'bresaola', 'vitello', 'hamburger', 'tartare', 'bistecca',
+      'ragù', 'ragu'], [], 'Proteine'),
+    ('salumi',        'Salumi e affettati',
+     ['prosciutto', 'salame', 'speck', 'bresaola', 'mortadella', 'coppa', 'pancetta',
+      'wurstel', 'affettat', 'porchetta'], [], 'Proteine'),
     ('formaggi',      'Formaggi e latticini',
      ['formagg', 'mozzarella', 'squacquerone', 'parmigiano', 'feta', 'caprese', 'stracchino',
-      'ricotta', 'burrata', 'gorgonzola', 'pecorino', 'scamorza', 'brie', 'grana'],
-     []),
+      'ricotta', 'burrata', 'gorgonzola', 'pecorino', 'scamorza', 'brie', 'grana', 'fontina',
+      'provola', 'mascarpone'], [], 'Proteine'),
     ('uova',          'Uova',
-     ['uovo', 'uova', 'frittata', 'omelette'], []),
+     ['uovo', 'uova', 'frittata', 'omelette'], [], 'Proteine'),
     ('legumi',        'Legumi',
-     ['legum', 'ceci', 'lenticchi', 'fagioli', 'hummus', 'edamame', 'piselli', 'fave', 'tofu'],
-     []),
+     ['legum', 'ceci', 'lenticchi', 'fagioli', 'hummus', 'edamame', 'piselli', 'fave'],
+     [], 'Proteine'),
+    ('soia',          'Soia e tofu',
+     ['tofu', 'soia', 'edamame', 'tempeh', 'miso', 'teriyaki', 'ponzu'], ['soia'], 'Proteine'),
+    # ── Verdure e frutta ──
+    ('pomodoro',      'Pomodoro',
+     ['pomodor', 'caprese', 'margherita', 'sugo'], [], 'Verdure e frutta'),
+    ('insalata',      'Insalata e verdure crude',
+     ['insalata mista', 'insalata greca', 'lattug', 'rucola', 'iceberg', 'spinaci baby',
+      'verdure crude', 'crudit'], [], 'Verdure e frutta'),
+    ('verdure_cotte', 'Verdure cotte',
+     ['verdure grigliate', 'grigliat', 'spinaci saltati', 'fagiolin', 'zucchin', 'melanzan',
+      'broccol', 'cavolfior', 'bietol', 'carciof', 'asparag', 'verdure al vapore'],
+     [], 'Verdure e frutta'),
+    ('peperoni',      'Peperoni',
+     ['peperon'], [], 'Verdure e frutta'),
+    ('melanzane_zucchine', 'Melanzane e zucchine',
+     ['melanzan', 'zucchin'], [], 'Verdure e frutta'),
+    ('cavoli',        'Cavoli e broccoli',
+     ['cavol', 'broccol', 'verza', 'cavolfior', 'cavolo rosso'], [], 'Verdure e frutta'),
     ('funghi',        'Funghi',
-     ['fungh', 'porcin', 'champignon'], []),
+     ['fungh', 'porcin', 'champignon'], [], 'Verdure e frutta'),
     ('cipolla_aglio', 'Cipolla e aglio',
-     ['cipoll', 'aglio', 'scalogno'], []),
+     ['cipoll', 'aglio', 'scalogno'], [], 'Verdure e frutta'),
+    ('olive',         'Olive',
+     ['oliv'], [], 'Verdure e frutta'),
+    ('patate',        'Patate',
+     ['patat'], [], 'Verdure e frutta'),
+    ('avocado',       'Avocado',
+     ['avocado', 'guacamole'], [], 'Verdure e frutta'),
+    ('frutta',        'Frutta fresca',
+     ['frutta di stagione', 'macedonia', 'ananas', 'mela', 'banana', 'fragol', 'pesca',
+      'pera', 'mango', 'kiwi', 'uva', 'agrumi', 'arancia', 'spremuta'],
+     [], 'Verdure e frutta'),
+    ('frutta_secca',  'Frutta secca e semi',
+     ['noci', 'nocciol', 'mandorl', 'pinoli', 'pistacch', 'arachid', 'granola', 'semi di',
+      'sesamo'], ['frutta_guscio', 'arachidi', 'sesamo'], 'Verdure e frutta'),
+    # ── Cereali e basi ──
+    ('pasta',         'Pasta',
+     ['pasta', 'lasagn', 'spaghett', 'penne', 'tagliatell', 'raviol', 'gnocch',
+      'tortellin', 'fusill', 'rigaton'], [], 'Cereali e basi'),
+    ('riso',          'Riso e cereali in chicco',
+     ['riso', 'risott', 'quinoa', 'farro', 'orzo', 'cous cous', 'couscous', 'bulgur'],
+     [], 'Cereali e basi'),
+    ('pane_pizza',    'Pane, pizza e focacce',
+     ['pane', 'pizza', 'focacci', 'piadin', 'panino', 'tramezzin', 'toast', 'crostin',
+      'ciabatta', 'rosetta'], [], 'Cereali e basi'),
+    ('integrale',     'Integrale',
+     ['integral'], [], 'Cereali e basi'),
+    # ── Sapori, salse e bevande ──
     ('piccante',      'Piccante',
-     ['piccant', 'spicy', 'nduja', 'diavola', 'peperoncin', 'jalape', 'harissa'], []),
+     ['piccant', 'spicy', 'nduja', 'diavola', 'peperoncin', 'jalape', 'harissa'],
+     [], 'Sapori, salse e bevande'),
     ('fritti',        'Fritti',
      ['fritto', 'fritti', 'fritta', 'fritte', 'patatine', 'tempura', 'crocchett', 'arancin',
-      'cotoletta'], []),
+      'cotoletta'], [], 'Sapori, salse e bevande'),
+    ('salse',         'Salse e condimenti pronti',
+     ['maionese', 'ketchup', 'senape', 'salsa', 'pesto', 'hummus', 'tahini', 'ranch',
+      'teriyaki', 'ponzu'], [], 'Sapori, salse e bevande'),
+    ('aceto',         'Aceto e agrodolce',
+     ['aceto', 'agrodolc', 'sottacet', 'balsamic'], [], 'Sapori, salse e bevande'),
     ('dolci',         'Dolci',
-     ['dolc', 'dessert', 'torta', 'tiramis', 'crostat', 'gelat', 'cioccolat', 'panna cotta',
-      'cornetto', 'ciambell', 'sfogliatell', 'budino', 'brioche'], []),
+     ['dolc', 'dessert', 'torta', 'tiramis', 'crostat', 'gelat', 'panna cotta', 'cornetto',
+      'ciambell', 'sfogliatell', 'budino', 'brioche', 'ghiacciol'],
+     [], 'Sapori, salse e bevande'),
+    ('cioccolato',    'Cioccolato',
+     ['cioccolat', 'cacao', 'nutella'], [], 'Sapori, salse e bevande'),
+    ('caffe',         'Caffè',
+     ['caffè', 'caffe', 'espresso', 'cappuccin', 'macchiato', 'americano', 'decaffeinato',
+      'ginseng'], [], 'Sapori, salse e bevande'),
+    ('latte_yogurt',  'Latte e yogurt',
+     ['latte', 'yogurt', 'cappuccin', 'cioccolata calda'], [], 'Sapori, salse e bevande'),
+    ('bibite',        'Bibite gassate e zuccherate',
+     ['cola', 'aranciata', 'gassat', 'lattina', 'tè freddo', 'te freddo', 'succo'],
+     [], 'Sapori, salse e bevande'),
+    ('alcolici',      'Alcolici',
+     ['birra', 'vino', 'spritz', 'prosecco', 'alcol', 'calice'], ['solfiti'],
+     'Sapori, salse e bevande'),
 ]
 NON_GRADITI_MAP = {n[0]: n for n in NON_GRADITI}
 
@@ -1163,6 +1250,10 @@ class DietProfile(db.Model):
     # NON_GRADITI) e id dei singoli prodotti del listino da non proporre mai.
     non_graditi      = db.Column(db.String(512), default='', server_default='')
     prodotti_esclusi = db.Column(db.Text, default='', server_default='')
+    # Parole libere: quello che il cliente scrive di suo ("cetriolo, gorgonzola")
+    parole_non_gradite = db.Column(db.String(512), default='', server_default='')
+    # Quando il cliente ha accettato l'avvertenza (finestra alla prima visita).
+    presa_atto_il = db.Column(db.DateTime, nullable=True)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1194,6 +1285,15 @@ class DietProfile(db.Model):
     def lista_non_graditi(self):
         chiavi = [c.strip() for c in (self.non_graditi or '').split(',') if c.strip()]
         return [NON_GRADITI_MAP[c] for c in chiavi if c in NON_GRADITI_MAP]
+
+    @property
+    def lista_parole_non_gradite(self):
+        viste = []
+        for pezzo in (self.parole_non_gradite or '').replace(';', ',').split(','):
+            p = pezzo.strip().lower()
+            if len(p) >= 3 and p not in viste:
+                viste.append(p)
+        return viste
 
     @property
     def lista_prodotti_esclusi(self):

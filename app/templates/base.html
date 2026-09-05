@@ -181,9 +181,20 @@
     /* Menu chiuso: la sidebar sparisce del tutto. Senza queste regole il bordo
        e l'ombra personalizzati resterebbero visibili sul filo dello schermo. */
     body.sidebar-collapse .main-sidebar {
-      margin-left: -250px !important;
+      margin-left: -220px !important;
       border-right: 0 !important;
       box-shadow: none !important;
+    }
+    /* Sidebar più stretta (220px invece dei 250 di AdminLTE) e senza scorrimento
+       orizzontale: una voce lunga va a capo, non allarga la colonna facendo
+       comparire la barra in basso. Il contenuto si sposta di conseguenza. */
+    .main-sidebar, .main-sidebar::before { width: 220px !important; }
+    .main-sidebar .sidebar        { overflow-x: hidden !important; }
+    .nav-sidebar .nav-link p      { white-space: normal !important; }
+    @media (min-width: 992px) {
+      body:not(.sidebar-collapse) .content-wrapper,
+      body:not(.sidebar-collapse) .main-header,
+      body:not(.sidebar-collapse) .main-footer { margin-left: 220px !important; }
     }
     /* Il contenuto occupa la larghezza liberata (solo da tablet in su: sotto,
        AdminLTE gestisce già la sidebar a comparsa). */

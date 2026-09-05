@@ -99,9 +99,12 @@ def gradimento(oggetto, profilo):
                       getattr(oggetto, 'description', '') or '',
                       (categoria.name if categoria is not None else '')]).lower()
     allergeni = set(chiavi_allergeni(getattr(oggetto, 'allergens', '')))
-    for _chiave, etichetta, parole, impliciti in profilo.lista_non_graditi:
+    for _chiave, etichetta, parole, impliciti, _gruppo in profilo.lista_non_graditi:
         if any(p in testo for p in parole) or (allergeni & set(impliciti)):
             return False, 'non ti piace: %s' % etichetta.lower()
+    for parola in profilo.lista_parole_non_gradite:
+        if parola in testo:
+            return False, 'non ti piace: %s' % parola
     return True, ''
 
 

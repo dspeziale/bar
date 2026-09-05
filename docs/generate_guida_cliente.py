@@ -962,10 +962,15 @@ def s10_dieta(doc):
              'le calorie, scrivile nel campo apposito: hanno la precedenza', accent=HEX_GREEN)
     spacer(doc, 4)
     step_row(doc, 5, 'Di\' cosa non ti piace',
-             'Pesce, carne, formaggi, uova, legumi, funghi, cipolla e aglio, piccante, fritti, dolci: '
-             'sono gusti, non esigenze. Il piano li evita, nel menu compaiono con un\'etichetta grigia '
-             '"non ti piace" (niente avviso rosso, nessuna conferma da dare). Puoi anche escludere '
-             'singoli piatti del listino, uno per uno', accent=HEX_GREEN)
+             'Una trentina di famiglie divise per gruppo — proteine (pesce, crostacei, carne, maiale, '
+             'pollo, manzo, salumi, formaggi, uova, legumi, soia), verdure e frutta (pomodoro, insalata, '
+             'verdure cotte, peperoni, melanzane, cavoli, funghi, cipolla e aglio, olive, patate, avocado, '
+             'frutta, frutta secca), cereali e basi (pasta, riso, pane e pizza, integrale), sapori e '
+             'bevande (piccante, fritti, salse, aceto, dolci, cioccolato, caffè, latte e yogurt, bibite, '
+             'alcolici) — più un campo libero dove scrivi tu le parole (es. "cetriolo, gorgonzola") e '
+             'la possibilità di escludere singoli piatti del listino. Sono gusti, non esigenze: il piano '
+             'li evita, nel menu compaiono con un\'etichetta grigia "non ti piace", senza avviso rosso né '
+             'conferma da dare', accent=HEX_GREEN)
     spacer(doc, 4)
     step_row(doc, 6, 'Indica in quali giorni pranzi qui e salva',
              'Il piano della settimana viene composto solo per quei giorni. Puoi anche fissare un budget '
@@ -1013,8 +1018,9 @@ def s10_dieta(doc):
              'e non sostituiscono il parere di un medico o di un nutrizionista: per qualsiasi esigenza di '
              'salute rivolgiti a un professionista. In caso di allergie o intolleranze verifica sempre con '
              'il personale prima di consumare: l\'applicazione segnala gli allergeni dichiarati, ma non può '
-             'garantire l\'assenza di contaminazioni. Per salvare le preferenze devi confermare di averla '
-             'letta. Un piatto senza valori indicati non entra nel piano e nel carrello viene segnalato a '
+             'garantire l\'assenza di contaminazioni. Alla prima visita l\'avvertenza si apre in una finestra e '
+             'va accettata prima di poter impostare la dieta; resta rileggibile dal pulsante in testa alla '
+             'pagina. Un piatto senza valori indicati non entra nel piano e nel carrello viene segnalato a '
              'parte.', style='warning')
 
 

@@ -1810,10 +1810,11 @@ Dati
   regime (onnivoro/vegetariano/vegano), obiettivo (mantenimento / dimagrimento
   -15% / dimagrimento_forte -25% / aumento +10%; ogni deficit e' fermato al
   metabolismo basale quando e' calcolabile), sesso, peso, altezza, attivita',
-  gusti non graditi (chiavi di NON_GRADITI: pesce, carne, formaggi, uova,
-  legumi, funghi, cipolla_aglio, piccante, fritti, dolci; parole cercate in
-  nome/descrizione/categoria piu' allergeni impliciti) e prodotti esclusi uno
-  per uno (id del listino). Sono preferenze: escluse dal piano e dalle
+  gusti non graditi (chiavi di NON_GRADITI, ~35 famiglie in quattro gruppi -
+  proteine, verdure e frutta, cereali e basi, sapori/salse/bevande - con
+  parole cercate in nome/descrizione/categoria piu' allergeni impliciti),
+  parole libere scritte dal cliente (parole_non_gradite, min 3 lettere) e
+  prodotti esclusi uno per uno (id del listino). Sono preferenze: escluse dal piano e dalle
   alternative, in grigio nel menu e nel carrello, nessuna conferma al
   checkout. Kcal manuali (hanno la
   precedenza), quota pranzo (default 40%), budget per pranzo, giorni in cui il

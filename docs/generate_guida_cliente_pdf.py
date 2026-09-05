@@ -343,10 +343,13 @@ def sez_dieta(pdf, idx):
          'un terzo delle calorie, sempre una verdura, frutta al posto del '
          'dolce) oppure aumentare la massa.'),
         ('Di\' cosa non ti piace',
-         'Pesce, carne, formaggi, uova, legumi, funghi, cipolla e aglio, '
-         'piccante, fritti, dolci, oppure singoli piatti del listino. Sono '
-         'gusti, non esigenze: il piano li evita e il menu li segnala in '
-         'grigio, senza avvisi rossi ne conferme.'),
+         'Una trentina di famiglie per gruppo - proteine (pesce, crostacei, '
+         'carne, maiale, pollo, manzo, salumi, formaggi, uova, legumi, soia), '
+         'verdure e frutta, cereali e basi, sapori e bevande - piu un campo '
+         'libero dove scrivi tu le parole ("cetriolo, gorgonzola") e i singoli '
+         'piatti del listino da escludere. Sono gusti, non esigenze: il piano '
+         'li evita e il menu li segnala in grigio, senza avvisi rossi ne '
+         'conferme.'),
         ('Peso, altezza, attivita (facoltativi)',
          'Con questi dati e la data di nascita il fabbisogno e calcolato su '
          'misura; senza, e un valore medio e la pagina lo dice. Le calorie '
@@ -393,8 +396,9 @@ def sez_dieta(pdf, idx):
             'esigenza di salute rivolgiti a un professionista. In caso di '
             'allergie o intolleranze verifica sempre con il personale prima '
             'di consumare: l\'applicazione segnala gli allergeni dichiarati, '
-            'ma non puo garantire l\'assenza di contaminazioni. Per salvare '
-            'le preferenze devi confermare di aver letto questa avvertenza. '
+            'ma non puo garantire l\'assenza di contaminazioni. Alla prima '
+            'visita si apre in una finestra e va accettata prima di poter '
+            'impostare la dieta; resta rileggibile dal pulsante in testa. '
             'Un piatto senza valori non entra nel piano e nel carrello viene '
             'conteggiato a parte.', RED, (253, 238, 240))
 

@@ -876,6 +876,8 @@ def _migrate_tenant_columns():
     _allarga('diet_profiles', 'obiettivo', 32)   # 'dimagrimento_forte' sono 18 caratteri
     _ensure('diet_profiles', 'non_graditi',      "VARCHAR(512) DEFAULT ''")
     _ensure('diet_profiles', 'prodotti_esclusi', "TEXT DEFAULT ''")
+    _ensure('diet_profiles', 'parole_non_gradite', "VARCHAR(512) DEFAULT ''")
+    _ensure('diet_profiles', 'presa_atto_il', 'DATETIME')
 
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)

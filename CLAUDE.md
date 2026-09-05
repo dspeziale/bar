@@ -416,9 +416,17 @@ conto; il backoffice ha `/admin/diete`. Flag `dieta_enabled`, quarto della lista
   non sostituisce medico o nutrizionista, nessuna garanzia sulle contaminazioni) ed è in ogni
   template come `disclaimer_dieta`. Compare in testa a `/dieta`, nel pannello del carrello,
   nel menu con dieta attiva, in testa a `/admin/diete`, in coda al piano inviato
-  (`testo_piano`) e nei manuali. `dieta_profilo` rifiuta il salvataggio senza
-  `presa_atto=1`: la casella è obbligatoria e i test la inviano esplicitamente. Non
-  ammorbidirlo e non renderlo opzionale.
+  (`testo_piano`) e nei manuali. Alla prima visita di `/dieta` si apre in una **finestra
+  modale** (`#modalAvvertenza`, `data-autoapri`, backdrop statico) che va accettata con
+  `POST /dieta/presa-atto`: l'accettazione sta in `session['dieta_presa_atto']` e, appena il
+  profilo esiste, in `DietProfile.presa_atto_il`. Finché manca, il modulo ha i pulsanti
+  disabilitati e non porta `presa_atto=1`; `dieta_profilo` rifiuta comunque il salvataggio
+  senza quel campo (i test lo inviano esplicitamente). Non ammorbidirlo e non renderlo
+  opzionale.
+- I gusti sono ~38 famiglie in quattro gruppi (`GRUPPI_NON_GRADITI`, quinto campo della
+  tupla) più le **parole libere** del cliente (`parole_non_gradite`, minimo 3 lettere, cercate
+  nel testo del piatto): chi tocca `NON_GRADITI` tenga la tupla a cinque campi, perché
+  `gradimento()` e il template la spacchettano così.
 
 ### Email ai clienti: due momenti, nessun silenzio
 
