@@ -90,6 +90,12 @@
           {% for k in profilo.lista_esclusioni %}
           <span class="badge badge-warning mr-1 mb-1">senza {{ k|replace('_',' ') }}</span>
           {% endfor %}
+          {% for g in profilo.lista_non_graditi %}
+          <span class="badge badge-secondary mr-1 mb-1" title="Gusto, non esigenza">no {{ g[1]|lower }}</span>
+          {% endfor %}
+          {% if profilo.lista_prodotti_esclusi %}
+          <span class="badge badge-secondary mr-1 mb-1">{{ profilo.lista_prodotti_esclusi|length }} piatt{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }} esclus{{ 'o' if profilo.lista_prodotti_esclusi|length == 1 else 'i' }}</span>
+          {% endif %}
           <span class="badge badge-info mr-1 mb-1">{{ profilo.etichetta_regime }}</span>
           <span class="badge badge-light border mr-1 mb-1">{{ profilo.etichetta_obiettivo }}</span>
           {% if profilo.budget_pranzo %}<span class="badge badge-light border mb-1">max {{ profilo.budget_pranzo|num_it }}€ a pranzo</span>{% endif %}
@@ -325,7 +331,36 @@
       </div>
 
       <hr>
-      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">4 · Quando pranzi qui</h6>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">4 · Cosa non ti piace <small class="text-lowercase" style="letter-spacing:0;">(gusti, non esigenze: il piano li evita, il menu li segnala in grigio)</small></h6>
+      <div class="row mb-2">
+        {% set gsel_no = (profilo.non_graditi or '').split(',') if profilo else [] %}
+        {% for k, label, parole, impl in non_graditi %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="form-check">
+            <input type="checkbox" name="non_graditi" value="{{ k }}" class="form-check-input" id="ng-{{ k }}"
+                   {{ 'checked' if k in gsel_no }}>
+            <label class="form-check-label" for="ng-{{ k }}">{{ label }}</label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-group">
+        <label style="font-size:.9rem;">Piatti del listino che non vuoi mai nel piano</label>
+        {% set esclusi = profilo.lista_prodotti_esclusi if profilo else [] %}
+        <select name="prodotti_esclusi" multiple size="8" class="form-control form-control-sm">
+          {% for nome_cat, items in prodotti_listino|groupby('category.name') %}
+          <optgroup label="{{ nome_cat }}">
+            {% for p in items %}
+            <option value="{{ p.id }}" {{ 'selected' if p.id in esclusi }}>{{ p.name }}{% if p.kcal is not none %} · {{ p.kcal }} kcal{% endif %}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+        <small class="text-muted">Tieni premuto Ctrl (o Cmd) per sceglierne più d'uno; per toglierne uno, clicca di nuovo tenendo premuto Ctrl.</small>
+      </div>
+
+      <hr>
+      <h6 class="text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.05em;">5 · Quando pranzi qui</h6>
       <div class="mb-2">
         {% set gsel = profilo.lista_giorni if profilo else ['lun','mar','mer','gio','ven'] %}
         {% for k, label in giorni_settimana %}

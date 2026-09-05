@@ -83,6 +83,28 @@ def compatibilita(oggetto, profilo):
     return (not motivi), motivi
 
 
+def gradimento(oggetto, profilo):
+    """(ok, motivo): False se l'oggetto rientra nei gusti che il cliente ha
+    escluso o e' uno dei piatti esclusi uno per uno.
+
+    Cerca le parole della famiglia in nome, descrizione e categoria, e gli
+    allergeni che la implicano (il pesce anche da 'crostacei'). E' una
+    preferenza: chi la ignora non corre rischi, quindi il messaggio e' grigio
+    e nessun passaggio chiede conferma.
+    """
+    if isinstance(oggetto, Product) and oggetto.id in profilo.lista_prodotti_esclusi:
+        return False, 'lo hai escluso tu'
+    categoria = getattr(oggetto, 'category', None)
+    testo = ' '.join([getattr(oggetto, 'name', '') or '',
+                      getattr(oggetto, 'description', '') or '',
+                      (categoria.name if categoria is not None else '')]).lower()
+    allergeni = set(chiavi_allergeni(getattr(oggetto, 'allergens', '')))
+    for _chiave, etichetta, parole, impliciti in profilo.lista_non_graditi:
+        if any(p in testo for p in parole) or (allergeni & set(impliciti)):
+            return False, 'non ti piace: %s' % etichetta.lower()
+    return True, ''
+
+
 def nutrienti(oggetto, quantita=1):
     """Kcal e macro di un oggetto per `quantita` porzioni. `noto` dice se il
     locale ha indicato i valori."""
@@ -299,18 +321,22 @@ def analizza_carrello(user, profilo, cart, custom_cart, giorno=None):
     righe = []
     tot = _totale_vuoto()
     incompatibili = []
+    non_graditi = []
     for pid, qty in (cart or {}).items():
         p = db.session.get(Product, int(pid))
         if not p:
             continue
         ok, motivi = compatibilita(p, profilo)
+        gradito, gusto = gradimento(p, profilo)
         n = nutrienti(p, qty)
         _somma(tot, n)
         righe.append({'tipo': 'prodotto', 'id': p.id, 'nome': p.name,
                       'quantita': qty, 'kcal': n['kcal'], 'noto': n['noto'],
-                      'ok': ok, 'motivi': motivi})
+                      'ok': ok, 'motivi': motivi, 'gradito': gradito, 'gusto': gusto})
         if not ok:
             incompatibili.append((p, motivi))
+        if not gradito:
+            non_graditi.append((p, gusto))
     cache = {}
     for ci in (custom_cart or []):
         ingredienti = ci.get('ingredients', [])
@@ -348,6 +374,9 @@ def analizza_carrello(user, profilo, cart, custom_cart, giorno=None):
                        'testo': 'Con quello che hai già ordinato oggi (%d kcal) arrivi a %d kcal, '
                                 'oltre il tuo fabbisogno di %d.'
                                 % (consumo['kcal'], totale_giorno, fabb['target'])})
+    for p, gusto in non_graditi:
+        avvisi.append({'livello': 'secondary',
+                       'testo': '%s: %s. È un gusto, non un rischio: decidi tu.' % (p.name, gusto)})
     if tot['sconosciute']:
         avvisi.append({'livello': 'secondary',
                        'testo': 'Per %d voc%s il locale non ha indicato i valori: il totale è '
@@ -385,6 +414,8 @@ def alternativa_per(prodotto, profilo, piu_leggera=False):
     buoni = []
     for c in candidati:
         if c.available_today() <= 0 or not compatibilita(c, profilo)[0]:
+            continue
+        if not gradimento(c, profilo)[0]:
             continue
         if piu_leggera and (c.kcal is None or prodotto.kcal is None or c.kcal >= prodotto.kcal):
             continue
@@ -424,6 +455,8 @@ def candidati_piano(profilo, tenant_id):
         if (p.daily_quantity or 0) <= 0:
             continue
         if not compatibilita(p, profilo)[0]:
+            continue
+        if not gradimento(p, profilo)[0]:
             continue
         buoni.append(p)
     return buoni

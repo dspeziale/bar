@@ -874,6 +874,8 @@ def _migrate_tenant_columns():
                 print(f'[migration] ERROR widening {table}.{col}: {exc}')
 
     _allarga('diet_profiles', 'obiettivo', 32)   # 'dimagrimento_forte' sono 18 caratteri
+    _ensure('diet_profiles', 'non_graditi',      "VARCHAR(512) DEFAULT ''")
+    _ensure('diet_profiles', 'prodotti_esclusi', "TEXT DEFAULT ''")
 
     # Tabella Web Push subscriptions (creata via SQL diretto per garantire presenza
     # indipendentemente dall'ordine degli import dei modelli)

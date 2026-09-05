@@ -17,7 +17,7 @@ from app.models import (Product, Category, Order, OrderItem, TimeSlot,
                         Prenotazione, PrenotazioneItem, PushSubscription,
                         DietProfile, DietPlan, DietPlanDay, ALLERGENS,
                         CONDIZIONI_DIETA, REGIMI_DIETA, OBIETTIVI_DIETA,
-                        OBIETTIVI_DESCRIZIONE,
+                        OBIETTIVI_DESCRIZIONE, NON_GRADITI,
                         ATTIVITA_DIETA, GIORNI_SETTIMANA)
 from app.dieta import profilo_attivo
 from config import Config
@@ -151,10 +151,11 @@ def menu():
     profilo = profilo_attivo(current_user) if dieta_enabled() else None
     compat = {}
     if profilo:
-        from app.dieta import compatibilita
+        from app.dieta import compatibilita, gradimento
         for p in products:
             ok, motivi = compatibilita(p, profilo)
-            compat[p.id] = {'ok': ok, 'motivi': motivi}
+            gradito, gusto = gradimento(p, profilo)
+            compat[p.id] = {'ok': ok, 'motivi': motivi, 'gradito': gradito, 'gusto': gusto}
     return render_template('main/menu.html', categories=categories,
                            products=products, slots=slots, cart=cart,
                            profilo_dieta=profilo, compat=compat)
@@ -1123,6 +1124,10 @@ def dieta():
                            condizioni=CONDIZIONI_DIETA, regimi=REGIMI_DIETA,
                            obiettivi=OBIETTIVI_DIETA, attivita=ATTIVITA_DIETA,
                            obiettivi_descr=OBIETTIVI_DESCRIZIONE,
+                           non_graditi=NON_GRADITI,
+                           prodotti_listino=Product.query.filter_by(
+                               is_active=True, tenant_id=_effective_tenant_id())
+                           .order_by(Product.category_id, Product.name).all(),
                            giorni_settimana=GIORNI_SETTIMANA, allergeni=ALLERGENS)
 
 
@@ -1183,6 +1188,13 @@ def dieta_profilo():
     giorni = [g for g in request.form.getlist('giorni') if g in chiavi_giorni]
     profilo.giorni = ','.join(giorni) if giorni else 'lun,mar,mer,gio,ven'
     profilo.avvisi = request.form.get('avvisi') == '1'
+    chiavi_gusti = {g[0] for g in NON_GRADITI}
+    profilo.non_graditi = ','.join(g for g in request.form.getlist('non_graditi')
+                                   if g in chiavi_gusti)
+    ids_listino = {str(p.id) for p in Product.query.filter_by(
+        tenant_id=_effective_tenant_id()).with_entities(Product.id).all()}
+    profilo.prodotti_esclusi = ','.join(
+        i for i in request.form.getlist('prodotti_esclusi') if i in ids_listino)
     profilo.note = (request.form.get('note') or '').strip()[:1000]
     profilo.attivo = True
     db.session.commit()

@@ -383,6 +383,13 @@ conto; il backoffice ha `/admin/diete`. Flag `dieta_enabled`, quarto della lista
 - Il compositore penalizza il **principale** ripetuto nella settimana (0,35) molto più di
   contorno e frutta (0,08): con lo stesso peso preferiva un pranzo troppo leggero pur di
   variare la frutta. Il caso rompe i pareggi; i test passano `seed=` e `oggi=`.
+- **Gusti ≠ esigenze.** `gradimento(oggetto, profilo)` è separata da `compatibilita()`: le
+  famiglie non gradite (`NON_GRADITI`: parole cercate in nome/descrizione/categoria più gli
+  allergeni che le implicano, es. il pesce da `crostacei`) e i piatti esclusi uno per uno
+  (`DietProfile.prodotti_esclusi`, id del listino) escludono dal piano e dalle alternative,
+  ma nel menu danno un'etichetta **grigia** e nel carrello una nota "è un gusto, non un
+  rischio"; non entrano in `ha_incompatibili`, quindi non chiedono la conferma al checkout.
+  Solo gli allergeni esclusi sono rossi e bloccanti: non mescolare i due percorsi.
 - Quattro obiettivi (`OBIETTIVI_DIETA`, descrizioni in `OBIETTIVI_DESCRIZIONE`). **Ogni
   deficit è fermato al metabolismo basale** quando è calcolabile: sotto non si scende senza
   un medico, e la spiegazione lo dice. `dimagrimento_forte` (−25%) è "bilanciato" per

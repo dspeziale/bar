@@ -1046,6 +1046,45 @@ CONDIZIONI_DIETA = [
 ]
 CONDIZIONI_DIETA_MAP = {c[0]: c for c in CONDIZIONI_DIETA}
 
+# Gusti: famiglie di alimenti che il cliente puo' dichiarare di non gradire.
+# (chiave, etichetta, parole cercate in nome/descrizione/categoria, allergeni
+# che le implicano). E' una preferenza, non un'esigenza medica: il piano le
+# rispetta, il menu le segnala in grigio, il checkout non chiede conferme.
+NON_GRADITI = [
+    ('pesce',         'Pesce e frutti di mare',
+     ['pesce', 'tonno', 'salmone', 'platessa', 'merluzzo', 'gamber', 'polpo', 'cozze',
+      'vongole', 'sgombro', 'alici', 'orata', 'branzino', 'baccal', 'calamar', 'seppi',
+      'surimi', 'poke di salmone'],
+     ['pesce', 'crostacei', 'molluschi']),
+    ('carne',         'Carne e salumi',
+     ['carne', 'pollo', 'manzo', 'maiale', 'prosciutto', 'porchetta', 'bresaola',
+      'roast beef', 'cotoletta', 'ragù', 'ragu', 'salame', 'speck', 'bacon', 'tacchino',
+      'wurstel', 'agnello', 'vitello', 'salsiccia', 'mortadella', 'hamburger', 'teriyaki'],
+     []),
+    ('formaggi',      'Formaggi e latticini',
+     ['formagg', 'mozzarella', 'squacquerone', 'parmigiano', 'feta', 'caprese', 'stracchino',
+      'ricotta', 'burrata', 'gorgonzola', 'pecorino', 'scamorza', 'brie', 'grana'],
+     []),
+    ('uova',          'Uova',
+     ['uovo', 'uova', 'frittata', 'omelette'], []),
+    ('legumi',        'Legumi',
+     ['legum', 'ceci', 'lenticchi', 'fagioli', 'hummus', 'edamame', 'piselli', 'fave', 'tofu'],
+     []),
+    ('funghi',        'Funghi',
+     ['fungh', 'porcin', 'champignon'], []),
+    ('cipolla_aglio', 'Cipolla e aglio',
+     ['cipoll', 'aglio', 'scalogno'], []),
+    ('piccante',      'Piccante',
+     ['piccant', 'spicy', 'nduja', 'diavola', 'peperoncin', 'jalape', 'harissa'], []),
+    ('fritti',        'Fritti',
+     ['fritto', 'fritti', 'fritta', 'fritte', 'patatine', 'tempura', 'crocchett', 'arancin',
+      'cotoletta'], []),
+    ('dolci',         'Dolci',
+     ['dolc', 'dessert', 'torta', 'tiramis', 'crostat', 'gelat', 'cioccolat', 'panna cotta',
+      'cornetto', 'ciambell', 'sfogliatell', 'budino', 'brioche'], []),
+]
+NON_GRADITI_MAP = {n[0]: n for n in NON_GRADITI}
+
 REGIMI_DIETA = [
     ('onnivoro',    'Onnivoro',    'Nessuna esclusione sul tipo di alimento.'),
     ('vegetariano', 'Vegetariano', 'Senza carne e pesce; latticini e uova sì.'),
@@ -1120,6 +1159,10 @@ class DietProfile(db.Model):
     giorni        = db.Column(db.String(32), default='lun,mar,mer,gio,ven')
     avvisi        = db.Column(db.Boolean, default=True)
     note          = db.Column(db.Text, default='')
+    # Gusti, distinti dalle esigenze: famiglie non gradite (chiavi di
+    # NON_GRADITI) e id dei singoli prodotti del listino da non proporre mai.
+    non_graditi      = db.Column(db.String(512), default='', server_default='')
+    prodotti_esclusi = db.Column(db.Text, default='', server_default='')
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1146,6 +1189,20 @@ class DietProfile(db.Model):
     @property
     def lista_giorni(self):
         return [g.strip() for g in (self.giorni or '').split(',') if g.strip()]
+
+    @property
+    def lista_non_graditi(self):
+        chiavi = [c.strip() for c in (self.non_graditi or '').split(',') if c.strip()]
+        return [NON_GRADITI_MAP[c] for c in chiavi if c in NON_GRADITI_MAP]
+
+    @property
+    def lista_prodotti_esclusi(self):
+        out = []
+        for pezzo in (self.prodotti_esclusi or '').split(','):
+            pezzo = pezzo.strip()
+            if pezzo.isdigit():
+                out.append(int(pezzo))
+        return out
 
     @property
     def etichetta_regime(self):

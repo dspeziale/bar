@@ -961,7 +961,13 @@ def s10_dieta(doc):
              'Senza, l\'applicazione usa un valore medio e te lo dice. Se un nutrizionista ti ha indicato '
              'le calorie, scrivile nel campo apposito: hanno la precedenza', accent=HEX_GREEN)
     spacer(doc, 4)
-    step_row(doc, 5, 'Indica in quali giorni pranzi qui e salva',
+    step_row(doc, 5, 'Di\' cosa non ti piace',
+             'Pesce, carne, formaggi, uova, legumi, funghi, cipolla e aglio, piccante, fritti, dolci: '
+             'sono gusti, non esigenze. Il piano li evita, nel menu compaiono con un\'etichetta grigia '
+             '"non ti piace" (niente avviso rosso, nessuna conferma da dare). Puoi anche escludere '
+             'singoli piatti del listino, uno per uno', accent=HEX_GREEN)
+    spacer(doc, 4)
+    step_row(doc, 6, 'Indica in quali giorni pranzi qui e salva',
              'Il piano della settimana viene composto solo per quei giorni. Puoi anche fissare un budget '
              'per pranzo', accent=HEX_GREEN)
     spacer(doc, 8)

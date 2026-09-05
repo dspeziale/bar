@@ -342,6 +342,11 @@ def sez_dieta(pdf, idx):
          'metabolismo basale: almeno 25 g di proteine a pranzo, grassi entro '
          'un terzo delle calorie, sempre una verdura, frutta al posto del '
          'dolce) oppure aumentare la massa.'),
+        ('Di\' cosa non ti piace',
+         'Pesce, carne, formaggi, uova, legumi, funghi, cipolla e aglio, '
+         'piccante, fritti, dolci, oppure singoli piatti del listino. Sono '
+         'gusti, non esigenze: il piano li evita e il menu li segnala in '
+         'grigio, senza avvisi rossi ne conferme.'),
         ('Peso, altezza, attivita (facoltativi)',
          'Con questi dati e la data di nascita il fabbisogno e calcolato su '
          'misura; senza, e un valore medio e la pagina lo dice. Le calorie '
