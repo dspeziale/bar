@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_nutrizione.html' import nutrizione %}
+{% from '_nutrizione.html' import nutrizione, nutrizione_totali, pastiglie_macro %}
 {% block title %}Carrello{% endblock %}
 {% block page_title %}Il tuo Carrello{% endblock %}
 {% block breadcrumb %}
@@ -97,10 +97,7 @@
               </small>
               {% set kc = kcal_composti.get(ci.uid) if kcal_composti else None %}
               {% if kc and kc.noto %}
-              <div style="font-size:.76rem;">
-                <span class="badge badge-light border"><strong>{{ kc.kcal }}</strong> kcal</span>
-                <span class="text-muted ml-1">P {{ kc.proteine|round|int }} g · C {{ kc.carboidrati|round|int }} g · G {{ kc.grassi|round|int }} g</span>
-              </div>
+              <div>{{ nutrizione_totali(kc.kcal, kc.proteine, kc.carboidrati, kc.grassi, compatto=True) }}</div>
               {% endif %}
             </td>
             <td><strong>{{ ci.total_price|num_it }}€</strong>
@@ -161,7 +158,7 @@
           <div class="progress-bar bg-{{ gm[a.giudizio][1] }}" style="width:{{ [pct, 100]|min }}%;"></div>
         </div>
         <span class="badge badge-{{ gm[a.giudizio][1] }}">{{ gm[a.giudizio][0] }}</span>
-        <small class="text-muted ml-1">P {{ a.totale.proteine|round|int }} g · C {{ a.totale.carboidrati|round|int }} g · G {{ a.totale.grassi|round|int }} g</small>
+        <div class="mt-2"><span class="nutri">{{ pastiglie_macro(a.totale.proteine, a.totale.carboidrati, a.totale.grassi, compatto=True) }}</span></div>
         {% if a.consumo.kcal %}
         <div class="text-muted mt-1" style="font-size:.85rem;">
           Già ordinato oggi: {{ a.consumo.kcal }} kcal · giornata {{ a.totale_giorno }} / {{ a.fabbisogno.target }} kcal

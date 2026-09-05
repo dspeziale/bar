@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_nutrizione.html' import nutrizione_totali %}
 {% block title %}La mia dieta{% endblock %}
 {% block page_title %}La mia dieta{% endblock %}
 {% block breadcrumb %}
@@ -193,11 +194,11 @@
           </div>
           {% endfor %}
           <hr class="my-2">
-          <div class="d-flex justify-content-between">
-            <span class="kcal-chip">{{ d.kcal_totali }} kcal</span>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted" style="font-size:.78rem;">Totale del pranzo</span>
             <strong>{{ d.prezzo_totale|num_it }}€</strong>
           </div>
-          <div class="text-muted" style="font-size:.78rem;">P {{ d.proteine_g|round|int }} g · C {{ d.carboidrati_g|round|int }} g · G {{ d.grassi_g|round|int }} g</div>
+          {{ nutrizione_totali(d.kcal_totali, d.proteine_g, d.carboidrati_g, d.grassi_g, compatto=True) }}
           {% set gd = gm[('leggero' if d.kcal_totali < piano.target_pranzo*0.8 else ('abbondante' if d.kcal_totali > piano.target_pranzo*1.15 else 'in_linea'))] %}
           <span class="badge badge-{{ gd[1] }} mt-1">{{ gd[0] }}</span>
         {% else %}

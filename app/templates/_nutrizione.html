@@ -1,27 +1,45 @@
 {#
-  Valori nutrizionali di un prodotto, ingrediente o pasto, in una riga.
+  Valori nutrizionali, in forma di etichetta: kcal in evidenza e tre pastiglie
+  con la parola intera e un puntino colorato (proteine blu, carboidrati
+  arancio, grassi rosso). Lo stile e' in base.html (.nutri-*), cosi' e' uno
+  solo per menu, carrello, cesto, pasto aziendale e piano della settimana.
 
-  Usato ovunque il cliente o lo staff vedano un piatto: menu, carrello,
-  cesto, pasto aziendale. Un valore mancante (kcal NULL) si dice, non si
-  finge zero. `compatto` toglie le etichette lunghe per le tabelle strette.
+  Un valore mancante (kcal NULL) si dice, non si finge zero.
+  `compatto` riduce il corpo e toglie il bollino del regime, per le tabelle.
 #}
+{% macro pastiglie_macro(prot, carb, grassi, compatto=False) -%}
+<span class="nutri-chip{{ ' nutri-sm' if compatto }}" title="Proteine per porzione"><span class="nutri-dot nutri-dot-p"></span>Proteine <strong>{{ (prot or 0)|round|int }} g</strong></span>
+<span class="nutri-chip{{ ' nutri-sm' if compatto }}" title="Carboidrati per porzione"><span class="nutri-dot nutri-dot-c"></span>Carboidrati <strong>{{ (carb or 0)|round|int }} g</strong></span>
+<span class="nutri-chip{{ ' nutri-sm' if compatto }}" title="Grassi per porzione"><span class="nutri-dot nutri-dot-g"></span>Grassi <strong>{{ (grassi or 0)|round|int }} g</strong></span>
+{%- endmacro %}
+
+{% macro etichetta_kcal(kcal, compatto=False) -%}
+<span class="nutri-kcal{{ ' nutri-sm' if compatto }}" title="Calorie per porzione">{{ kcal }} <small>kcal</small></span>
+{%- endmacro %}
+
 {% macro nutrizione(o, compatto=False, mostra_regime=True) -%}
 {%- if o.kcal is not none -%}
-<span class="nutri" style="font-size:.76rem;white-space:nowrap;">
-  <span class="badge badge-light border" title="Calorie per porzione"><strong>{{ o.kcal }}</strong> kcal</span>
+<span class="nutri">
+  {{ etichetta_kcal(o.kcal, compatto) }}
   {%- if o.proteine_g is not none or o.carboidrati_g is not none or o.grassi_g is not none %}
-  <span class="text-muted ml-1" title="Proteine · Carboidrati · Grassi per porzione">
-    P {{ (o.proteine_g or 0)|round|int }} g · C {{ (o.carboidrati_g or 0)|round|int }} g · G {{ (o.grassi_g or 0)|round|int }} g
-  </span>
+  {{ pastiglie_macro(o.proteine_g, o.carboidrati_g, o.grassi_g, compatto) }}
   {%- endif %}
   {%- if mostra_regime %}
-    {%- if o.is_vegan %}<span class="badge badge-success ml-1" title="Vegano">🌱 vegano</span>
-    {%- elif o.is_vegetarian %}<span class="badge badge-success ml-1" title="Vegetariano">🥬 vegetariano</span>{% endif %}
+    {%- if o.is_vegan %}<span class="badge badge-success" title="Vegano">🌱 vegano</span>
+    {%- elif o.is_vegetarian %}<span class="badge badge-success" title="Vegetariano">🥬 vegetariano</span>{% endif %}
   {%- endif %}
 </span>
 {%- elif not compatto -%}
-<span class="nutri text-muted" style="font-size:.74rem;" title="Il locale non ha indicato i valori nutrizionali di questo prodotto">
+<span class="nutri nutri-assente" title="Il locale non ha indicato i valori nutrizionali di questo prodotto">
   <i class="far fa-circle-question mr-1"></i>valori nutrizionali non indicati
 </span>
 {%- endif -%}
+{%- endmacro %}
+
+{# Totali gia' calcolati (carrello, piano): stesse pastiglie, senza oggetto. #}
+{% macro nutrizione_totali(kcal, prot, carb, grassi, compatto=False) -%}
+<span class="nutri">
+  {{ etichetta_kcal(kcal, compatto) }}
+  {{ pastiglie_macro(prot, carb, grassi, compatto) }}
+</span>
 {%- endmacro %}

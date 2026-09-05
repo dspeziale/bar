@@ -263,8 +263,14 @@ var table = $('#productsTable').DataTable({
         if (d.kcal == null) {
           return '<span class="text-muted" style="font-size:.78rem;" title="Compila kcal e macro dalla modifica: senza, il piatto non entra nella dieta dei clienti">non indicati</span>';
         }
-        var g = function(v) { return v == null ? '–' : Math.round(v); };
-        var html = '<strong>' + d.kcal + '</strong> kcal<br><small class="text-muted">P ' + g(d.proteine_g) + ' · C ' + g(d.carboidrati_g) + ' · G ' + g(d.grassi_g) + ' g</small>';
+        var g = function(v) { return v == null ? '–' : Math.round(v) + ' g'; };
+        var chip = function(cls, nome, v) {
+          return '<span class="nutri-chip nutri-sm"><span class="nutri-dot ' + cls + '"></span>' + nome + ' <strong>' + g(v) + '</strong></span>';
+        };
+        var html = '<span class="nutri"><span class="nutri-kcal nutri-sm">' + d.kcal + ' <small>kcal</small></span>'
+          + chip('nutri-dot-p', 'Proteine', d.proteine_g)
+          + chip('nutri-dot-c', 'Carboidrati', d.carboidrati_g)
+          + chip('nutri-dot-g', 'Grassi', d.grassi_g) + '</span>';
         if (d.is_vegan) { html += ' <span title="Vegano">🌱</span>'; } else if (d.is_vegetarian) { html += ' <span title="Vegetariano">🥬</span>'; }
         return html;
       }

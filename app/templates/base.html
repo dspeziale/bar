@@ -189,8 +189,31 @@
        orizzontale: una voce lunga va a capo, non allarga la colonna facendo
        comparire la barra in basso. Il contenuto si sposta di conseguenza. */
     .main-sidebar, .main-sidebar::before { width: 220px !important; }
+    /* La barra orizzontale nasceva qui: AdminLTE da' ai link del menu una
+       larghezza fissa calcolata sui 250px (calc(250px - 1rem)), quindi con la
+       colonna a 220 sporgevano di 14px; e .main-sidebar, avendo overflow-y
+       nascosto, mostra l'overflow-x come barra. Larghezza dei link sulla
+       colonna vera e overflow-x nascosto su entrambi i contenitori. */
+    .main-sidebar                 { overflow-x: hidden !important; }
     .main-sidebar .sidebar        { overflow-x: hidden !important; }
+    .nav-sidebar .nav-link        { width: calc(220px - 1rem) !important; }
     .nav-sidebar .nav-link p      { white-space: normal !important; }
+
+    /* ── Etichetta nutrizionale (macro _nutrizione.html) ───────────────── */
+    .nutri                        { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .3rem; vertical-align: middle; }
+    .nutri-kcal                   { display: inline-block; font-weight: 700; font-size: .9rem; color: #0f3460; background: #eef2f7;
+                                    border: 1px solid #cfd8e3; border-radius: 4px; padding: .05rem .45rem; line-height: 1.35; white-space: nowrap; }
+    .nutri-kcal small             { font-weight: 600; font-size: .7rem; color: #5a6b80; }
+    .nutri-chip                   { display: inline-block; font-size: .78rem; color: #3b4048; background: #fff; border: 1px solid #dfe4ea;
+                                    border-radius: 4px; padding: .05rem .45rem; line-height: 1.35; white-space: nowrap; }
+    .nutri-chip strong            { color: #1a1a2e; margin-left: .1rem; }
+    .nutri-dot                    { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .32rem; vertical-align: 0; }
+    .nutri-dot-p                  { background: #2e80ba; }   /* proteine */
+    .nutri-dot-c                  { background: #d67a20; }   /* carboidrati */
+    .nutri-dot-g                  { background: #e94560; }   /* grassi */
+    .nutri-sm                     { font-size: .72rem !important; padding: 0 .35rem !important; }
+    .nutri-kcal.nutri-sm          { font-size: .8rem !important; }
+    .nutri-assente                { font-size: .74rem; color: #8b9099; }
     @media (min-width: 992px) {
       body:not(.sidebar-collapse) .content-wrapper,
       body:not(.sidebar-collapse) .main-header,
