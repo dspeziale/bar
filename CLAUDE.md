@@ -163,6 +163,17 @@ tenant `default`. Il loop degli orfani legge le tabelle dai metadati (tutte quel
 superadmin. Su PostgreSQL la migrazione `_impostazioni_per_tenant()` toglie il vecchio
 vincolo `app_settings.key UNIQUE`; su SQLite ricostruisce la tabella.
 
+**Ogni locale ha la sua porta**: `/t/<slug>/login` e `/t/<slug>/register` (pagina con nome e
+colore del locale) sono gli indirizzi da dare a personale e clienti, e sono quelli usati da
+email di attivazione, locandina e QR (`_tenant_attivo_obj()`/`_indirizzi_locale()` in
+`admin/routes.py`). `/auth/login` è la porta dell'amministratore dei tenant ma accetta tutti
+(elenca i locali quando sono più di uno); `/auth/register` con più locali rimanda a
+`/auth/locale`, con uno solo alla pagina del locale. In `tenant.login` l'amministratore dei
+tenant entra direttamente in quel locale; un account di un altro locale con password giusta
+riceve il link alla porta giusta. La registrazione dal locale è **in attesa di attivazione**
+come quella globale (prima entrava subito: due flussi diversi confondevano). Dopo ogni login
+un flash dice il locale, e la barra mostra il chip `Locale: <nome>`.
+
 Per i **clienti** restano due campi da valorizzare insieme: `is_client=True` (default
 **False**: senza, il cliente non compare mai nella lista) e `tenant_id`, che ora arriva da solo
 dal `before_flush` ma va comunque scritto esplicito dove il tenant è noto. Una pagina che

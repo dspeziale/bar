@@ -53,6 +53,21 @@ COLORI_CATEGORIA = ['primary', 'secondary', 'success', 'danger', 'warning',
                     'info', 'dark']
 
 
+def _tenant_attivo_obj():
+    """Il Tenant della richiesta (oggetto), per indirizzi e intestazioni."""
+    from app.tenancy import tenant_predefinito
+    t = db.session.get(Tenant, _active_tenant_id()) if _active_tenant_id() else None
+    return t or tenant_predefinito()
+
+
+def _indirizzi_locale(tenant):
+    """Gli indirizzi pubblici del locale: da dare a personale e clienti."""
+    base = request.host_url.rstrip('/')
+    return {'landing': base + url_for('tenant.landing', slug=tenant.slug),
+            'login': base + url_for('tenant.login', slug=tenant.slug),
+            'register': base + url_for('tenant.register', slug=tenant.slug)}
+
+
 def _active_tenant_id():
     """Il tenant della richiesta (app/tenancy.py): quello dell'utente, oppure
     quello in cui l'amministratore dei tenant e' entrato."""
@@ -933,7 +948,7 @@ def settings_locandina_pdf():
     from app.locandina import genera_locandina
     from app.notifications import nome_bot
 
-    join_url = request.host_url.rstrip('/') + url_for('auth.join')
+    join_url = request.host_url.rstrip('/') + url_for('tenant.register', slug=_tenant_attivo_obj().slug)
     pdf = genera_locandina(
         join_url,
         nome_locale=get_setting('company_name'),
@@ -956,8 +971,8 @@ def settings_locandina_pdf():
 def clients_registration_qr():
     """Pagina stampabile con QR code per la registrazione clienti."""
     from flask import request as _req
-    join_url = _req.host_url.rstrip('/') + url_for('auth.join')
-    tenant = Tenant.query.filter_by(slug='default').first()
+    tenant = _tenant_attivo_obj()
+    join_url = _req.host_url.rstrip('/') + url_for('tenant.register', slug=tenant.slug)
     return render_template('admin/registration_qr.html',
                            join_url=join_url, tenant=tenant)
 
@@ -1079,7 +1094,7 @@ def client_toggle(uid):
         # L'email e' l'unico canale che raggiunge un cliente appena registrato,
         # che non ha ancora collegato Telegram.
         send_account_activated_email(
-            u, login_url=url_for('auth.login', _external=True))
+            u, login_url=url_for('tenant.login', slug=_tenant_attivo_obj().slug, _external=True))
     else:
         send_telegram_to_user(u,
             '🔒 Il tuo account è stato sospeso.\n'
@@ -1118,7 +1133,7 @@ def client_reinvia_email(uid):
 
     if u.is_active:
         ok, msg = send_account_activated_email(
-            u, login_url=url_for('auth.login', _external=True))
+            u, login_url=url_for('tenant.login', slug=_tenant_attivo_obj().slug, _external=True))
         quale = 'benvenuto'
     else:
         from app.notifications import send_registration_received_email
@@ -2213,6 +2228,7 @@ def settings():
                    .order_by(CaricoMensile.creato_il.desc()).all())
     oggi = date.today()
     return render_template('admin/settings.html', cfg=cfg, carichi=carichi,
+                           indirizzi_locale=_indirizzi_locale(_tenant_attivo_obj()),
                            mese_corrente='%04d-%02d' % (oggi.year, oggi.month),
                            prova=prova, ultimo_backup=ultimo_backup,
                            giorni_dal_backup=giorni_dal_backup, **ctx_orari)
@@ -2792,6 +2808,8 @@ def tenants():
         }
     return render_template('admin/tenants.html', tenants=tenants, tenant_admins=admins,
                            conteggi=conteggi, tenant_attivo_id=_active_tenant_id(),
+                           indirizzi={t.id: _indirizzi_locale(t) for t in tenants},
+                           login_globale=request.host_url.rstrip('/') + url_for('auth.login'),
                            credenziali=_sess.pop('tenant_credenziali', None))
 
 

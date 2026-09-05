@@ -126,6 +126,13 @@ def sez_prima_di_aprire(pdf, idx):
          'sui dati del proprio locale. Dal Profilo si cambia la password e si attiva la '
          'verifica in due passi (MFA con app di autenticazione). Fallo prima di dare '
          'l\'indirizzo a chiunque.'),
+        ('Gli indirizzi del locale: ognuno entra dalla sua porta',
+         'Impostazioni > Azienda > Indirizzi del locale mostra i due indirizzi da dare in giro: '
+         '/t/<slug>/login per personale e clienti, /t/<slug>/register per iscriversi (e il QR '
+         'della locandina). La pagina porta nome e colore del locale, cosi nessuno si chiede '
+         'dove sta entrando; dopo l\'accesso, in alto compare "Locale: <nome>". Chi sbaglia porta '
+         'viene mandato a quella giusta. L\'indirizzo globale /auth/login e dell\'amministratore '
+         'dei tenant, ma funziona per tutti e porta ciascuno nel proprio locale.'),
         ('Crea il personale con il ruolo giusto',
          'Persone > Personale: cassiere, cuoco, manager sono ruoli pronti con i loro '
          'permessi; Persone > Ruoli & Permessi li adatta o ne crea altri. Un utente vede '

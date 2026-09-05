@@ -190,6 +190,11 @@ def s1_iniziare(doc):
              'subito, già loggato')
     spacer(doc, 8)
 
+    info_box(doc, 'Ogni locale ha la sua pagina di accesso, con il suo nome e il suo colore: l\'indirizzo ha la forma '
+             '/t/nome-locale/login ed è lo stesso dell\'email di attivazione e del QR. Dopo l\'accesso, in alto a '
+             'destra, leggi "Locale: …" per sapere dove sei; se entri dalla pagina di un altro locale, ti viene '
+             'indicata quella giusta.', style='info')
+    spacer(doc, 4)
     info_box(doc, 'Se l\'email è già registrata, il sistema te lo segnala: in quel caso usa "Accedi" con la '
              'password che avevi scelto. Se l\'hai dimenticata, chiedi all\'amministratore del locale di '
              'reimpostarla dal pannello clienti.', style='tip')

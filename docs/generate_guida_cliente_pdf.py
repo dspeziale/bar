@@ -125,6 +125,12 @@ def sez_iscrizione(pdf, idx):
          'Il personale approva le nuove iscrizioni: appena il tuo account e '
          'attivo ricevi un\'email e puoi ordinare. Se hai fretta, dillo al '
          'banco: e questione di un clic.'),
+        ('Entra sempre dalla pagina del tuo locale',
+         'L\'indirizzo di accesso ha la forma /t/nome-locale/login e la pagina '
+         'porta il nome e il colore del locale: e la stessa dell\'email di '
+         'attivazione e del QR. Dopo l\'accesso, in alto a destra, leggi '
+         '"Locale: ..." per sapere dove sei. Se per sbaglio entri dalla pagina '
+         'di un altro locale, ti viene indicata quella giusta.'),
     ], C)
 
     h2(pdf, 'Le email che ricevi', C, idx)

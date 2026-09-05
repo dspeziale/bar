@@ -32,6 +32,28 @@ def _tenant_predefinito():
     return t.id if t else None
 
 
+def _tenant_attivi():
+    """I locali a cui si puo' accedere: la pagina globale li elenca perche'
+    ognuno ha il proprio indirizzo di accesso e di registrazione."""
+    return Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+
+
+def _saluta_dopo_login(user):
+    """Dice subito in quale locale si e' entrati: e' la risposta alla domanda
+    "dove sono?" che il multi-tenant altrimenti lascia aperta."""
+    from app.tenancy import tenant_predefinito
+    if user.is_superadmin:
+        t = None
+        tid = session.get('tenant_attivo')
+        if tid:
+            t = db.session.get(Tenant, tid)
+        t = t or tenant_predefinito()
+        flash('Sei l\'amministratore dei tenant: stai lavorando nel locale «%s». '
+              'Per cambiare locale usa il selettore in alto a destra.' % (t.name if t else '—'), 'info')
+    elif user.tenant:
+        flash('Sei entrato nel locale «%s».' % user.tenant.name, 'info')
+
+
 def _make_username(email):
     base = re.sub(r'[^a-z0-9]', '.', email.split('@')[0].lower()).strip('.') or 'utente'
     base = base[:30]
@@ -56,6 +78,7 @@ def login():
                 session['_mfa_next'] = request.args.get('next', '')
                 return redirect(url_for('auth.mfa_verify'))
             login_user(user, remember=True)
+            _saluta_dopo_login(user)
             next_page = request.args.get('next')
             if user.is_admin:
                 return redirect(next_page or url_for('admin.dashboard'))
@@ -68,13 +91,30 @@ def login():
             flash(MESSAGGIO_IN_ATTESA, 'info')
             return redirect(url_for('auth.login'))
         flash('Credenziali non valide.', 'danger')
-    return render_template('auth/login.html')
+    return render_template('auth/login.html', tenants=_tenant_attivi())
+
+
+@bp.route('/locale')
+def scegli_locale():
+    """L'elenco dei locali con i rispettivi indirizzi: e' dove finisce chi
+    arriva alla pagina globale senza sapere da quale locale entrare."""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    return render_template('auth/scegli_locale.html', tenants=_tenant_attivi())
 
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+    # La registrazione e' sempre di un locale: con piu' locali si sceglie,
+    # con uno solo si va dritti alla sua pagina (che porta nome e colore).
+    tenants = _tenant_attivi()
+    if len(tenants) > 1:
+        flash('Scegli il locale a cui vuoi iscriverti.', 'info')
+        return redirect(url_for('auth.scegli_locale'))
+    if request.method == 'GET' and len(tenants) == 1:
+        return redirect(url_for('tenant.register', slug=tenants[0].slug))
     if request.method == 'POST':
         email     = request.form.get('email', '').strip().lower()
         password  = request.form.get('password', '')
@@ -179,6 +219,7 @@ def google_callback():
             session['_mfa_next'] = request.args.get('next', '')
             return redirect(url_for('auth.mfa_verify'))
         login_user(user, remember=True)
+        _saluta_dopo_login(user)
         next_page = request.args.get('next')
         if user.is_admin:
             return redirect(next_page or url_for('admin.dashboard'))
@@ -211,7 +252,11 @@ def google_callback():
 def join():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
-    join_url = url_for('auth.join', _external=True)
+    tenants = _tenant_attivi()
+    if len(tenants) == 1:
+        join_url = url_for('tenant.register', slug=tenants[0].slug, _external=True)
+    else:
+        join_url = url_for('auth.scegli_locale', _external=True)
     return render_template('auth/join.html', join_url=join_url)
 
 

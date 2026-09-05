@@ -6,18 +6,39 @@ MULTI-TENANT: DATI ISOLATI PER LOCALE
 Ogni tenant (locale) ha catalogo, clienti, ordini, impostazioni, bot Telegram e orari
 propri: chi lavora in un tenant non vede nulla degli altri.
 
-Amministratore dei tenant (unico, senza tenant): crea i locali, entra in ciascuno dal
-selettore "Tenant:" in alto a destra, nomina l'amministratore di ogni locale, fa backup,
-ripristino, azzeramento, vede Guadagni, Manutenzione e la pagina Tenant.
-  admin@dsconsulting.it   DSConsulting2025!   amministratore dei tenant (DS Consulting)
+CHI ACCEDE DA DOVE (la regola: ogni locale ha la sua porta, /t/<slug>/...)
+  Amministratore dei tenant (DS Consulting, unico, senza locale)
+      https://dslunch.vercel.app/auth/login
+      admin@dsconsulting.it / DSConsulting2025!
+      Vede tutti i locali, uno alla volta: selettore "Tenant:" in alto a destra, oppure
+      accede dalla pagina di un locale (/t/<slug>/login) e ci entra direttamente.
+      Solo lui: Tenant, Dati (backup/ripristino/azzeramento), Guadagni, Manutenzione, demo.
 
-Tenant predefinito "Food Service" (slug default): registrazione clienti da /auth/register.
-  admin@bar.local         admin123            amministratore del locale (tutto, solo sui suoi dati)
+  Amministratore e personale di un locale
+      https://dslunch.vercel.app/t/<slug>/login     (pagina con nome e colore del locale)
+      Vedono solo il proprio locale. Il login globale /auth/login funziona comunque e li
+      porta nel loro locale; se sbagliano porta (locale di un altro) la pagina glielo dice
+      e li manda alla porta giusta.
+
+  Clienti di un locale
+      https://dslunch.vercel.app/t/<slug>/register  per iscriversi (in attesa di attivazione
+      dal titolare, come da sempre), poi /t/<slug>/login. E' l'indirizzo del QR della
+      locandina, della pagina "QR registrazione" e delle email di attivazione.
+
+  /auth/register con piu' locali manda a scegliere il locale (/auth/locale); con un solo
+  locale porta alla sua pagina. Dopo ogni accesso un messaggio dice in quale locale si e'
+  entrati e in alto compare il chip "Locale: <nome>".
+
+LOCALE PREDEFINITO "Food Service" (slug: default)
+  Accesso:       https://dslunch.vercel.app/t/default/login
+  Registrazione: https://dslunch.vercel.app/t/default/register
+  admin@bar.local / admin123   amministratore del locale (tutto, solo sui suoi dati)
 
 Come si crea un nuovo locale: DS Consulting > Tenant > Nuovo tenant (nome, slug, colore,
 facoltativa email+password dell'amministratore). Il locale nasce con il catalogo di
 partenza, slot, tavoli, ingredienti del builder, articoli del banco e impostazioni
-proprie. I clienti si registrano da /t/<slug>/register (link nella pagina Tenant).
+proprie. La pagina Tenant mostra per ogni locale gli indirizzi di accesso e registrazione
+(con il tasto copia); l'amministratore del locale li ritrova in Impostazioni > Azienda.
 Le credenziali dell'amministratore del locale compaiono una sola volta: annotarle.
 
 

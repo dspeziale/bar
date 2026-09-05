@@ -14,6 +14,34 @@
   (selettore in alto a destra) e nomini il suo amministratore, che vede e modifica solo il proprio locale.
 </div>
 
+<div class="card card-outline card-info mb-3">
+  <div class="card-header"><h3 class="card-title"><i class="fas fa-door-open mr-2"></i>Chi accede da dove</h3></div>
+  <div class="card-body py-2">
+    <div class="table-responsive">
+    <table class="table table-sm mb-0" style="font-size:.88rem;">
+      <thead class="thead-light"><tr><th>Chi</th><th>Indirizzo</th><th>Che cosa vede</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Amministratore dei tenant</strong> (tu)</td>
+          <td><code>{{ login_globale }}</code></td>
+          <td>Tutti i locali: entri in uno alla volta dal selettore. Se accedi dalla pagina di un locale, ci entri direttamente.</td>
+        </tr>
+        <tr>
+          <td><strong>Amministratore e personale di un locale</strong></td>
+          <td><code>/t/&lt;slug&gt;/login</code> (sotto, per ciascun locale)</td>
+          <td>Solo il proprio locale. La pagina porta nome e colore del locale; il globale funziona comunque e li porta nel loro locale.</td>
+        </tr>
+        <tr>
+          <td><strong>Clienti di un locale</strong></td>
+          <td><code>/t/&lt;slug&gt;/register</code> per iscriversi, poi <code>/t/&lt;slug&gt;/login</code></td>
+          <td>Il menu e i servizi del proprio locale. È l'indirizzo del QR della locandina e delle email.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
 {% if credenziali %}
 <div class="alert alert-warning">
   <strong><i class="fas fa-key mr-1"></i>Amministratore di «{{ credenziali.tenant }}» creato</strong> — comunica queste
@@ -60,8 +88,14 @@
                 <strong>{{ t.name }}</strong>
                 {% if t.id == tenant_attivo_id %}<span class="badge badge-dark ml-1">attivo</span>{% endif %}
                 {% if t.slug == 'default' %}<span class="badge badge-light border ml-1">predefinito</span>{% endif %}<br>
-                <small class="text-muted"><code>/t/{{ t.slug }}</code> ·
-                  <a href="{{ t.register_url }}" target="_blank" title="{{ t.register_url }}">link di registrazione <i class="fas fa-external-link-alt"></i></a>
+                {% set ind = indirizzi.get(t.id, {}) %}
+                <small class="text-muted d-block">
+                  Accesso: <a href="{{ ind.login }}" target="_blank"><code>{{ ind.login }}</code></a>
+                  <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" title="Copia" onclick="navigator.clipboard.writeText('{{ ind.login }}')"><i class="fas fa-copy"></i></button>
+                </small>
+                <small class="text-muted d-block">
+                  Registrazione: <a href="{{ ind.register }}" target="_blank"><code>{{ ind.register }}</code></a>
+                  <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" title="Copia" onclick="navigator.clipboard.writeText('{{ ind.register }}')"><i class="fas fa-copy"></i></button>
                 </small>
               </td>
               <td>

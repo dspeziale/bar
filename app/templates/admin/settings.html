@@ -137,6 +137,19 @@
     </div>
     <div class="row">
       <div class="col-lg-8">
+        <div class="card card-outline card-info">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-door-open mr-2"></i>Indirizzi del locale{% if tenant_attivo %}: {{ tenant_attivo.name }}{% endif %}</h3>
+          </div>
+          <div class="card-body py-2" style="font-size:.9rem;">
+            <p class="text-muted mb-2">Sono gli indirizzi da dare a personale e clienti: la pagina porta il nome e il colore del vostro locale, e chi entra vede solo i vostri dati.</p>
+            <div class="mb-1"><strong>Accesso</strong> (personale e clienti): <a href="{{ indirizzi_locale.login }}" target="_blank"><code>{{ indirizzi_locale.login }}</code></a>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" onclick="navigator.clipboard.writeText('{{ indirizzi_locale.login }}')" title="Copia"><i class="fas fa-copy"></i></button></div>
+            <div class="mb-1"><strong>Registrazione clienti</strong> (è l'indirizzo del QR): <a href="{{ indirizzi_locale.register }}" target="_blank"><code>{{ indirizzi_locale.register }}</code></a>
+              <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" onclick="navigator.clipboard.writeText('{{ indirizzi_locale.register }}')" title="Copia"><i class="fas fa-copy"></i></button></div>
+            <div><strong>Pagina del locale</strong>: <a href="{{ indirizzi_locale.landing }}" target="_blank"><code>{{ indirizzi_locale.landing }}</code></a></div>
+          </div>
+        </div>
         <div class="card card-outline" style="border-top:3px solid #0f3460 !important;">
           <div class="card-header">
             <h3 class="card-title">

@@ -1,6 +1,7 @@
 import re
 from flask import render_template, redirect, url_for, flash, request, session, abort
 from flask_login import login_user, current_user
+from markupsafe import Markup, escape
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
@@ -70,21 +71,24 @@ def register(slug):
                 email     = email,
                 tenant_id = tenant.id,
                 is_client = True,
+                # Come dalla pagina globale: il titolare approva le nuove
+                # iscrizioni. Un percorso che entrava subito e uno che
+                # aspettava l'attivazione erano una fonte di confusione.
+                is_active = False,
+                first_name = request.form.get('first_name', '').strip(),
+                last_name  = request.form.get('last_name', '').strip(),
             )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             user.apply_registration_bonus()
-            # Qui l'account e' attivo da subito (segue il login): il
-            # messaggio giusto e' quello di benvenuto, con la guida allegata.
-            send_account_activated_email(user)
+            send_registration_received_email(user)
             send_telegram(
-                f'🆕 <b>Nuovo utente registrato</b> — {tenant.name}\n'
+                f'🆕 <b>Nuovo cliente in attesa</b> — {tenant.name}\n'
                 f'📧 {email}'
             )
-            login_user(user, remember=True)
-            flash(f'Benvenuto in {tenant.name}!', 'success')
-            return redirect(url_for('main.index'))
+            flash(MESSAGGIO_REGISTRATO, 'success')
+            return redirect(url_for('tenant.login', slug=tenant.slug))
 
     return render_template('tenant/register.html', tenant=tenant, mode='register')
 
@@ -100,9 +104,39 @@ def login(slug):
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        user = User.query.filter_by(email=email, tenant_id=tenant.id).first()
-        if user and user.check_password(password) and user.is_active:
+        user = utente_globale(email=email)
+        if user and user.check_password(password):
+            if user.is_superadmin:
+                # L'amministratore dei tenant che entra dalla pagina di un
+                # locale ci lavora dentro da subito.
+                login_user(user, remember=True)
+                session['tenant_attivo'] = tenant.id
+                flash('Sei l\'amministratore dei tenant: stai lavorando nel locale «%s». '
+                      'Per cambiare locale usa il selettore in alto a destra.' % tenant.name, 'info')
+                return redirect(url_for('admin.dashboard'))
+            if user.tenant_id != tenant.id:
+                # Account di un altro locale: lo si manda alla porta giusta,
+                # invece di un "credenziali non valide" che non spiega nulla.
+                altro = user.tenant
+                if altro is not None and altro.is_active:
+                    flash(Markup('Questo account appartiene al locale «%s»: '
+                                 '<a href="%s">accedi dalla sua pagina</a>.'
+                                 % (escape(altro.name), url_for('tenant.login', slug=altro.slug))), 'warning')
+                else:
+                    flash('Questo account non appartiene a questo locale.', 'warning')
+                return redirect(url_for('tenant.login', slug=tenant.slug))
+            if not user.is_active:
+                send_registration_received_email(user)
+                flash(MESSAGGIO_IN_ATTESA, 'info')
+                return redirect(url_for('tenant.login', slug=tenant.slug))
+            if user.totp_enabled:
+                session['_mfa_uid']  = user.id
+                session['_mfa_next'] = ''
+                return redirect(url_for('auth.mfa_verify'))
             login_user(user, remember=True)
+            flash('Sei entrato nel locale «%s».' % tenant.name, 'info')
+            if user.is_admin or user.is_staff:
+                return redirect(url_for('admin.dashboard'))
             return redirect(url_for('main.index'))
         flash('Credenziali non valide.', 'danger')
 

@@ -1434,9 +1434,29 @@ con_tenant(t.id). Account demo banco/cucina/sala solo nel tenant default.
 Migrazione _impostazioni_per_tenant(): via il vincolo unico su
 app_settings.key (PostgreSQL DROP CONSTRAINT; SQLite ricostruzione).
 
-Flusso registrazione tenant:
-  /t/<slug>/register → blueprint tenant (scope = quel tenant)
-  /auth/register → tenant predefinito
+Chi accede da dove (ogni locale ha la sua porta):
+  /auth/login            pagina globale: elenca i locali attivi (se piu' di
+                         uno) con i loro /t/<slug>/login; il modulo e' per
+                         l'amministratore dei tenant ma funziona per tutti e
+                         porta ciascuno nel proprio locale. Dopo il login un
+                         flash dice in quale locale si e' entrati.
+  /auth/register         con piu' locali -> /auth/locale (scelta del locale
+                         con link di registrazione e accesso); con uno solo
+                         GET -> /t/<slug>/register (il POST resta accettato).
+  /auth/join             QR: punta a /t/<slug>/register (o a /auth/locale).
+  /t/<slug>/login        personale e clienti del locale; l'amministratore dei
+                         tenant che entra da qui lavora in quel locale
+                         (session['tenant_attivo']); un account di un altro
+                         locale con password giusta riceve il link alla porta
+                         giusta (password sbagliata: messaggio generico); MFA
+                         e attesa di attivazione come nel globale.
+  /t/<slug>/register     iscrizione in attesa di attivazione (come dal
+                         globale; prima entrava subito), con nome e cognome.
+  Barra in alto: chip "Locale: <nome>" per tutti; per l'amministratore dei
+  tenant il selettore. Impostazioni > Azienda: card "Indirizzi del locale"
+  (login, registrazione, pagina). Pagina Tenant: tabella "Chi accede da dove"
+  e gli indirizzi di ogni locale con tasto copia. Email di attivazione,
+  locandina e QR usano /t/<slug>/...
 
 
 ================================================================================

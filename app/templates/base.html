@@ -488,6 +488,15 @@
         </button>
       </li>
       {% endif %}
+      {% if current_user.is_authenticated and not current_user.is_superadmin and tenant_attivo %}
+      {# ── Il locale di chi e' collegato: sempre scritto, cosi' non ci si chiede "dove sono?" ── #}
+      <li class="nav-item mr-2 d-none d-sm-block" id="ql-tenant-chip">
+        <span class="nav-link py-1 px-2" style="border:1px solid rgba(0,0,0,.14);border-radius:20px;font-size:.82rem;">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:{{ tenant_attivo.primary_color }};margin-right:.35rem;"></span>
+          <span class="QuickLunch-nav-label">Locale:</span> <strong>{{ tenant_attivo.name }}</strong>
+        </span>
+      </li>
+      {% endif %}
       {% if current_user.is_authenticated and current_user.is_superadmin and tenants_disponibili %}
       {# ── Il tenant in cui l'amministratore dei tenant sta lavorando ── #}
       <li class="nav-item dropdown mr-2" id="ql-tenant-switch">
