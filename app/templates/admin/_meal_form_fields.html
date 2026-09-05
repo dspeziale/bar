@@ -66,19 +66,19 @@
 <p class="text-muted mb-2" style="font-size:.85rem;"><i class="fas fa-leaf mr-1" style="color:#27ae60;"></i>Valori per porzione <small>(dieta dei clienti; vuoto = non indicato)</small></p>
 <div class="form-row">
   <div class="form-group col-3 mb-2">
-    <input type="number" name="kcal" class="form-control form-control-sm" placeholder="kcal" min="0" step="1"
+    <label class="mb-0 text-muted" style="font-size:.72rem;">Calorie (kcal)</label><input type="number" name="kcal" class="form-control form-control-sm" placeholder="kcal" min="0" step="1"
            value="{{ meal.kcal if meal and meal.kcal is not none else '' }}">
   </div>
   <div class="form-group col-3 mb-2">
-    <input type="number" name="proteine_g" class="form-control form-control-sm" placeholder="prot. g" min="0" step="0.1"
+    <label class="mb-0 text-muted" style="font-size:.72rem;">Proteine (g)</label><input type="number" name="proteine_g" class="form-control form-control-sm" placeholder="prot. g" min="0" step="0.1"
            value="{{ meal.proteine_g if meal and meal.proteine_g is not none else '' }}">
   </div>
   <div class="form-group col-3 mb-2">
-    <input type="number" name="carboidrati_g" class="form-control form-control-sm" placeholder="carb. g" min="0" step="0.1"
+    <label class="mb-0 text-muted" style="font-size:.72rem;">Carboidrati (g)</label><input type="number" name="carboidrati_g" class="form-control form-control-sm" placeholder="carb. g" min="0" step="0.1"
            value="{{ meal.carboidrati_g if meal and meal.carboidrati_g is not none else '' }}">
   </div>
   <div class="form-group col-3 mb-2">
-    <input type="number" name="grassi_g" class="form-control form-control-sm" placeholder="grassi g" min="0" step="0.1"
+    <label class="mb-0 text-muted" style="font-size:.72rem;">Grassi (g)</label><input type="number" name="grassi_g" class="form-control form-control-sm" placeholder="grassi g" min="0" step="0.1"
            value="{{ meal.grassi_g if meal and meal.grassi_g is not none else '' }}">
   </div>
 </div>
