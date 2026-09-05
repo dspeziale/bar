@@ -32,7 +32,7 @@
               <th>Veg</th>
               <th>Allergeni</th>
               <th>g/porzione</th>
-              <th>Giacenza</th>
+              {% if magazzino_enabled %}<th>Giacenza</th>{% endif %}
               <th>Stato</th>
               <th></th>
             </tr>
@@ -52,6 +52,7 @@
               <span class="text-muted" style="font-size:.75rem;">–</span>
               {% endif %}
             </td>
+            {% if magazzino_enabled %}
             <td>
               {% if ing.stock_qty is not none %}
                 <span class="badge badge-{{ 'danger' if low_stock else 'success' }}"
@@ -71,6 +72,7 @@
                 </button>
               {% endif %}
             </td>
+            {% endif %}
             <td><span class="badge badge-{{ 'success' if ing.is_active else 'secondary' }}">{{ 'On' if ing.is_active else 'Off' }}</span></td>
             <td style="white-space:nowrap;">
               <button class="btn btn-xs btn-info" data-toggle="modal" data-target="#editIng{{ ing.id }}"><i class="fas fa-pen"></i></button>

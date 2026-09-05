@@ -176,10 +176,13 @@ il default di un'ora scadeva sulle schermate POS/KDS lasciate aperte per tutto i
 ### Funzionalità attivabili (feature flag)
 
 I moduli disattivabili sono `AppSetting` con valore `'1'`/`'0'`, gestiti dal tab
-**Funzionalità** di `/admin/settings`. Oggi ce ne sono quattro: `tables_enabled` (gestione
+**Funzionalità** di `/admin/settings`. Oggi ce ne sono cinque: `tables_enabled` (gestione
 tavoli e prenotazioni), `cesto_enabled` (cesto cucina con etichette QR), `wallet_enabled`
-(portafoglio prepagato e fedeltà — vedi la sezione Wallet) e `dieta_enabled` (dieta
-settimanale dei clienti — vedi la sezione Dieta). Gli helper
+(portafoglio prepagato e fedeltà — vedi la sezione Wallet), `dieta_enabled` (dieta
+settimanale dei clienti — vedi la sezione Dieta) e `magazzino_enabled` (consumabili,
+fornitori, avvisi di sottoscorta, giacenza degli ingredienti e scarico automatico del
+builder in `place_order`: spento, le dieci rotte `/admin/magazzino*`, `/admin/fornitori*`
+e `ingredient_stock` reindirizzano e l'ordine non tocca `Ingredient.stock_qty`). Gli helper
 passano tutti da `_funzione_attiva(chiave)` in `app/__init__.py`: un flag nuovo aggiunge
 solo una funzione di una riga, non un'altra copia della cache su `g`. Per aggiungerne un
 altro servono cinque punti:

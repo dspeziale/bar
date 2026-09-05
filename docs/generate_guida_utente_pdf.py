@@ -427,11 +427,12 @@ def sez_super_admin(pdf, idx):
          'locale predefinito.'),
         ('Strumenti sui dati: ', 'carico di prova di un mese, azzeramento '
          'completo del database, backup e ripristino.'),
-        ('Funzionalita attivabili: ', 'tavoli, cesto, portafoglio prepagato '
-         'e dieta settimanale si accendono e si spengono da un interruttore.'),
+        ('Funzionalita attivabili: ', 'tavoli, cesto, portafoglio prepagato, '
+         'dieta settimanale e magazzino si accendono e si spengono da un '
+         'interruttore.'),
     ])
 
-    h2(pdf, 'Le quattro funzioni che cambiano il volto dell\'app', C, idx)
+    h2(pdf, 'Le cinque funzioni che cambiano il volto dell\'app', C, idx)
     tabella(pdf, ['Interruttore', 'Se spento', 'Dove'],
             [['Gestione tavoli', 'Spariscono prenotazioni e piantina della '
               'sala, per chi fa solo asporto.',
@@ -444,7 +445,11 @@ def sez_super_admin(pdf, idx):
               'restano registrate.', 'Impostazioni > Funzionalita'],
              ['Dieta settimanale', 'Spariscono la pagina del cliente, i '
               'giudizi nel menu e nel carrello e la pagina Diete clienti; le '
-              'preferenze salvate restano.', 'Impostazioni > Funzionalita']],
+              'preferenze salvate restano.', 'Impostazioni > Funzionalita'],
+             ['Gestione magazzino', 'Spariscono consumabili, fornitori, avvisi '
+              'di sottoscorta e giacenze degli ingredienti; gli ordini non '
+              'scaricano piu nulla. I dati restano.',
+              'Impostazioni > Funzionalita']],
             [30, 48, 26], C)
 
     callout(pdf, 'Prima di aprire al pubblico',

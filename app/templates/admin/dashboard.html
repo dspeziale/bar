@@ -61,6 +61,7 @@
     </div>
   </div>
   {% endif %}
+  {% if magazzino_enabled %}
   <div class="col-lg-3 col-6">
     <div class="small-box {{ 'bg-gradient-danger' if consumable_alerts > 0 else 'bg-gradient-secondary' }}">
       <div class="inner"><h3>{{ consumable_alerts }}</h3><p>Alert magazzino</p></div>
@@ -68,6 +69,7 @@
       <a href="{{ url_for('admin.magazzino') }}" class="small-box-footer">Magazzino <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
+  {% endif %}
   <div class="col-lg-3 col-6">
     <div class="small-box bg-gradient-dark">
       <div class="inner"><h3>{{ staff_count }}</h3><p>Operatori staff</p></div>

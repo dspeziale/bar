@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from flask import render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_required, current_user
 from app import (db, tables_enabled, cesto_enabled, wallet_enabled,
-                 dieta_enabled, numero_italiano)
+                 dieta_enabled, magazzino_enabled, numero_italiano)
 from app.main import bp
 from app.notifications import (send_telegram, send_telegram_to_user,
                                get_numeric_setting, _get_or_create_vapid_keys)
@@ -335,7 +335,7 @@ def place_order():
                 ingredient_name=ing['name'],
                 price_extra=ing.get('price_extra', 0.0)
             ))
-            if ing.get('id'):
+            if ing.get('id') and magazzino_enabled():
                 _ingredient = db.session.get(Ingredient, ing['id'])
                 if (_ingredient and _ingredient.stock_qty is not None
                         and _ingredient.grams_per_serving):

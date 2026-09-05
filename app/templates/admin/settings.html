@@ -695,7 +695,7 @@
           <div class="card-body">
             <form method="POST" action="{{ url_for('admin.settings_save') }}">
               {{ csrf_field() }}
-              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled,wallet_enabled,dieta_enabled">
+              <input type="hidden" name="keys" value="tables_enabled,cesto_enabled,wallet_enabled,dieta_enabled,magazzino_enabled">
               <div class="form-group mb-2">
                 {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
                 <input type="hidden" name="tables_enabled" value="0">
@@ -734,6 +734,29 @@
                   l'acquisto self-service dei clienti: le etichette QR già
                   stampate non sono più acquistabili finché non la riattivi.
                   Lo storico delle vendite resta nei report e nei guadagni.
+                </small>
+              </div>
+              <div class="form-group mb-2">
+                {# Il campo hidden fa arrivare '0' quando la casella e' deselezionata #}
+                <input type="hidden" name="magazzino_enabled" value="0">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input"
+                         id="chk-magazzino-enabled" name="magazzino_enabled" value="1"
+                         {{ 'checked' if cfg.magazzino_enabled != '0' }}>
+                  <label class="custom-control-label" for="chk-magazzino-enabled"
+                         style="cursor:pointer;">
+                    <i class="fas fa-warehouse mr-1" style="color:#8e44ad;"></i>
+                    <strong>Gestione magazzino</strong>
+                  </label>
+                </div>
+                <small class="form-text text-muted">
+                  Consumabili con soglie di sottoscorta e avviso al fornitore,
+                  anagrafica fornitori, giacenza in grammi degli ingredienti del
+                  builder con scarico automatico a ogni ordine. Se disattivata
+                  spariscono la voce Magazzino, il riquadro "Alert magazzino" della
+                  dashboard e la colonna Giacenza degli ingredienti; le rotte non
+                  sono più raggiungibili e gli ordini non scaricano più nulla. I
+                  dati registrati restano: riattivandola tornano com'erano.
                 </small>
               </div>
               <div class="form-group mb-2">

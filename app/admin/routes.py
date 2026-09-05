@@ -5,7 +5,7 @@ from flask import (render_template, redirect, url_for, flash, request, abort,
                    jsonify, current_app)
 from flask_login import login_required, current_user
 from app import (db, tables_enabled, cesto_enabled, wallet_enabled, dieta_enabled,
-                 numero_italiano)
+                 magazzino_enabled, numero_italiano)
 from app.admin import bp
 from app.models import (User, Product, Category, Order, OrderItem,
                         TimeSlot, DailyStock,
@@ -147,6 +147,18 @@ def wallet_required(f):
     return decorated
 
 
+def magazzino_required(f):
+    """Blocca la rotta se la gestione del magazzino e' disattivata."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not magazzino_enabled():
+            flash('La gestione del magazzino e\' disattivata nelle Impostazioni.',
+                  'warning')
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
 def require_permission(perm_name):
     """Richiede un permesso specifico; admin bypassa sempre."""
     def decorator(f):
@@ -180,8 +192,10 @@ def dashboard():
                     if p.available_today() <= 3]
     wallet_users = User.query.filter_by(is_client=True, is_active=True, **_tenant_filter()).all()
     total_wallet = round(sum(u.wallet_balance for u in wallet_users), 2)
-    consumable_alerts = ConsumableItem.query.filter_by(**_tenant_filter())\
-        .filter(ConsumableItem.alert_active == True).count()
+    consumable_alerts = 0
+    if magazzino_enabled():
+        consumable_alerts = ConsumableItem.query.filter_by(**_tenant_filter())\
+            .filter(ConsumableItem.alert_active == True).count()
     # Panoramica pasti aziendali — tutte le opzioni di oggi
     corp_meals_today = DailyFixedMeal.query.filter_by(meal_date=today)\
         .order_by(DailyFixedMeal.corporate_id, DailyFixedMeal.name).all()
@@ -468,6 +482,7 @@ def users_dt():
 # ── FORNITORI DT ──────────────────────────────────────────────────────────────
 @bp.route('/fornitori/dt')
 @require_permission('manage_stock')
+@magazzino_required
 def fornitori_dt():
     tid                    = _active_tenant_id()
     draw, start, length, search, col, dirn = _dt_params()
@@ -499,6 +514,7 @@ def fornitori_dt():
 # ── MAGAZZINO DT ──────────────────────────────────────────────────────────────
 @bp.route('/magazzino/dt')
 @require_permission('manage_stock')
+@magazzino_required
 def magazzino_dt():
     tid                    = _active_tenant_id()
     draw, start, length, search, col, dirn = _dt_params()
@@ -1907,6 +1923,7 @@ def ingredients():
 
 @bp.route('/ingredients/<int:iid>/stock', methods=['POST'])
 @require_permission('manage_ingredients')
+@magazzino_required
 def ingredient_stock(iid):
     ing = db.get_or_404(Ingredient, iid)
     op  = request.form.get('op', 'set')
@@ -2093,6 +2110,7 @@ def settings():
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
         'tables_enabled', 'cesto_enabled', 'wallet_enabled', 'dieta_enabled',
+        'magazzino_enabled',
         'telegram_webhook_secret', 'telegram_bot_username',
         'sim_pasti_min', 'sim_pasti_max', 'sim_snack_min', 'sim_snack_max',
         'sim_caffe_min', 'sim_caffe_max', 'sim_builder_min', 'sim_builder_max',
@@ -2514,6 +2532,7 @@ def ds_guadagni():
 
 @bp.route('/magazzino')
 @require_permission('manage_stock')
+@magazzino_required
 def magazzino():
     tf = _tenant_filter()
     items = ConsumableItem.query.filter_by(**tf).order_by(ConsumableItem.name).all()
@@ -2524,6 +2543,7 @@ def magazzino():
 @bp.route('/magazzino/nuovo', methods=['GET', 'POST'])
 @bp.route('/magazzino/<int:iid>/modifica', methods=['GET', 'POST'])
 @require_permission('manage_stock')
+@magazzino_required
 def magazzino_edit(iid=None):
     tf = _tenant_filter()
     item = ConsumableItem.query.get_or_404(iid) if iid else None
@@ -2565,6 +2585,7 @@ def magazzino_edit(iid=None):
 
 @bp.route('/magazzino/<int:iid>/movimento', methods=['POST'])
 @require_permission('manage_stock')
+@magazzino_required
 def magazzino_movimento(iid):
     item  = ConsumableItem.query.get_or_404(iid)
     delta = float(request.form.get('delta', 0) or 0)
@@ -2598,6 +2619,7 @@ def magazzino_movimento(iid):
 
 @bp.route('/magazzino/<int:iid>/elimina', methods=['POST'])
 @require_permission('manage_stock')
+@magazzino_required
 def magazzino_delete(iid):
     item = ConsumableItem.query.get_or_404(iid)
     name = item.name
@@ -2611,6 +2633,7 @@ def magazzino_delete(iid):
 
 @bp.route('/fornitori')
 @require_permission('manage_stock')
+@magazzino_required
 def fornitori():
     tf = _tenant_filter()
     sups = Supplier.query.filter_by(**tf).order_by(Supplier.name).all()
@@ -2620,6 +2643,7 @@ def fornitori():
 @bp.route('/fornitori/nuovo', methods=['GET', 'POST'])
 @bp.route('/fornitori/<int:sid>/modifica', methods=['GET', 'POST'])
 @require_permission('manage_stock')
+@magazzino_required
 def fornitore_edit(sid=None):
     sup = Supplier.query.get_or_404(sid) if sid else None
 
@@ -2650,6 +2674,7 @@ def fornitore_edit(sid=None):
 
 @bp.route('/fornitori/<int:sid>/elimina', methods=['POST'])
 @require_permission('manage_stock')
+@magazzino_required
 def fornitore_delete(sid):
     sup = Supplier.query.get_or_404(sid)
     name = sup.name

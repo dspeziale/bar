@@ -1768,10 +1768,15 @@ Struttura cartelle:
 
 FUNZIONALITA' ATTIVABILI (feature flag)
 ---------------------------------------
-Quattro moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
+Cinque moduli si accendono e spengono dal tab Funzionalita' di /admin/settings
 (AppSetting con valore '1'/'0', default '1'):
 
 - tables_enabled  : gestione tavoli e prenotazioni a fasce.
+- magazzino_enabled : consumabili con soglie e avviso al fornitore, fornitori,
+                    giacenza degli ingredienti del builder e scarico automatico
+                    a ogni ordine. Spento: voce di menu, widget "Alert
+                    magazzino" e colonna Giacenza spariscono, le rotte
+                    reindirizzano, place_order non scarica nulla.
 - dieta_enabled   : dieta settimanale dei clienti (vedi sezione dedicata in
                     coda). Spento: spariscono la pagina /dieta, la voce di
                     menu, i giudizi nel menu e nel carrello, il box in home e

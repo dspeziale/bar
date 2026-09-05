@@ -85,6 +85,7 @@ def create_app(config_object='config.Config'):
                 'cesto_enabled': cesto_enabled(),
                 'wallet_enabled': wallet_enabled(),
                 'dieta_enabled': dieta_enabled(),
+                'magazzino_enabled': magazzino_enabled(),
                 'disclaimer_dieta': DISCLAIMER_DIETA}
 
     # Registra Google OAuth (se configurato)
@@ -172,6 +173,12 @@ def _funzione_attiva(chiave):
 def tables_enabled():
     """True se la gestione tavoli e prenotazioni e' attiva (Impostazioni)."""
     return _funzione_attiva('tables_enabled')
+
+
+def magazzino_enabled():
+    """Magazzino: consumabili, fornitori, avvisi di sottoscorta, giacenze
+    degli ingredienti e scarico automatico del builder."""
+    return _funzione_attiva('magazzino_enabled')
 
 
 def dieta_enabled():
@@ -1478,6 +1485,7 @@ def _seed_defaults():
         ('tables_enabled',         '1',     'Abilita gestione tavoli e prenotazioni'),
         ('cesto_enabled',          '1',     'Abilita gestione cesto cucina (QR)'),
         ('dieta_enabled',          '1',     'Abilita la dieta settimanale dei clienti'),
+        ('magazzino_enabled',      '1',     'Abilita gestione magazzino (consumabili, fornitori, giacenze)'),
         ('wallet_enabled',         '1',     'Abilita portafoglio prepagato e punti'),
         # Reminder
         ('table_reminder_minutes', '10',    'Minuti anticipo reminder prenotazione tavolo'),

@@ -685,7 +685,7 @@
             {% endif %}
 
             {# ── MAGAZZINO & FORNITORI ── #}
-            {% if p('manage_stock') %}
+            {% if magazzino_enabled and p('manage_stock') %}
             <li class="nav-item has-treeview {{ 'menu-open' if in_magazzino }}">
               <a href="#" class="nav-link {{ 'active' if in_magazzino }}">
                 <i class="nav-icon fas fa-warehouse"></i>
