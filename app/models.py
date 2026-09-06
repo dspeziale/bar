@@ -87,6 +87,9 @@ class User(UserMixin, db.Model):
     is_client = db.Column(db.Boolean, default=False)
     wallet_balance   = db.Column(db.Float, default=0.0)
     wallet_overdraft = db.Column(db.Float, default=0.0)  # massimo rosso consentito
+    # Limite di spesa giornaliero personale: None = usa quello del locale,
+    # un numero (anche 0) lo sostituisce (vedi app/limiti.py).
+    limite_giornaliero_override = db.Column(db.Float, nullable=True)
     loyalty_points   = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
@@ -399,6 +402,42 @@ class OrderItem(db.Model):
     unit_price = db.Column(db.Float, nullable=False)
     order = db.relationship('Order', back_populates='items')
     product = db.relationship('Product', back_populates='order_items')
+
+
+class RichiestaSpesa(db.Model):
+    """Carrello oltre il limite giornaliero, in attesa di un sì/no del
+    gestore: vedi app/limiti.py per la logica completa."""
+    __tablename__ = 'richieste_spesa'
+    id        = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    order_id  = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    importo           = db.Column(db.Float, nullable=False)
+    limite_al_momento = db.Column(db.Float, nullable=False)
+    speso_al_momento  = db.Column(db.Float, nullable=False)
+    carrello  = db.Column(db.Text, nullable=False)  # JSON: cart/custom_cart/slot_id/banco/notes
+    stato     = db.Column(db.String(16), default='in_attesa')  # in_attesa/approvata/rifiutata
+    motivo    = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    decisa_il  = db.Column(db.DateTime, nullable=True)
+    decisa_da  = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    user  = db.relationship('User', foreign_keys=[user_id])
+    order = db.relationship('Order', foreign_keys=[order_id])
+
+    STATO_LABELS = {
+        'in_attesa': ('In attesa', 'warning'),
+        'approvata': ('Approvata', 'success'),
+        'rifiutata': ('Rifiutata', 'danger'),
+    }
+
+    def label(self):
+        return self.STATO_LABELS.get(self.stato, (self.stato, 'secondary'))
+
+    @property
+    def dict_carrello(self):
+        import json
+        return json.loads(self.carrello)
 
 
 # ── Builder (panino/insalata personalizzati) ───────────────────────────────────

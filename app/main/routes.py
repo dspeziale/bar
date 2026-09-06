@@ -331,6 +331,25 @@ def place_order():
                   f'Servono {numero_italiano(total)}€.', 'danger')
             return redirect(url_for('main.wallet'))
 
+    # Limite di spesa giornaliero: chi lo supera non ordina da solo, nasce
+    # una richiesta e il gestore decide (app/limiti.py).
+    from app.limiti import verifica, crea_richiesta, avvisa_gestore
+    _tid = _effective_tenant_id()
+    _supera, _limite, _speso, _disponibile = verifica(current_user, _tid, total)
+    if _supera:
+        richiesta = crea_richiesta(
+            current_user, _tid, total, _limite, _speso, cart, custom_cart,
+            slot_id, banco, notes, dieta_giorno_id=session.get('dieta_giorno_id'))
+        db.session.commit()
+        avvisa_gestore(richiesta)
+        session.pop('cart', None)
+        session.pop('custom_cart', None)
+        flash(f'Il carrello ({numero_italiano(total)}€) supera il tuo limite giornaliero '
+              f'({numero_italiano(_limite)}€, disponibili {numero_italiano(_disponibile)}€ oggi). '
+              'È stata inviata una richiesta al gestore: riceverai una notifica con la sua '
+              'decisione.', 'warning')
+        return redirect(url_for('main.my_orders'))
+
     # Crea ordine
     order = Order(user_id=current_user.id, slot_id=slot_id,
                   order_date=date.today(), notes=notes, status='confirmed',
@@ -430,7 +449,10 @@ def place_order():
 @bp.route('/orders')
 @login_required
 def my_orders():
-    return render_template('main/my_orders.html')
+    from app.models import RichiestaSpesa
+    richieste = (RichiestaSpesa.query.filter_by(user_id=current_user.id, stato='in_attesa')
+                .order_by(RichiestaSpesa.created_at.desc()).all())
+    return render_template('main/my_orders.html', richieste_in_attesa=richieste)
 
 
 @bp.route('/orders/dt')
@@ -2069,6 +2091,29 @@ def telegram_webhook(segreto):
             if messaggio.get('message_id'):
                 # Si riscrive il messaggio con l'esito e si togliono i
                 # bottoni, cosi' non si puo' rispondere due volte.
+                telegram_api('editMessageText', {
+                    'chat_id': chat,
+                    'message_id': messaggio['message_id'],
+                    'text': (messaggio.get('text') or '') + '\n\n➡️ ' + esito,
+                    'reply_markup': {'inline_keyboard': []},
+                })
+    elif len(pezzi) == 3 and pezzi[0] == 'spesa' and pezzi[2] in ('si', 'no'):
+        from app.models import RichiestaSpesa
+        from app.limiti import decidi_richiesta
+        try:
+            rid = int(pezzi[1])
+        except ValueError:
+            rid = 0
+        richiesta = db.session.get(RichiestaSpesa, rid) if rid else None
+        if not richiesta:
+            esito = 'Richiesta non trovata.'
+        else:
+            chi = ((callback.get('from') or {}).get('first_name') or '').strip()
+            _ok, esito = decidi_richiesta(richiesta, pezzi[2] == 'si',
+                                          motivo=f'Deciso da {chi} su Telegram' if chi else '')
+            messaggio = callback.get('message') or {}
+            chat = (messaggio.get('chat') or {}).get('id')
+            if messaggio.get('message_id'):
                 telegram_api('editMessageText', {
                     'chat_id': chat,
                     'message_id': messaggio['message_id'],

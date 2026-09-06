@@ -592,7 +592,7 @@
             {% set p = current_user.has_permission %}
             {# ── Endpoint groups for auto-open ── #}
             {% set ep = request.endpoint %}
-            {% set in_ordini       = ep in ('admin.orders','admin.cucina') %}
+            {% set in_ordini       = ep in ('admin.orders','admin.cucina','admin.richieste_spesa') %}
             {% set in_prodotti     = ep in ('admin.products','admin.ingredients','admin.stock','admin.categories','admin.importazioni') %}
             {% set in_tavoli       = ep in ('admin.tables','admin.reservations','admin.slots','admin.tavoli') %}
             {% set in_utenti       = ep in ('admin.users','admin.roles','admin.clients','admin.diete') %}
@@ -668,6 +668,13 @@
                      class="nav-link {{ 'active' if ep == 'admin.cucina' }}">
                     <i class="fas fa-fire nav-icon" style="color:#e67e22;"></i>
                     <p>Cucina / KDS</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ url_for('admin.richieste_spesa') }}"
+                     class="nav-link {{ 'active' if ep == 'admin.richieste_spesa' }}">
+                    <i class="fas fa-hand-holding-usd nav-icon" style="color:#28a745;"></i>
+                    <p>Richieste di spesa</p>
                   </a>
                 </li>
               </ul>

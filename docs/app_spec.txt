@@ -1489,6 +1489,44 @@ Chi accede da dove (ogni locale ha la sua porta):
   e gli indirizzi di ogni locale con tasto copia. Email di attivazione,
   locandina e QR usano /t/<slug>/...
 
+### 8.8 Limite di spesa giornaliero (app/limiti.py)
+
+  AppSetting 'limite_giornaliero_importo' (per tenant, tab Prezzi Menu):
+    0 o assente = nessun limite per il locale
+  User.limite_giornaliero_override (Float, nullable):
+    None  = usa il limite del locale
+    0     = nessun limite per questo cliente (esplicito)
+    N>0   = il suo limite personale, sostituisce quello del locale
+
+  Copre solo place_order (menu, banco incluso). NON copre banco POS con QR
+  ne' il cesto: canali di acquisto rapido a se' stanti, fuori scopo (MVP).
+
+  verifica(user, tenant_id, importo_carrello):
+    limite = override se non None, altrimenti AppSetting del locale
+    speso_oggi = somma Order.total_price di oggi (status != cancelled)
+    supera = (speso_oggi + importo_carrello) > limite  [se limite > 0]
+
+  Se supera, in place_order (dopo il controllo wallet, prima di creare
+  l'Order):
+    - crea RichiestaSpesa(stato='in_attesa'), carrello congelato in JSON
+      (cart, custom_cart, slot_id, banco, notes, dieta_giorno_id)
+    - NON crea l'Order, svuota il carrello in sessione
+    - avvisa il gestore su Telegram (canale staff) con due bottoni Approva/
+      Rifiuta (callback_data 'spesa:<id>:si|no', stesso disegno del pasto
+      aziendale)
+    - il cliente vede un avviso e la richiesta pendente in "I Miei Ordini"
+
+  Decisione (decidi_richiesta, da Telegram o da /admin/richieste-spesa):
+    approvata → crea_ordine_da_richiesta(): stessi controlli di un ordine
+      normale (stock, slot ancora aperto, saldo); se fallisce la richiesta
+      si chiude da sola come rifiutata col motivo dell'errore
+    rifiutata → la richiesta si chiude, nessun Order
+    in entrambi i casi il cliente riceve un avviso (Telegram se collegato,
+    altrimenti email)
+
+  Backoffice: GET/POST /admin/richieste-spesa(/<id>/decidi), permesso
+  manage_orders, voce di menu sotto Ordini.
+
 
 ================================================================================
 ## 9. TEMPLATE PRINCIPALI

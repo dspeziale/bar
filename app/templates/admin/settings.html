@@ -586,6 +586,42 @@
           </div>
         </div>
       </div>
+      <div class="col-lg-5">
+        <div class="card card-outline card-warning">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-hand-holding-usd mr-2 text-warning"></i>Limite di spesa giornaliero
+            </h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">
+              Oltre questa cifra, in un giorno, il carrello di un cliente non diventa
+              ordine da solo: nasce una richiesta e tu decidi (menu <em>Ordini →
+              Richieste di spesa</em>, o dai bottoni su Telegram). Un cliente può
+              avere un proprio limite diverso nella sua scheda cliente. Vuoto o
+              0 = nessun limite.
+            </p>
+            <form method="POST" action="{{ url_for('admin.settings_save') }}">
+              {{ csrf_field() }}
+              <input type="hidden" name="keys" value="limite_giornaliero_importo">
+              <div class="form-group">
+                <label>Limite giornaliero per cliente</label>
+                <div class="input-group" style="max-width:200px;">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">€</span>
+                  </div>
+                  <input type="number" name="limite_giornaliero_importo" class="form-control"
+                         value="{{ cfg.limite_giornaliero_importo }}"
+                         min="0" step="1" placeholder="nessun limite">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-warning">
+                <i class="fas fa-save mr-1"></i>Salva
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>{# /tab-prezzi #}
 

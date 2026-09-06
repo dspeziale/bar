@@ -7,6 +7,24 @@
 {% endblock %}
 
 {% block content %}
+{% if richieste_in_attesa %}
+<div class="card card-outline card-warning">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-hourglass-half mr-2"></i>In attesa di approvazione</h3>
+  </div>
+  <div class="card-body">
+    <p class="mb-2">Questi carrelli superavano il tuo limite di spesa giornaliero: sono stati
+      inviati al gestore e non diventano ordini finché non li approva.</p>
+    {% for r in richieste_in_attesa %}
+    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+      <span>Carrello da <strong>{{ '%.2f'|format(r.importo) }}€</strong>
+        — inviato il {{ r.created_at.strftime('%d/%m %H:%M') }}</span>
+      <span class="badge badge-warning">In attesa</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 <div class="card card-outline card-primary">
   <div class="card-header">
     <h3 class="card-title"><i class="fas fa-receipt mr-2"></i>Storico ordini</h3>

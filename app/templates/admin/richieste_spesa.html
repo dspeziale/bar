@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Richieste di spesa{% endblock %}
+{% block page_title %}Richieste di spesa{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item active">Richieste di spesa</li>
+{% endblock %}
+
+{% block content %}
+<div class="card card-outline card-secondary mb-3">
+  <div class="card-body py-2">
+    <div class="QuickLunch-filter-form">
+      <select id="filterStato" class="form-control" style="max-width:180px;flex:1 1 150px;"
+              onchange="location.href='{{ url_for('admin.richieste_spesa') }}?stato=' + this.value">
+        <option value="in_attesa" {{ 'selected' if stato_filter=='in_attesa' }}>In attesa</option>
+        <option value="approvata" {{ 'selected' if stato_filter=='approvata' }}>Approvate</option>
+        <option value="rifiutata" {{ 'selected' if stato_filter=='rifiutata' }}>Rifiutate</option>
+        <option value="" {{ 'selected' if stato_filter=='' }}>Tutte</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card card-outline card-primary">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-hand-holding-usd mr-2"></i>Richieste
+      {% if in_attesa %}<span class="badge badge-warning ml-2">{{ in_attesa }} in attesa</span>{% endif %}
+    </h3>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="thead-dark">
+        <tr>
+          <th>Quando</th>
+          <th>Cliente</th>
+          <th>Carrello</th>
+          <th>Limite / speso</th>
+          <th>Stato</th>
+          <th class="no-sort">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in richieste %}
+        <tr>
+          <td><small>{{ r.created_at.strftime('%d/%m %H:%M') }}</small></td>
+          <td>{{ r.user.display_name }}</td>
+          <td><strong>{{ '%.2f'|format(r.importo) }}€</strong></td>
+          <td><small class="text-muted">{{ '%.2f'|format(r.speso_al_momento) }}€
+            / {{ '%.2f'|format(r.limite_al_momento) }}€</small></td>
+          <td>
+            {% set lbl = r.label() %}
+            <span class="badge badge-{{ lbl[1] }} px-2 py-1">{{ lbl[0] }}</span>
+            {% if r.motivo %}<br><small class="text-muted">{{ r.motivo }}</small>{% endif %}
+          </td>
+          <td>
+            {% if r.stato == 'in_attesa' %}
+            <div class="d-flex" style="gap:.25rem;">
+              <form method="post" action="{{ url_for('admin.richiesta_spesa_decidi', rid=r.id) }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="decisione" value="approva">
+                <button class="btn btn-xs btn-success" title="Approva"><i class="fas fa-check"></i></button>
+              </form>
+              <form method="post" action="{{ url_for('admin.richiesta_spesa_decidi', rid=r.id) }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="decisione" value="rifiuta">
+                <button class="btn btn-xs btn-danger" title="Rifiuta"><i class="fas fa-times"></i></button>
+              </form>
+            </div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-3">Nessuna richiesta.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

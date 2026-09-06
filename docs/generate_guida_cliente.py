@@ -578,6 +578,18 @@ def s5_ordini(doc):
         'Se un ordine non è arrivato, è sbagliato o c\'è un addebito che non riconosci, vai in '
         '"I Miei Ordini", individua il numero ordine e mostralo al cassiere.',
         bg='EBF5FB', border=HEX_TEAL, icon='💡')
+    spacer(doc, 8)
+
+    h2(doc, '5.5  Limite di spesa giornaliero')
+    body_para(doc,
+        'Alcuni locali fissano un tetto a quanto puoi spendere in un giorno. Se il tuo '
+        'carrello lo supererebbe, l\'ordine non si conferma subito: parte una richiesta al '
+        'gestore, che la vedrai "in attesa" in cima a "I Miei Ordini". Appena viene approvata '
+        'o rifiutata ricevi una notifica (Telegram o email) e, se approvata, l\'ordine parte '
+        'normalmente.')
+    spacer(doc, 6)
+    info_box(doc, 'Capita raramente e non richiede nulla da parte tua: basta aspettare la '
+             'risposta, che di solito arriva in pochi minuti.', style='info')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

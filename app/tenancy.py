@@ -148,7 +148,7 @@ def _genitori():
                             CorporateMembership, CorporateMealBooking, User, Product,
                             ConsumableItem, CorporateAccount, DailyFixedMeal, DietPlan,
                             DietProfile, DietReferto, Comunicazione, Order, TableReservation,
-                            BancoSession, Prenotazione)
+                            BancoSession, Prenotazione, RichiestaSpesa)
     return {
         Transaction: ('user_id', User), PushSubscription: ('user_id', User),
         DailyStock: ('product_id', Product), ConsumableMovement: ('item_id', ConsumableItem),
@@ -157,7 +157,7 @@ def _genitori():
         DietProfile: ('user_id', User), DietReferto: ('user_id', User),
         Comunicazione: ('creata_da', User), Order: ('user_id', User),
         TableReservation: ('user_id', User), BancoSession: ('staff_id', User),
-        Prenotazione: ('user_id', User),
+        Prenotazione: ('user_id', User), RichiestaSpesa: ('user_id', User),
     }
 
 

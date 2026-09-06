@@ -228,6 +228,13 @@ def sez_ordinare(pdf, idx):
                '"I miei ordini". Dopo, no: il prodotto e gia in '
                'preparazione. Se hai un problema, chiedi al banco.')
 
+    callout(pdf, 'Se il carrello supera il limite giornaliero',
+            'Alcuni locali fissano un tetto a quanto puoi spendere in un '
+            'giorno: se lo superi l\'ordine non si conferma subito, parte '
+            'una richiesta al gestore e la vedi "in attesa" in cima a "I '
+            'miei ordini". Appena viene approvata o rifiutata ricevi un '
+            'avviso su Telegram o email.', BLUE, (240, 247, 253))
+
 
 def sez_ritirare(pdf, idx):
     C = ORANGE

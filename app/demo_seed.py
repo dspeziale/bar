@@ -912,6 +912,9 @@ def _delete_tenant_data(tenant_ids, delete_tenants=True, clients_only=False):
                 synchronize_session=False)
         DietProfile.query.filter(DietProfile.user_id.in_(user_ids)).delete(
             synchronize_session=False)
+    from app.models import RichiestaSpesa
+    RichiestaSpesa.query.filter(
+        RichiestaSpesa.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
     Order.query.filter(
         Order.tenant_id.in_(tenant_ids)).delete(synchronize_session=False)
 

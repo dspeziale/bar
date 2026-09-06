@@ -444,6 +444,22 @@ def sez_ordini(pdf, idx):
                'giusta; aggiungere uno slot a mano serve per le eccezioni. Uno slot pieno non '
                'e selezionabile dal cliente.')
 
+    h2(pdf, 'Limite di spesa giornaliero', C, idx)
+    testo(pdf, 'Impostazioni > Prezzi Menu fissa quanto un cliente puo ordinare in una '
+               'giornata (0 o vuoto = nessun limite per il locale). Nella scheda di ogni '
+               'cliente si puo impostare un importo diverso solo per lui: vuoto usa quello '
+               'del locale, uno zero esplicito toglie il limite solo a quel cliente.')
+    elenco(pdf, [
+        ('Quando il carrello supera il limite: ', 'non nasce un ordine ma una richiesta in '
+         'attesa; il gestore riceve un avviso Telegram con due bottoni Approva/Rifiuta, '
+         'stesso meccanismo del promemoria del pasto aziendale, e puo decidere anche da '
+         'Ordini > Richieste di spesa.'),
+        ('Solo il menu: ', 'il controllo vale solo per gli ordini dal menu/builder (place '
+         'order, "adesso al banco" compreso). Il POS al banco con QR e il cesto restano '
+         'fuori: sono canali di acquisto rapido a se stanti, per scelta e non per '
+         'dimenticanza.'),
+    ])
+
 
 def sez_cesto(pdf, idx):
     C = GREEN

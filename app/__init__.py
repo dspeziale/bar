@@ -935,6 +935,8 @@ def _migrate_tenant_columns():
     _ensure('users', 'comunicazioni_ok', 'BOOLEAN DEFAULT TRUE')
     _ensure('users', 'canale_preferito', "VARCHAR(16) DEFAULT 'auto'")
     _ensure('users', 'reparto', "VARCHAR(120) DEFAULT ''")
+    # Limite di spesa giornaliero personale (vedi app/limiti.py)
+    _ensure('users', 'limite_giornaliero_override', 'FLOAT')
 
     # Multi-tenant con dati isolati: l'amministratore dei tenant e il tenant
     # sulle tabelle che ne erano prive (il filtro automatico vale solo per

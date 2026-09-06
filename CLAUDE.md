@@ -370,6 +370,35 @@ premio, prezzi base builder, bonus registrazione) stanno in `AppSetting`, leggib
 `get_numeric_setting(key, default)`: non usare le costanti di `config.py`, che sono solo
 fallback storici.
 
+### Limite di spesa giornaliero (`app/limiti.py`)
+
+Un locale può fissare quanto un cliente può ordinare in un giorno (`AppSetting
+limite_giornaliero_importo`, tab Prezzi Menu delle Impostazioni; 0 o assente = nessun
+limite) e ogni cliente può avere un proprio importo diverso
+(`User.limite_giornaliero_override`, scheda cliente: **vuoto** torna al limite del locale,
+un numero — **anche 0** — lo sostituisce esplicitamente, e 0 toglie il limite solo per
+quel cliente). Copre solo gli ordini dal menu (`place_order`, banco compreso: "adesso al
+banco" è comunque un `Order`); **non copre** il POS al banco con QR né il cesto, canali di
+acquisto rapido a sé stanti — è una scelta di scopo dell'MVP, non una svista.
+
+Quando il carrello, sommato a quanto il cliente ha già speso **oggi** (`Order.order_date`,
+esclusi gli annullati), supererebbe il limite, l'ordine non nasce da solo:
+`app.limiti.verifica()` lo intercetta in `place_order` (dopo il controllo del wallet, prima
+di creare l'`Order`) e al suo posto nasce una `RichiestaSpesa` **in attesa**, col carrello
+congelato in JSON (prodotti, custom, slot, banco, note, il giorno della dieta se c'era). Il
+gestore viene avvisato su Telegram con due bottoni (Approva/Rifiuta,
+`tastiera_richiesta_spesa()`, stesso disegno di `tastiera_conferma_pasto()`) e può decidere
+anche dal backoffice (`/admin/richieste-spesa`, permesso `manage_orders`, voce di menu sotto
+Ordini). Solo alla decisione (`decidi_richiesta()`) l'ordine viene creato davvero
+(`crea_ordine_da_richiesta()`, con **gli stessi controlli** di un ordine normale: stock,
+slot ancora aperto, saldo — può ancora fallire se qualcosa è cambiato nel frattempo, e in
+quel caso la richiesta si chiude da sé come rifiutata col motivo dell'errore) o resta
+rifiutata; il cliente riceve sempre un avviso (`send_reminder_to_user`, quindi Telegram se
+collegato altrimenti email) e vede le proprie richieste pendenti in cima a *I Miei Ordini*.
+Il webhook Telegram ha un ramo `spesa:<id>:si|no` accanto a quello del pasto aziendale
+(`main.telegram_webhook`), stesso pattern di riscrittura del messaggio e rimozione dei
+bottoni dopo la decisione.
+
 ### Bot Telegram: bottoni, webhook, collegamento
 
 Il promemoria del pasto aziendale porta due bottoni inline (Sì / No) costruiti da

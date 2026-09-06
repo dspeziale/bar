@@ -400,6 +400,8 @@ def clients_dt():
             'telegram':       c.telegram_chat_id or '',
             'wallet_balance': round(c.wallet_balance, 2),
             'wallet_overdraft': round(c.wallet_overdraft or 0, 2),
+            'limite_giornaliero': ('' if c.limite_giornaliero_override is None
+                                   else round(c.limite_giornaliero_override, 2)),
             'loyalty_points': c.loyalty_points,
             'is_active':      c.is_active,
             'has_google':     bool(c.google_id),
@@ -884,6 +886,33 @@ def order_notifica_ritiro(oid):
     return jsonify(ok=True, message=f'Promemoria inviato a {order.user.full_name}.')
 
 
+@bp.route('/richieste-spesa')
+@require_permission('manage_orders')
+def richieste_spesa():
+    from app.models import RichiestaSpesa
+    stato_filter = request.args.get('stato', 'in_attesa')
+    q = RichiestaSpesa.query
+    if stato_filter:
+        q = q.filter_by(stato=stato_filter)
+    richieste = q.order_by(RichiestaSpesa.created_at.desc()).limit(200).all()
+    in_attesa = RichiestaSpesa.query.filter_by(stato='in_attesa').count()
+    return render_template('admin/richieste_spesa.html', richieste=richieste,
+                           stato_filter=stato_filter, in_attesa=in_attesa)
+
+
+@bp.route('/richieste-spesa/<int:rid>/decidi', methods=['POST'])
+@require_permission('manage_orders')
+def richiesta_spesa_decidi(rid):
+    from app.models import RichiestaSpesa
+    from app.limiti import decidi_richiesta
+    richiesta = db.get_or_404(RichiestaSpesa, rid)
+    approvata = request.form.get('decisione') == 'approva'
+    motivo = request.form.get('motivo', '').strip()
+    ok, esito = decidi_richiesta(richiesta, approvata, staff=current_user, motivo=motivo)
+    flash(esito, 'success' if ok else 'danger')
+    return redirect(url_for('admin.richieste_spesa'))
+
+
 @bp.route('/push-test/<int:uid>', methods=['POST'])
 @login_required
 def push_test(uid):
@@ -1055,6 +1084,16 @@ def client_edit(uid):
     if overdraft_raw != '':
         try:
             u.wallet_overdraft = max(0.0, round(float(overdraft_raw), 2))
+        except ValueError:
+            pass
+    # Limite di spesa giornaliero: qui il campo vuoto ha un significato preciso
+    # (torna al limite del locale), non "lascia stare" come per l'overdraft.
+    limite_raw = request.form.get('limite_giornaliero', '').strip()
+    if limite_raw == '':
+        u.limite_giornaliero_override = None
+    else:
+        try:
+            u.limite_giornaliero_override = max(0.0, round(float(limite_raw), 2))
         except ValueError:
             pass
     pwd = request.form.get('password', '').strip()
@@ -2180,6 +2219,7 @@ def settings():
         'registration_bonus',
         'loyalty_points_per_euro', 'loyalty_reward_points', 'loyalty_reward_amount',
         'builder_price_panino', 'builder_price_insalata', 'builder_price_poke',
+        'limite_giornaliero_importo',
         'table_reminder_minutes', 'order_reminder_minutes', 'meal_reminder_minutes',
         'tables_enabled', 'cesto_enabled', 'wallet_enabled', 'dieta_enabled',
         'magazzino_enabled',

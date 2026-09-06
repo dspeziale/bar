@@ -251,6 +251,17 @@
             {% endif %}
             <div class="col-sm-6">
               <div class="form-group">
+                <label>Limite di spesa giornaliero personale</label>
+                <div class="input-group">
+                  <input type="number" name="limite_giornaliero" id="editLimiteGiornaliero" class="form-control"
+                         min="0" step="1" placeholder="usa quello del locale">
+                  <div class="input-group-append"><span class="input-group-text">€</span></div>
+                </div>
+                <small class="form-text text-muted">Vuoto = usa il limite del locale. 0 = nessun limite per questo cliente.</small>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="form-group">
                 <label>Nuova password</label>
                 <input type="password" name="password" class="form-control"
                        placeholder="(lasciare vuoto per non cambiare)" minlength="6">
@@ -413,6 +424,7 @@ $(document).on('click', '.btn-edit-client', function() {
   $('#editAddress').val(d.address);
   $('#editTelegram').val(d.telegram);
   $('#editOverdraft').val(parseFloat(d.wallet_overdraft).toFixed(2));
+  $('#editLimiteGiornaliero').val(d.limite_giornaliero === '' ? '' : parseFloat(d.limite_giornaliero).toFixed(2));
   $('#sharedEditModal input[name="password"]').val('');
   $('#sharedEditModal').modal('show');
 });
