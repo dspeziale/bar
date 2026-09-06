@@ -1448,6 +1448,12 @@ Chi accede da dove (ogni locale ha la sua porta):
                          uno solo GET -> /t/<slug>/register (POST accettato).
   /auth/join             QR: punta a /t/<slug>/register (un locale) o a
                          /auth/register (pagina neutra).
+  Google: il locale lo dice l'indirizzo da cui si parte. /t/<slug>/google
+  mette lo slug in sessione (oauth_tenant_slug) e il callback iscrive in
+  quel locale. Dalla pagina globale (/auth/google) un'email gia' nota entra
+  nel suo locale; un'email nuova viene iscritta solo se esiste un unico
+  locale, altrimenti niente account e rimando alla pagina neutra ("usa il
+  link del tuo locale"): non si indovina il tenant.
   /t/<slug>/login        personale e clienti del locale; l'amministratore dei
                          tenant che entra da qui lavora in quel locale
                          (session['tenant_attivo']); un account di un altro

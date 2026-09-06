@@ -219,6 +219,15 @@ def google_callback():
             return redirect(next_page or url_for('admin.dashboard'))
         return redirect(next_page or url_for('main.index'))
     else:
+        # Email nuova dalla pagina globale: il locale non e' noto. Con un solo
+        # locale si iscrive li'; con piu' locali non si indovina (finirebbe nel
+        # predefinito): ci si iscrive dal link del proprio locale, dove lo slug
+        # nell'indirizzo dice a chi appartiene.
+        tenants = _tenant_attivi()
+        if len(tenants) != 1:
+            flash('Nessun account con questa email Google. Per iscriverti usa il link del '
+                  'tuo locale (locandina, QR o indirizzo che ti ha dato il locale).', 'warning')
+            return redirect(url_for('auth.register'))
         user = User(
             username   = _make_username(email),
             email      = email,
@@ -228,7 +237,7 @@ def google_callback():
             last_name  = last_name,
             is_active  = False,
             is_client  = True,
-            tenant_id  = _tenant_predefinito(),
+            tenant_id  = tenants[0].id,
         )
         db.session.add(user)
         db.session.commit()

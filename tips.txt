@@ -33,6 +33,10 @@ CHI ACCEDE DA DOVE (la regola: ogni locale ha la sua porta, /t/<slug>/...)
   di accesso/registrazione (Impostazioni > Azienda > Indirizzi del locale, locandina, QR).
   Dopo ogni accesso un messaggio dice in quale locale si e' entrati e in alto compare il
   chip "Locale: <nome>" (il proprio).
+  Google: il locale lo dice l'indirizzo da cui si parte (il "Continua con Google" della
+  pagina /t/<slug>/...). Dal login globale un'email Google gia' registrata entra nel suo
+  locale; un'email nuova NON viene iscritta (con piu' locali): il cliente deve usare il link
+  del proprio locale.
 
 LOCALE PREDEFINITO "Food Service" (slug: default)
   Accesso:       https://dslunch.vercel.app/t/default/login

@@ -174,6 +174,10 @@ indirizzo senza elencare nulla; con uno solo va alla pagina del locale. In `tena
 l'amministratore dei tenant entra direttamente in quel locale; un account di un altro locale
 riceve un avviso **generico** (niente nome né link dell'altro locale). Non aggiungere elenchi
 di tenant, nomi o slug altrui in pagine raggiungibili da chi non è superadmin.
+**Google**: il tenant lo dice l'indirizzo di partenza (`/t/<slug>/google` mette lo slug in
+sessione per il callback). Dal globale `/auth/google` un'email nuova viene iscritta solo se il
+locale è uno; con più locali niente account e rimando alla pagina neutra — non indovinare il
+tenant col predefinito.
 La registrazione dal locale è **in attesa di attivazione**
 come quella globale (prima entrava subito: due flussi diversi confondevano). Dopo ogni login
 un flash dice il locale, e la barra mostra il chip `Locale: <nome>`.
