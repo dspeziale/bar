@@ -133,7 +133,10 @@ def sez_prima_di_aprire(pdf, idx):
          'dove sta entrando; dopo l\'accesso, in alto compare "Locale: <nome>". L\'indirizzo '
          'globale /auth/login e neutro: non nomina nessun locale, funziona per tutti e porta '
          'ciascuno nel proprio. Nessun locale vede o conosce gli altri: chi sbaglia porta '
-         'riceve solo un avviso generico.'),
+         'riceve solo un avviso generico. Dopo la prima visita alla pagina del locale il '
+         'telefono del cliente se lo ricorda (un anno): anche tornando da un indirizzo '
+         'globale o dall\'icona salvata in home, "Accedi con Google" e il login vanno dritti '
+         'al suo locale, senza altri passaggi.'),
         ('Crea il personale con il ruolo giusto',
          'Persone > Personale: cassiere, cuoco, manager sono ruoli pronti con i loro '
          'permessi; Persone > Ruoli & Permessi li adatta o ne crea altri. Un utente vede '

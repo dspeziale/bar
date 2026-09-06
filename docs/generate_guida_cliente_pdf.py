@@ -131,7 +131,9 @@ def sez_iscrizione(pdf, idx):
          'attivazione e del QR. Dopo l\'accesso, in alto a destra, leggi '
          '"Locale: ..." per sapere dove sei. Se per sbaglio entri dalla pagina '
          'di un altro locale la pagina te lo dice: usa l\'indirizzo che ti ha '
-         'dato il tuo locale.'),
+         'dato il tuo locale. Dopo la prima visita il telefono se lo ricorda: '
+         'anche tornando dall\'icona o da un preferito, Accedi con Google va '
+         'dritto al tuo locale, senza altri passaggi.'),
     ], C)
 
     h2(pdf, 'Le email che ricevi', C, idx)

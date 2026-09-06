@@ -6,7 +6,7 @@ from app.auth import bp
 from app.models import Tenant, User
 from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email)
-from app.tenancy import utente_globale, senza_filtro
+from app.tenancy import utente_globale, senza_filtro, tenant_da_cookie
 
 
 MESSAGGIO_REGISTRATO = (
@@ -68,6 +68,15 @@ def _make_username(email):
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+    if request.method == 'GET' and len(_tenant_attivi()) > 1:
+        # Piu' locali: se questo browser era gia' passato dalla pagina di uno
+        # di loro, lo si rimanda li' in silenzio, senza fargli fare nulla in
+        # piu' (e "Accedi con Google" funziona subito). Con un solo locale il
+        # globale gia' non ha ambiguita': resta com'era.
+        t_cookie = tenant_da_cookie()
+        if t_cookie is not None:
+            return redirect(url_for('tenant.login', slug=t_cookie.slug,
+                                    next=request.args.get('next')))
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -106,6 +115,9 @@ def register():
     # dove trovare il proprio indirizzo.
     tenants = _tenant_attivi()
     if len(tenants) > 1:
+        t_cookie = tenant_da_cookie()
+        if t_cookie is not None:
+            return redirect(url_for('tenant.register', slug=t_cookie.slug))
         return render_template('auth/registrazione_locale.html')
     if request.method == 'GET' and len(tenants) == 1:
         return redirect(url_for('tenant.register', slug=tenants[0].slug))
@@ -167,6 +179,12 @@ def google_start():
     if not _refresh_oauth_google():
         flash('Login con Google non configurato. Contatta l\'amministratore.', 'danger')
         return redirect(url_for('auth.login'))
+    # Come per il login: con piu' locali, se il browser conosce gia' il suo,
+    # si passa dritti al Google di quel locale, che non ha ambiguita'.
+    if len(_tenant_attivi()) > 1:
+        t_cookie = tenant_da_cookie()
+        if t_cookie is not None:
+            return redirect(url_for('tenant.google_start', slug=t_cookie.slug))
     callback_url = url_for('auth.google_callback', _external=True)
     return oauth.google.authorize_redirect(callback_url)
 
@@ -220,11 +238,12 @@ def google_callback():
         return redirect(next_page or url_for('main.index'))
     else:
         # Email nuova dalla pagina globale: il locale non e' noto. Con un solo
-        # locale si iscrive li'; con piu' locali non si indovina (finirebbe nel
-        # predefinito): ci si iscrive dal link del proprio locale, dove lo slug
-        # nell'indirizzo dice a chi appartiene.
+        # locale si iscrive li'; con piu' locali si guarda prima se questo
+        # browser ricorda gia' un locale (arrivato qui direttamente, senza
+        # passare dal redirect di google_start); altrimenti non si indovina.
         tenants = _tenant_attivi()
-        if len(tenants) != 1:
+        target = tenants[0] if len(tenants) == 1 else tenant_da_cookie()
+        if target is None:
             flash('Nessun account con questa email Google. Per iscriverti usa il link del '
                   'tuo locale (locandina, QR o indirizzo che ti ha dato il locale).', 'warning')
             return redirect(url_for('auth.register'))
@@ -237,7 +256,7 @@ def google_callback():
             last_name  = last_name,
             is_active  = False,
             is_client  = True,
-            tenant_id  = tenants[0].id,
+            tenant_id  = target.id,
         )
         db.session.add(user)
         db.session.commit()
@@ -256,7 +275,10 @@ def join():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     tenants = _tenant_attivi()
-    if len(tenants) == 1:
+    t_cookie = tenant_da_cookie()
+    if t_cookie is not None:
+        join_url = url_for('tenant.register', slug=t_cookie.slug, _external=True)
+    elif len(tenants) == 1:
         join_url = url_for('tenant.register', slug=tenants[0].slug, _external=True)
     else:
         join_url = url_for('auth.register', _external=True)

@@ -1452,8 +1452,20 @@ Chi accede da dove (ogni locale ha la sua porta):
   mette lo slug in sessione (oauth_tenant_slug) e il callback iscrive in
   quel locale. Dalla pagina globale (/auth/google) un'email gia' nota entra
   nel suo locale; un'email nuova viene iscritta solo se esiste un unico
-  locale, altrimenti niente account e rimando alla pagina neutra ("usa il
-  link del tuo locale"): non si indovina il tenant.
+  locale o se il browser ricorda un locale dal cookie, altrimenti niente
+  account e rimando alla pagina neutra ("usa il link del tuo locale"): non
+  si indovina il tenant.
+
+  Cookie del locale (app/tenancy.py: NOME_COOKIE_TENANT='ql_tenant',
+  tenant_da_cookie()): ogni pagina /t/<slug>/... lo pianta (1 anno,
+  before_request/after_request del blueprint tenant). Le pagine globali
+  (auth.login, auth.register, auth.join, auth.google, il fallback in
+  auth.google_callback) lo rileggono e, se presente, rimandano dritti alla
+  porta di quel locale senza elencare o mostrare nulla: un cliente che ha
+  gia' usato il suo locale non deve rifare nulla, nemmeno tornando da un
+  indirizzo globale (bookmark, icona home, "Accedi con Google"). Solo il
+  primo arrivo assoluto su un indirizzo globale, senza cookie e con piu'
+  locali attivi, resta ambiguo per definizione.
   /t/<slug>/login        personale e clienti del locale; l'amministratore dei
                          tenant che entra da qui lavora in quel locale
                          (session['tenant_attivo']); un account di un altro

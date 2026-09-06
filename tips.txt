@@ -35,8 +35,16 @@ CHI ACCEDE DA DOVE (la regola: ogni locale ha la sua porta, /t/<slug>/...)
   chip "Locale: <nome>" (il proprio).
   Google: il locale lo dice l'indirizzo da cui si parte (il "Continua con Google" della
   pagina /t/<slug>/...). Dal login globale un'email Google gia' registrata entra nel suo
-  locale; un'email nuova NON viene iscritta (con piu' locali): il cliente deve usare il link
-  del proprio locale.
+  locale; una nuova viene iscritta anche dal globale se il browser ricorda gia' un locale
+  (vedi sotto), altrimenti niente iscrizione: il cliente deve usare il link del proprio locale.
+
+  COOKIE DEL LOCALE: dopo la prima visita a una pagina /t/<slug>/... il browser ricorda per
+  un anno quel locale. Da quel momento tornare su un indirizzo globale (bookmark, icona
+  home, "Accedi con Google") porta dritti alla porta del proprio locale, senza dover fare
+  nulla in piu' e senza che compaia mai il nome di un altro locale. Solo il primissimo
+  arrivo assoluto (mai visitato nessuna pagina del locale, piu' di un locale attivo) resta
+  ambiguo: in quel caso la pagina spiega solo dove trovare il proprio indirizzo (locandina,
+  QR, email di attivazione).
 
 LOCALE PREDEFINITO "Food Service" (slug: default)
   Accesso:       https://dslunch.vercel.app/t/default/login

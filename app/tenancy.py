@@ -85,6 +85,28 @@ def modelli_con_tenant():
     return _MODELLI
 
 
+NOME_COOKIE_TENANT = 'ql_tenant'
+
+
+def tenant_da_cookie():
+    """Il locale che questo browser ha gia' visitato (cookie di lunga durata
+    impostato da ogni pagina /t/<slug>/...), se esiste ed e' ancora attivo.
+
+    Serve solo a rendere silenzioso il ritorno di un cliente che era gia'
+    passato dalla pagina del suo locale: quando arriva su un indirizzo
+    globale (login, "Accedi con Google", QR generico) lo si rimanda dritto
+    alla porta del suo locale, senza fargli fare nulla in piu' e senza
+    elencare o nominare nessun altro locale da nessuna parte.
+    """
+    from flask import request
+    from app.models import Tenant
+    slug = request.cookies.get(NOME_COOKIE_TENANT)
+    if not slug:
+        return None
+    with senza_filtro():
+        return Tenant.query.filter_by(slug=slug, is_active=True).first()
+
+
 def utente_globale(**filtri):
     """Un utente cercato in tutti i tenant: email e username sono unici a
     livello di installazione, quindi login, registrazione e controlli di

@@ -1,16 +1,37 @@
 import re
-from flask import render_template, redirect, url_for, flash, request, session, abort
+from flask import render_template, redirect, url_for, flash, request, session, abort, g
 from flask_login import login_user, current_user
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
-from app.tenancy import utente_globale
+from app.tenancy import utente_globale, NOME_COOKIE_TENANT
 from app.notifications import (get_setting, send_telegram,
                                send_registration_received_email,
                                send_account_activated_email)
 # I due messaggi vivono in app/auth/routes.py: qui si riusano, cosi' il
 # testo mostrato al cliente e' lo stesso da qualunque via si registri.
 from app.auth.routes import MESSAGGIO_REGISTRATO, MESSAGGIO_IN_ATTESA
+
+
+# Ogni pagina di questo blueprint ha lo slug nell'indirizzo: si ricorda in un
+# cookie di lunga durata, cosi' un cliente che torna da un indirizzo globale
+# (login, "Accedi con Google", QR generico) viene rimandato in silenzio alla
+# porta del suo locale, senza dover rifare nulla e senza che compaia mai il
+# nome di un altro locale.
+@bp.before_request
+def _nota_lo_slug():
+    slug = (request.view_args or {}).get('slug')
+    if slug:
+        g._tenant_da_ricordare = slug
+
+
+@bp.after_request
+def _ricorda_il_locale(response):
+    slug = getattr(g, '_tenant_da_ricordare', None)
+    if slug:
+        response.set_cookie(NOME_COOKIE_TENANT, slug, max_age=60 * 60 * 24 * 365,
+                            samesite='Lax')
+    return response
 
 
 def _get_tenant_or_404(slug):

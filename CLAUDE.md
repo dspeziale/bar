@@ -178,6 +178,17 @@ di tenant, nomi o slug altrui in pagine raggiungibili da chi non è superadmin.
 sessione per il callback). Dal globale `/auth/google` un'email nuova viene iscritta solo se il
 locale è uno; con più locali niente account e rimando alla pagina neutra — non indovinare il
 tenant col predefinito.
+**Cookie del locale** (`app/tenancy.py`, `NOME_COOKIE_TENANT`): ogni pagina `/t/<slug>/...`
+pianta un cookie di un anno con lo slug (`tenant/routes.py`, `before_request`/`after_request`
+del blueprint). Le pagine globali (`auth.login`, `auth.register`, `auth.join`, `auth.google`,
+e il fallback in `auth.google_callback`) lo rileggono con `tenant_da_cookie()` e, se c'è,
+rimandano dritti alla porta di quel locale **senza mostrare nulla**: risolve il caso reale
+"un cliente che ha già usato il suo locale torna dall'indirizzo base (bookmark, icona home) e
+clicca Accedi con Google" senza fargli rifare nulla, restando coerente con "nessun locale sa
+degli altri" perché il cookie è privato del browser e non elenca mai niente. Solo il primissimo
+arrivo su un indirizzo globale, senza cookie e con più locali attivi, resta ambiguo (inevitabile
+senza sapere a quale locale appartiene): lì la pagina spiega solo dove trovare il proprio
+indirizzo.
 La registrazione dal locale è **in attesa di attivazione**
 come quella globale (prima entrava subito: due flussi diversi confondevano). Dopo ogni login
 un flash dice il locale, e la barra mostra il chip `Locale: <nome>`.
