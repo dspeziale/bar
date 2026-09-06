@@ -189,6 +189,18 @@ degli altri" perché il cookie è privato del browser e non elenca mai niente. S
 arrivo su un indirizzo globale, senza cookie e con più locali attivi, resta ambiguo (inevitabile
 senza sapere a quale locale appartiene): lì la pagina spiega solo dove trovare il proprio
 indirizzo.
+
+**Un solo indirizzo di ritorno OAuth**: Google rifiuta con `redirect_uri_mismatch` un
+callback non registrato nella console del progetto, e registrarne uno nuovo è un passo
+manuale fuori da questo repo. Per questo `tenant.google_start` non costruisce più il proprio
+`url_for('tenant.google_callback', ...)`: usa sempre `url_for('auth.google_callback', ...)`,
+l'unico indirizzo effettivamente registrato, portando il locale in `session['oauth_tenant_slug']`
+invece che nell'URL di ritorno. `auth.google_callback` la legge con priorità (poi il cookie,
+poi l'unico tenant). La rotta `tenant.google_callback` resta solo per compatibilità/test, ma
+nessun pulsante ci punta più: **non farla ripuntare a un secondo redirect_uri** senza prima
+registrarlo su Google, o si ripete l'errore (capitato in produzione il 17/9 quando i clienti
+hanno iniziato a usare il pulsante "Accedi con Google" dei singoli locali).
+
 La registrazione dal locale è **in attesa di attivazione**
 come quella globale (prima entrava subito: due flussi diversi confondevano). Dopo ogni login
 un flash dice il locale, e la barra mostra il chip `Locale: <nome>`.

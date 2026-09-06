@@ -237,12 +237,18 @@ def google_callback():
             return redirect(next_page or url_for('admin.dashboard'))
         return redirect(next_page or url_for('main.index'))
     else:
-        # Email nuova dalla pagina globale: il locale non e' noto. Con un solo
-        # locale si iscrive li'; con piu' locali si guarda prima se questo
-        # browser ricorda gia' un locale (arrivato qui direttamente, senza
-        # passare dal redirect di google_start); altrimenti non si indovina.
-        tenants = _tenant_attivi()
-        target = tenants[0] if len(tenants) == 1 else tenant_da_cookie()
+        # Email nuova: il "Continua con Google" della pagina di un locale
+        # passa lo slug in sessione (un solo indirizzo di ritorno per tutta
+        # l'app, registrato una volta su Google: un secondo per locale
+        # darebbe "redirect_uri_mismatch" finche' non lo si registra a mano).
+        # Altrimenti, con un solo locale si iscrive li'; con piu' locali si
+        # guarda se questo browser ricorda gia' un locale; altrimenti non si
+        # indovina.
+        slug = session.pop('oauth_tenant_slug', None)
+        target = Tenant.query.filter_by(slug=slug, is_active=True).first() if slug else None
+        if target is None:
+            tenants = _tenant_attivi()
+            target = tenants[0] if len(tenants) == 1 else tenant_da_cookie()
         if target is None:
             flash('Nessun account con questa email Google. Per iscriverti usa il link del '
                   'tuo locale (locandina, QR o indirizzo che ti ha dato il locale).', 'warning')

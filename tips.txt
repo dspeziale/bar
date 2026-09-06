@@ -46,6 +46,14 @@ CHI ACCEDE DA DOVE (la regola: ogni locale ha la sua porta, /t/<slug>/...)
   ambiguo: in quel caso la pagina spiega solo dove trovare il proprio indirizzo (locandina,
   QR, email di attivazione).
 
+ACCEDI CON GOOGLE: un solo indirizzo di ritorno registrato su Google per tutta l'app
+(https://dslunch.vercel.app/auth/google/callback). Il pulsante Google di ogni pagina di
+locale passa il locale in sessione, non in un indirizzo diverso: un secondo redirect_uri
+per locale darebbe a Google "Errore 400: redirect_uri_mismatch" (successo il 17/9/2026),
+finche' non lo si registra a mano nella Google Cloud Console del progetto (cosa che questo
+repository non puo' fare da solo). Se in futuro serve un secondo indirizzo di ritorno,
+registrarlo prima su Google, non solo nel codice.
+
 LOCALE PREDEFINITO "Food Service" (slug: default)
   Accesso:       https://dslunch.vercel.app/t/default/login
   Registrazione: https://dslunch.vercel.app/t/default/register

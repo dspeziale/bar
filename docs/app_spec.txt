@@ -1456,6 +1456,15 @@ Chi accede da dove (ogni locale ha la sua porta):
   account e rimando alla pagina neutra ("usa il link del tuo locale"): non
   si indovina il tenant.
 
+  Un solo indirizzo di ritorno OAuth: tenant.google_start non costruisce piu'
+  url_for('tenant.google_callback', ...) (un secondo redirect_uri, mai
+  registrato su Google, dava redirect_uri_mismatch in produzione appena un
+  cliente usava il Google del proprio locale). Usa sempre
+  url_for('auth.google_callback', ...) e passa lo slug in
+  session['oauth_tenant_slug'], che auth.google_callback legge con
+  precedenza su cookie e tenant unico. tenant.google_callback resta solo
+  per compatibilita'/test, nessun pulsante ci punta piu'.
+
   Cookie del locale (app/tenancy.py: NOME_COOKIE_TENANT='ql_tenant',
   tenant_da_cookie()): ogni pagina /t/<slug>/... lo pianta (1 anno,
   before_request/after_request del blueprint tenant). Le pagine globali

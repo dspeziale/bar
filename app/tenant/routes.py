@@ -181,11 +181,19 @@ def google_start(slug):
         return redirect(url_for('auth.login'))
     tenant = _get_tenant_or_404(slug)
     session['oauth_tenant_slug'] = slug
-    callback_url = url_for('tenant.google_callback', _external=True)
+    # Un solo indirizzo di ritorno per tutta l'app (quello registrato su
+    # Google): un secondo redirect_uri per locale andrebbe registrato a mano
+    # per ognuno, e finche' non lo si fa Google rifiuta con
+    # "redirect_uri_mismatch". Il locale viaggia nella sessione, non nell'URL.
+    callback_url = url_for('auth.google_callback', _external=True)
     return oauth.google.authorize_redirect(callback_url)
 
 
-# ── Google OAuth: callback ────────────────────────────────────────────────────
+# ── Google OAuth: callback (compatibilita') ───────────────────────────────────
+# `google_start` non punta piu' qui: usa l'unico indirizzo di ritorno
+# registrato su Google (`auth.google_callback`), passando il locale in
+# sessione. Questa rotta resta per chi avesse ancora questo indirizzo in
+# mano (e per i test), ma non serve registrarla su Google.
 
 @bp.route('/google/callback')
 def google_callback():
