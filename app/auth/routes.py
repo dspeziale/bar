@@ -91,28 +91,22 @@ def login():
             flash(MESSAGGIO_IN_ATTESA, 'info')
             return redirect(url_for('auth.login'))
         flash('Credenziali non valide.', 'danger')
-    return render_template('auth/login.html', tenants=_tenant_attivi())
-
-
-@bp.route('/locale')
-def scegli_locale():
-    """L'elenco dei locali con i rispettivi indirizzi: e' dove finisce chi
-    arriva alla pagina globale senza sapere da quale locale entrare."""
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-    return render_template('auth/scegli_locale.html', tenants=_tenant_attivi())
+    # Pagina neutra: non elenca i locali. Ogni locale pubblica da se' il
+    # proprio indirizzo di accesso, e nessun locale deve sapere degli altri.
+    return render_template('auth/login.html')
 
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
-    # La registrazione e' sempre di un locale: con piu' locali si sceglie,
-    # con uno solo si va dritti alla sua pagina (che porta nome e colore).
+    # La registrazione e' sempre di un locale, dal suo indirizzo
+    # /t/<slug>/register (locandina, QR, email). Con un solo locale si va
+    # dritti alla sua pagina; con piu' locali non si elenca nulla: si spiega
+    # dove trovare il proprio indirizzo.
     tenants = _tenant_attivi()
     if len(tenants) > 1:
-        flash('Scegli il locale a cui vuoi iscriverti.', 'info')
-        return redirect(url_for('auth.scegli_locale'))
+        return render_template('auth/registrazione_locale.html')
     if request.method == 'GET' and len(tenants) == 1:
         return redirect(url_for('tenant.register', slug=tenants[0].slug))
     if request.method == 'POST':
@@ -256,7 +250,7 @@ def join():
     if len(tenants) == 1:
         join_url = url_for('tenant.register', slug=tenants[0].slug, _external=True)
     else:
-        join_url = url_for('auth.scegli_locale', _external=True)
+        join_url = url_for('auth.register', _external=True)
     return render_template('auth/join.html', join_url=join_url)
 
 

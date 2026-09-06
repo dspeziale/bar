@@ -130,9 +130,10 @@ def sez_prima_di_aprire(pdf, idx):
          'Impostazioni > Azienda > Indirizzi del locale mostra i due indirizzi da dare in giro: '
          '/t/<slug>/login per personale e clienti, /t/<slug>/register per iscriversi (e il QR '
          'della locandina). La pagina porta nome e colore del locale, cosi nessuno si chiede '
-         'dove sta entrando; dopo l\'accesso, in alto compare "Locale: <nome>". Chi sbaglia porta '
-         'viene mandato a quella giusta. L\'indirizzo globale /auth/login e dell\'amministratore '
-         'dei tenant, ma funziona per tutti e porta ciascuno nel proprio locale.'),
+         'dove sta entrando; dopo l\'accesso, in alto compare "Locale: <nome>". L\'indirizzo '
+         'globale /auth/login e neutro: non nomina nessun locale, funziona per tutti e porta '
+         'ciascuno nel proprio. Nessun locale vede o conosce gli altri: chi sbaglia porta '
+         'riceve solo un avviso generico.'),
         ('Crea il personale con il ruolo giusto',
          'Persone > Personale: cassiere, cuoco, manager sono ruoli pronti con i loro '
          'permessi; Persone > Ruoli & Permessi li adatta o ne crea altri. Un utente vede '

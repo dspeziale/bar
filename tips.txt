@@ -17,17 +17,22 @@ CHI ACCEDE DA DOVE (la regola: ogni locale ha la sua porta, /t/<slug>/...)
   Amministratore e personale di un locale
       https://dslunch.vercel.app/t/<slug>/login     (pagina con nome e colore del locale)
       Vedono solo il proprio locale. Il login globale /auth/login funziona comunque e li
-      porta nel loro locale; se sbagliano porta (locale di un altro) la pagina glielo dice
-      e li manda alla porta giusta.
+      porta nel loro locale; se sbagliano porta (locale di un altro) ricevono un avviso
+      generico, senza che gli venga rivelato nessun altro locale.
 
   Clienti di un locale
       https://dslunch.vercel.app/t/<slug>/register  per iscriversi (in attesa di attivazione
       dal titolare, come da sempre), poi /t/<slug>/login. E' l'indirizzo del QR della
       locandina, della pagina "QR registrazione" e delle email di attivazione.
 
-  /auth/register con piu' locali manda a scegliere il locale (/auth/locale); con un solo
-  locale porta alla sua pagina. Dopo ogni accesso un messaggio dice in quale locale si e'
-  entrati e in alto compare il chip "Locale: <nome>".
+  Le pagine globali (/auth/login, /auth/register, /auth/join) sono NEUTRE: non elencano
+  e non nominano mai i locali. Con piu' locali /auth/register spiega solo dove trovare il
+  proprio indirizzo (locandina, link del locale); con un solo locale porta alla sua pagina.
+  Nessun locale sa dell'esistenza degli altri: l'elenco esiste solo nella pagina Tenant
+  dell'amministratore dei tenant. Ogni locale, una volta creato, pubblica il proprio link
+  di accesso/registrazione (Impostazioni > Azienda > Indirizzi del locale, locandina, QR).
+  Dopo ogni accesso un messaggio dice in quale locale si e' entrati e in alto compare il
+  chip "Locale: <nome>" (il proprio).
 
 LOCALE PREDEFINITO "Food Service" (slug: default)
   Accesso:       https://dslunch.vercel.app/t/default/login

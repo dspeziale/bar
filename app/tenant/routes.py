@@ -1,7 +1,6 @@
 import re
 from flask import render_template, redirect, url_for, flash, request, session, abort
 from flask_login import login_user, current_user
-from markupsafe import Markup, escape
 from app import db, oauth
 from app.tenant import bp
 from app.models import Tenant, User
@@ -115,15 +114,13 @@ def login(slug):
                       'Per cambiare locale usa il selettore in alto a destra.' % tenant.name, 'info')
                 return redirect(url_for('admin.dashboard'))
             if user.tenant_id != tenant.id:
-                # Account di un altro locale: lo si manda alla porta giusta,
-                # invece di un "credenziali non valide" che non spiega nulla.
-                altro = user.tenant
-                if altro is not None and altro.is_active:
-                    flash(Markup('Questo account appartiene al locale «%s»: '
-                                 '<a href="%s">accedi dalla sua pagina</a>.'
-                                 % (escape(altro.name), url_for('tenant.login', slug=altro.slug))), 'warning')
-                else:
-                    flash('Questo account non appartiene a questo locale.', 'warning')
+                # Account di un altro locale: lo si dice, senza nominare
+                # l'altro locale ne' il suo indirizzo. Nessun locale deve
+                # sapere degli altri: l'indirizzo giusto lo ha gia' il cliente
+                # (locandina, email di attivazione).
+                flash('Questo account non appartiene a questo locale: usa l\'indirizzo di '
+                      'accesso che ti ha dato il tuo locale (lo trovi anche nell\'email di '
+                      'attivazione).', 'warning')
                 return redirect(url_for('tenant.login', slug=tenant.slug))
             if not user.is_active:
                 send_registration_received_email(user)

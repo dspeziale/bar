@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scegli il locale | QuickLunch</title>
+  <title>Registrati | QuickLunch</title>
   <script>(function(){ var t=localStorage.getItem('QuickLunch-theme')||'light'; document.documentElement.setAttribute('data-QuickLunch-theme',t); })();</script>
   <link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -13,17 +13,15 @@
     :root { --auth-bg-from:#1a1a2e; --auth-bg-to:#0f3460; --auth-card:#fff; --auth-text:#212529; --auth-muted:#6c757d; --auth-card-border:#dee2e6; }
     [data-QuickLunch-theme="dark"] { --auth-bg-from:#050810; --auth-bg-to:#040b18; --auth-card:#16213e; --auth-text:#e2e8f0; --auth-muted:#7a8fa8; --auth-card-border:#1e3058; }
     body { background: linear-gradient(135deg, var(--auth-bg-from) 0%, var(--auth-bg-to) 100%) !important; min-height:100vh; }
-    .login-box { width: 420px; max-width: 95vw; }
+    .login-box { width: 400px; max-width: 95vw; }
     .card { background: var(--auth-card) !important; border-color: var(--auth-card-border) !important; color: var(--auth-text) !important; }
     .card-header { background: var(--auth-card) !important; border-color: var(--auth-card-border) !important; }
     .text-muted { color: var(--auth-muted) !important; }
     .card-outline.card-primary { border-top: 3px solid #e94560 !important; }
     .login-logo { font-size: 2rem; font-weight: 700; color: #e94560; }
     .login-logo span { color: #fff; }
-    .locale { display:flex; align-items:center; gap:.7rem; padding:.7rem .8rem; border:1px solid var(--auth-card-border); border-radius:8px; margin-bottom:.6rem; color:var(--auth-text); }
-    .locale .pallino { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
-    .locale .nome { flex:1; font-weight:700; font-size:1.05rem; }
-    .locale .azioni a { font-size:.85rem; margin-left:.6rem; white-space:nowrap; }
+    .passo { display:flex; gap:.7rem; align-items:flex-start; margin-bottom:.8rem; font-size:.95rem; }
+    .passo .n { width:26px; height:26px; border-radius:50%; background:#e94560; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:.85rem; }
   </style>
 </head>
 <body class="hold-transition login-page">
@@ -31,7 +29,7 @@
     <div class="login-logo"><i class="fas fa-utensils mr-2" style="color:#e94560;"></i><span>QuickLunch</span></div>
     <div class="card card-outline card-primary">
       <div class="card-header text-center">
-        <p class="mb-0" style="color:var(--auth-muted);"><i class="fas fa-store mr-1"></i>Scegli il tuo locale</p>
+        <p class="mb-0" style="color:var(--auth-muted);">Registrati dal tuo locale</p>
       </div>
       <div class="card-body">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -39,21 +37,14 @@
           <div class="alert alert-{{ category }}">{{ message }}</div>
           {% endfor %}
         {% endwith %}
-        <p class="text-muted" style="font-size:.9rem;">Ogni locale ha la sua pagina di accesso e di registrazione: scegli quello dove pranzi o lavori.</p>
-        {% for t in tenants %}
-        <div class="locale">
-          <span class="pallino" style="background:{{ t.primary_color }};"></span>
-          <span class="nome">{{ t.name }}<br><small class="text-muted" style="font-weight:400;">/t/{{ t.slug }}</small></span>
-          <span class="azioni">
-            <a href="{{ url_for('tenant.register', slug=t.slug) }}"><i class="fas fa-user-plus mr-1"></i>Registrati</a>
-            <a href="{{ url_for('tenant.login', slug=t.slug) }}"><i class="fas fa-right-to-bracket mr-1"></i>Accedi</a>
-          </span>
-        </div>
-        {% else %}
-        <p class="text-muted text-center">Nessun locale attivo.</p>
-        {% endfor %}
-        <p class="mt-3 mb-0 text-center" style="font-size:.85rem;">
-          <a href="{{ url_for('auth.login') }}">Torna all'accesso</a>
+        <p class="text-muted" style="font-size:.92rem;">
+          L'iscrizione si fa dalla pagina del locale dove pranzi: ha il suo nome e il suo colore.
+        </p>
+        <div class="passo"><div class="n">1</div><div>Inquadra il <strong>QR della locandina</strong> appesa al banco, oppure apri il link che ti ha dato il locale.</div></div>
+        <div class="passo"><div class="n">2</div><div>Crea l'account con email e password o con Google.</div></div>
+        <div class="passo"><div class="n">3</div><div>Il locale attiva l'iscrizione: ricevi un'email e da quel momento entri dalla stessa pagina.</div></div>
+        <p class="mt-3 mb-0 text-center" style="font-size:.9rem;">
+          Hai già un account? <a href="{{ url_for('auth.login') }}">Accedi</a>
         </p>
       </div>
     </div>

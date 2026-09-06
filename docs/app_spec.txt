@@ -1435,21 +1435,25 @@ Migrazione _impostazioni_per_tenant(): via il vincolo unico su
 app_settings.key (PostgreSQL DROP CONSTRAINT; SQLite ricostruzione).
 
 Chi accede da dove (ogni locale ha la sua porta):
-  /auth/login            pagina globale: elenca i locali attivi (se piu' di
-                         uno) con i loro /t/<slug>/login; il modulo e' per
-                         l'amministratore dei tenant ma funziona per tutti e
-                         porta ciascuno nel proprio locale. Dopo il login un
-                         flash dice in quale locale si e' entrati.
-  /auth/register         con piu' locali -> /auth/locale (scelta del locale
-                         con link di registrazione e accesso); con uno solo
-                         GET -> /t/<slug>/register (il POST resta accettato).
-  /auth/join             QR: punta a /t/<slug>/register (o a /auth/locale).
+  Regola: le pagine globali sono NEUTRE e non nominano mai i locali. Nessun
+  tenant sa che ne esistono altri; l'elenco vive solo in /admin/tenants.
+  /auth/login            pagina globale neutra ("Accedi al tuo account"):
+                         funziona per tutti e porta ciascuno nel proprio
+                         locale; e' la porta dell'amministratore dei tenant.
+                         Dopo il login un flash dice in quale locale si e'
+                         entrati (il proprio).
+  /auth/register         con piu' locali -> auth/registrazione_locale.html,
+                         pagina neutra che spiega dove trovare il proprio
+                         indirizzo (locandina, QR, email), senza elenchi; con
+                         uno solo GET -> /t/<slug>/register (POST accettato).
+  /auth/join             QR: punta a /t/<slug>/register (un locale) o a
+                         /auth/register (pagina neutra).
   /t/<slug>/login        personale e clienti del locale; l'amministratore dei
                          tenant che entra da qui lavora in quel locale
                          (session['tenant_attivo']); un account di un altro
-                         locale con password giusta riceve il link alla porta
-                         giusta (password sbagliata: messaggio generico); MFA
-                         e attesa di attivazione come nel globale.
+                         locale riceve un avviso generico, senza nome ne'
+                         indirizzo dell'altro locale; MFA e attesa di
+                         attivazione come nel globale.
   /t/<slug>/register     iscrizione in attesa di attivazione (come dal
                          globale; prima entrava subito), con nome e cognome.
   Barra in alto: chip "Locale: <nome>" per tutti; per l'amministratore dei

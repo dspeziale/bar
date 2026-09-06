@@ -130,7 +130,8 @@ def sez_iscrizione(pdf, idx):
          'porta il nome e il colore del locale: e la stessa dell\'email di '
          'attivazione e del QR. Dopo l\'accesso, in alto a destra, leggi '
          '"Locale: ..." per sapere dove sei. Se per sbaglio entri dalla pagina '
-         'di un altro locale, ti viene indicata quella giusta.'),
+         'di un altro locale la pagina te lo dice: usa l\'indirizzo che ti ha '
+         'dato il tuo locale.'),
     ], C)
 
     h2(pdf, 'Le email che ricevi', C, idx)

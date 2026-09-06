@@ -166,11 +166,15 @@ vincolo `app_settings.key UNIQUE`; su SQLite ricostruisce la tabella.
 **Ogni locale ha la sua porta**: `/t/<slug>/login` e `/t/<slug>/register` (pagina con nome e
 colore del locale) sono gli indirizzi da dare a personale e clienti, e sono quelli usati da
 email di attivazione, locandina e QR (`_tenant_attivo_obj()`/`_indirizzi_locale()` in
-`admin/routes.py`). `/auth/login` è la porta dell'amministratore dei tenant ma accetta tutti
-(elenca i locali quando sono più di uno); `/auth/register` con più locali rimanda a
-`/auth/locale`, con uno solo alla pagina del locale. In `tenant.login` l'amministratore dei
-tenant entra direttamente in quel locale; un account di un altro locale con password giusta
-riceve il link alla porta giusta. La registrazione dal locale è **in attesa di attivazione**
+`admin/routes.py`). **Le pagine globali sono neutre e non nominano mai i locali**: nessun
+tenant deve sapere che ne esistono altri, l'elenco vive solo in `/admin/tenants`. `/auth/login`
+accetta tutti e porta ciascuno nel proprio locale; `/auth/register` (e il QR `/auth/join`) con
+più locali mostra `auth/registrazione_locale.html`, che spiega dove trovare il proprio
+indirizzo senza elencare nulla; con uno solo va alla pagina del locale. In `tenant.login`
+l'amministratore dei tenant entra direttamente in quel locale; un account di un altro locale
+riceve un avviso **generico** (niente nome né link dell'altro locale). Non aggiungere elenchi
+di tenant, nomi o slug altrui in pagine raggiungibili da chi non è superadmin.
+La registrazione dal locale è **in attesa di attivazione**
 come quella globale (prima entrava subito: due flussi diversi confondevano). Dopo ogni login
 un flash dice il locale, e la barra mostra il chip `Locale: <nome>`.
 
